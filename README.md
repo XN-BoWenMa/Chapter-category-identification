@@ -124,8 +124,8 @@ nltk==3.6.2
 prefetch-generator==1.0.1
 
 ## 运行说明
-* glove 100d 文件链接> https://pan.baidu.com/s/1zcgfnqTl5uElMvUh6tYg_A (ybse)，下载后放在data\output\dl_file目录下即可。
+* glove 100d 文件链接 https://pan.baidu.com/s/1zcgfnqTl5uElMvUh6tYg_A (ybse)，下载后放在data\output\dl_file目录下即可。
 * 运行train_classifier.py，默认为LR模型，可以通过设置116行的classifier参数来设置模型，训练默认采用五折交叉验证
 * 神经网络的所有代码文件夹中，train_me.py为模型训练脚本，apply_model.py为模型测试脚本，分别运行，生成模型保存在data\output\dl_model_save
 * 所有代码均需进入其所在的文件夹目录下 运行
-* 运行ML\create_text_feature\tf_idf_calculate.py脚本时需注意，需参考> https://blog.csdn.net/weixin_30711917/article/details/95900602 对sklearn包中feature_exceration文件夹中的text.py脚本进行简单修改，以保证使用TfidfVectorizer函数时对字符串切分的正确。
+* 运行ML\create_text_feature\tf_idf_calculate.py脚本时需注意，需参考 https://blog.csdn.net/weixin_30711917/article/details/95900602 对sklearn包中feature_exceration文件夹中的text.py脚本进行简单修改，以保证使用TfidfVectorizer函数时对字符串切分的正确。
