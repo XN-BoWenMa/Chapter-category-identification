@@ -1,0 +1,1694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.99486">
+Representation Learning for Text-level Discourse Parsing
+</title>
+<author confidence="0.999315">
+Yangfeng Ji
+</author>
+<affiliation confidence="0.9988585">
+School of Interactive Computing
+Georgia Institute of Technology
+</affiliation>
+<email confidence="0.992098">
+jiyfeng@gatech.edu
+</email>
+<author confidence="0.998116">
+Jacob Eisenstein
+</author>
+<affiliation confidence="0.9988295">
+School of Interactive Computing
+Georgia Institute of Technology
+</affiliation>
+<email confidence="0.994897">
+jacobe@gatech.edu
+</email>
+<sectionHeader confidence="0.993809" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.99971947368421">Text-level discourse parsing is notoriously difficult, as distinctions between discourse relations require subtle semantic judgments that are not easily captured using standard features. In this paper, we present a representation learning approach, in which we transform surface features into a latent space that facilitates RST discourse parsing. By combining the machinery of large-margin transition-based structured prediction with representation learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank.</bodyText>
+<sectionHeader confidence="0.998995" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.997327222222222">Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty et al., 2013).</bodyText>
+<figure confidence="0.5731045">
+COMPARISON
+CIRCUMSTANCE
+</figure>
+<figureCaption confidence="0.62528125">
+when profit was $107.8
+million on sales of $435.5
+million.
+Figure 1: An example of RST discourse structure.
+</figureCaption>
+<bodyText confidence="0.990103947368421">While recent work has introduced increasingly powerful features (Feng and Hirst, 2012) and inference techniques (Joty et al., 2013), discourse relations remain hard to detect, due in part to a long tail of “alternative lexicalizations” that can be used to realize each relation (Prasad et al., 2010). Surface and syntactic features are not capable of capturing what are fundamentally semantic distinctions, particularly in the face of relatively small annotated training sets. In this paper, we present a representation learning approach to discourse parsing. The core idea of our work is to learn a transformation from a bag-of-words surface representation into a latent space in which discourse relations are easily identifiable. The latent representation for each discourse unit can be viewed as a discriminativelytrained vector-space representation of its meaning. Alternatively, our approach can be seen as a nonlinear learning algorithm for incremental structure prediction, which overcomes feature sparsity through effective parameter tying. We consider several alternative methods for transforming the original features, corresponding to different ideas of the meaning and role of the latent representation. Our method is implemented as a shift-reduce discourse parser (Marcu, 1999; Sagae, 2009). Learning is performed as large-margin transitionbased structure prediction (Taskar et al., 2003), while at the same time jointly learning to project the surface representation into latent space. The The projections are in the neighborhood of 50 cents a share to 75 cents, compared with a restated $1.65 a share a year earlier, resulting system strongly outperforms the prior state-of-the-art at labeled F-measure, obtaining raw improvements of roughly 6% on relation labels and 2.5% on nuclearity.</bodyText>
+<page confidence="0.991961">
+13
+</page>
+<note confidence="0.8309345">
+Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 13–24,
+Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.998179714285714">In addition, we show that the latent representation coheres well with the characterization of discourse connectives in the Penn Discourse Treebank (Prasad et al., 2008).</bodyText>
+<sectionHeader confidence="0.990198" genericHeader="method">
+2 Model
+</sectionHeader>
+<bodyText confidence="0.99998653125">The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010) show that there is a long tail of alternative lexicalizations for discourse relations in the Penn Discourse Treebank, posing obvious challenges for approaches based on directly matching lexical features observed in the training data. Based on this observation, our goal is to learn a function that transforms lexical features into a much lower-dimensional latent representation, while simultaneously learning to predict discourse structure based on this latent representation. In this paper, we consider a simple transformation function, linear projection. Thus, we name the approach DPLP: Discourse Parsing from Linear Projection. We apply transition-based (incremental) structured prediction to obtain a discourse parse, training a predictor to make the correct incremental moves to match the annotations of training data in the RST Treebank. This supervision signal is then used to learn both the weights and the projection matrix in a large-margin framework.</bodyText>
+<subsectionHeader confidence="0.994432">
+2.1 Shift-reduce discourse parsing
+</subsectionHeader>
+<bodyText confidence="0.999784666666667">We construct RST Trees using shift-reduce parsing, as first proposed by Marcu (1999). At each point in the parsing process, we maintain a stack and a queue; initially the stack is empty and the first elementary discourse unit (EDU) in the document is at the front of the queue.1 The parser can</bodyText>
+<footnote confidence="0.992273">
+1We do not address segmentation of text into elemen-
+tary discourse units in this paper. Standard classification-
+</footnote>
+<table confidence="0.690642210526316">
+Notation Explanation
+V Vocabulary for surface features
+V Size of V
+K Dimension of latent space
+Wm Classification weights for class m
+C Total number of classes, which correspond to
+possible shift-reduce operations
+A Parameter of the representation function (also
+the projection matrix in the linear representa-
+tion function)
+Vi Word count vector of discourse unit i
+V Vertical concatenation of word count vectors
+for the three discourse units currently being
+considered by the parser
+A Regularization for classification weights
+z Regularization for projection matrix
+ξi Slack variable for sample i
+ηi,m Dual variable for sample i and class m
+αt Learning rate at iteration t
+</table>
+<tableCaption confidence="0.999841">
+Table 1: Summary of mathematical notation
+then choose either to shift the front of the queue onto the top of the stack, or to reduce the top two elements on the stack in a discourse relation.</tableCaption>
+<bodyText confidence="0.999944333333333">The reduction operation must choose both the type of relation and which element will be the nucleus. So, overall there are multiple reduce operations with specific relation types and nucleus positions. Shift-reduce parsing can be learned as a classification task, where the classifier uses features of the elements in the stack and queue to decide what move to take. Previous work has employed decision trees (Marcu, 1999) and the averaged perceptron (Collins and Roark, 2004; Sagae, 2009) for this purpose. Instead, we employ a large-margin classifier, because we can compute derivatives of the margin-based objective function with respect to both the classifier weights as well as the projection matrix.</bodyText>
+<subsectionHeader confidence="0.999341">
+2.2 Discourse parsing with projected features
+</subsectionHeader>
+<bodyText confidence="0.932992454545455">More formally, we denote the surface feature vocabulary V, and represent each EDU as the numeric vector v E NV , where V = #|V |and the nth element of v is the count of the n-th surface feature in this EDU (see Table 1 for a summary of notation). During shift-reduce parsing, we consider features of three EDUs:2 the top two elements on based approaches can achieve a segmentation F-measure of 94% (Hernault et al., 2010); a more complex reranking model does slightly better, at 95% F-Measure with automatically-generated parse trees, and 96.6% with gold anno special constraint on the form of A.</bodyText>
+<footnote confidence="0.8497145">
+notated trees (Xuan Bach et al., 2012). Human agreement
+reaches 98% F-Measure.
+2After applying a reduce operation, the stack will include
+a span that contains multiple EDUs. We follow the strong
+</footnote>
+<page confidence="0.996954">
+14
+</page>
+<equation confidence="0.98357625">
+⎡ ⎤
+v1
+f(v; A) = A ⎣v2 ⎦(3)
+v3
+</equation>
+<bodyText confidence="0.9989824">the stack (v1 and v2), and the front of the queue (v3). The vertical concatenation of these vectors is denoted v = [v1; v2; v3]. In general, we can formulate the decision function for the multi-class shift-reduce classifier as where wm is the weight for the m-th class and f(v; A) is the representation function parametrized by A.</bodyText>
+<equation confidence="0.958222">
+mˆ = arg max wmf(v; A) (1)
+mE{1,...,C}
+</equation>
+<bodyText confidence="0.998530538461538">The score for class m (in our case, the value of taking the m-th shiftreduce operation) is computed by the inner product wmf(v; A). The specific shift-reduce operation is chosen by maximizing the decision value in Equation 1. The representation function f(v; A) can be defined in any form; for example, it could be a nonlinear function defined by a neural network model parametrized by A. We focus on the linear projection, where A E RKx3V is projects the surface representation v of three EDUs into a latent space of size K « V .</bodyText>
+<equation confidence="0.968506">
+f(v; A) = Av, (2)
+</equation>
+<bodyText confidence="0.970775421052632">Note that by setting ˜wm = wmA, the decision scoring function can be rewritten as ˜wmv, which is linear in the original surface features. Therefore, the expressiveness of DPLP is identical to a linear separator in the original feature space. However, the learning problem is considerably different. If there are C total classes (possible shift-reduce operations), then a linear classifier must learn 3V C parameters, while DPLP must learn (3V + C)K parameters, which will be smaller under the assumption that K &lt; C « V . This can be seen as a form of parameter tying on the linear weights ˜wm, which allows statistical strength to be shared across training instances. We will consider special cases of A that reduce the parameter space still further.</bodyText>
+<subsectionHeader confidence="0.997836">
+2.3 Special forms of the projection matrix
+</subsectionHeader>
+<bodyText confidence="0.9987785">We consider three different constructions for the projection matrix A.</bodyText>
+<listItem confidence="0.850019875">• General form: In the general case, we place compositionality criterion of Marcu (1996) and consider only the nuclear EDU of the span. Later work may explore the composition of features between the nucleus and satellite. This form is shown in Figure 2(a). • Concatenation form: In the concatenation form, we choose a block structure for A, in which a single projection matrix B is applied</listItem>
+<equation confidence="0.91593025">
+to each EDU:
+&amp;quot; B 0 0 # &amp;quot;v1 #
+f(v; A) = 0 B 0 v2 (4)
+0 0 B v3
+</equation>
+<bodyText confidence="0.996732428571429">In this form, we transform the representation of each EDU separately, but do not attempt to represent interrelationships between the EDUs in the latent space. The number of parameters in A is 13KV. Then, the total number of parameters, including the decision weights {wm}, in this form is (V3 + C)K.</bodyText>
+<listItem confidence="0.99421125">• Difference form. In the difference form, we explicitly represent the differences between adjacent EDUs, by constructing A as a block difference matrix,</listItem>
+<equation confidence="0.993436333333333">
+&amp;quot; C −C 0#&amp;quot; v1 # ,(5)
+f(v; A) = C 0 −C v2
+0 0 0 v3
+</equation>
+<bodyText confidence="0.9999814">The result of this projection is that the latent representation has the form [C(v1 − v2); C(v1 − v3)], representing the difference between the top two EDUs on the stack, and between the top EDU on the stack and the first EDU in the queue. This is intended to capture semantic similarity, so that reductions between related EDUs will be preferred. Similarly, the total number of parameters to estimate in this form is (V + 2C)K3 .</bodyText>
+<sectionHeader confidence="0.938894" genericHeader="method">
+3 Large-Margin Learning Framework
+</sectionHeader>
+<bodyText confidence="0.999995">We apply a large margin structure prediction approach to train the model. There are two parameters that need to be learned: the classification weights {wm}, and the projection matrix A. As we will see, it is possible to learn {wm} using standard support vector machine (SVM) training (holding A fixed), and then make a simple gradient-based update to A (holding {wm} fixed). By interleaving these two operations, we arrive at a saddle point of the objective function.</bodyText>
+<page confidence="0.995684">
+15
+</page>
+<figureCaption confidence="0.997451">
+Figure 2: Decision problem with different representation functions
+</figureCaption>
+<figure confidence="0.9992205">
+W
+W
+W
+v1 from stack v2from stack v3 from queue
+(a) General form
+A
+v1 from stack v2from stack v3from queue
+(b) Concatenation form
+v1 from stack v2from stack v3 from queue
+(c) Difference form
+A
+A
+</figure>
+<bodyText confidence="0.9922495">Specifically, we formulate the following constrained optimization problem, where m E {1, ... , C} is the index of the shift-reduce decision taken by the classifier (e.g., SHIFT, REDUCE-CONTRAST-RIGHT, etc), i E {1, · · · , l} is the index of the training sample, and wm is the vector of classification weights for class m. The slack variables ξi permit the margin constraint to be violated in exchange for a penalty, and the delta function δyi=m is unity if yi = m, and zero otherwise.</bodyText>
+<equation confidence="0.983155">
+T
+ξi + 2 IA I2F
+s.t. (wyi−wm)Tf(vi; A) &gt; 1 − Syi=m − ξi,
+` di, m
+</equation>
+<bodyText confidence="0.999715153846154">As is standard in the multi-class linear SVM (Crammer and Singer, 2001), we can solve the problem defined in Equation 6 via Lagrangian optimization:</bodyText>
+<equation confidence="0.871241666666667">
+c({w1:C, ξ1:l, A, η1:l,1:C}) =
+s.t. ηi,m &gt; 0 `di, m
+(7)
+</equation>
+<bodyText confidence="0.999930571428571">Then, to optimize L, we need to find a saddle point, which would be the minimum for the variables {w1:C, ξ1:l} and the projection matrix A, and the maximum for the dual variables {g1:l,1:C}. If A is fixed, then the optimization problem is equivalent to a standard multi-class SVM, in the transformed feature space f(vi; A). We can obtain the weights {w1:C} and dual variables {g1:l,1:C} from a standard dual-form SVM solver. We then update A, recompute {w1:C} and {g1:l,1:C}, and iterate until convergence. This iterative procedure is similar to the latent variable structural SVM (Yu and Joachims, 2009), although the specific details of our learning algorithm are different.</bodyText>
+<subsectionHeader confidence="0.999618">
+3.1 Learning Projection Matrix A
+</subsectionHeader>
+<bodyText confidence="0.998862666666667">We update A while holding fixed the weights and dual variables. The derivative of L with respect to A is because the dual variables for each instance must sum to one, Pm gi,m = 1.</bodyText>
+<equation confidence="0.996656166666667">
+/ T T af(vi; A)
+ηi,m(wm − wyi) aA
+X= TA + ηi,m(wm − wyi)vi T (8)
+i,m
+Setting ∂L
+∂A = 0, we have the closed-form solution,
+</equation>
+<bodyText confidence="0.999905444444445">Note that for a given i, the matrix (wyi − Pm gi,mwm)viT is of (at most) rank-1. Therefore, the solution of A can be viewed as the linear combination of a sequence of rank-1 matrices, where each rank-1 matrix is defined by distributional representation vi and the weight difference between the weight of true label wyi and the “expected” weight Pm gi,mwm. One property of the dual variables is that f(vi; A) is a support vector only if the dual variable gi,yi &lt; 1. Since the dual variables for each instance are guaranteed to sum to one, we have wyi − Pm gi,mwm = 0 if gi,yi = 1. In other words, the contribution from non support vectors to the projection matrix A is 0. Then, we can further simplify the updating equation as</bodyText>
+<equation confidence="0.992013">
+1 X A =
+T
+</equation>
+<bodyText confidence="0.999364666666667">This is computationally advantageous since many instances are not support vectors, and it shows that the discriminatively-trained projection matrix only incorporates information from each instance to the extent that the correct classification receives low confidence.</bodyText>
+<equation confidence="0.993828078947368">
+Iwm I22 +
+T
+ξi + 2 IA I2F
+Xl
+i=1
+ηi,mn(T T
+wm − wyi )f (vi; A) + 1 − Syi=m −ξi
+X
++
+i,m
+2
+λ C
+X
+m=1
+=
+X
+1
+T
+i,j
+ηi,m(wm − wyi)vi T
+X
+(wyi −
+m
+(9)
+η T
+i,mwm)vi ,
+A = 1X
+T
+i,m
+min
+{w1:C,ξ1:l,AI
+Iwm I22 + Xl
+i=1
+2
+λ C
+X
+m=1
+X= TA +
+</equation>
+<figure confidence="0.756824428571428">
+i,m
+(6) ac
+aA
+viESV
+X gi,mwm)viT (10)
+(wyi −
+m
+</figure>
+<page confidence="0.867405">
+16
+</page>
+<bodyText confidence="0.87176725">Algorithm 1 Mini-batch learning algorithm Input: Training set D, Regularization parameters A and τ, Number of iteration T, Initialization matrix A0, and Threshold E</bodyText>
+<figure confidence="0.907289272727273">
+while t = 1, ... , T do
+Randomly choose a subset of training sam-
+ples Dt from D
+Train SVM with At−1 to obtain {w(t)m } and
+{η(t) i,m}
+Update At using Equation 11 with αt = 1t
+if kAt−At−1kF &lt; E then
+kA2−A1kF
+Return
+end if
+end while
+</figure>
+<bodyText confidence="0.626059333333333">Re-train SVM with D and the final A Output: Projection matrix A, SVM classifier with weights w</bodyText>
+<subsectionHeader confidence="0.998406">
+3.2 Gradient-based Learning for A
+</subsectionHeader>
+<bodyText confidence="0.9997170625">Solving the quadratic programming defined by the dual form of the SVM is time-consuming, especially on a large-scale dataset. But if we focus on learning the projection matrix A, we can speed up learning by sampling only a small proportion of the training data to compute an approximate optimum for {w1:C, η1:l,1:C}, before each update of A. This idea is similar to the mini-batch learning, which has been used in large-scale SVM problem (Nelakanti et al., 2013) and deep learning models (Le et al., 2011). Specifically, in iteration t, the algorithm randomly chooses a subset of training samples Dt to train the model. We cannot make a closed-form update to A based on this small sample, but we can take an approximate gradient step, where αt is a learning rate.</bodyText>
+<equation confidence="0.9992525">
+At = (1 − αtT)At−1+
+� ��
+ηi,mW
+(t)(t)vi, (11)
+m
+ViESV(Dt)
+</equation>
+<bodyText confidence="0.9998353">In iteration t, we choose αt = 1t . After convergence, we obtain the weights w by applying the SVM over the entire dataset, using the final A. The algorithm is summarized in Algorithm 1 and more details about implementation will be clarified in Section 4. While minibatch learning requires more iterations, the SVM training is much faster in each batch, and the overall algorithm is several times faster than using the entire training set for each update.</bodyText>
+<sectionHeader confidence="0.997617" genericHeader="evaluation">
+4 Implementation
+</sectionHeader>
+<bodyText confidence="0.999977333333333">The learning algorithm is applied in a shift-reduce parser, where the training data consists of the (unique) list of shift and reduce operations required to produce the gold RST parses. On test data, we choose parsing operations in an online fashion — at each step, the parsing algorithm changes the status of the stack and the queue according the selected transition, then creates the next sample with the updated status.</bodyText>
+<subsectionHeader confidence="0.996758">
+4.1 Parameters and Initialization
+</subsectionHeader>
+<bodyText confidence="0.999774083333333">There are three free parameters in our approach: the latent dimension K, and regularization parameters A and τ. We consider the values K ∈ {30, 60, 90,150}, A ∈ {1, 10, 50,100} and τ ∈ {1.0, 0.1, 0.01, 0.001}, and search over this space using a development set of thirty document randomly selected from within the RST Treebank training data. We initialize each element of A0 to a uniform random value in the range [0, 1]. For mini-batch learning, we fixed the batch size to be 500 training samples (shift-reduce operations) in each iteration.</bodyText>
+<subsectionHeader confidence="0.985907">
+4.2 Additional features
+</subsectionHeader>
+<bodyText confidence="0.999874333333333">As described thus far, our model considers only the projected representation of each EDU in its parsing decisions. But prior work has shown that other, structural features can provide useful information (Joty et al., 2013). We therefore augment our classifier with a set of simple feature templates. These templates are applied to individual EDUs, as well as pairs of EDUs: (1) the two EDUs on top of the stack, and (2) the EDU on top of the stack and the EDU in front of the queue. The features are shown in Table 2. In computing these features, all tokens are downcased, and numerical features are not binned. The dependency structure and POS tags are obtained from MALTParser (Nivre et al., 2007).</bodyText>
+<sectionHeader confidence="0.999711" genericHeader="evaluation and result">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.999987">We evaluate DPLP on the RST Discourse Treebank (Carlson et al., 2001), comparing against state-of-the-art results. We also investigate the information encoded by the projection matrix.</bodyText>
+<subsectionHeader confidence="0.867706">
+5.1 Experimental Setup
+</subsectionHeader>
+<bodyText confidence="0.9967125">Dataset The RST Discourse Treebank (RSTDT) consists of 385 documents, with 347 for train-</bodyText>
+<equation confidence="0.993084833333333">
+� E
+αt
+(E
+W(t)
+yi −
+m
+</equation>
+<page confidence="0.9618">
+17
+</page>
+<table confidence="0.431034866666667">
+Feature Examples
+hBEGIN-WORD-STACK1 = buti
+Words at beginning and end of the EDU
+hBEGIN-WORD-STACK1-QUEUE1 = but, thei
+POS tag at beginning and end of the EDU
+Head word set from each EDU. The set includes words hHEAD-WORDS-STACK2 = workingi
+whose parent in the depenency graph is ROOT or is not
+within the EDU (Sagae, 2009).
+Length of EDU in tokens hLEN-STACK1-STACK2 = h7, 8ii
+Distance between EDUs hDIST-STACK1-QUEUE1 = 2i
+Distance from the EDU to the beginning of the document hDIST-FROM-START-QUEUE1 = 3i
+Distance from the EDU to the end of the document hDIST-FROM-END-STACK1 = 1i
+Whether two EDUs are in the same sentence hSAME-SENT-STACK1-QUEUE1 = Truei
+hBEGIN-TAG-STACK1 = CCi
+hBEGIN-TAG-STACK1-QUEUE1 = CC, DTi
+</table>
+<tableCaption confidence="0.938399">
+Table 2: Additional features for RST parsing
+ing and 38 for testing in the standard split.</tableCaption>
+<bodyText confidence="0.998639132352941">As we focus on relational discourse parsing, we follow prior work (Feng and Hirst, 2012; Joty et al., 2013), and use gold EDU segmentations. The strongest automated RST segmentation methods currently attain 95% accuracy (Xuan Bach et al., 2012). Preprocessing In the RST-DT, most nodes have exactly two children, one nucleus and one satellite. For non-binary relations, we use right-branching to binarize the tree structure. For multi-nuclear relations, we choose the left EDU as “head” EDU. The vocabulary V includes all unigrams after down-casing. No other preprocessing is performed. In total, there are 16250 unique unigrams in V. Fixed projection matrix baselines Instead of learning from data, a simple way to obtain a projection matrix is to use matrix factorization. Recent work has demonstrated the effectiveness of non-negative matrix factorization (NMF) for measuring distributional similarity (Dinu and Lapata, 2010; Van de Cruys and Apidianaki, 2011). We can construct B,,,,,tf in the concatenation form of the projection matrix by applying NMF to the EDU-feature matrix, M ≈ WH. As a result, W describes each EDU with a K-dimensional vector, and H describes each word with a K-dimensional vector. We can then construct B,,,,,tf by taking the pseudo-inverse of H, which then projects from word-count vectors into the latent space. Another way to construct B is to use neural word embeddings (Collobert and Weston, 2008). In this case, we can view the product Bv as a composition of the word embeddings, using the simple additive composition model proposed by Mitchell and Lapata (2010). We used the word embeddings from Collobert and Weston (2008) with dimension {25,50, 100}. Grid search over heldout training data was used to select the optimum latent dimension for both the NMF and word embedding baselines. Note that the size K of the resulting projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Competitive systems We compare our approach with HILDA (Hernault et al., 2010) and TSP (Joty et al., 2013).Joty et al. (2013) proposed two different approaches to combine sentence-level parsing models: sliding windows (TSP SW) and 1 sentence-1 subtree (TSP 1-1). In the comparison, we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al.(1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001).</bodyText>
+<footnote confidence="0.993284333333333">
+3We implemented the evaluation metrics by ourselves.
+Together with the DPLP system, all codes are published on
+https://github.com/jiyfeng/DPLP
+</footnote>
+<page confidence="0.99698">
+18
+</page>
+<table confidence="0.972455666666666">
+Method Matrix Form +Features K Span Nuclearity Relation
+Prior work
+1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8
+2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73
+3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71
+Our work
+4. Basic features A = 0 Yes 79.43 67.98 52.96
+5. Word embeddings Concatenation No 75 75.28 67.14 53.79
+6. NMF Concatenation No 150 78.57 67.66 54.80
+7. Bag-of-words A = I Yes 79.85 69.01 60.21
+8. DPLP Concatenation No 60 80.91 69.39 58.96
+9. DPLP Difference No 60 80.47 68.61 58.27
+10. DPLP Concatenation Yes 60 82.08 71.13 61.63
+11. DPLP General Yes 30 81.60 70.95 61.75
+Human annotation 88.70 77.72 65.75
+</table>
+<tableCaption confidence="0.9939735">
+Table 3: Parsing results of different models on the RST-DT test set. The results of TSP and HILDA are
+reprinted from prior work (Joty et al., 2013; Hernault et al., 2010).
+</tableCaption>
+<subsectionHeader confidence="0.986704">
+5.2 Experimental Results
+</subsectionHeader>
+<bodyText confidence="0.999077307692308">Table 3 presents RST parsing results for DPLP and some alternative systems. All versions of DPLP outperform the prior state-of-the-art on nuclearity and relation detection. This includes relatively simple systems whose features are simply a projection of the word count vectors for each EDU (lines 7 and 8). The addition of the features from Table 2 improves performance further, leading to absolute F-score improvement of around 2.5% in nuclearity and 6% in relation prediction (lines 9 and 10). On span detection, DPLP performs slightly worse than the prior state-of-the-art. These systems employ richer syntactic and contextual features, which might be especially helpful for span identification. As shown by line 4 of the results table, the basic features from Table 2 provide most of the predictive power for spans; however, these features are inadequate at the more semantically-oriented tasks of nuclearity and relation prediction, which benefit substantially from the projected features. Since correctly identifying spans is a precondition for nuclearity and relation prediction, we might obtain still better results by combining features from HILDA and TSP with the representation learning approach described here. Lines 5 and 6 show that discriminative learning of the projection matrix is crucial, as fixed projections obtained from NMF or neural word embeddings perform substantially worse. Line 7 shows that the original bag-of-words representation together with basic features could give us some benefit on discourse parsing, but still not as good as results from DPLP. From lines 8 and 9, we see that the concatenation construction is superior to the difference construction, but the comparison between lines 10 and 11 is inconclusive on the merits of the general form of A. This suggests that using the projection matrix to model interrelationships between EDUs does not substantially improve performance, and the simpler concatenation construction may be preferred. Figure 3 shows how performance changes for different latent dimensions K. At each value of K, we employ grid search over a development set to identify the optimal regularizers A and T. For the concatenation construction, performance is not overly sensitive to K. For the general form of A, performance decreases with large K. Recall from Section 2.3 that this construction has nine times as many parameters as the concatenation form; with large values of K, it is likely to overfit.</bodyText>
+<subsectionHeader confidence="0.999946">
+5.3 Analysis of Projection Matrix
+</subsectionHeader>
+<bodyText confidence="0.999188066666667">Why does projection of the surface features improve discourse parsing? To answer this question, we examine what information the projection matrix is learning to encoded. We take the projection matrix from the concatenation construction and K = 60 as an example for case study. Recalling the definition in equation 4, the projection matrix A will be composed of three identical submatrices B ∈ R20×V .The columns of the B matrix can be viewed as 20-dimensional descriptors of the words in the vocabulary. For the purpose of visualization, we further reduce the dimension of latent representation from K = 20 to 2 dimensions using t-SNE (van der Maaten and Hinton, 2008). One further simpli-</bodyText>
+<page confidence="0.995298">
+19
+</page>
+<table confidence="0.78302325">
+Concatenation DPLP
+General DPLP
+TSP 1-1 (Joty, et al., 2013)
+HILDA (Hernault, et al., 2010)
+</table>
+<figure confidence="0.989503119047619">
+30 60 90 150
+K
+(a) Span
+(b) Nuclearity
+Concatenation DPLP
+General DPLP
+TSP 1-1 (Joty, et al., 2013)
+HILDA (Hernault, et al., 2010)
+30 60 90 150
+K
+(c) Relation
+Concatenation DPLP
+General DPLP
+TSP 1-1 (Joty, et al., 2013)
+HILDA (Hernault, et al., 2010)
+30 60 90 150
+K
+72
+71
+F-score
+68
+67
+66
+65
+70
+69
+F-score 84
+83
+82
+81
+80
+79
+78
+77
+76
+F-score 62
+60
+58
+56
+54
+52
+50
+</figure>
+<figureCaption confidence="0.9923775">
+Figure 3: The performance of our parser over different latent dimension K. Results for DPLP include
+the additional features from Table 3
+fication for visualization is we consider only the top 1000 frequent unigrams in the RST-DT training set.</figureCaption>
+<bodyText confidence="0.999350653846154">For comparison, we also apply t-SNE to the projection matrix Bnmf recovered from nonnegative matrix factorization. Figure 4 highlights words that are related to discourse analysis. Among the top 1000 words, we highlight the words from 5 major discourse connective categories provided in Appendix B of the PDTB annotation manual (Prasad et al., 2008): CONJUNCTION, CONTRAST, PRECEDENCE, RESULT, and SUCCESSION. In addition, we also highlighted two verb categories from the top 1000 words: modal verbs and reporting verbs, with their inflections (Krestel et al., 2008). From the figure, it is clear DPLP has learned a projection matrix that successfully groups several major discourse-related word classes: particularly modal and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units.</bodyText>
+<sectionHeader confidence="0.999902" genericHeader="related work">
+6 Related Work
+</sectionHeader>
+<bodyText confidence="0.999975043478261">Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* decoding can outperform both greedy and graph-based decoding algorithms. Joty et al. (2013) achieve the best prior results on RST relation detection by (i) jointly performing relation detection and classification, (ii) performing bottom-up rather than greedy decoding, and (iii) distinguishing between intra-sentence and inter-sentence relations. Our approach is largely orthogonal to this prior work: we focus on transforming the lexical representation of discourse units into a latent space to facilitate learning.</bodyText>
+<page confidence="0.884732">
+20
+</page>
+<figure confidence="0.999522782608696">
+but
+will
+once
+may
+might
+could
+would
+should
+and
+when
+after so
+although until
+says
+say
+said
+reported
+saying
+believe
+think
+can
+report
+however
+also
+thus
+though
+later
+must
+asked
+then
+before
+can
+when
+must
+report
+then
+would
+also may
+but
+says
+said
+although
+and
+might
+thus
+saying
+should
+later
+say
+think
+believe
+once
+however
+asked
+will
+before
+until
+after
+could
+though
+so
+Conjunction
+Contrast
+Precedence
+Result
+Succession
+Modal verb
+Reporting verb
+(a) Latent representation of words from projection learning (b) Latent representation of words from non-negative matrix
+with K = 20. factorization with K = 20.
+</figure>
+<figureCaption confidence="0.999969">
+Figure 4: t-SNE Visualization on latent representations of words.
+</figureCaption>
+<bodyText confidence="0.999993366666667">As shown in Figure 4(a), this projection succeeds at grouping words with similar discourse functions. We might expect to obtain further improvements by augmenting this representation learning approach with rich syntactic features (particularly for span identification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approach by incorporating a non-linear activation function is a natural topic for future research.</bodyText>
+<sectionHeader confidence="0.998933" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999985111111111">We have presented a framework to perform discourse parsing while jointly learning to project to a low-dimensional representation of the discourse units. Using the vector-space representation of EDUs, our shift-reduce parsing system substantially outperforms existing systems on nuclearity detection and discourse relation identification. By adding some additional surface features, we obtain further improvements. The low dimensional representation also captures basic intuitions about discourse connectives and verbs, as shown in Figure 4(a). Deep learning approaches typically apply a non-linear transformation such as the sigmoid function (Bengio et al., 2013). We have conducted a few unsuccessful experiments with the “hard tanh” function proposed by Collobert and Weston (2008), but a more complete exploration of non-linear transformations must wait for future work. Another direction would be more sophisticated composition of the surface features within each elementary discourse unit, such as the hierarchical convolutional neural network (Kalchbrenner and Blunsom, 2013) or the recursive tensor network (Socher et al., 2013). It seems likely that a better accounting for syntax could improve the latent representations that our method induces.</bodyText>
+<sectionHeader confidence="0.998296" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.998872714285714">We thank the reviewers for their helpful feedback, particularly for the connection to multitask learning. We also want to thank Kenji Sagae and Vanessa Wei Feng for the helpful discussion via email communication. This research was supported by Google Faculty Research Awards to the second author.</bodyText>
+<page confidence="0.998839">
+21
+</page>
+<sectionHeader confidence="0.990093" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999405657407407">
+Jason Baldridge and Alex Lascarides. 2005. Proba-
+bilistic head-driven parsing for discourse structure.
+In Proceedings of the Ninth Conference on Compu-
+tational Natural Language Learning, pages 96–103.
+Yoshua Bengio, Aaron Courville, and Pascal Vincent.
+2013. Representation Learning: A Review and New
+Perspectives. IEEE Transactions on Pattern Analy-
+sis and Machine Intelligence, 35(8):1798–1828.
+Ezra Black, Steve Abney, Dan Flickinger, Claudia
+Gdaniec, Ralph Grishman, Phil Harrison, Don Hin-
+dle, Robert Ingria, Fred Jelinek, Judith Klavans,
+Mark Liberman, Mitchell Marcus, Salim Roukos,
+Beatrice Santorini, and Tomek Strzalkowski. 1991.
+A Procedure for Quantitatively Comparing the Syn-
+tactic Coverage of English Grammars. In Speech
+and Natural Language: Proceedings of a Workshop
+Held at Pacific Grove, California, February 19-22,
+1991, pages 306–311.
+Jill Burstein, Joel Tetreault, and Martin Chodorow.
+2013. Holistic discourse coherence annotation
+for noisy essay writing. Dialogue &amp; Discourse,
+4(2):34–52.
+Lynn Carlson, Daniel Marcu, and Mary Ellen
+Okurowski. 2001. Building a Discourse-tagged
+Corpus in the Framework of Rhetorical Structure
+Theory. In Proceedings of Second SIGdial Work-
+shop on Discourse and Dialogue.
+Michael Collins and Brian Roark. 2004. Incremental
+parsing with the perceptron algorithm. In Proceed-
+ings of ACL, page 111. Association for Computa-
+tional Linguistics.
+R. Collobert and J. Weston. 2008. A Unified Architec-
+ture for Natural Language Processing: Deep Neural
+Networks with Multitask Learning. In ICML.
+R. Collobert, J. Weston, L. Bottou, M. Karlen,
+K. Kavukcuoglu, and P. Kuksa. 2011. Natural Lan-
+guage Processing (Almost) from Scratch. Journal of
+Machine Learning Research, 12:2493–2537.
+Simon Corston-Oliver. 1998. Beyond string matching
+and cue phrases: Improving efficiency and coverage
+in discourse analysis. In The AAAI Spring Sympo-
+sium on Intelligent Text Summarization, pages 9–15.
+Koby Crammer and Yoram Singer. 2001. On the Algo-
+rithmic Implementation of Multiclass Kernel-based
+Vector Machines. Journal of Machine Learning Re-
+search, 2:265–292.
+Georgiana Dinu and Mirella Lapata. 2010. Measur-
+ing Distributional Similarity in Context. In EMNLP,
+pages 1162–1172.
+Vanessa Wei Feng and Graeme Hirst. 2012. Text-level
+Discourse Parsing with Rich Linguistic Features. In
+Proceedings of ACL.
+David Ferrucci, Eric Brown, Jennifer Chu-Carroll,
+James Fan, David Gondek, Aditya A Kalyanpur,
+Adam Lally, J William Murdock, Eric Nyberg, John
+Prager, et al. 2010. Building Watson: An overview
+of the DeepQA project. AI magazine, 31(3):59–79.
+Katherine Forbes-Riley, Bonnie Webber, and Aravind
+Joshi. 2006. Computing discourse semantics: The
+predicate-argument semantics of discourse connec-
+tives in D-LTAG. Journal of Semantics, 23(1):55–
+106.
+Weiwei Guo and Mona Diab. 2012. Modeling Sen-
+tences in the Latent Space. In Proceedings of ACL,
+pages 864–872, Jeju Island, Korea, July. Association
+for Computational Linguistics.
+Hugo Hernault, Helmut Prendinger, David A. duVerle,
+and Mitsuru Ishizuka. 2010. HILDA: A Discourse
+Parser Using Support Vector Machine Classification.
+Dialogue and Discourse, 1(3):1–33.
+Yangfeng Ji and Jacob Eisenstein. 2013. Discrimina-
+tive Improvements to Distributional Sentence Simi-
+larity. In EMNLP, pages 891–896, Seattle, Washing-
+ton, USA, October. Association for Computational
+Linguistics.
+Shafiq Joty, Giuseppe Carenini, Raymond Ng, and
+Yashar Mehdad. 2013. Combining Intra- and
+Multi-sentential Rhetorical Parsing for Document-
+level Discourse Analysis. In Proceedings of ACL.
+Nal Kalchbrenner and Phil Blunsom. 2013. Recurrent
+convolutional neural networks for discourse compo-
+sitionality. In Proceedings of the Workshop on Con-
+tinuous Vector Space Models and their Composition-
+ality, pages 119–126, Sofia, Bulgaria, August. Asso-
+ciation for Computational Linguistics.
+Terry Koo, Xavier Carreras, and Michael Collins.
+2008. Simple Semi-supervised Dependency Pars-
+ing. In Proceedings of ACL-HLT, pages 595–603,
+Columbus, Ohio, June. Association for Computa-
+tional Linguistics.
+Ralf Krestel, Sabine Bergler, and Ren´e Witte. 2008.
+Minding the Source: Automatic Tagging of Re-
+ported Speech in Newspaper Articles. In LREC,
+Marrakech, Morocco, May. European Language Re-
+sources Association (ELRA).
+Quoc V. Le, Jiquan Ngiam, Adam Coates, Abhik
+Lahiri, Bobby Prochnow, and Andrew Y. Ng. 2011.
+On Optimization Methods for Deep Learning. In
+ICML.
+Ziheng Lin, Min-Yen Kan, and Hwee Tou Ng. 2009.
+Recognizing Implicit Discourse Relations in the
+Penn Discourse Treebank. In EMNLP.
+Annie Louis, Aravind Joshi, and Ani Nenkova. 2010.
+Discourse indicators for content selection in summa-
+rization. In Proceedings of the 11th Annual Meeting
+of the Special Interest Group on Discourse and Di-
+alogue, pages 147–156. Association for Computa-
+tional Linguistics.
+</reference>
+<page confidence="0.972403">
+22
+</page>
+<reference confidence="0.999934117117117">
+Daniel Marcu and Abdessamad Echihabi. 2002. An
+Unsupervised Approach to Recognizing Discourse
+Relations. In Proceedings of ACL, pages 368–375,
+Philadelphia, Pennsylvania, USA, July. Association
+for Computational Linguistics.
+Daniel Marcu. 1996. Building Up Rhetorical Structure
+Trees. In Proceedings of AAAI.
+Daniel Marcu. 1999. A Decision-Based Approach to
+Rhetorical Parsing. In Proceedings of ACL, pages
+365–372, College Park, Maryland, USA, June. As-
+sociation for Computational Linguistics.
+Daniel Marcu. 2000a. The Rhetorical Parsing of Un-
+restricted Texts: A Surface-based Approach. Com-
+putational Linguistics, 26:395–448.
+Daniel Marcu. 2000b. The Theory and Practice of Dis-
+course Parsing and Summarization. MIT Press.
+Scott Miller, Jethran Guinness, and Alex Zamanian.
+2004. Name Tagging with Word Clusters and Dis-
+criminative Training. In Daniel Marcu Susan Du-
+mais and Salim Roukos, editors, HLT-NAACL, pages
+337–342, Boston, Massachusetts, USA, May 2 -
+May 7. Association for Computational Linguistics.
+Eleni Miltsakaki and Karen Kukich. 2004. Evaluation
+of text coherence for electronic essay scoring sys-
+tems. Natural Language Engineering, 10(1):25–55.
+Jeff Mitchell and Mirella Lapata. 2010. Composition
+in distributional models of semantics. Cognitive Sci-
+ence, 34(8):1388–1429.
+Philippe Muller, Stergos Afantenos, Pascal Denis, and
+Nicholas Asher. 2012. Constrained Decoding for
+Text-Level Discourse Parsing. In Coling, pages
+1883–1900, Mumbai, India, December. The COL-
+ING 2012 Organizing Committee.
+Anil Kumar Nelakanti, Cedric Archambeau, Julien
+Mairal, Francis Bach, and Guillaume Bouchard.
+2013. Structured Penalties for Log-Linear Lan-
+guage Models. In EMNLP, pages 233–243, Seattle,
+Washington, USA, October. Association for Com-
+putational Linguistics.
+Joakim Nivre, Johan Hall, Jens Nilsson, Atanas
+Chanev, G¨ulsen Eryigit, Sandra K¨ubler, Svetoslav
+Marinov, and Erwin Marsi. 2007. MaltParser:
+A language-independent system for data-driven de-
+pendency parsing. Natural Language Engineering,
+13(2):95–135.
+Rashmi Prasad, Nikhil Dinesh, Alan Lee, Eleni Milt-
+sakaki, Livio Robaldo, Aravind Joshi, and Bonnie
+Webber. 2008. The penn discourse treebank 2.0. In
+LREC.
+Rashmi Prasad, Aravind Joshi, and Bonnie Webber.
+2010. Realization of discourse relations by other
+means: alternative lexicalizations. In Proceedings
+of the 23rd International Conference on Computa-
+tional Linguistics: Posters, pages 1023–1031. Asso-
+ciation for Computational Linguistics.
+Kenji Sagae. 2009. Analysis of Discourse Structure
+with Syntactic Dependencies and Data-Driven Shift-
+Reduce Parsing. In Proceedings of the 11th Interna-
+tional Conference on Parsing Technologies (IWPT),
+pages 81–84, Paris, France, October. Association for
+Computational Linguistics.
+Frank Schilder. 2002. Robust discourse parsing via
+discourse markers, topicality and position. Natural
+Language Engineering, 8(3):235–255.
+Richard Socher, Eric H. Huang, Jeffrey Pennington,
+Andrew Y. Ng, and Christopher D. Manning. 2011.
+Dynamic Pooling and Unfolding Recursive Autoen-
+coders for Paraphrase Detection. In NIPS.
+Richard Socher, Brody Huval, Christopher D. Man-
+ning, and Andrew Y. Ng. 2012. Semantic Composi-
+tionality Through Recursive Matrix-Vector Spaces.
+In EMNLP.
+Richard Socher, Alex Perelygin, Jean Y Wu, Jason
+Chuang, Christopher D Manning, Andrew Y Ng,
+and Christopher Potts. 2013. Recursive deep mod-
+els for semantic compositionality over a sentiment
+treebank. In Proceedings of the Conference on Em-
+pirical Methods in Natural Language Processing
+(EMNLP).
+Swapna Somasundaran, Galileo Namata, Janyce
+Wiebe, and Lise Getoor. 2009. Supervised and
+unsupervised methods in employing discourse rela-
+tions for improving opinion polarity classification.
+In Proceedings of EMNLP.
+Radu Soricut and Daniel Marcu. 2003. Sentence Level
+Discourse Parsing using Syntactic and Lexical Infor-
+mation. In NAACL.
+Rajen Subba and Barbara Di Eugenio. 2009. An effec-
+tive Discourse Parser that uses Rich Linguistic In-
+formation. In NAACL-HLT, pages 566–574, Boul-
+der, Colorado, June. Association for Computational
+Linguistics.
+K. Sumita, K. Ono, T. Chino, T. Ukita, and S. Amano.
+1992. A discourse structure analyzer for Japanese
+text. In Proceedings International Conference on
+Fifth Generation Computer Systems, pages 1133–
+1140.
+Maite Taboada and William C Mann. 2006. Applica-
+tions of rhetorical structure theory. Discourse stud-
+ies, 8(4):567–588.
+Benjamin Taskar, Carlos Guestrin, and Daphne Koller.
+2003. Max-margin markov networks. In NIPS.
+Joseph Turian, Lev Ratinov, and Yoshua Bengio.
+2010. Word Representation: A Simple and General
+Method for Semi-Supervised Learning. In Proceed-
+ings of ACL, pages 384–394.
+Tim Van de Cruys and Marianna Apidianaki. 2011.
+Latent Semantic Word Sense Induction and Disam-
+biguation. In Proceedings of ACL, pages 1476–
+1485, Portland, Oregon, USA, June. Association for
+Computational Linguistics.
+</reference>
+<page confidence="0.970223">
+23
+</page>
+<reference confidence="0.999395777777778">
+Laurens van der Maaten and Geoffrey Hinton. 2008.
+Visualizing Data using t-SNE. Journal of Machine
+Learning Research, 9:2759–2605, November.
+Kimberly Voll and Maite Taboada. 2007. Not all
+words are created equal: Extracting semantic orien-
+tation as a function of adjective relevance. In Pro-
+ceedings of Australian Conference on Artificial In-
+telligence.
+Ngo Xuan Bach, Nguyen Le Minh, and Akira Shimazu.
+2012. A Reranking Model for Discourse Segmenta-
+tion using Subtree Features. In Proceedings of the
+13th Annual Meeting of the Special Interest Group
+on Discourse and Dialogue, pages 160–168.
+Chun-Nam John Yu and Thorsten Joachims. 2009.
+Learning structural SVMs with latent variables. In
+Proceedings of the 26th Annual International Con-
+ference on Machine Learning, pages 1169–1176.
+ACM.
+</reference>
+<page confidence="0.999169">
+24
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.385836" no="0">
+<title confidence="0.999617">Representation Learning for Text-level Discourse Parsing</title>
+<author confidence="0.838772">Yangfeng</author>
+<affiliation confidence="0.998599">School of Interactive Georgia Institute of</affiliation>
+<email confidence="0.998057">jiyfeng@gatech.edu</email>
+<author confidence="0.985238">Jacob</author>
+<affiliation confidence="0.999409">School of Interactive Georgia Institute of</affiliation>
+<email confidence="0.999018">jacobe@gatech.edu</email>
+<abstract confidence="0.9713502">Text-level discourse parsing is notoriously difficult, as distinctions between discourse relations require subtle semantic judgments that are not easily captured using standard features. In this paper, we present a representation learning approach, in which we transform surface features into a latent space that facilitates RST discourse parsing. By combining the machinery of large-margin transition-based structured prediction with representation learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Jason Baldridge</author>
+<author>Alex Lascarides</author>
+</authors>
+<title>Probabilistic head-driven parsing for discourse structure.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Ninth Conference on Computational Natural Language Learning,</booktitle>
+<pages>96--103</pages>
+<contexts>
+<context citStr="Baldridge and Lascarides, 2005" endWordPosition="5034" position="30000" startWordPosition="5031">applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate</context>
+</contexts>
+<marker>Baldridge, Lascarides, 2005</marker>
+<rawString>Jason Baldridge and Alex Lascarides. 2005. Probabilistic head-driven parsing for discourse structure. In Proceedings of the Ninth Conference on Computational Natural Language Learning, pages 96–103.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yoshua Bengio</author>
+<author>Aaron Courville</author>
+<author>Pascal Vincent</author>
+</authors>
+<title>Representation Learning: A Review and New Perspectives.</title>
+<date>2013</date>
+<journal>IEEE Transactions on Pattern Analysis and Machine Intelligence,</journal>
+<volume>35</volume>
+<issue>8</issue>
+<contexts>
+<context citStr="Bengio et al., 2013" endWordPosition="5470" position="32863" startWordPosition="5467">ing the lexical representation of discourse units into a latent space to facilitate learning. As shown in Figure 4(a), this projection succeeds at grouping words with similar discourse functions. We might expect to obtain further improvements by augmenting this representation learning approach with rich syntactic features (particularly for span identification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unl</context>
+<context citStr="Bengio et al., 2013" endWordPosition="5693" position="34352" startWordPosition="5690">scourse parsing while jointly learning to project to a low-dimensional representation of the discourse units. Using the vector-space representation of EDUs, our shift-reduce parsing system substantially outperforms existing systems on nuclearity detection and discourse relation identification. By adding some additional surface features, we obtain further improvements. The low dimensional representation also captures basic intuitions about discourse connectives and verbs, as shown in Figure 4(a). Deep learning approaches typically apply a non-linear transformation such as the sigmoid function (Bengio et al., 2013). We have conducted a few unsuccessful experiments with the “hard tanh” function proposed by Collobert and Weston (2008), but a more complete exploration of non-linear transformations must wait for future work. Another direction would be more sophisticated composition of the surface features within each elementary discourse unit, such as the hierarchical convolutional neural network (Kalchbrenner and Blunsom, 2013) or the recursive tensor network (Socher et al., 2013). It seems likely that a better accounting for syntax could improve the latent representations that our method induces. Acknowle</context>
+</contexts>
+<marker>Bengio, Courville, Vincent, 2013</marker>
+<rawString>Yoshua Bengio, Aaron Courville, and Pascal Vincent. 2013. Representation Learning: A Review and New Perspectives. IEEE Transactions on Pattern Analysis and Machine Intelligence, 35(8):1798–1828.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Ezra Black</author>
+<author>Steve Abney</author>
+<author>Dan Flickinger</author>
+<author>Claudia Gdaniec</author>
+<author>Ralph Grishman</author>
+<author>Phil Harrison</author>
+<author>Don Hindle</author>
+<author>Robert Ingria</author>
+<author>Fred Jelinek</author>
+<author>Judith Klavans</author>
+<author>Mark Liberman</author>
+<author>Mitchell Marcus</author>
+<author>Salim Roukos</author>
+<author>Beatrice Santorini</author>
+<author>Tomek Strzalkowski</author>
+</authors>
+<title>A Procedure for Quantitatively Comparing the Syntactic Coverage of English Grammars.</title>
+<date>1991</date>
+<booktitle>In Speech and Natural Language: Proceedings of a Workshop Held at</booktitle>
+<pages>306--311</pages>
+<location>Pacific Grove, California,</location>
+<contexts>
+<context citStr="Black et al. (1991)" endWordPosition="3914" position="23137" startWordPosition="3911">dels: sliding windows (TSP SW) and 1 sentence-1 subtree (TSP 1-1). In the comparison, we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metrics by ourselves. Together with the DPLP system, all codes are published on https://github.com/jiyfeng/DPLP 18 Method Matrix Form +Features K Span Nuclearity Relation Prior work 1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8 2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73 3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 6</context>
+</contexts>
+<marker>Black, Abney, Flickinger, Gdaniec, Grishman, Harrison, Hindle, Ingria, Jelinek, Klavans, Liberman, Marcus, Roukos, Santorini, Strzalkowski, 1991</marker>
+<rawString>Ezra Black, Steve Abney, Dan Flickinger, Claudia Gdaniec, Ralph Grishman, Phil Harrison, Don Hindle, Robert Ingria, Fred Jelinek, Judith Klavans, Mark Liberman, Mitchell Marcus, Salim Roukos, Beatrice Santorini, and Tomek Strzalkowski. 1991. A Procedure for Quantitatively Comparing the Syntactic Coverage of English Grammars. In Speech and Natural Language: Proceedings of a Workshop Held at Pacific Grove, California, February 19-22, 1991, pages 306–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jill Burstein</author>
+<author>Joel Tetreault</author>
+<author>Martin Chodorow</author>
+</authors>
+<title>Holistic discourse coherence annotation for noisy essay writing.</title>
+<date>2013</date>
+<journal>Dialogue &amp; Discourse,</journal>
+<volume>4</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Burstein et al., 2013" endWordPosition="197" position="1428" startWordPosition="194">se-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013). While recent work has i</context>
+</contexts>
+<marker>Burstein, Tetreault, Chodorow, 2013</marker>
+<rawString>Jill Burstein, Joel Tetreault, and Martin Chodorow. 2013. Holistic discourse coherence annotation for noisy essay writing. Dialogue &amp; Discourse, 4(2):34–52.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lynn Carlson</author>
+<author>Daniel Marcu</author>
+<author>Mary Ellen Okurowski</author>
+</authors>
+<title>Building a Discourse-tagged Corpus in the Framework of Rhetorical Structure Theory.</title>
+<date>2001</date>
+<booktitle>In Proceedings of Second SIGdial Workshop on Discourse and Dialogue.</booktitle>
+<contexts>
+<context citStr="Carlson et al., 2001" endWordPosition="3274" position="19230" startWordPosition="3271">features can provide useful information (Joty et al., 2013). We therefore augment our classifier with a set of simple feature templates. These templates are applied to individual EDUs, as well as pairs of EDUs: (1) the two EDUs on top of the stack, and (2) the EDU on top of the stack and the EDU in front of the queue. The features are shown in Table 2. In computing these features, all tokens are downcased, and numerical features are not binned. The dependency structure and POS tags are obtained from MALTParser (Nivre et al., 2007). 5 Experiments We evaluate DPLP on the RST Discourse Treebank (Carlson et al., 2001), comparing against state-of-the-art results. We also investigate the information encoded by the projection matrix. 5.1 Experimental Setup Dataset The RST Discourse Treebank (RSTDT) consists of 385 documents, with 347 for train� E αt (E W(t) yi − m 17 Feature Examples hBEGIN-WORD-STACK1 = buti Words at beginning and end of the EDU hBEGIN-WORD-STACK1-QUEUE1 = but, thei POS tag at beginning and end of the EDU Head word set from each EDU. The set includes words hHEAD-WORDS-STACK2 = workingi whose parent in the depenency graph is ROOT or is not within the EDU (Sagae, 2009). Length of EDU in tokens</context>
+<context citStr="Carlson et al., 2001" endWordPosition="3946" position="23333" startWordPosition="3943">We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metrics by ourselves. Together with the DPLP system, all codes are published on https://github.com/jiyfeng/DPLP 18 Method Matrix Form +Features K Span Nuclearity Relation Prior work 1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8 2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73 3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 67.98 52.96 5. Word embeddings Concatenation No 75 75.28 67.14 53.79 6. NMF Concatenation No 150 78.57 67.66 54.80 7. Bag-of-words A = I Yes 79.85 69.01 60.21 8. DPLP Concatenation No 60 80.91 69.3</context>
+</contexts>
+<marker>Carlson, Marcu, Okurowski, 2001</marker>
+<rawString>Lynn Carlson, Daniel Marcu, and Mary Ellen Okurowski. 2001. Building a Discourse-tagged Corpus in the Framework of Rhetorical Structure Theory. In Proceedings of Second SIGdial Workshop on Discourse and Dialogue.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+<author>Brian Roark</author>
+</authors>
+<title>Incremental parsing with the perceptron algorithm.</title>
+<date>2004</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>111</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Collins and Roark, 2004" endWordPosition="1145" position="7515" startWordPosition="1142">en choose either to shift the front of the queue onto the top of the stack, or to reduce the top two elements on the stack in a discourse relation. The reduction operation must choose both the type of relation and which element will be the nucleus. So, overall there are multiple reduce operations with specific relation types and nucleus positions. Shift-reduce parsing can be learned as a classification task, where the classifier uses features of the elements in the stack and queue to decide what move to take. Previous work has employed decision trees (Marcu, 1999) and the averaged perceptron (Collins and Roark, 2004; Sagae, 2009) for this purpose. Instead, we employ a large-margin classifier, because we can compute derivatives of the margin-based objective function with respect to both the classifier weights as well as the projection matrix. 2.2 Discourse parsing with projected features More formally, we denote the surface feature vocabulary V, and represent each EDU as the numeric vector v E NV , where V = #|V |and the nth element of v is the count of the n-th surface feature in this EDU (see Table 1 for a summary of notation). During shift-reduce parsing, we consider features of three EDUs:2 the top tw</context>
+</contexts>
+<marker>Collins, Roark, 2004</marker>
+<rawString>Michael Collins and Brian Roark. 2004. Incremental parsing with the perceptron algorithm. In Proceedings of ACL, page 111. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Collobert</author>
+<author>J Weston</author>
+</authors>
+<title>A Unified Architecture for Natural Language Processing: Deep Neural Networks with Multitask Learning.</title>
+<date>2008</date>
+<booktitle>In ICML.</booktitle>
+<contexts>
+<context citStr="Collobert and Weston, 2008" endWordPosition="3675" position="21724" startWordPosition="3672">he effectiveness of non-negative matrix factorization (NMF) for measuring distributional similarity (Dinu and Lapata, 2010; Van de Cruys and Apidianaki, 2011). We can construct B,,,,,tf in the concatenation form of the projection matrix by applying NMF to the EDU-feature matrix, M ≈ WH. As a result, W describes each EDU with a K-dimensional vector, and H describes each word with a K-dimensional vector. We can then construct B,,,,,tf by taking the pseudo-inverse of H, which then projects from word-count vectors into the latent space. Another way to construct B is to use neural word embeddings (Collobert and Weston, 2008). In this case, we can view the product Bv as a composition of the word embeddings, using the simple additive composition model proposed by Mitchell and Lapata (2010). We used the word embeddings from Collobert and Weston (2008) with dimension {25,50, 100}. Grid search over heldout training data was used to select the optimum latent dimension for both the NMF and word embedding baselines. Note that the size K of the resulting projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Com</context>
+<context citStr="Collobert and Weston (2008)" endWordPosition="5712" position="34472" startWordPosition="5709">ng the vector-space representation of EDUs, our shift-reduce parsing system substantially outperforms existing systems on nuclearity detection and discourse relation identification. By adding some additional surface features, we obtain further improvements. The low dimensional representation also captures basic intuitions about discourse connectives and verbs, as shown in Figure 4(a). Deep learning approaches typically apply a non-linear transformation such as the sigmoid function (Bengio et al., 2013). We have conducted a few unsuccessful experiments with the “hard tanh” function proposed by Collobert and Weston (2008), but a more complete exploration of non-linear transformations must wait for future work. Another direction would be more sophisticated composition of the surface features within each elementary discourse unit, such as the hierarchical convolutional neural network (Kalchbrenner and Blunsom, 2013) or the recursive tensor network (Socher et al., 2013). It seems likely that a better accounting for syntax could improve the latent representations that our method induces. Acknowledgments We thank the reviewers for their helpful feedback, particularly for the connection to multitask learning. We als</context>
+</contexts>
+<marker>Collobert, Weston, 2008</marker>
+<rawString>R. Collobert and J. Weston. 2008. A Unified Architecture for Natural Language Processing: Deep Neural Networks with Multitask Learning. In ICML.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Collobert</author>
+<author>J Weston</author>
+<author>L Bottou</author>
+<author>M Karlen</author>
+<author>K Kavukcuoglu</author>
+<author>P Kuksa</author>
+</authors>
+<title>Natural Language Processing (Almost) from Scratch.</title>
+<date>2011</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>12--2493</pages>
+<contexts>
+<context citStr="Collobert et al., 2011" endWordPosition="5490" position="32983" startWordPosition="5487"> this projection succeeds at grouping words with similar discourse functions. We might expect to obtain further improvements by augmenting this representation learning approach with rich syntactic features (particularly for span identification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approa</context>
+</contexts>
+<marker>Collobert, Weston, Bottou, Karlen, Kavukcuoglu, Kuksa, 2011</marker>
+<rawString>R. Collobert, J. Weston, L. Bottou, M. Karlen, K. Kavukcuoglu, and P. Kuksa. 2011. Natural Language Processing (Almost) from Scratch. Journal of Machine Learning Research, 12:2493–2537.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Simon Corston-Oliver</author>
+</authors>
+<title>Beyond string matching and cue phrases: Improving efficiency and coverage in discourse analysis.</title>
+<date>1998</date>
+<booktitle>In The AAAI Spring Symposium on Intelligent Text Summarization,</booktitle>
+<pages>9--15</pages>
+<contexts>
+<context citStr="Corston-Oliver, 1998" endWordPosition="4963" position="29516" startWordPosition="4962">s: particularly modal and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-red</context>
+</contexts>
+<marker>Corston-Oliver, 1998</marker>
+<rawString>Simon Corston-Oliver. 1998. Beyond string matching and cue phrases: Improving efficiency and coverage in discourse analysis. In The AAAI Spring Symposium on Intelligent Text Summarization, pages 9–15.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Koby Crammer</author>
+<author>Yoram Singer</author>
+</authors>
+<title>On the Algorithmic Implementation of Multiclass Kernel-based Vector Machines.</title>
+<date>2001</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>2--265</pages>
+<contexts>
+<context citStr="Crammer and Singer, 2001" endWordPosition="2169" position="13175" startWordPosition="2166"> A Specifically, we formulate the following constrained optimization problem, T ξi + 2 IA I2F s.t. (wyi−wm)Tf(vi; A) &gt; 1 − Syi=m − ξi, ` di, m where m E {1, ... , C} is the index of the shift-reduce decision taken by the classifier (e.g., SHIFT, REDUCE-CONTRAST-RIGHT, etc), i E {1, · · · , l} is the index of the training sample, and wm is the vector of classification weights for class m. The slack variables ξi permit the margin constraint to be violated in exchange for a penalty, and the delta function δyi=m is unity if yi = m, and zero otherwise. As is standard in the multi-class linear SVM (Crammer and Singer, 2001), we can solve the problem defined in Equation 6 via Lagrangian optimization: c({w1:C, ξ1:l, A, η1:l,1:C}) = s.t. ηi,m &gt; 0 `di, m (7) Then, to optimize L, we need to find a saddle point, which would be the minimum for the variables {w1:C, ξ1:l} and the projection matrix A, and the maximum for the dual variables {g1:l,1:C}. If A is fixed, then the optimization problem is equivalent to a standard multi-class SVM, in the transformed feature space f(vi; A). We can obtain the weights {w1:C} and dual variables {g1:l,1:C} from a standard dual-form SVM solver. We then update A, recompute {w1:C} and {g</context>
+</contexts>
+<marker>Crammer, Singer, 2001</marker>
+<rawString>Koby Crammer and Yoram Singer. 2001. On the Algorithmic Implementation of Multiclass Kernel-based Vector Machines. Journal of Machine Learning Research, 2:265–292.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Georgiana Dinu</author>
+<author>Mirella Lapata</author>
+</authors>
+<title>Measuring Distributional Similarity in Context. In</title>
+<date>2010</date>
+<booktitle>EMNLP,</booktitle>
+<pages>1162--1172</pages>
+<contexts>
+<context citStr="Dinu and Lapata, 2010" endWordPosition="3591" position="21219" startWordPosition="3588">ldren, one nucleus and one satellite. For non-binary relations, we use right-branching to binarize the tree structure. For multi-nuclear relations, we choose the left EDU as “head” EDU. The vocabulary V includes all unigrams after down-casing. No other preprocessing is performed. In total, there are 16250 unique unigrams in V. Fixed projection matrix baselines Instead of learning from data, a simple way to obtain a projection matrix is to use matrix factorization. Recent work has demonstrated the effectiveness of non-negative matrix factorization (NMF) for measuring distributional similarity (Dinu and Lapata, 2010; Van de Cruys and Apidianaki, 2011). We can construct B,,,,,tf in the concatenation form of the projection matrix by applying NMF to the EDU-feature matrix, M ≈ WH. As a result, W describes each EDU with a K-dimensional vector, and H describes each word with a K-dimensional vector. We can then construct B,,,,,tf by taking the pseudo-inverse of H, which then projects from word-count vectors into the latent space. Another way to construct B is to use neural word embeddings (Collobert and Weston, 2008). In this case, we can view the product Bv as a composition of the word embeddings, using the s</context>
+</contexts>
+<marker>Dinu, Lapata, 2010</marker>
+<rawString>Georgiana Dinu and Mirella Lapata. 2010. Measuring Distributional Similarity in Context. In EMNLP, pages 1162–1172.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vanessa Wei Feng</author>
+<author>Graeme Hirst</author>
+</authors>
+<title>Text-level Discourse Parsing with Rich Linguistic Features.</title>
+<date>2012</date>
+<booktitle>In Proceedings of ACL.</booktitle>
+<contexts>
+<context citStr="Feng and Hirst, 2012" endWordPosition="293" position="2091" startWordPosition="290">uch as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013). While recent work has introduced increasingly powerful features (Feng and Hirst, 2012) and inference techniques (Joty et al., 2013), discourse relations remain hard to detect, due in part to a long tail of “alternative lexicalizations” that can be used to realize each relation (Prasad et al., 2010). Surface and syntactic features are not capable of capturing what are fundamentally semantic distinctions, particularly in the face of relatively small annotated training sets. In this paper, we present a representation learning approach to discourse parsing. The core idea of our work is to learn a transformation from a bag-of-words surface representation into a latent space in which</context>
+<context citStr="Feng and Hirst, 2012" endWordPosition="3462" position="20379" startWordPosition="3459">is ROOT or is not within the EDU (Sagae, 2009). Length of EDU in tokens hLEN-STACK1-STACK2 = h7, 8ii Distance between EDUs hDIST-STACK1-QUEUE1 = 2i Distance from the EDU to the beginning of the document hDIST-FROM-START-QUEUE1 = 3i Distance from the EDU to the end of the document hDIST-FROM-END-STACK1 = 1i Whether two EDUs are in the same sentence hSAME-SENT-STACK1-QUEUE1 = Truei hBEGIN-TAG-STACK1 = CCi hBEGIN-TAG-STACK1-QUEUE1 = CC, DTi Table 2: Additional features for RST parsing ing and 38 for testing in the standard split. As we focus on relational discourse parsing, we follow prior work (Feng and Hirst, 2012; Joty et al., 2013), and use gold EDU segmentations. The strongest automated RST segmentation methods currently attain 95% accuracy (Xuan Bach et al., 2012). Preprocessing In the RST-DT, most nodes have exactly two children, one nucleus and one satellite. For non-binary relations, we use right-branching to binarize the tree structure. For multi-nuclear relations, we choose the left EDU as “head” EDU. The vocabulary V includes all unigrams after down-casing. No other preprocessing is performed. In total, there are 16250 unique unigrams in V. Fixed projection matrix baselines Instead of learnin</context>
+<context citStr="Feng and Hirst (2012)" endWordPosition="3858" position="22771" startWordPosition="3855">ing projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Competitive systems We compare our approach with HILDA (Hernault et al., 2010) and TSP (Joty et al., 2013). Joty et al. (2013) proposed two different approaches to combine sentence-level parsing models: sliding windows (TSP SW) and 1 sentence-1 subtree (TSP 1-1). In the comparison, we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metri</context>
+<context citStr="Feng and Hirst (2012)" endWordPosition="5175" position="30915" startWordPosition="5172">iscourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* decoding can outperform both greedy and graph-based decoding algorithms. Joty et al. (2013) achieve the best prior results on RST relation detection by (i) jointly performing relation detection and classification, (ii) performing bottom-up rather than greedy decoding, and (iii) distinguishing between intra-sentence and inter-sentence relations. Our approach i</context>
+</contexts>
+<marker>Feng, Hirst, 2012</marker>
+<rawString>Vanessa Wei Feng and Graeme Hirst. 2012. Text-level Discourse Parsing with Rich Linguistic Features. In Proceedings of ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Ferrucci</author>
+<author>Eric Brown</author>
+<author>Jennifer Chu-Carroll</author>
+<author>James Fan</author>
+<author>David Gondek</author>
+<author>Aditya A Kalyanpur</author>
+<author>Adam Lally</author>
+<author>J William Murdock</author>
+<author>Eric Nyberg</author>
+<author>John Prager</author>
+</authors>
+<title>Building Watson: An overview of the DeepQA project.</title>
+<date>2010</date>
+<journal>AI magazine,</journal>
+<volume>31</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Ferrucci et al., 2010" endWordPosition="183" position="1330" startWordPosition="180">n learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.</context>
+</contexts>
+<marker>Ferrucci, Brown, Chu-Carroll, Fan, Gondek, Kalyanpur, Lally, Murdock, Nyberg, Prager, 2010</marker>
+<rawString>David Ferrucci, Eric Brown, Jennifer Chu-Carroll, James Fan, David Gondek, Aditya A Kalyanpur, Adam Lally, J William Murdock, Eric Nyberg, John Prager, et al. 2010. Building Watson: An overview of the DeepQA project. AI magazine, 31(3):59–79.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Katherine Forbes-Riley</author>
+<author>Bonnie Webber</author>
+<author>Aravind Joshi</author>
+</authors>
+<title>Computing discourse semantics: The predicate-argument semantics of discourse connectives in D-LTAG.</title>
+<date>2006</date>
+<journal>Journal of Semantics,</journal>
+<volume>23</volume>
+<issue>1</issue>
+<pages>106</pages>
+<contexts>
+<context citStr="Forbes-Riley et al., 2006" endWordPosition="5083" position="30354" startWordPosition="5080">tures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic fea</context>
+</contexts>
+<marker>Forbes-Riley, Webber, Joshi, 2006</marker>
+<rawString>Katherine Forbes-Riley, Bonnie Webber, and Aravind Joshi. 2006. Computing discourse semantics: The predicate-argument semantics of discourse connectives in D-LTAG. Journal of Semantics, 23(1):55– 106.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Weiwei Guo</author>
+<author>Mona Diab</author>
+</authors>
+<title>Modeling Sentences in the Latent Space.</title>
+<date>2012</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>864--872</pages>
+<institution>Jeju Island, Korea, July. Association for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Guo and Diab, 2012" endWordPosition="5528" position="33211" startWordPosition="5525">ntification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approach by incorporating a non-linear activation function is a natural topic for future research. 7 Conclusion We have presented a framework to perform discourse parsing while jointly learning to project to a low-dimensional represen</context>
+</contexts>
+<marker>Guo, Diab, 2012</marker>
+<rawString>Weiwei Guo and Mona Diab. 2012. Modeling Sentences in the Latent Space. In Proceedings of ACL, pages 864–872, Jeju Island, Korea, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hugo Hernault</author>
+<author>Helmut Prendinger</author>
+<author>David A duVerle</author>
+<author>Mitsuru Ishizuka</author>
+</authors>
+<title>HILDA: A Discourse Parser Using Support Vector Machine Classification. Dialogue and Discourse,</title>
+<date>2010</date>
+<contexts>
+<context citStr="Hernault et al., 2010" endWordPosition="1268" position="8213" startWordPosition="1265">r, because we can compute derivatives of the margin-based objective function with respect to both the classifier weights as well as the projection matrix. 2.2 Discourse parsing with projected features More formally, we denote the surface feature vocabulary V, and represent each EDU as the numeric vector v E NV , where V = #|V |and the nth element of v is the count of the n-th surface feature in this EDU (see Table 1 for a summary of notation). During shift-reduce parsing, we consider features of three EDUs:2 the top two elements on based approaches can achieve a segmentation F-measure of 94% (Hernault et al., 2010); a more complex reranking model does slightly better, at 95% F-Measure with automatically-generated parse trees, and 96.6% with gold annotated trees (Xuan Bach et al., 2012). Human agreement reaches 98% F-Measure. 2After applying a reduce operation, the stack will include a span that contains multiple EDUs. We follow the strong 14 no special constraint on the form of A. ⎡ ⎤ v1 f(v; A) = A ⎣v2 ⎦(3) v3 the stack (v1 and v2), and the front of the queue (v3). The vertical concatenation of these vectors is denoted v = [v1; v2; v3]. In general, we can formulate the decision function for the multi-c</context>
+<context citStr="Hernault et al., 2010" endWordPosition="3793" position="22399" startWordPosition="3790">sition of the word embeddings, using the simple additive composition model proposed by Mitchell and Lapata (2010). We used the word embeddings from Collobert and Weston (2008) with dimension {25,50, 100}. Grid search over heldout training data was used to select the optimum latent dimension for both the NMF and word embedding baselines. Note that the size K of the resulting projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Competitive systems We compare our approach with HILDA (Hernault et al., 2010) and TSP (Joty et al., 2013). Joty et al. (2013) proposed two different approaches to combine sentence-level parsing models: sliding windows (TSP SW) and 1 sentence-1 subtree (TSP 1-1). In the comparison, we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure th</context>
+<context citStr="Hernault et al., 2010" endWordPosition="4110" position="24279" startWordPosition="4107">oty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 67.98 52.96 5. Word embeddings Concatenation No 75 75.28 67.14 53.79 6. NMF Concatenation No 150 78.57 67.66 54.80 7. Bag-of-words A = I Yes 79.85 69.01 60.21 8. DPLP Concatenation No 60 80.91 69.39 58.96 9. DPLP Difference No 60 80.47 68.61 58.27 10. DPLP Concatenation Yes 60 82.08 71.13 61.63 11. DPLP General Yes 30 81.60 70.95 61.75 Human annotation 88.70 77.72 65.75 Table 3: Parsing results of different models on the RST-DT test set. The results of TSP and HILDA are reprinted from prior work (Joty et al., 2013; Hernault et al., 2010). 5.2 Experimental Results Table 3 presents RST parsing results for DPLP and some alternative systems. All versions of DPLP outperform the prior state-of-the-art on nuclearity and relation detection. This includes relatively simple systems whose features are simply a projection of the word count vectors for each EDU (lines 7 and 8). The addition of the features from Table 2 improves performance further, leading to absolute F-score improvement of around 2.5% in nuclearity and 6% in relation prediction (lines 9 and 10). On span detection, DPLP performs slightly worse than the prior state-of-the-</context>
+<context citStr="Hernault, et al., 2010" endWordPosition="4646" position="27588" startWordPosition="4643">o encoded. We take the projection matrix from the concatenation construction and K = 60 as an example for case study. Recalling the definition in equation 4, the projection matrix A will be composed of three identical submatrices B ∈ R20×V .The columns of the B matrix can be viewed as 20-dimensional descriptors of the words in the vocabulary. For the purpose of visualization, we further reduce the dimension of latent representation from K = 20 to 2 dimensions using t-SNE (van der Maaten and Hinton, 2008). One further simpli19 Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K (a) Span (b) Nuclearity Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K (c) Relation Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K 72 71 F-score 68 67 66 65 70 69 F-score 84 83 82 81 80 79 78 77 76 F-score 62 60 58 56 54 52 50 Figure 3: The performance of our parser over different latent dimension K. Results for DPLP include the additional features from Table 3 fication for visualization is we consider only the top 1000 frequent unigrams in the RST-DT training</context>
+</contexts>
+<marker>Hernault, Prendinger, duVerle, Ishizuka, 2010</marker>
+<rawString>Hugo Hernault, Helmut Prendinger, David A. duVerle, and Mitsuru Ishizuka. 2010. HILDA: A Discourse Parser Using Support Vector Machine Classification. Dialogue and Discourse, 1(3):1–33.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yangfeng Ji</author>
+<author>Jacob Eisenstein</author>
+</authors>
+<title>Discriminative Improvements to Distributional Sentence Similarity. In</title>
+<date>2013</date>
+<booktitle>EMNLP,</booktitle>
+<pages>891--896</pages>
+<location>Seattle, Washington, USA,</location>
+<contexts>
+<context citStr="Ji and Eisenstein, 2013" endWordPosition="5532" position="33237" startWordPosition="5529">ccurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approach by incorporating a non-linear activation function is a natural topic for future research. 7 Conclusion We have presented a framework to perform discourse parsing while jointly learning to project to a low-dimensional representation of the discourse un</context>
+</contexts>
+<marker>Ji, Eisenstein, 2013</marker>
+<rawString>Yangfeng Ji and Jacob Eisenstein. 2013. Discriminative Improvements to Distributional Sentence Similarity. In EMNLP, pages 891–896, Seattle, Washington, USA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shafiq Joty</author>
+<author>Giuseppe Carenini</author>
+<author>Raymond Ng</author>
+<author>Yashar Mehdad</author>
+</authors>
+<title>Combining Intra- and Multi-sentential Rhetorical Parsing for Documentlevel Discourse Analysis.</title>
+<date>2013</date>
+<booktitle>In Proceedings of ACL.</booktitle>
+<contexts>
+<context citStr="Joty et al., 2013" endWordPosition="300" position="2136" startWordPosition="297">ticularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013). While recent work has introduced increasingly powerful features (Feng and Hirst, 2012) and inference techniques (Joty et al., 2013), discourse relations remain hard to detect, due in part to a long tail of “alternative lexicalizations” that can be used to realize each relation (Prasad et al., 2010). Surface and syntactic features are not capable of capturing what are fundamentally semantic distinctions, particularly in the face of relatively small annotated training sets. In this paper, we present a representation learning approach to discourse parsing. The core idea of our work is to learn a transformation from a bag-of-words surface representation into a latent space in which discourse relations are easily identifiable.</context>
+<context citStr="Joty et al., 2013" endWordPosition="3169" position="18668" startWordPosition="3166">,100} and τ ∈ {1.0, 0.1, 0.01, 0.001}, and search over this space using a development set of thirty document randomly selected from within the RST Treebank training data. We initialize each element of A0 to a uniform random value in the range [0, 1]. For mini-batch learning, we fixed the batch size to be 500 training samples (shift-reduce operations) in each iteration. 4.2 Additional features As described thus far, our model considers only the projected representation of each EDU in its parsing decisions. But prior work has shown that other, structural features can provide useful information (Joty et al., 2013). We therefore augment our classifier with a set of simple feature templates. These templates are applied to individual EDUs, as well as pairs of EDUs: (1) the two EDUs on top of the stack, and (2) the EDU on top of the stack and the EDU in front of the queue. The features are shown in Table 2. In computing these features, all tokens are downcased, and numerical features are not binned. The dependency structure and POS tags are obtained from MALTParser (Nivre et al., 2007). 5 Experiments We evaluate DPLP on the RST Discourse Treebank (Carlson et al., 2001), comparing against state-of-the-art r</context>
+<context citStr="Joty et al., 2013" endWordPosition="3466" position="20399" startWordPosition="3463">in the EDU (Sagae, 2009). Length of EDU in tokens hLEN-STACK1-STACK2 = h7, 8ii Distance between EDUs hDIST-STACK1-QUEUE1 = 2i Distance from the EDU to the beginning of the document hDIST-FROM-START-QUEUE1 = 3i Distance from the EDU to the end of the document hDIST-FROM-END-STACK1 = 1i Whether two EDUs are in the same sentence hSAME-SENT-STACK1-QUEUE1 = Truei hBEGIN-TAG-STACK1 = CCi hBEGIN-TAG-STACK1-QUEUE1 = CC, DTi Table 2: Additional features for RST parsing ing and 38 for testing in the standard split. As we focus on relational discourse parsing, we follow prior work (Feng and Hirst, 2012; Joty et al., 2013), and use gold EDU segmentations. The strongest automated RST segmentation methods currently attain 95% accuracy (Xuan Bach et al., 2012). Preprocessing In the RST-DT, most nodes have exactly two children, one nucleus and one satellite. For non-binary relations, we use right-branching to binarize the tree structure. For multi-nuclear relations, we choose the left EDU as “head” EDU. The vocabulary V includes all unigrams after down-casing. No other preprocessing is performed. In total, there are 16250 unique unigrams in V. Fixed projection matrix baselines Instead of learning from data, a simpl</context>
+<context citStr="Joty et al., 2013" endWordPosition="3799" position="22427" startWordPosition="3796">sing the simple additive composition model proposed by Mitchell and Lapata (2010). We used the word embeddings from Collobert and Weston (2008) with dimension {25,50, 100}. Grid search over heldout training data was used to select the optimum latent dimension for both the NMF and word embedding baselines. Note that the size K of the resulting projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Competitive systems We compare our approach with HILDA (Hernault et al., 2010) and TSP (Joty et al., 2013). Joty et al. (2013) proposed two different approaches to combine sentence-level parsing models: sliding windows (TSP SW) and 1 sentence-1 subtree (TSP 1-1). In the comparison, we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.</context>
+<context citStr="Joty et al., 2013" endWordPosition="4001" position="23674" startWordPosition="3998">abeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metrics by ourselves. Together with the DPLP system, all codes are published on https://github.com/jiyfeng/DPLP 18 Method Matrix Form +Features K Span Nuclearity Relation Prior work 1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8 2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73 3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 67.98 52.96 5. Word embeddings Concatenation No 75 75.28 67.14 53.79 6. NMF Concatenation No 150 78.57 67.66 54.80 7. Bag-of-words A = I Yes 79.85 69.01 60.21 8. DPLP Concatenation No 60 80.91 69.39 58.96 9. DPLP Difference No 60 80.47 68.61 58.27 10. DPLP Concatenation Yes 60 82.08 71.13 61.63 11. DPLP General Yes 30 81.60 70.95 61.75 Human annotation 88.70 77.72 65.75 Table 3: Parsing results of different models on the RST-DT test set. The results of TSP and HILDA are reprinted from prior work (Joty et al., 2013; Hernault et al., </context>
+<context citStr="Joty, et al., 2013" endWordPosition="4641" position="27557" startWordPosition="4638">ection matrix is learning to encoded. We take the projection matrix from the concatenation construction and K = 60 as an example for case study. Recalling the definition in equation 4, the projection matrix A will be composed of three identical submatrices B ∈ R20×V .The columns of the B matrix can be viewed as 20-dimensional descriptors of the words in the vocabulary. For the purpose of visualization, we further reduce the dimension of latent representation from K = 20 to 2 dimensions using t-SNE (van der Maaten and Hinton, 2008). One further simpli19 Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K (a) Span (b) Nuclearity Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K (c) Relation Concatenation DPLP General DPLP TSP 1-1 (Joty, et al., 2013) HILDA (Hernault, et al., 2010) 30 60 90 150 K 72 71 F-score 68 67 66 65 70 69 F-score 84 83 82 81 80 79 78 77 76 F-score 62 60 58 56 54 52 50 Figure 3: The performance of our parser over different latent dimension K. Results for DPLP include the additional features from Table 3 fication for visualization is we consider only the top 1000 frequent </context>
+<context citStr="Joty et al. (2013)" endWordPosition="5227" position="31245" startWordPosition="5224">cs into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* decoding can outperform both greedy and graph-based decoding algorithms. Joty et al. (2013) achieve the best prior results on RST relation detection by (i) jointly performing relation detection and classification, (ii) performing bottom-up rather than greedy decoding, and (iii) distinguishing between intra-sentence and inter-sentence relations. Our approach is largely orthogonal to this prior work: we focus on trans20 but will once may might could would should and when after so although until says say said reported saying believe think can report however also thus though later must asked then before can when must report then would also may but says said although and might thus sayin</context>
+</contexts>
+<marker>Joty, Carenini, Ng, Mehdad, 2013</marker>
+<rawString>Shafiq Joty, Giuseppe Carenini, Raymond Ng, and Yashar Mehdad. 2013. Combining Intra- and Multi-sentential Rhetorical Parsing for Documentlevel Discourse Analysis. In Proceedings of ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nal Kalchbrenner</author>
+<author>Phil Blunsom</author>
+</authors>
+<title>Recurrent convolutional neural networks for discourse compositionality.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the Workshop on Continuous Vector Space Models and their Compositionality,</booktitle>
+<pages>119--126</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Sofia, Bulgaria,</location>
+<marker>Kalchbrenner, Blunsom, 2013</marker>
+<rawString>Nal Kalchbrenner and Phil Blunsom. 2013. Recurrent convolutional neural networks for discourse compositionality. In Proceedings of the Workshop on Continuous Vector Space Models and their Compositionality, pages 119–126, Sofia, Bulgaria, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Terry Koo</author>
+<author>Xavier Carreras</author>
+<author>Michael Collins</author>
+</authors>
+<title>Simple Semi-supervised Dependency Parsing.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-HLT,</booktitle>
+<pages>595--603</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Koo et al., 2008" endWordPosition="675" position="4589" startWordPosition="672"> labels and 2.5% on nuclearity. In addition, we show that the latent representation coheres well with the characterization of discourse connectives in the Penn Discourse Treebank (Prasad et al., 2008). 2 Model The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010) show that there is a long tail of alternative lexicalizations for discourse relations in the Penn Discourse Treebank, posing obvious challenges for approaches based on directly matching lexical features observed in the training data. Based on this observation, our goal is to learn a function that transforms lexical features into a much lower-dimensional latent representation, while simultaneously learning to pre</context>
+</contexts>
+<marker>Koo, Carreras, Collins, 2008</marker>
+<rawString>Terry Koo, Xavier Carreras, and Michael Collins. 2008. Simple Semi-supervised Dependency Parsing. In Proceedings of ACL-HLT, pages 595–603, Columbus, Ohio, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ralf Krestel</author>
+<author>Sabine Bergler</author>
+<author>Ren´e Witte</author>
+</authors>
+<title>Minding the Source: Automatic Tagging of Reported Speech in Newspaper Articles.</title>
+<date>2008</date>
+<journal>European Language Resources Association (ELRA).</journal>
+<booktitle>In LREC,</booktitle>
+<location>Marrakech, Morocco,</location>
+<contexts>
+<context citStr="Krestel et al., 2008" endWordPosition="4853" position="28760" startWordPosition="4850">top 1000 frequent unigrams in the RST-DT training set. For comparison, we also apply t-SNE to the projection matrix Bnmf recovered from nonnegative matrix factorization. Figure 4 highlights words that are related to discourse analysis. Among the top 1000 words, we highlight the words from 5 major discourse connective categories provided in Appendix B of the PDTB annotation manual (Prasad et al., 2008): CONJUNCTION, CONTRAST, PRECEDENCE, RESULT, and SUCCESSION. In addition, we also highlighted two verb categories from the top 1000 words: modal verbs and reporting verbs, with their inflections (Krestel et al., 2008). From the figure, it is clear DPLP has learned a projection matrix that successfully groups several major discourse-related word classes: particularly modal and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse</context>
+</contexts>
+<marker>Krestel, Bergler, Witte, 2008</marker>
+<rawString>Ralf Krestel, Sabine Bergler, and Ren´e Witte. 2008. Minding the Source: Automatic Tagging of Reported Speech in Newspaper Articles. In LREC, Marrakech, Morocco, May. European Language Resources Association (ELRA).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Quoc V Le</author>
+<author>Jiquan Ngiam</author>
+<author>Adam Coates</author>
+<author>Abhik Lahiri</author>
+<author>Bobby Prochnow</author>
+<author>Andrew Y Ng</author>
+</authors>
+<title>On Optimization Methods for Deep Learning.</title>
+<date>2011</date>
+<booktitle>In ICML.</booktitle>
+<contexts>
+<context citStr="Le et al., 2011" endWordPosition="2818" position="16632" startWordPosition="2815">D and the final A Output: Projection matrix A, SVM classifier with weights w 3.2 Gradient-based Learning for A Solving the quadratic programming defined by the dual form of the SVM is time-consuming, especially on a large-scale dataset. But if we focus on learning the projection matrix A, we can speed up learning by sampling only a small proportion of the training data to compute an approximate optimum for {w1:C, η1:l,1:C}, before each update of A. This idea is similar to the mini-batch learning, which has been used in large-scale SVM problem (Nelakanti et al., 2013) and deep learning models (Le et al., 2011). Specifically, in iteration t, the algorithm randomly chooses a subset of training samples Dt to train the model. We cannot make a closed-form update to A based on this small sample, but we can take an approximate gradient step, At = (1 − αtT)At−1+ � �� ηi,mW (t)(t)vi, (11) m ViESV(Dt) where αt is a learning rate. In iteration t, we choose αt = 1t . After convergence, we obtain the weights w by applying the SVM over the entire dataset, using the final A. The algorithm is summarized in Algorithm 1 and more details about implementation will be clarified in Section 4. While minibatch learning re</context>
+</contexts>
+<marker>Le, Ngiam, Coates, Lahiri, Prochnow, Ng, 2011</marker>
+<rawString>Quoc V. Le, Jiquan Ngiam, Adam Coates, Abhik Lahiri, Bobby Prochnow, and Andrew Y. Ng. 2011. On Optimization Methods for Deep Learning. In ICML.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ziheng Lin</author>
+<author>Min-Yen Kan</author>
+<author>Hwee Tou Ng</author>
+</authors>
+<title>Recognizing Implicit Discourse Relations in the Penn Discourse Treebank.</title>
+<date>2009</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Lin et al. (2009)" endWordPosition="5194" position="31050" startWordPosition="5191">ternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* decoding can outperform both greedy and graph-based decoding algorithms. Joty et al. (2013) achieve the best prior results on RST relation detection by (i) jointly performing relation detection and classification, (ii) performing bottom-up rather than greedy decoding, and (iii) distinguishing between intra-sentence and inter-sentence relations. Our approach is largely orthogonal to this prior work: we focus on trans20 but will once may might could would should and when after so although unti</context>
+</contexts>
+<marker>Lin, Kan, Ng, 2009</marker>
+<rawString>Ziheng Lin, Min-Yen Kan, and Hwee Tou Ng. 2009. Recognizing Implicit Discourse Relations in the Penn Discourse Treebank. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Annie Louis</author>
+<author>Aravind Joshi</author>
+<author>Ani Nenkova</author>
+</authors>
+<title>Discourse indicators for content selection in summarization.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 11th Annual Meeting of the Special Interest Group on Discourse and Dialogue,</booktitle>
+<pages>147--156</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Louis et al., 2010" endWordPosition="165" position="1214" startWordPosition="162">rse parsing. By combining the machinery of large-margin transition-based structured prediction with representation learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RS</context>
+</contexts>
+<marker>Louis, Joshi, Nenkova, 2010</marker>
+<rawString>Annie Louis, Aravind Joshi, and Ani Nenkova. 2010. Discourse indicators for content selection in summarization. In Proceedings of the 11th Annual Meeting of the Special Interest Group on Discourse and Dialogue, pages 147–156. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+<author>Abdessamad Echihabi</author>
+</authors>
+<title>An Unsupervised Approach to Recognizing Discourse Relations.</title>
+<date>2002</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>368--375</pages>
+<location>Philadelphia, Pennsylvania, USA,</location>
+<contexts>
+<context citStr="Marcu and Echihabi, 2002" endWordPosition="5116" position="30554" startWordPosition="5113">ntence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* </context>
+</contexts>
+<marker>Marcu, Echihabi, 2002</marker>
+<rawString>Daniel Marcu and Abdessamad Echihabi. 2002. An Unsupervised Approach to Recognizing Discourse Relations. In Proceedings of ACL, pages 368–375, Philadelphia, Pennsylvania, USA, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+</authors>
+<title>Building Up Rhetorical Structure Trees.</title>
+<date>1996</date>
+<booktitle>In Proceedings of AAAI.</booktitle>
+<contexts>
+<context citStr="Marcu (1996)" endWordPosition="1671" position="10490" startWordPosition="1670">ft-reduce operations), then a linear classifier must learn 3V C parameters, while DPLP must learn (3V + C)K parameters, which will be smaller under the assumption that K &lt; C « V . This can be seen as a form of parameter tying on the linear weights ˜wm, which allows statistical strength to be shared across training instances. We will consider special cases of A that reduce the parameter space still further. 2.3 Special forms of the projection matrix We consider three different constructions for the projection matrix A. • General form: In the general case, we place compositionality criterion of Marcu (1996) and consider only the nuclear EDU of the span. Later work may explore the composition of features between the nucleus and satellite. This form is shown in Figure 2(a). • Concatenation form: In the concatenation form, we choose a block structure for A, in which a single projection matrix B is applied to each EDU: &amp;quot; B 0 0 # &amp;quot;v1 # f(v; A) = 0 B 0 v2 (4) 0 0 B v3 In this form, we transform the representation of each EDU separately, but do not attempt to represent interrelationships between the EDUs in the latent space. The number of parameters in A is 13KV. Then, the total number of parameters, i</context>
+</contexts>
+<marker>Marcu, 1996</marker>
+<rawString>Daniel Marcu. 1996. Building Up Rhetorical Structure Trees. In Proceedings of AAAI.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+</authors>
+<title>A Decision-Based Approach to Rhetorical Parsing.</title>
+<date>1999</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>365--372</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>College Park, Maryland, USA,</location>
+<contexts>
+<context citStr="Marcu, 1999" endWordPosition="475" position="3294" startWordPosition="474">in which discourse relations are easily identifiable. The latent representation for each discourse unit can be viewed as a discriminativelytrained vector-space representation of its meaning. Alternatively, our approach can be seen as a nonlinear learning algorithm for incremental structure prediction, which overcomes feature sparsity through effective parameter tying. We consider several alternative methods for transforming the original features, corresponding to different ideas of the meaning and role of the latent representation. Our method is implemented as a shift-reduce discourse parser (Marcu, 1999; Sagae, 2009). Learning is performed as large-margin transitionbased structure prediction (Taskar et al., 2003), while at the same time jointly learning to project the surface representation into latent space. The The projections are in the neighborhood of 50 cents a share to 75 cents, compared with a restated $1.65 a share a year earlier, 13 Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 13–24, Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics resulting system strongly outperforms the prior state-of-the</context>
+<context citStr="Marcu (1999)" endWordPosition="868" position="5856" startWordPosition="867">ation. In this paper, we consider a simple transformation function, linear projection. Thus, we name the approach DPLP: Discourse Parsing from Linear Projection. We apply transition-based (incremental) structured prediction to obtain a discourse parse, training a predictor to make the correct incremental moves to match the annotations of training data in the RST Treebank. This supervision signal is then used to learn both the weights and the projection matrix in a large-margin framework. 2.1 Shift-reduce discourse parsing We construct RST Trees using shift-reduce parsing, as first proposed by Marcu (1999). At each point in the parsing process, we maintain a stack and a queue; initially the stack is empty and the first elementary discourse unit (EDU) in the document is at the front of the queue.1 The parser can 1We do not address segmentation of text into elementary discourse units in this paper. Standard classificationNotation Explanation V Vocabulary for surface features V Size of V K Dimension of latent space Wm Classification weights for class m C Total number of classes, which correspond to possible shift-reduce operations A Parameter of the representation function (also the projection mat</context>
+<context citStr="Marcu, 1999" endWordPosition="1136" position="7462" startWordPosition="1135">ble 1: Summary of mathematical notation then choose either to shift the front of the queue onto the top of the stack, or to reduce the top two elements on the stack in a discourse relation. The reduction operation must choose both the type of relation and which element will be the nucleus. So, overall there are multiple reduce operations with specific relation types and nucleus positions. Shift-reduce parsing can be learned as a classification task, where the classifier uses features of the elements in the stack and queue to decide what move to take. Previous work has employed decision trees (Marcu, 1999) and the averaged perceptron (Collins and Roark, 2004; Sagae, 2009) for this purpose. Instead, we employ a large-margin classifier, because we can compute derivatives of the margin-based objective function with respect to both the classifier weights as well as the projection matrix. 2.2 Discourse parsing with projected features More formally, we denote the surface feature vocabulary V, and represent each EDU as the numeric vector v E NV , where V = #|V |and the nth element of v is the count of the n-th surface feature in this EDU (see Table 1 for a summary of notation). During shift-reduce par</context>
+</contexts>
+<marker>Marcu, 1999</marker>
+<rawString>Daniel Marcu. 1999. A Decision-Based Approach to Rhetorical Parsing. In Proceedings of ACL, pages 365–372, College Park, Maryland, USA, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+</authors>
+<title>The Rhetorical Parsing of Unrestricted Texts: A Surface-based Approach.</title>
+<date>2000</date>
+<journal>Computational Linguistics,</journal>
+<pages>26--395</pages>
+<contexts>
+<context citStr="Marcu (2000" endWordPosition="3927" position="23214" startWordPosition="3926"> we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metrics by ourselves. Together with the DPLP system, all codes are published on https://github.com/jiyfeng/DPLP 18 Method Matrix Form +Features K Span Nuclearity Relation Prior work 1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8 2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73 3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 67.98 52.96 5. Word embeddings Concatenation No 75 75.28 67.14 53.79 6. NMF Co</context>
+<context citStr="Marcu, 2000" endWordPosition="4965" position="29529" startWordPosition="4964">and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2</context>
+</contexts>
+<marker>Marcu, 2000</marker>
+<rawString>Daniel Marcu. 2000a. The Rhetorical Parsing of Unrestricted Texts: A Surface-based Approach. Computational Linguistics, 26:395–448.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+</authors>
+<title>The Theory and Practice of Discourse Parsing and Summarization.</title>
+<date>2000</date>
+<publisher>MIT Press.</publisher>
+<contexts>
+<context citStr="Marcu (2000" endWordPosition="3927" position="23214" startWordPosition="3926"> we report the results of both approaches. All results are based on the same gold standard EDU segmentation. We cannot compare with the results of Feng and Hirst (2012), because they do not evaluate on the overall discourse structure, but rather treat each relation as an individual classification problem. Metrics To evaluate the parsing performance, we use the three standard ways to measure the performance: unlabeled (i.e., hierarchical spans) and labeled (i.e., nuclearity and relation) F-score, as defined by Black et al. (1991). The application of this approach to RST parsing is described by Marcu (2000b).3 To compare with previous works on RST-DT, we use the 18 coarse-grained relations defined in (Carlson et al., 2001). 3We implemented the evaluation metrics by ourselves. Together with the DPLP system, all codes are published on https://github.com/jiyfeng/DPLP 18 Method Matrix Form +Features K Span Nuclearity Relation Prior work 1. HILDA (Hernault et al., 2010) 83.0 68.4 54.8 2. TSP 1-1 (Joty et al., 2013) 82.47 68.43 55.73 3. TSP SW (Joty et al., 2013) 82.74 68.40 55.71 Our work 4. Basic features A = 0 Yes 79.43 67.98 52.96 5. Word embeddings Concatenation No 75 75.28 67.14 53.79 6. NMF Co</context>
+<context citStr="Marcu, 2000" endWordPosition="4965" position="29529" startWordPosition="4964">and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2</context>
+</contexts>
+<marker>Marcu, 2000</marker>
+<rawString>Daniel Marcu. 2000b. The Theory and Practice of Discourse Parsing and Summarization. MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Scott Miller</author>
+<author>Jethran Guinness</author>
+<author>Alex Zamanian</author>
+</authors>
+<title>Name Tagging with Word Clusters and Discriminative Training.</title>
+<date>2004</date>
+<volume>2</volume>
+<pages>337--342</pages>
+<editor>In Daniel Marcu Susan Dumais and Salim Roukos, editors, HLT-NAACL,</editor>
+<location>Boston, Massachusetts, USA,</location>
+<contexts>
+<context citStr="Miller et al., 2004" endWordPosition="671" position="4571" startWordPosition="668">oughly 6% on relation labels and 2.5% on nuclearity. In addition, we show that the latent representation coheres well with the characterization of discourse connectives in the Penn Discourse Treebank (Prasad et al., 2008). 2 Model The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010) show that there is a long tail of alternative lexicalizations for discourse relations in the Penn Discourse Treebank, posing obvious challenges for approaches based on directly matching lexical features observed in the training data. Based on this observation, our goal is to learn a function that transforms lexical features into a much lower-dimensional latent representation, while simultaneous</context>
+</contexts>
+<marker>Miller, Guinness, Zamanian, 2004</marker>
+<rawString>Scott Miller, Jethran Guinness, and Alex Zamanian. 2004. Name Tagging with Word Clusters and Discriminative Training. In Daniel Marcu Susan Dumais and Salim Roukos, editors, HLT-NAACL, pages 337–342, Boston, Massachusetts, USA, May 2 -May 7. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eleni Miltsakaki</author>
+<author>Karen Kukich</author>
+</authors>
+<title>Evaluation of text coherence for electronic essay scoring systems.</title>
+<date>2004</date>
+<journal>Natural Language Engineering,</journal>
+<volume>10</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Miltsakaki and Kukich, 2004" endWordPosition="193" position="1404" startWordPosition="190"> same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013).</context>
+</contexts>
+<marker>Miltsakaki, Kukich, 2004</marker>
+<rawString>Eleni Miltsakaki and Karen Kukich. 2004. Evaluation of text coherence for electronic essay scoring systems. Natural Language Engineering, 10(1):25–55.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jeff Mitchell</author>
+<author>Mirella Lapata</author>
+</authors>
+<title>Composition in distributional models of semantics.</title>
+<date>2010</date>
+<journal>Cognitive Science,</journal>
+<volume>34</volume>
+<issue>8</issue>
+<contexts>
+<context citStr="Mitchell and Lapata (2010)" endWordPosition="3704" position="21890" startWordPosition="3701">construct B,,,,,tf in the concatenation form of the projection matrix by applying NMF to the EDU-feature matrix, M ≈ WH. As a result, W describes each EDU with a K-dimensional vector, and H describes each word with a K-dimensional vector. We can then construct B,,,,,tf by taking the pseudo-inverse of H, which then projects from word-count vectors into the latent space. Another way to construct B is to use neural word embeddings (Collobert and Weston, 2008). In this case, we can view the product Bv as a composition of the word embeddings, using the simple additive composition model proposed by Mitchell and Lapata (2010). We used the word embeddings from Collobert and Weston (2008) with dimension {25,50, 100}. Grid search over heldout training data was used to select the optimum latent dimension for both the NMF and word embedding baselines. Note that the size K of the resulting projection matrix is three times the size of the embedding (or NMF representation) due to the concatenate construction. We also consider the special case where A = I. Competitive systems We compare our approach with HILDA (Hernault et al., 2010) and TSP (Joty et al., 2013). Joty et al. (2013) proposed two different approaches to combi</context>
+</contexts>
+<marker>Mitchell, Lapata, 2010</marker>
+<rawString>Jeff Mitchell and Mirella Lapata. 2010. Composition in distributional models of semantics. Cognitive Science, 34(8):1388–1429.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philippe Muller</author>
+<author>Stergos Afantenos</author>
+<author>Pascal Denis</author>
+<author>Nicholas Asher</author>
+</authors>
+<title>Constrained Decoding for Text-Level Discourse Parsing.</title>
+<date>2012</date>
+<booktitle>In Coling,</booktitle>
+<pages>1883--1900</pages>
+<location>Mumbai, India,</location>
+<contexts>
+<context citStr="Muller et al., 2012" endWordPosition="5057" position="30162" startWordPosition="5054">data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from</context>
+</contexts>
+<marker>Muller, Afantenos, Denis, Asher, 2012</marker>
+<rawString>Philippe Muller, Stergos Afantenos, Pascal Denis, and Nicholas Asher. 2012. Constrained Decoding for Text-Level Discourse Parsing. In Coling, pages 1883–1900, Mumbai, India, December. The COLING 2012 Organizing Committee.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Anil Kumar Nelakanti</author>
+<author>Cedric Archambeau</author>
+<author>Julien Mairal</author>
+<author>Francis Bach</author>
+<author>Guillaume Bouchard</author>
+</authors>
+<title>Structured Penalties for Log-Linear Language Models. In</title>
+<date>2013</date>
+<booktitle>EMNLP,</booktitle>
+<pages>233--243</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Seattle, Washington, USA,</location>
+<contexts>
+<context citStr="Nelakanti et al., 2013" endWordPosition="2810" position="16589" startWordPosition="2807">A2−A1kF Return end if end while Re-train SVM with D and the final A Output: Projection matrix A, SVM classifier with weights w 3.2 Gradient-based Learning for A Solving the quadratic programming defined by the dual form of the SVM is time-consuming, especially on a large-scale dataset. But if we focus on learning the projection matrix A, we can speed up learning by sampling only a small proportion of the training data to compute an approximate optimum for {w1:C, η1:l,1:C}, before each update of A. This idea is similar to the mini-batch learning, which has been used in large-scale SVM problem (Nelakanti et al., 2013) and deep learning models (Le et al., 2011). Specifically, in iteration t, the algorithm randomly chooses a subset of training samples Dt to train the model. We cannot make a closed-form update to A based on this small sample, but we can take an approximate gradient step, At = (1 − αtT)At−1+ � �� ηi,mW (t)(t)vi, (11) m ViESV(Dt) where αt is a learning rate. In iteration t, we choose αt = 1t . After convergence, we obtain the weights w by applying the SVM over the entire dataset, using the final A. The algorithm is summarized in Algorithm 1 and more details about implementation will be clarifie</context>
+</contexts>
+<marker>Nelakanti, Archambeau, Mairal, Bach, Bouchard, 2013</marker>
+<rawString>Anil Kumar Nelakanti, Cedric Archambeau, Julien Mairal, Francis Bach, and Guillaume Bouchard. 2013. Structured Penalties for Log-Linear Language Models. In EMNLP, pages 233–243, Seattle, Washington, USA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joakim Nivre</author>
+<author>Johan Hall</author>
+<author>Jens Nilsson</author>
+</authors>
+<title>Atanas Chanev, G¨ulsen Eryigit, Sandra K¨ubler, Svetoslav Marinov, and Erwin Marsi.</title>
+<date>2007</date>
+<journal>Natural Language Engineering,</journal>
+<volume>13</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Nivre et al., 2007" endWordPosition="3259" position="19145" startWordPosition="3256">each EDU in its parsing decisions. But prior work has shown that other, structural features can provide useful information (Joty et al., 2013). We therefore augment our classifier with a set of simple feature templates. These templates are applied to individual EDUs, as well as pairs of EDUs: (1) the two EDUs on top of the stack, and (2) the EDU on top of the stack and the EDU in front of the queue. The features are shown in Table 2. In computing these features, all tokens are downcased, and numerical features are not binned. The dependency structure and POS tags are obtained from MALTParser (Nivre et al., 2007). 5 Experiments We evaluate DPLP on the RST Discourse Treebank (Carlson et al., 2001), comparing against state-of-the-art results. We also investigate the information encoded by the projection matrix. 5.1 Experimental Setup Dataset The RST Discourse Treebank (RSTDT) consists of 385 documents, with 347 for train� E αt (E W(t) yi − m 17 Feature Examples hBEGIN-WORD-STACK1 = buti Words at beginning and end of the EDU hBEGIN-WORD-STACK1-QUEUE1 = but, thei POS tag at beginning and end of the EDU Head word set from each EDU. The set includes words hHEAD-WORDS-STACK2 = workingi whose parent in the de</context>
+</contexts>
+<marker>Nivre, Hall, Nilsson, 2007</marker>
+<rawString>Joakim Nivre, Johan Hall, Jens Nilsson, Atanas Chanev, G¨ulsen Eryigit, Sandra K¨ubler, Svetoslav Marinov, and Erwin Marsi. 2007. MaltParser: A language-independent system for data-driven dependency parsing. Natural Language Engineering, 13(2):95–135.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rashmi Prasad</author>
+<author>Nikhil Dinesh</author>
+<author>Alan Lee</author>
+<author>Eleni Miltsakaki</author>
+<author>Livio Robaldo</author>
+<author>Aravind Joshi</author>
+<author>Bonnie Webber</author>
+</authors>
+<title>The penn discourse treebank 2.0. In LREC.</title>
+<date>2008</date>
+<contexts>
+<context citStr="Prasad et al., 2008" endWordPosition="605" position="4173" startWordPosition="602">0 cents a share to 75 cents, compared with a restated $1.65 a share a year earlier, 13 Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 13–24, Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics resulting system strongly outperforms the prior state-of-the-art at labeled F-measure, obtaining raw improvements of roughly 6% on relation labels and 2.5% on nuclearity. In addition, we show that the latent representation coheres well with the characterization of discourse connectives in the Penn Discourse Treebank (Prasad et al., 2008). 2 Model The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010)</context>
+<context citStr="Prasad et al., 2008" endWordPosition="4821" position="28543" startWordPosition="4818">-score 62 60 58 56 54 52 50 Figure 3: The performance of our parser over different latent dimension K. Results for DPLP include the additional features from Table 3 fication for visualization is we consider only the top 1000 frequent unigrams in the RST-DT training set. For comparison, we also apply t-SNE to the projection matrix Bnmf recovered from nonnegative matrix factorization. Figure 4 highlights words that are related to discourse analysis. Among the top 1000 words, we highlight the words from 5 major discourse connective categories provided in Appendix B of the PDTB annotation manual (Prasad et al., 2008): CONJUNCTION, CONTRAST, PRECEDENCE, RESULT, and SUCCESSION. In addition, we also highlighted two verb categories from the top 1000 words: modal verbs and reporting verbs, with their inflections (Krestel et al., 2008). From the figure, it is clear DPLP has learned a projection matrix that successfully groups several major discourse-related word classes: particularly modal and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse fun</context>
+<context citStr="Prasad et al., 2008" endWordPosition="5207" position="31118" startWordPosition="5204">elations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller et al. (2012) show that A* decoding can outperform both greedy and graph-based decoding algorithms. Joty et al. (2013) achieve the best prior results on RST relation detection by (i) jointly performing relation detection and classification, (ii) performing bottom-up rather than greedy decoding, and (iii) distinguishing between intra-sentence and inter-sentence relations. Our approach is largely orthogonal to this prior work: we focus on trans20 but will once may might could would should and when after so although until says say said reported saying believe think can report however als</context>
+</contexts>
+<marker>Prasad, Dinesh, Lee, Miltsakaki, Robaldo, Joshi, Webber, 2008</marker>
+<rawString>Rashmi Prasad, Nikhil Dinesh, Alan Lee, Eleni Miltsakaki, Livio Robaldo, Aravind Joshi, and Bonnie Webber. 2008. The penn discourse treebank 2.0. In LREC.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rashmi Prasad</author>
+<author>Aravind Joshi</author>
+<author>Bonnie Webber</author>
+</authors>
+<title>Realization of discourse relations by other means: alternative lexicalizations.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 23rd International Conference on Computational Linguistics: Posters,</booktitle>
+<pages>1023--1031</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Prasad et al., 2010" endWordPosition="328" position="2304" startWordPosition="325">formance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013). While recent work has introduced increasingly powerful features (Feng and Hirst, 2012) and inference techniques (Joty et al., 2013), discourse relations remain hard to detect, due in part to a long tail of “alternative lexicalizations” that can be used to realize each relation (Prasad et al., 2010). Surface and syntactic features are not capable of capturing what are fundamentally semantic distinctions, particularly in the face of relatively small annotated training sets. In this paper, we present a representation learning approach to discourse parsing. The core idea of our work is to learn a transformation from a bag-of-words surface representation into a latent space in which discourse relations are easily identifiable. The latent representation for each discourse unit can be viewed as a discriminativelytrained vector-space representation of its meaning. Alternatively, our approach ca</context>
+<context citStr="Prasad et al. (2010)" endWordPosition="705" position="4773" startWordPosition="702">Prasad et al., 2008). 2 Model The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010) show that there is a long tail of alternative lexicalizations for discourse relations in the Penn Discourse Treebank, posing obvious challenges for approaches based on directly matching lexical features observed in the training data. Based on this observation, our goal is to learn a function that transforms lexical features into a much lower-dimensional latent representation, while simultaneously learning to predict discourse structure based on this latent representation. In this paper, we consider a simple transformation function, linear projection. Thus, we name the approach DPLP: Discourse</context>
+<context citStr="Prasad et al., 2010" endWordPosition="5112" position="30527" startWordPosition="5109">nly later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select the correct semantic parse from a forest of possiblities. Recent work has succeeded in pushing the stateof-the-art in RST parsing by innovating on several fronts. Feng and Hirst (2012) explore rich linguistic linguistic features, including lexical semantics and discourse production rules suggested by Lin et al. (2009) in the context of the Penn Discourse Treebank (Prasad et al., 2008). Muller </context>
+</contexts>
+<marker>Prasad, Joshi, Webber, 2010</marker>
+<rawString>Rashmi Prasad, Aravind Joshi, and Bonnie Webber. 2010. Realization of discourse relations by other means: alternative lexicalizations. In Proceedings of the 23rd International Conference on Computational Linguistics: Posters, pages 1023–1031. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kenji Sagae</author>
+</authors>
+<title>Analysis of Discourse Structure with Syntactic Dependencies and Data-Driven ShiftReduce Parsing.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 11th International Conference on Parsing Technologies (IWPT),</booktitle>
+<pages>81--84</pages>
+<location>Paris, France,</location>
+<contexts>
+<context citStr="Sagae, 2009" endWordPosition="477" position="3308" startWordPosition="476">ourse relations are easily identifiable. The latent representation for each discourse unit can be viewed as a discriminativelytrained vector-space representation of its meaning. Alternatively, our approach can be seen as a nonlinear learning algorithm for incremental structure prediction, which overcomes feature sparsity through effective parameter tying. We consider several alternative methods for transforming the original features, corresponding to different ideas of the meaning and role of the latent representation. Our method is implemented as a shift-reduce discourse parser (Marcu, 1999; Sagae, 2009). Learning is performed as large-margin transitionbased structure prediction (Taskar et al., 2003), while at the same time jointly learning to project the surface representation into latent space. The The projections are in the neighborhood of 50 cents a share to 75 cents, compared with a restated $1.65 a share a year earlier, 13 Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 13–24, Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics resulting system strongly outperforms the prior state-of-the-art at labele</context>
+<context citStr="Sagae, 2009" endWordPosition="1147" position="7529" startWordPosition="1146"> the front of the queue onto the top of the stack, or to reduce the top two elements on the stack in a discourse relation. The reduction operation must choose both the type of relation and which element will be the nucleus. So, overall there are multiple reduce operations with specific relation types and nucleus positions. Shift-reduce parsing can be learned as a classification task, where the classifier uses features of the elements in the stack and queue to decide what move to take. Previous work has employed decision trees (Marcu, 1999) and the averaged perceptron (Collins and Roark, 2004; Sagae, 2009) for this purpose. Instead, we employ a large-margin classifier, because we can compute derivatives of the margin-based objective function with respect to both the classifier weights as well as the projection matrix. 2.2 Discourse parsing with projected features More formally, we denote the surface feature vocabulary V, and represent each EDU as the numeric vector v E NV , where V = #|V |and the nth element of v is the count of the n-th surface feature in this EDU (see Table 1 for a summary of notation). During shift-reduce parsing, we consider features of three EDUs:2 the top two elements on </context>
+<context citStr="Sagae, 2009" endWordPosition="3371" position="19805" startWordPosition="3370">ourse Treebank (Carlson et al., 2001), comparing against state-of-the-art results. We also investigate the information encoded by the projection matrix. 5.1 Experimental Setup Dataset The RST Discourse Treebank (RSTDT) consists of 385 documents, with 347 for train� E αt (E W(t) yi − m 17 Feature Examples hBEGIN-WORD-STACK1 = buti Words at beginning and end of the EDU hBEGIN-WORD-STACK1-QUEUE1 = but, thei POS tag at beginning and end of the EDU Head word set from each EDU. The set includes words hHEAD-WORDS-STACK2 = workingi whose parent in the depenency graph is ROOT or is not within the EDU (Sagae, 2009). Length of EDU in tokens hLEN-STACK1-STACK2 = h7, 8ii Distance between EDUs hDIST-STACK1-QUEUE1 = 2i Distance from the EDU to the beginning of the document hDIST-FROM-START-QUEUE1 = 3i Distance from the EDU to the end of the document hDIST-FROM-END-STACK1 = 1i Whether two EDUs are in the same sentence hSAME-SENT-STACK1-QUEUE1 = Truei hBEGIN-TAG-STACK1 = CCi hBEGIN-TAG-STACK1-QUEUE1 = CC, DTi Table 2: Additional features for RST parsing ing and 38 for testing in the standard split. As we focus on relational discourse parsing, we follow prior work (Feng and Hirst, 2012; Joty et al., 2013), and </context>
+<context citStr="Sagae, 2009" endWordPosition="5051" position="30133" startWordPosition="5050">cu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse relations (Prasad et al., 2010; Marcu and Echihabi, 2002). Only Subba and Di Eugenio (2009) incorporate rich compositional semantics into discourse parsing, but due to the ambiguity of their semantic parser, they must manually select th</context>
+</contexts>
+<marker>Sagae, 2009</marker>
+<rawString>Kenji Sagae. 2009. Analysis of Discourse Structure with Syntactic Dependencies and Data-Driven ShiftReduce Parsing. In Proceedings of the 11th International Conference on Parsing Technologies (IWPT), pages 81–84, Paris, France, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Frank Schilder</author>
+</authors>
+<title>Robust discourse parsing via discourse markers, topicality and position.</title>
+<date>2002</date>
+<journal>Natural Language Engineering,</journal>
+<volume>8</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Schilder (2002)" endWordPosition="4974" position="29593" startWordPosition="4973">edence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has</context>
+</contexts>
+<marker>Schilder, 2002</marker>
+<rawString>Frank Schilder. 2002. Robust discourse parsing via discourse markers, topicality and position. Natural Language Engineering, 8(3):235–255.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Richard Socher</author>
+<author>Eric H Huang</author>
+<author>Jeffrey Pennington</author>
+<author>Andrew Y Ng</author>
+<author>Christopher D Manning</author>
+</authors>
+<title>Dynamic Pooling and Unfolding Recursive Autoencoders for Paraphrase Detection. In NIPS.</title>
+<date>2011</date>
+<contexts>
+<context citStr="Socher et al., 2011" endWordPosition="5524" position="33191" startWordPosition="5521">icularly for span identification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approach by incorporating a non-linear activation function is a natural topic for future research. 7 Conclusion We have presented a framework to perform discourse parsing while jointly learning to project to a low-</context>
+</contexts>
+<marker>Socher, Huang, Pennington, Ng, Manning, 2011</marker>
+<rawString>Richard Socher, Eric H. Huang, Jeffrey Pennington, Andrew Y. Ng, and Christopher D. Manning. 2011. Dynamic Pooling and Unfolding Recursive Autoencoders for Paraphrase Detection. In NIPS.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Richard Socher</author>
+<author>Brody Huval</author>
+<author>Christopher D Manning</author>
+<author>Andrew Y Ng</author>
+</authors>
+<title>Semantic Compositionality Through Recursive Matrix-Vector Spaces.</title>
+<date>2012</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Socher et al., 2012" endWordPosition="5494" position="33005" startWordPosition="5491">s at grouping words with similar discourse functions. We might expect to obtain further improvements by augmenting this representation learning approach with rich syntactic features (particularly for span identification), more accurate decoding, and special treatment of intra-sentence relations; this is a direction for future research. Discriminative learning of latent features for discourse processing can be viewed as a form of representation learning (Bengio et al., 2013). Also called Deep Learning, such approaches have recently been applied in a number of NLP tasks (Collobert et al., 2011; Socher et al., 2012). Of particular relevance are applications to the detection of semantic or discourse relations, such as paraphrase, by comparing sentences in an induced latent space (Socher et al., 2011; Guo and Diab, 2012; Ji and Eisenstein, 2013). In this work, we show how discourse structure annotations can function as a supervision signal to discriminatively learn a transformation from lexical features to a latent space that is well-suited for discourse parsing. Unlike much of the prior work on representation learning, we induce a simple linear transformation. Extension of our approach by incorporating a </context>
+</contexts>
+<marker>Socher, Huval, Manning, Ng, 2012</marker>
+<rawString>Richard Socher, Brody Huval, Christopher D. Manning, and Andrew Y. Ng. 2012. Semantic Compositionality Through Recursive Matrix-Vector Spaces. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Richard Socher</author>
+<author>Alex Perelygin</author>
+<author>Jean Y Wu</author>
+<author>Jason Chuang</author>
+<author>Christopher D Manning</author>
+<author>Andrew Y Ng</author>
+<author>Christopher Potts</author>
+</authors>
+<title>Recursive deep models for semantic compositionality over a sentiment treebank.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP).</booktitle>
+<marker>Socher, Perelygin, Wu, Chuang, Manning, Ng, Potts, 2013</marker>
+<rawString>Richard Socher, Alex Perelygin, Jean Y Wu, Jason Chuang, Christopher D Manning, Andrew Y Ng, and Christopher Potts. 2013. Recursive deep models for semantic compositionality over a sentiment treebank. In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Swapna Somasundaran</author>
+<author>Galileo Namata</author>
+<author>Janyce Wiebe</author>
+<author>Lise Getoor</author>
+</authors>
+<title>Supervised and unsupervised methods in employing discourse relations for improving opinion polarity classification.</title>
+<date>2009</date>
+<booktitle>In Proceedings of EMNLP.</booktitle>
+<contexts>
+<context citStr="Somasundaran et al., 2009" endWordPosition="177" position="1286" startWordPosition="173">n-based structured prediction with representation learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when</context>
+</contexts>
+<marker>Somasundaran, Namata, Wiebe, Getoor, 2009</marker>
+<rawString>Swapna Somasundaran, Galileo Namata, Janyce Wiebe, and Lise Getoor. 2009. Supervised and unsupervised methods in employing discourse relations for improving opinion polarity classification. In Proceedings of EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Radu Soricut</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Sentence Level Discourse Parsing using Syntactic and Lexical Information.</title>
+<date>2003</date>
+<booktitle>In NAACL.</booktitle>
+<contexts>
+<context citStr="Soricut and Marcu, 2003" endWordPosition="5019" position="29901" startWordPosition="5016">ation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approaches, such as shift-reduce (Sagae, 2009) and A* (Muller et al., 2012). Prior learning-based work has largely focused on lexical, syntactic, and structural features, but the close relationship between discourse structure and semantics (Forbes-Riley et al., 2006) suggests that shallow feature sets may struggle to capture the long tail of alternative lexicalizations that can be used to realize discourse rela</context>
+</contexts>
+<marker>Soricut, Marcu, 2003</marker>
+<rawString>Radu Soricut and Daniel Marcu. 2003. Sentence Level Discourse Parsing using Syntactic and Lexical Information. In NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rajen Subba</author>
+<author>Barbara Di Eugenio</author>
+</authors>
+<title>An effective Discourse Parser that uses Rich Linguistic Information. In</title>
+<date>2009</date>
+<booktitle>NAACL-HLT,</booktitle>
+<pages>566--574</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Boulder, Colorado,</location>
+<marker>Subba, Di Eugenio, 2009</marker>
+<rawString>Rajen Subba and Barbara Di Eugenio. 2009. An effective Discourse Parser that uses Rich Linguistic Information. In NAACL-HLT, pages 566–574, Boulder, Colorado, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Sumita</author>
+<author>K Ono</author>
+<author>T Chino</author>
+<author>T Ukita</author>
+<author>S Amano</author>
+</authors>
+<title>A discourse structure analyzer for Japanese text.</title>
+<date>1992</date>
+<booktitle>In Proceedings International Conference on Fifth Generation Computer Systems,</booktitle>
+<pages>1133--1140</pages>
+<contexts>
+<context citStr="Sumita et al., 1992" endWordPosition="4961" position="29494" startWordPosition="4958">e-related word classes: particularly modal and reporting verbs; it has also grouped succession and precedence connectives with some success. In contrast, while NMF does obtain compact clusters of words, these clusters appear to be completely unrelated to discourse function of the words that they include. This demonstrates the value of using discriminative training to obtain the transformed representation of the discourse units. 6 Related Work Early work on document-level discourse parsing applied hand-crafted rules and heuristics to build trees in the framework of Rhetorical Structure Theory (Sumita et al., 1992; Corston-Oliver, 1998; Marcu, 2000a). An early data-driven approach was offered by Schilder (2002), who used distributional techniques to rate the topicality of each discourse unit, and then chose among underspecified discourse structures by placing more topical sentences near the root. Learning-based approaches were first applied to identify within-sentence discourse relations (Soricut and Marcu, 2003), and only later to cross-sentence relations at the document level (Baldridge and Lascarides, 2005). Of particular relevance to our inference technique are incremental discourse parsing approac</context>
+</contexts>
+<marker>Sumita, Ono, Chino, Ukita, Amano, 1992</marker>
+<rawString>K. Sumita, K. Ono, T. Chino, T. Ukita, and S. Amano. 1992. A discourse structure analyzer for Japanese text. In Proceedings International Conference on Fifth Generation Computer Systems, pages 1133– 1140.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Maite Taboada</author>
+<author>William C Mann</author>
+</authors>
+<date>2006</date>
+<booktitle>Applications of rhetorical structure theory. Discourse studies,</booktitle>
+<pages>8--4</pages>
+<contexts>
+<context citStr="Taboada and Mann, 2006" endWordPosition="225" position="1638" startWordPosition="222">ank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty COMPARISON CIRCUMSTANCE when profit was $107.8 million on sales of $435.5 million. Figure 1: An example of RST discourse structure. et al., 2013). While recent work has introduced increasingly powerful features (Feng and Hirst, 2012) and inference techniques (Joty et al., 2013), discourse relations remain hard to detect, due in part to a long tail of “alternative lexicalization</context>
+</contexts>
+<marker>Taboada, Mann, 2006</marker>
+<rawString>Maite Taboada and William C Mann. 2006. Applications of rhetorical structure theory. Discourse studies, 8(4):567–588.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Benjamin Taskar</author>
+<author>Carlos Guestrin</author>
+<author>Daphne Koller</author>
+</authors>
+<title>Max-margin markov networks.</title>
+<date>2003</date>
+<booktitle>In NIPS.</booktitle>
+<contexts>
+<context citStr="Taskar et al., 2003" endWordPosition="490" position="3406" startWordPosition="487"> can be viewed as a discriminativelytrained vector-space representation of its meaning. Alternatively, our approach can be seen as a nonlinear learning algorithm for incremental structure prediction, which overcomes feature sparsity through effective parameter tying. We consider several alternative methods for transforming the original features, corresponding to different ideas of the meaning and role of the latent representation. Our method is implemented as a shift-reduce discourse parser (Marcu, 1999; Sagae, 2009). Learning is performed as large-margin transitionbased structure prediction (Taskar et al., 2003), while at the same time jointly learning to project the surface representation into latent space. The The projections are in the neighborhood of 50 cents a share to 75 cents, compared with a restated $1.65 a share a year earlier, 13 Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 13–24, Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics resulting system strongly outperforms the prior state-of-the-art at labeled F-measure, obtaining raw improvements of roughly 6% on relation labels and 2.5% on nuclearity. I</context>
+</contexts>
+<marker>Taskar, Guestrin, Koller, 2003</marker>
+<rawString>Benjamin Taskar, Carlos Guestrin, and Daphne Koller. 2003. Max-margin markov networks. In NIPS.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joseph Turian</author>
+<author>Lev Ratinov</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>Word Representation: A Simple and General Method for Semi-Supervised Learning.</title>
+<date>2010</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>384--394</pages>
+<contexts>
+<context citStr="Turian et al., 2010" endWordPosition="679" position="4611" startWordPosition="676">n nuclearity. In addition, we show that the latent representation coheres well with the characterization of discourse connectives in the Penn Discourse Treebank (Prasad et al., 2008). 2 Model The core idea of this paper is to project lexical features into a latent space that facilitates discourse parsing. In this way, we can capture the meaning of each discourse unit, without suffering from the very high dimensionality of a lexical representation. While such feature learning approaches have proven to increase robustness for parsing, POS tagging, and NER (Miller et al., 2004; Koo et al., 2008; Turian et al., 2010), they would seem to have an especially promising role for discourse, where training data is relatively sparse and ambiguity is considerable. Prasad et al. (2010) show that there is a long tail of alternative lexicalizations for discourse relations in the Penn Discourse Treebank, posing obvious challenges for approaches based on directly matching lexical features observed in the training data. Based on this observation, our goal is to learn a function that transforms lexical features into a much lower-dimensional latent representation, while simultaneously learning to predict discourse structu</context>
+</contexts>
+<marker>Turian, Ratinov, Bengio, 2010</marker>
+<rawString>Joseph Turian, Lev Ratinov, and Yoshua Bengio. 2010. Word Representation: A Simple and General Method for Semi-Supervised Learning. In Proceedings of ACL, pages 384–394.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tim Van de Cruys</author>
+<author>Marianna Apidianaki</author>
+</authors>
+<title>Latent Semantic Word Sense Induction and Disambiguation.</title>
+<date>2011</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>1476--1485</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Portland, Oregon, USA,</location>
+<marker>Van de Cruys, Apidianaki, 2011</marker>
+<rawString>Tim Van de Cruys and Marianna Apidianaki. 2011. Latent Semantic Word Sense Induction and Disambiguation. In Proceedings of ACL, pages 1476– 1485, Portland, Oregon, USA, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Laurens van der Maaten</author>
+<author>Geoffrey Hinton</author>
+</authors>
+<title>Visualizing Data using t-SNE.</title>
+<date>2008</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>9--2759</pages>
+<marker>van der Maaten, Hinton, 2008</marker>
+<rawString>Laurens van der Maaten and Geoffrey Hinton. 2008. Visualizing Data using t-SNE. Journal of Machine Learning Research, 9:2759–2605, November.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kimberly Voll</author>
+<author>Maite Taboada</author>
+</authors>
+<title>Not all words are created equal: Extracting semantic orientation as a function of adjective relevance.</title>
+<date>2007</date>
+<booktitle>In Proceedings of Australian Conference on Artificial Intelligence.</booktitle>
+<contexts>
+<context citStr="Voll and Taboada, 2007" endWordPosition="172" position="1258" startWordPosition="169">f large-margin transition-based structured prediction with representation learning, our method jointly learns to parse discourse while at the same time learning a discourse-driven projection of surface features. The resulting shift-reduce discourse parser obtains substantial improvements over the previous state-of-the-art in predicting relations and nuclearity on the RST Treebank. 1 Introduction Discourse structure describes the high-level organization of text or speech. It is central to a number of high-impact applications, such as text summarization (Louis et al., 2010), sentiment analysis (Voll and Taboada, 2007; Somasundaran et al., 2009), question answering (Ferrucci et al., 2010), and automatic evaluation of student writing (Miltsakaki and Kukich, 2004; Burstein et al., 2013). Hierarchical discourse representations such as Rhetorical Structure Theory (RST) are particularly useful because of the computational applicability of tree-shaped discourse structures (Taboada and Mann, 2006), as shown in Figure 1. Unfortunately, the performance of discourse parsing is still relatively weak: the state-of-the-art F-measure for text-level relation detection in the RST Treebank is only slightly above 55% (Joty </context>
+</contexts>
+<marker>Voll, Taboada, 2007</marker>
+<rawString>Kimberly Voll and Maite Taboada. 2007. Not all words are created equal: Extracting semantic orientation as a function of adjective relevance. In Proceedings of Australian Conference on Artificial Intelligence.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ngo Xuan Bach</author>
+<author>Nguyen Le Minh</author>
+<author>Akira Shimazu</author>
+</authors>
+<title>A Reranking Model for Discourse Segmentation using Subtree Features.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 13th Annual Meeting of the Special Interest Group on Discourse and Dialogue,</booktitle>
+<pages>160--168</pages>
+<marker>Bach, Le Minh, Shimazu, 2012</marker>
+<rawString>Ngo Xuan Bach, Nguyen Le Minh, and Akira Shimazu. 2012. A Reranking Model for Discourse Segmentation using Subtree Features. In Proceedings of the 13th Annual Meeting of the Special Interest Group on Discourse and Dialogue, pages 160–168.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chun-Nam John Yu</author>
+<author>Thorsten Joachims</author>
+</authors>
+<title>Learning structural SVMs with latent variables.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 26th Annual International Conference on Machine Learning,</booktitle>
+<pages>1169--1176</pages>
+<publisher>ACM.</publisher>
+<contexts>
+<context citStr="Yu and Joachims, 2009" endWordPosition="2293" position="13913" startWordPosition="2290">,m &gt; 0 `di, m (7) Then, to optimize L, we need to find a saddle point, which would be the minimum for the variables {w1:C, ξ1:l} and the projection matrix A, and the maximum for the dual variables {g1:l,1:C}. If A is fixed, then the optimization problem is equivalent to a standard multi-class SVM, in the transformed feature space f(vi; A). We can obtain the weights {w1:C} and dual variables {g1:l,1:C} from a standard dual-form SVM solver. We then update A, recompute {w1:C} and {g1:l,1:C}, and iterate until convergence. This iterative procedure is similar to the latent variable structural SVM (Yu and Joachims, 2009), although the specific details of our learning algorithm are different. 3.1 Learning Projection Matrix A We update A while holding fixed the weights and dual variables. The derivative of L with respect to A is / T T af(vi; A) ηi,m(wm − wyi) aA X= TA + ηi,m(wm − wyi)vi T (8) i,m Setting ∂L ∂A = 0, we have the closed-form solution, because the dual variables for each instance must sum to one, Pm gi,m = 1. Note that for a given i, the matrix (wyi − Pm gi,mwm)viT is of (at most) rank-1. Therefore, the solution of A can be viewed as the linear combination of a sequence of rank-1 matrices, where ea</context>
+</contexts>
+<marker>Yu, Joachims, 2009</marker>
+<rawString>Chun-Nam John Yu and Thorsten Joachims. 2009. Learning structural SVMs with latent variables. In Proceedings of the 26th Annual International Conference on Machine Learning, pages 1169–1176. ACM.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

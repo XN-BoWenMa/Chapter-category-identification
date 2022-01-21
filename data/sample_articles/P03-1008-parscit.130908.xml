@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000001" no="0">
+<title confidence="0.992957">
+Syntactic Features and Word Similarity for Supervised Metonymy
+Resolution
+</title>
+<author confidence="0.990819">
+Malvina Nissim
+</author>
+<affiliation confidence="0.9965245">
+ICCS, School of Informatics
+University of Edinburgh
+</affiliation>
+<email confidence="0.994006">
+mnissim@inf.ed.ac.uk
+</email>
+<author confidence="0.992327">
+Katja Markert
+</author>
+<affiliation confidence="0.99864025">
+ICCS, School of Informatics
+University of Edinburgh and
+School of Computing
+University of Leeds
+</affiliation>
+<email confidence="0.997534">
+markert@inf.ed.ac.uk
+</email>
+<sectionHeader confidence="0.995633" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999974411764706">We present a supervised machine learning algorithm for metonymy resolution, which exploits the similarity between examples of conventional metonymy. We show that syntactic head-modifier relations are a high precision feature for metonymy recognition but suffer from data sparseness. We partially overcome this problem by integrating a thesaurus and introducing simpler grammatical features, thereby preserving precision and increasing recall. Our algorithm generalises over two levels of contextual similarity. Resulting inferences exceed the complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction.</bodyText>
+<sectionHeader confidence="0.99913" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.9996335">Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19.</bodyText>
+<listItem confidence="0.548415">(1) Ask seat 19 whether he wants to swap</listItem>
+<bodyText confidence="0.988789894736842">The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name of a location, refers to one of its national sports teams.3</bodyText>
+<listItem confidence="0.914487">(2) Pakistan had won the World Cup</listItem>
+<bodyText confidence="0.8070305">Similar examples can be regularly found for many other location names (see (3) and (4)).</bodyText>
+<listItem confidence="0.9991985">(3) England won the World Cup (4) Scotland lost in the semi-final</listItem>
+<bodyText confidence="0.999916888888889">In contrast to (1), the regularity of these examples can be exploited by a supervised machine learning algorithm, although this method is not pursued in standard approaches to regular polysemy and metonymy (with the exception of our own previous work in (Markert and Nissim, 2002a)). Such an algorithm needs to infer from examples like (2) (when labelled as a metonymy) that “England” and “Scotland” in (3) and (4) are also metonymic. In order to</bodyText>
+<footnote confidence="0.999283">
+2Due to its regularity, conventional metonymy is also known
+as regular polysemy (Copestake and Briscoe, 1995). We use the
+term “metonymy” to encompass both conventional and uncon-
+ventional readings.
+3All following examples are from the British National Cor-
+pus (BNC, http://info.ox.ac.uk/bnc).
+</footnote>
+<figureCaption confidence="0.999746">
+Figure 1: Context reduction and similarity levels
+draw this inference, two levels of similarity need to be taken into account.</figureCaption>
+<bodyText confidence="0.99992903125">One concerns the similarity of the words to be recognised as metonymic or literal (Possibly Metonymic Words, PMWs). In the above examples, the PMWs are “Pakistan”, “England” and “Scotland”. The other level pertains to the similarity between the PMW’s contexts (“&lt;subject&gt; (had) won the World Cup” and “&lt;subject&gt; lost in the semi-final”). In this paper, we show how a machine learning algorithm can exploit both similarities. Our corpus study on the semantic class of locations confirms that regular metonymic patterns, e.g., using a place name for any of its sports teams, cover most metonymies, whereas unconventional metonymies like (1) are very rare (Section 2). Thus, we can recast metonymy resolution as a classification task operating on semantic classes (Section 3). In Section 4, we restrict the classifier’s features to head-modifier relations involving the PMW. In both (2) and (3), the context is reduced to subj-of-win. This allows the inference from (2) to (3), as they have the same feature value. Although the remaining context is discarded, this feature achieves high precision. In Section 5, we generalize context similarity to draw inferences from (2) or (3) to (4). We exploit both the similarity of the heads in the grammatical relation (e.g., “win” and “lose”) and that of the grammatical role (e.g.subject). Figure 1 illustrates context reduction and similarity levels. We evaluate the impact of automatic extraction of head-modifier relations in Section 6. Finally, we discuss related work and our contributions.</bodyText>
+<sectionHeader confidence="0.923157" genericHeader="method">
+2 Corpus Study
+</sectionHeader>
+<bodyText confidence="0.985556666666667">We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names.</bodyText>
+<subsectionHeader confidence="0.994493">
+2.1 Annotation Scheme for Location Names
+</subsectionHeader>
+<bodyText confidence="0.999608">We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6).</bodyText>
+<listItem confidence="0.991984">(5) coral coast ofPapua New Guinea (6) Britain’s current account deficit</listItem>
+<bodyText confidence="0.998201666666667">We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), (3), and (4), and for the government in (7).4</bodyText>
+<listItem confidence="0.8200365">(7) a cardinal element in Iran’s strategy when Iranian naval craft [...] bombarded [...]</listItem>
+<bodyText confidence="0.999858">In a place-for-event pattern, a location name refers to an event that occurred there (e.g., using the word Vietnam for the Vietnam war). In a place-for-product pattern a place stands for a product manufactured there (e.g., the word Bordeaux referring to the local wine). The category othermet covers unconventional metonymies, as (1), and is only used if none of the other categories fits (Markert and Nissim, 2002b). We also found examples where two predicates are involved, each triggering a different reading.</bodyText>
+<listItem confidence="0.829562">(8) they arrived in Nigeria, hitherto a leading critic of the South African regime</listItem>
+<bodyText confidence="0.99965925">In (8), both a literal (triggered by “arriving in”) and a place-for-people reading (triggered by “leading critic”) are invoked. We introduced the category mixed to deal with these cases.</bodyText>
+<subsectionHeader confidence="0.999735">
+2.2 Annotation Results
+</subsectionHeader>
+<bodyText confidence="0.934126">Using Gsearch (Corley et al., 2001), we randomly extracted 1000 occurrences of country names from the BNC, allowing any country name and its variants listed in the CIA factbook5 or WordNet (Fellbaum,</bodyText>
+<footnote confidence="0.989781">
+4As the explicit referent is often underspecified, we intro-
+duce place-for-people as a supertype category and we
+evaluate our system on supertype classification in this paper. In
+the annotation, we further specify the different groups of people
+referred to, whenever possible (Markert and Nissim, 2002b).
+5http://www.cia.gov/cia/publications/
+factbook/
+</footnote>
+<figure confidence="0.983696307692307">
+Pakistan had won the World Cup Scotland lost in the semi-final
+context reduction
+Pakistan-subj-of-win Scotland-subj-of-lose
+similarity
+semantic class
+role similarity
+head similarity
+Scotland
+subj-of
+lose
+Pakistan
+subj-of
+win
+</figure>
+<bodyText confidence="0.984862666666667">1998) to occur. Each country name is surrounded by three sentences of context. The 1000 examples of our corpus have been independently annotated by two computational linguists, who are the authors of this paper. The annotation can be considered reliable (Krippendorff, 1980) with 95% agreement and a kappa (Carletta, 1996) of .88. Our corpus for testing and training the algorithm includes only the examples which both annotators could agree on and which were not marked as noise (e.g. homonyms, as “Professor Greenland”), for a total of 925. Table 1 reports the reading distribution.</bodyText>
+<tableCaption confidence="0.991462">
+Table 1: Distribution of readings in our corpus
+reading freq %
+literal 737 79.7
+place-for-people 161 17.4
+place-for-event 3 .3
+place-for-product 0 .0
+mixed 15 1.6
+othermet 9 1.0
+total non-literal 188 20.3
+total 925 100.0</tableCaption>
+<sectionHeader confidence="0.988876" genericHeader="method">
+3 Metonymy Resolution as a Classification
+Task
+</sectionHeader>
+<bodyText confidence="0.992869605263158">The corpus distribution confirms that metonymies that do not follow established metonymic patterns (othermet) are very rare. This seems to be the case for other kinds of metonymies, too (Verspoor, 1997). We can therefore reformulate metonymy resolution as a classification task between the literal reading and a fixed set of metonymic patterns that can be identified in advance for particular semantic classes. This approach makes the task comparable to classic word sense disambiguation (WSD), which is also concerned with distinguishing between possible word senses/interpretations. However, whereas a classic (supervised) WSD algorithm is trained on a set of labelled instances of one particular word and assigns word senses to new test instances of the same word, (supervised) metonymy recognition can be trained on a set of labelled instances of different words of one semantic class and assign literal readings and metonymic patterns to new test instances of possibly different words of the same semantic class. This class-based approach enables one to, for example, infer the reading of (3) from that of (2). We use a decision list (DL) classifier. All features encountered in the training data are ranked in the DL (best evidence first) according to the following loglikelihood ratio (Yarowsky, 1995): We estimated probabilities via maximum likelihood, adopting a simple smoothing method (Martinez and Agirre, 2000): 0.1 is added to both the denominator and numerator. The target readings to be distinguished are literal, place-for-people, place-forevent, place-for-product, othermet and mixed. All our algorithms are tested on our annotated corpus, employing 10-fold cross-validation. We evaluate accuracy and coverage: # correct decisions made</bodyText>
+<equation confidence="0.8267045">
+Acc =
+# decisions made
+# decisions made
+Cov = # test data
+</equation>
+<bodyText confidence="0.999914727272727">We also use a backing-off strategy to the most frequent reading (literal) for the cases where no decision can be made. We report the results as accuracy backoff (Accb); coverage backoff is always 1. We are also interested in the algorithm’s performance in recognising non-literal readings. Therefore, we compute precision (P), recall (R), and Fmeasure (F), where A is the number of non-literal readings correctly identified as non-literal (true positives) and B the number of literal readings that are incorrectly identified as non-literal (false positives):</bodyText>
+<equation confidence="0.9997515">
+P = A/(A + B)
+A
+R = #non-literal examples in the test data
+F = 2PR/(R + P)
+</equation>
+<bodyText confidence="0.999901">The baseline used for comparison is the assignment of the most frequent reading literal.</bodyText>
+<sectionHeader confidence="0.985474" genericHeader="evaluation and result">
+4 Context Reduction
+</sectionHeader>
+<bodyText confidence="0.90081125">We show that reducing the context to head-modifier relations involving the Possibly Metonymic Word achieves high precision metonymy recognition.6 Log subj-of-win subjp-of-govern dobj-of-visit gen-of-strategy premod-of-veteran ppmod-of-with We represent each example in our corpus by a single feature role-of-head, expressing the grammatical role of the PMW (limited to (active) subject, passive subject, direct object, modifier in a prenominal genitive, other nominal premodifier, dependent in a prepositional phrase) and its lemmatised lexical head within a dependency grammar framework.7 Table 2 shows example values and Table 3 the role distribution in our corpus.</bodyText>
+<footnote confidence="0.652486666666667">
+6In (Markert and Nissim, 2002a), we also considered local
+and topical cooccurrences as contextual features. They con-
+stantly achieved lower precision than grammatical features.
+</footnote>
+<figure confidence="0.5536982">
+�
+�Pr(readingi featurek)
+�
+i Pr(readingj f eaturek)
+j
+</figure>
+<tableCaption confidence="0.969107">
+Table 2: Example feature values for role-of-head
+role-of-head (r-of-h) example England won the World Cup (place-for-people) Britain has been governed by ... (literal) the Apostle had visited Spain (literal) in Iran’s strategy... (place-for-people) a Vietnam veteran from Rhode Island (place-for-event) its border with Hungary (literal)</tableCaption>
+<tableCaption confidence="0.993404">
+Table 3: Role distribution
+role freq #non-lit
+subj 92 65
+subjp 6 4
+dobj 28 12
+gen 93 20
+premod 94 13
+ppmod 522 57
+other 90 17
+total 925 188</tableCaption>
+<bodyText confidence="0.973235423076923">We trained and tested our algorithm with this feature (hmr).8 Results for hmr are reported in the first line of Table 5. The reasonably high precision (74.5%) and accuracy (90.2%) indicate that reducing the context to a head-modifier feature does not cause loss of crucial information in most cases. Low recall is mainly due to low coverage (see Problem 2 below). We identified two main problems.Problem 1. The feature can be too simplistic, so that decisions based on the head-modifier relation can assign the wrong reading in the following cases:</bodyText>
+<listItem confidence="0.994484846153846">• “Bad” heads: Some lexical heads are semantically empty, thus failing to provide strong evidence for any reading and lowering both recall and precision. Bad predictors are the verbs “to have” and “to be” and some prepositions such as “with”, which can be used with metonymic (talk with Hungary) and literal (border with Hungary) readings. This problem is more serious for function than for content word heads: precision on the set of subjects and objects is 81.8%, but only 73.3% on PPs. • “Bad” relations: The premod relation suffers from noun-noun compound ambiguity. US operation can refer to an operation in the US (literal) or by the US (metonymic).</listItem>
+<footnote confidence="0.9516374">
+7We consider only one link per PMW, although cases like (8)
+would benefit from including all links the PMW participates in.
+8The feature values were manually annotated for the follow-
+ing experiments, adapting the guidelines in (Poesio, 2000). The
+effect of automatic feature extraction is described in Section 6.
+</footnote>
+<listItem confidence="0.919055">• Other cases: Very rarely neglecting the remaining context leads to errors, even for “good” lexical heads and relations.</listItem>
+<bodyText confidence="0.959224227272727">Inferring from the metonymy in (4) that “Germany” in “Germany lost a fifth of its territory” is also metonymic, e.g., is wrong and lowers precision. However, wrong assignments (based on headmodifier relations) do not constitute a major problem as accuracy is very high (90.2%).Problem 2. The algorithm is often unable to make any decision that is based on the head-modifier relation. This is by far the more frequent problem, which we adress in the remainder of the paper. The feature role-of-head accounts for the similarity between (2) and (3) only, as classification of a test instance with a particular feature value relies on having seen exactly the same feature value in the training data. Therefore, we have not tackled the inference from (2) or (3) to (4). This problem manifests itself in data sparseness and low recall and coverage, as many heads are encountered only once in the corpus. As hmr’s coverage is only 63.1%, backoff to a literal reading is required in 36.9% of the cases.</bodyText>
+<sectionHeader confidence="0.998504" genericHeader="evaluation and result">
+5 Generalising Context Similarity
+</sectionHeader>
+<bodyText confidence="0.999499777777778">In order to draw the more complex inference from (2) or (3) to (4) we need to generalise context similarity. We relax the identity constraint of the original algorithm (the same role-of-head value of the test instance must be found in the DL), exploiting two similarity levels. Firstly, we allow to draw inferences over similar values of lexical heads (e.g. from subj-of-win to subj-of-lose), rather than over identical ones only. Secondly, we allow to discard the lexical head and generalise over the PMW’s grammatical role (e.g.subject).</bodyText>
+<tableCaption confidence="0.910509">
+Table 4: Example thesaurus entries
+lose[V]: win1 0.216, gain2 0.209, have3 0.207, ...
+attitude[N]:stance1 0.181, behavior2 0.18, ..., strategy17 0.128</tableCaption>
+<bodyText confidence="0.999051">These generalisations allow us to double recall without sacrificing precision or increasing the size of the training set.</bodyText>
+<subsectionHeader confidence="0.994975">
+5.1 Relaxing Lexical Heads
+</subsectionHeader>
+<bodyText confidence="0.99933425">We regard two feature values r-of-h and r-of-h' as similar if h and h' are similar. In order to capture the similarity between h and h' we integrate a thesaurus (Lin, 1998) in our algorithm’s testing phase. In Lin’s thesaurus, similarity between words is determined by their distribution in dependency relations in a newswire corpus. For a content word h (e.g., “lose”) of a specific part-of-speech a set of similar words Eh of the same part-of-speech is given. The set members are ranked in decreasing order by a similarity score. Table 4 reports example entries.9 Our modified algorithm (relax I) is as follows:</bodyText>
+<listItem confidence="0.929879">1. train DL with role-of-head as in hmr; for each test instance observe the following procedure (r-of-h indicates the feature value of the test instance); 2. if r-of-h is found in the DL, apply the corresponding rule and stop; 2' otherwise choose a number n &gt; 1 and set i = 1; (a) extract the ith most similar word hi to h from the thesaurus; (b) if i &gt; n or the similarity score of hi &lt; 0.10, assign no reading and stop; (b’) otherwise: if r-of-hi is found in the DL, apply corresponding rule and stop; if r-of-hi is not found in the DL, increase i by 1 and go to (a);</listItem>
+<bodyText confidence="0.9998799">The examples already covered by hmr are classified in exactly the same way by relax I (see Step 2). Let us therefore assume we encounter the test instance (4), its feature value subj-of-lose has not been seen in the training data (so that Step 2 fails and Step 2' has to be applied) and subj-of-win is in the DL. For all n &gt; 1, relax I will use the rule for subj-of-win to assign a reading to “Scotland” in (4) as “win” is the most similar word to “lose” in the thesaurus (see Table 4). In this case (2b’) is only</bodyText>
+<footnote confidence="0.773227">
+9In the original thesaurus, each Eh is subdivided into clus-
+ters. We do not take these divisions into account.
+</footnote>
+<figure confidence="0.989402">
+0.9 0.9
+Precision
+Recall
+F-Measure
+0 10 20 30 40 50
+Thesaurus Iterations (n)
+</figure>
+<figureCaption confidence="0.999755">
+Figure 2: Results for relax I
+applied once as already the first iteration over the thesaurus finds a word h1 with r-of-h1 in the DL.</figureCaption>
+<bodyText confidence="0.996559833333333">The classification of “Turkey” with feature value gen-of-attitude in (9) required 17 iterations to find a word h17 (“strategy”; see Example (7)) similar to “attitude”, with r-of-h17 (gen-of-strategy) in the DL.</bodyText>
+<figure confidence="0.9842595">
+(9) To say that this sums up Turkey’s attitude as
+a whole would nevertheless be untrue
+</figure>
+<figureCaption confidence="0.895141">
+Precision, recall and F-measure for n E
+{1, ...,10,15, 20, 25, 30, 40, 50} are visualised in
+Figure 2. Both precision and recall increase with
+n. Recall more than doubles from 18.6% in hmr
+to 41% and precision increases from 74.5% in hmr to 80.2%, yielding an increase in F-measure from 29.8% to 54.2% (n = 50).</figureCaption>
+<bodyText confidence="0.953270952380952">Coverage rises to 78.9% and accuracy backoff to 85.1% (Table 5). Whereas the increase in coverage and recall is quite intuitive, the high precision achieved by relax I requires further explanation. Let S be the set of examples that relax I covers. It consists of two subsets: S1 is the subset already covered by hmr and its treatment does not change in relax I, yielding the same precision. S2 is the set of examples that relax I covers in addition to hmr. The examples in S2 consist of cases with highly predictive content word heads as (a) function words are not included in the thesaurus and (b) unpredictive content word heads like “have” or “be” are very frequent and normally already covered by hmr (they are therefore members of S1). Precision on S2 is very high (84%) and raises the overall precision on the set S. Cases that relax I does not cover are mainly due to (a) missing thesaurus entries (e.g., many proper names or alternative spelling), (b) the small number of training instances for some grammatical roles (e.g.dobj), so that even after 50 thesaurus iterations no similar role-of-head value could be found that is covered in the DL, or (c) grammatical roles that are not covered (other in Table 3).</bodyText>
+<figure confidence="0.998293875">
+Results 0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+</figure>
+<tableCaption confidence="0.990746">
+Table 5: Results summary for manual annotation.
+</tableCaption>
+<table confidence="0.96440125">
+For relax I and combination we report best results
+(50 thesaurus iterations).
+algorithm Acc Cov Accb P R F
+hmr .902 .631 .817 .745 .186 .298
+relax I .877 .789 .851 .802 .410 .542
+relax II .865 .903 .859 .813 .441 .572
+combination .894 .797 .870 .814 .510 .627
+baseline .797 1.00 .797 n/a .000 n/a
+</table>
+<subsectionHeader confidence="0.999758">
+5.2 Discarding Lexical Heads
+</subsectionHeader>
+<bodyText confidence="0.999619166666667">Another way of capturing the similarity between (3) and (4), or (7) and (9) is to ignore lexical heads and generalise over the grammatical role (role) of the PMW (with the feature values as in Table 3: subj, subjp, dobj, gen, premod, ppmod). We therefore developed the algorithm relax II.</bodyText>
+<figure confidence="0.795857">
+1. train decision lists:
+(a) DL1 with role-of-head as in hmr
+(b) DL2 with role;
+for each test instance observe the following procedure (r-
+</figure>
+<figureCaption confidence="0.197609">
+of-h and r are the feature values of the test instance);
+</figureCaption>
+<bodyText confidence="0.935586529411765">2. if r-of-h is found in the DL1, apply the corresponding rule and stop; 2’ otherwise, if r is found in DL2, apply the corresponding rule. Let us assume we encounter the test instance (4), subj-of-lose is not in DL1 (so that Step 2 fails and Step 2' has to be applied) and subj is in DL2. The algorithm relax II will assign a place-forpeople reading to “Scotland”, as most subjects in our corpus are metonymic (see Table 3). Generalising over the grammatical role outperforms hmr, achieving 81.3% precision, 44.1% recall, and 57.2% F-measure (see Table 5). The algorithm relax II also yields fewer false negatives than relax I (and therefore higher recall) since all subjects not covered in DL1 are assigned a metonymic reading, which is not true for relax I.</bodyText>
+<subsectionHeader confidence="0.999769">
+5.3 Combining Generalisations
+</subsectionHeader>
+<bodyText confidence="0.998882222222222">There are several ways of combining the algorithms we introduced. In our experiments, the most successful one exploits the facts that relax II performs better than relax I on subjects and that relax I performs better on the other roles. Therefore the algorithm combination uses relax II if the test instance is a subject, and relax I otherwise. This yields the best results so far, with 87% accuracy backoff and 62.7% F-measure (Table 5).</bodyText>
+<sectionHeader confidence="0.951086" genericHeader="result">
+6 Influence of Parsing
+</sectionHeader>
+<bodyText confidence="0.99994075">The results obtained by training and testing our classifier with manually annotated grammatical relations are the upper bound of what can be achieved by using these features. To evaluate the influence parsing has on the results, we used the RASP toolkit (Briscoe and Carroll, 2002) that includes a pipeline of tokenisation, tagging and state-of-the-art statistical parsing, allowing multiple word tags. The toolkit also maps parse trees to representations of grammatical relations, which we in turn could map in a straightforward way to our role categories. RASP produces at least partial parses for 96% of our examples. However, some of these parses do not assign any role of our roleset to the PMW — only 76.9% of the PMWs are assigned such a role by RASP (in contrast to 90.2% in the manual annotation; see Table 3). RASP recognises PMW subjects with 79% precision and 81% recall. For PMW direct objects, precision is 60% and recall 86%.10 We reproduced all experiments using the automatically extracted relations. Although the relative performance of the algorithms remains mostly unchanged, most of the resulting F-measures are more than 10% lower than for hand annotated roles (Table 6). This is in line with results in (Gildea and Palmer, 2002), who compare the effect of manual and automatic parsing on semantic predicateargument recognition.</bodyText>
+<sectionHeader confidence="0.992669" genericHeader="related work">
+7 Related Work
+</sectionHeader>
+<footnote confidence="0.7424844">
+Previous Approaches to Metonymy Recognition.
+Our approach is the first machine learning algorithm
+to metonymy recognition, building on our previous
+10We did not evaluate RASP’s performance on relations that
+do not involve the PMW.
+</footnote>
+<tableCaption confidence="0.925638">
+Table 6: Results summary for the different algo-
+rithms using RASP. For relax I and combination
+we report best results (50 thesaurus iterations).</tableCaption>
+<table confidence="0.96782575">algorithm Acc Cov Accb P R F
+hmr .884 .514 .812 .674 .154 .251
+relax I .841 .666 .821 .619 .319 .421
+relax II .820 .769 .823 .621 .340 .439
+combination .850 .672 .830 .640 .388 .483
+baseline .797 1.00 .797 n/a .000 n/a</table>
+<bodyText confidence="0.999672515151515">work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without SR violations in our experiments. An empirical comparison between our approach in (Markert and Nissim, 2002a)12 and an SRs violation approach showed that our approach performed better. In contrast to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective evaluation procedures.Word Sense Disambiguation.</bodyText>
+<footnote confidence="0.863728">
+11(Markert and Hahn, 2002) and (Harabagiu, 1998) en-
+hance this with anaphoric information. (Briscoe and Copes-
+take, 1999) propose using frequency information besides syn-
+tactic/semantic restrictions, but use only a priori sense frequen-
+cies without contextual features.
+12Note that our current approach even outperforms (Markert
+and Nissim, 2002a).
+</footnote>
+<bodyText confidence="0.995131814814815">We compared our approach to supervised WSD in Section 3, stressing word-to-word vs. class-to-class inference. This allows for a level of abstraction not present in standard supervised WSD. We can infer readings for words that have not been seen in the training data before, allow an easy treatment of rare words that undergo regular sense alternations and do not have to annotate and train separately for every individual word to treat regular sense distinctions.13 By exploiting additional similarity levels and integrating a thesaurus we further generalise the kind of inferences we can make and limit the size of annotated training data: as our sampling frame contains 553 different names, an annotated data set of 925 samples is quite small. These generalisations over context and collocates are also applicable to standard WSD and can supplement those achieved e.g., by subcategorisation frames (Martinez et al., 2002). Our approach to word similarity to overcome data sparseness is perhaps most similar to (Karov and Edelman, 1998). However, they mainly focus on the computation of similarity measures from the training data. We instead use an off-the-shelf resource without adding much computational complexity and achieve a considerable improvement in our results.</bodyText>
+<sectionHeader confidence="0.999106" genericHeader="conclusion">
+8 Conclusions
+</sectionHeader>
+<bodyText confidence="0.983149">We presented a supervised classification algorithm for metonymy recognition, which exploits the similarity between examples of conventional metonymy, operates on semantic classes and thereby enables complex inferences from training to test examples. We showed that syntactic head-modifier relations are a high precision feature for metonymy recognition. However, basing inferences only on the lexical heads seen in the training data leads to data sparseness due to the large number of different lexical heads encountered in natural language texts. In order to overcome this problem we have integrated a thesaurus that allows us to draw inferences be13Incorporating knowledge about particular PMWs (e.g., as a prior) will probably improve performance, as word idiosyncracies — which can still exist even when treating regular sense distinctions — could be accounted for. In addition, knowledge about the individual word is necessary to assign its original semantic class. tween examples with similar but not identical lexical heads. We also explored the use of simpler grammatical role features that allow further generalisations. The results show a substantial increase in precision, recall and F-measure. In the future, we will experiment with combining grammatical features and local/topical cooccurrences. The use of semantic classes and lexical head similarity generalises over two levels of contextual similarity, which exceeds the complexity of inferences undertaken in standard supervised word sense disambiguation. Acknowledgements. The research reported in this paper was supported by ESRC Grant R000239444. Katja Markert is funded by an Emmy Noether Fellowship of the Deutsche Forschungsgemeinschaft (DFG). We thank three anonymous reviewers for their comments and suggestions.</bodyText>
+<sectionHeader confidence="0.99911" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.9999308">
+E. Briscoe and J. Carroll. 2002. Robust accurate statisti-
+cal annotation of general text. In Proc. ofLREC, 2002,
+pages 1499–1504.
+T. Briscoe and A. Copestake. 1999. Lexical rules in
+constraint-based grammar. Computational Linguis-
+tics, 25(4):487–526.
+J. Carletta. 1996. Assessing agreement on classification
+tasks: The kappa statistic. Computational Linguistics,
+22(2):249–254.
+A. Copestake and T. Briscoe. 1995. Semi-productive
+polysemy and sense extension. Journal of Semantics,
+12:15–67.
+S. Corley, M. Corley, F. Keller, M. Crocker, and S.
+Trewin. 2001. Finding syntactic structure in unparsed
+corpora: The Gsearch corpus query system. Comput-
+ers and the Humanities, 35(2):81–94.
+D. Fass. 1997. Processing Metaphor and Metonymy.
+Ablex, Stanford, CA.
+C. Fellbaum, ed. 1998. WordNet: An Electronic Lexical
+Database. MIT Press, Cambridge, Mass.
+D. Gildea and M. Palmer. 2002. The necessity of parsing
+for predicate argument recognition. In Proc. of ACL,
+2002, pages 239–246.
+S. Harabagiu. 1998. Deriving metonymic coercions
+from WordNet. In Workshop on the Usage of WordNet
+in Natural Language Processing Systems, COLING-
+ACL, 1998, pages 142–148.
+J. R. Hobbs, M. E. Stickel, D. E. Appelt, and P. Martin.
+1993. Interpretation as abduction. Artificial Intelli-
+gence, 63:69–142.
+S. Kamei and T. Wakao. 1992. Metonymy: Reassess-
+ment, survey of acceptability and its treatment in ma-
+chine translation systems. In Proc. of ACL, 1992,
+pages 309–311.
+Y. Karov and S. Edelman. 1998. Similarity-based
+word sense disambiguation. Computational Linguis-
+tics, 24(1):41-59.
+K. Krippendorff. 1980. Content Analysis: An Introduc-
+tion to Its Methodology. Sage Publications.
+G. Lakoff and M. Johnson. 1980. Metaphors We Live By.
+Chicago University Press, Chicago, Ill.
+D. Lin. 1998. An information-theoretic definition of
+similarity. In Proc. of International Conference on
+Machine Learning, Madison, Wisconsin.
+K. Markert and U. Hahn. 2002. Understanding
+metonymies in discourse. Artificial Intelligence,
+135(1/2):145–198.
+K. Markert and M. Nissim. 2002a. Metonymy resolu-
+tion as a classification task. In Proc. of EMNLP, 2002,
+pages 204–213.
+Katja Markert and Malvina Nissim. 2002b. Towards a
+corpus annotated for metonymies: the case of location
+names. In Proc. ofLREC, 2002, pages 1385–1392.
+D. Martinez and E. Agirre. 2000. One sense per collo-
+cation and genre/topic variations. In Proc. of EMNLP,
+2000.
+D. Martinez, E. Agirre, and L. Marquez. 2002. Syntactic
+features for high precision word sense disambiguation.
+In Proc. of COLING, 2002.
+G. Nunberg. 1978. The Pragmatics of Reference. Ph.D.
+thesis, City University of New York, New York.
+G. Nunberg. 1995. Transfers of meaning. Journal of
+Semantics, 12:109–132.
+M. Poesio, 2000. The GNOME Annotation Scheme Man-
+ual. University of Edinburgh, 4th version. Available
+from http://www.hcrc.ed.ac.uk/˜gnome.
+J. Pustejovsky. 1995. The Generative Lexicon. MIT
+Press, Cambridge, Mass.
+D. Stallard. 1993. Two kinds of metonymy. In Proc. of
+ACL, 1993, pages 87–94.
+G. Stern. 1931. Meaning and Change of Meaning.
+G¨oteborg: Wettergren &amp; Kerbers F¨orlag.
+C. Verspoor. 1996. Lexical limits on the influence of
+context. In Proc. of CogSci, 1996, pages 116–120.
+C. Verspoor. 1997. Conventionality-governed logical
+metonymy. In H. Bunt et al., editors, Proc. ofIWCS-2,
+1997, pages 300–312.
+D. Yarowsky. 1995. Unsupervised word sense disam-
+biguation rivaling supervised methods. In Proc. of
+ACL, 1995, pages 189–196.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.967495" no="0">
+<title confidence="0.998559">Syntactic Features and Word Similarity for Supervised Metonymy Resolution</title>
+<author confidence="0.999696">Malvina Nissim</author>
+<affiliation confidence="0.9995655">ICCS, School of Informatics University of Edinburgh</affiliation>
+<email confidence="0.995579">mnissim@inf.ed.ac.uk</email>
+<author confidence="0.985521">Katja Markert</author>
+<affiliation confidence="0.99987525">ICCS, School of Informatics University of Edinburgh and School of Computing University of Leeds</affiliation>
+<email confidence="0.996471">markert@inf.ed.ac.uk</email>
+<abstract confidence="0.999545111111111">We present a supervised machine learning algorithm for metonymy resolution, which exploits the similarity between examples of conventional metonymy. We show that syntactic head-modifier relations are a high precision feature for metonymy recognition but suffer from data sparseness. We partially overcome this problem by integrating a thesaurus and introducing simpler grammatical features, thereby preserving precision and increasing recall. Our algorithm generalises over two levels of contextual similarity. Resulting inferences exceed the complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>E Briscoe</author>
+<author>J Carroll</author>
+</authors>
+<title>Robust accurate statistical annotation of general text.</title>
+<date>2002</date>
+<booktitle>In Proc. ofLREC,</booktitle>
+<pages>1499--1504</pages>
+<contexts>
+<context citStr="Briscoe and Carroll, 2002" endWordPosition="3578" position="21709" startWordPosition="3575">s the facts that relax II performs better than relax I on subjects and that relax I performs better on the other roles. Therefore the algorithm combination uses relax II if the test instance is a subject, and relax I otherwise. This yields the best results so far, with 87% accuracy backoff and 62.7% F-measure (Table 5). 6 Influence of Parsing The results obtained by training and testing our classifier with manually annotated grammatical relations are the upper bound of what can be achieved by using these features. To evaluate the influence parsing has on the results, we used the RASP toolkit (Briscoe and Carroll, 2002) that includes a pipeline of tokenisation, tagging and state-of-the-art statistical parsing, allowing multiple word tags. The toolkit also maps parse trees to representations of grammatical relations, which we in turn could map in a straightforward way to our role categories. RASP produces at least partial parses for 96% of our examples. However, some of these parses do not assign any role of our roleset to the PMW — only 76.9% of the PMWs are assigned such a role by RASP (in contrast to 90.2% in the manual annotation; see Table 3). RASP recognises PMW subjects with 79% precision and 81% recal</context>
+</contexts>
+<marker>Briscoe, Carroll, 2002</marker>
+<rawString>E. Briscoe and J. Carroll. 2002. Robust accurate statistical annotation of general text. In Proc. ofLREC, 2002, pages 1499–1504.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Briscoe</author>
+<author>A Copestake</author>
+</authors>
+<title>Lexical rules in constraint-based grammar.</title>
+<date>1999</date>
+<journal>Computational Linguistics,</journal>
+<volume>25</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Briscoe and Copestake, 1999" endWordPosition="4124" position="25125" startWordPosition="4120">o resolved metonymies without SR violations in our experiments. An empirical comparison between our approach in (Markert and Nissim, 2002a)12 and an SRs violation approach showed that our approach performed better. In contrast to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective 11(Markert and Hahn, 2002) and (Harabagiu, 1998) enhance this with anaphoric information. (Briscoe and Copestake, 1999) propose using frequency information besides syntactic/semantic restrictions, but use only a priori sense frequencies without contextual features. 12Note that our current approach even outperforms (Markert and Nissim, 2002a). evaluation procedures. Word Sense Disambiguation. We compared our approach to supervised WSD in Section 3, stressing word-to-word vs. class-to-class inference. This allows for a level of abstraction not present in standard supervised WSD. We can infer readings for words that have not been seen in the training data before, allow an easy treatment of rare words that undergo</context>
+</contexts>
+<marker>Briscoe, Copestake, 1999</marker>
+<rawString>T. Briscoe and A. Copestake. 1999. Lexical rules in constraint-based grammar. Computational Linguistics, 25(4):487–526.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Carletta</author>
+</authors>
+<title>Assessing agreement on classification tasks: The kappa statistic.</title>
+<date>1996</date>
+<journal>Computational Linguistics,</journal>
+<volume>22</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Carletta, 1996" endWordPosition="1150" position="7428" startWordPosition="1149">and Nissim, 2002b). 5http://www.cia.gov/cia/publications/ factbook/ Pakistan had won the World Cup Scotland lost in the semi-final context reduction Pakistan-subj-of-win Scotland-subj-of-lose similarity semantic class role similarity head similarity Scotland subj-of lose Pakistan subj-of win 1998) to occur. Each country name is surrounded by three sentences of context. The 1000 examples of our corpus have been independently annotated by two computational linguists, who are the authors of this paper. The annotation can be considered reliable (Krippendorff, 1980) with 95% agreement and a kappa (Carletta, 1996) of .88. Our corpus for testing and training the algorithm includes only the examples which both annotators could agree on and which were not marked as noise (e.g. homonyms, as “Professor Greenland”), for a total of 925. Table 1 reports the reading distribution. Table 1: Distribution of readings in our corpus reading freq % literal 737 79.7 place-for-people 161 17.4 place-for-event 3 .3 place-for-product 0 .0 mixed 15 1.6 othermet 9 1.0 total non-literal 188 20.3 total 925 100.0 3 Metonymy Resolution as a Classification Task The corpus distribution confirms that metonymies that do not follow e</context>
+</contexts>
+<marker>Carletta, 1996</marker>
+<rawString>J. Carletta. 1996. Assessing agreement on classification tasks: The kappa statistic. Computational Linguistics, 22(2):249–254.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Copestake</author>
+<author>T Briscoe</author>
+</authors>
+<title>Semi-productive polysemy and sense extension.</title>
+<date>1995</date>
+<journal>Journal of Semantics,</journal>
+<pages>12--15</pages>
+<contexts>
+<context citStr="Copestake and Briscoe, 1995" endWordPosition="448" position="2888" startWordPosition="445">(4)). (3) England won the World Cup (4) Scotland lost in the semi-final In contrast to (1), the regularity of these examples can be exploited by a supervised machine learning algorithm, although this method is not pursued in standard approaches to regular polysemy and metonymy (with the exception of our own previous work in (Markert and Nissim, 2002a)). Such an algorithm needs to infer from examples like (2) (when labelled as a metonymy) that “England” and “Scotland” in (3) and (4) are also metonymic. In order to 2Due to its regularity, conventional metonymy is also known as regular polysemy (Copestake and Briscoe, 1995). We use the term “metonymy” to encompass both conventional and unconventional readings. 3All following examples are from the British National Corpus (BNC, http://info.ox.ac.uk/bnc). Figure 1: Context reduction and similarity levels draw this inference, two levels of similarity need to be taken into account. One concerns the similarity of the words to be recognised as metonymic or literal (Possibly Metonymic Words, PMWs). In the above examples, the PMWs are “Pakistan”, “England” and “Scotland”. The other level pertains to the similarity between the PMW’s contexts (“&lt;subject&gt; (had) won the Worl</context>
+<context citStr="Copestake and Briscoe, 1995" endWordPosition="3947" position="23957" startWordPosition="3944"> .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without SR violations in our experimen</context>
+</contexts>
+<marker>Copestake, Briscoe, 1995</marker>
+<rawString>A. Copestake and T. Briscoe. 1995. Semi-productive polysemy and sense extension. Journal of Semantics, 12:15–67.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Corley</author>
+<author>M Corley</author>
+<author>F Keller</author>
+<author>M Crocker</author>
+<author>S Trewin</author>
+</authors>
+<title>Finding syntactic structure in unparsed corpora: The Gsearch corpus query system.</title>
+<date>2001</date>
+<booktitle>Computers and the Humanities,</booktitle>
+<pages>35--2</pages>
+<contexts>
+<context citStr="Corley et al., 2001" endWordPosition="998" position="6364" startWordPosition="995">, the word Bordeaux referring to the local wine). The category othermet covers unconventional metonymies, as (1), and is only used if none of the other categories fits (Markert and Nissim, 2002b). We also found examples where two predicates are involved, each triggering a different reading. (8) they arrived in Nigeria, hitherto a leading critic of the South African regime In (8), both a literal (triggered by “arriving in”) and a place-for-people reading (triggered by “leading critic”) are invoked. We introduced the category mixed to deal with these cases. 2.2 Annotation Results Using Gsearch (Corley et al., 2001), we randomly extracted 1000 occurrences of country names from the BNC, allowing any country name and its variants listed in the CIA factbook5 or WordNet (Fellbaum, 4As the explicit referent is often underspecified, we introduce place-for-people as a supertype category and we evaluate our system on supertype classification in this paper. In the annotation, we further specify the different groups of people referred to, whenever possible (Markert and Nissim, 2002b). 5http://www.cia.gov/cia/publications/ factbook/ Pakistan had won the World Cup Scotland lost in the semi-final context reduction Pa</context>
+</contexts>
+<marker>Corley, Corley, Keller, Crocker, Trewin, 2001</marker>
+<rawString>S. Corley, M. Corley, F. Keller, M. Crocker, and S. Trewin. 2001. Finding syntactic structure in unparsed corpora: The Gsearch corpus query system. Computers and the Humanities, 35(2):81–94.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Fass</author>
+</authors>
+<date>1997</date>
+<booktitle>Processing Metaphor and Metonymy.</booktitle>
+<location>Ablex, Stanford, CA.</location>
+<contexts>
+<context citStr="Fass, 1997" endWordPosition="817" position="5244" startWordPosition="816">ion of head-modifier relations in Section 6. Finally, we discuss related work and our contributions. 2 Corpus Study We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names. 2.1 Annotation Scheme for Location Names We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6). (5) coral coast ofPapua New Guinea (6) Britain’s current account deficit We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), (3), and (4), and for the government in (7).4 (7) a cardinal element in Iran’s strategy when Iranian naval craft [...] bombarded [...] In a place-for-event pattern, a location name refers to an event that occurred there (e.g., using the word Vietnam for the Vietnam war). In a place-for-product pattern a place stands for a product manufactured there (e.g., the word Bordeaux referring to the local wine). The category othermet covers unconventional metony</context>
+<context citStr="Fass, 1997" endWordPosition="3943" position="23928" startWordPosition="3942">on .850 .672 .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without S</context>
+</contexts>
+<marker>Fass, 1997</marker>
+<rawString>D. Fass. 1997. Processing Metaphor and Metonymy. Ablex, Stanford, CA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Fellbaum</author>
+<author>ed</author>
+</authors>
+<title>WordNet: An Electronic Lexical Database.</title>
+<date>1998</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Mass.</location>
+<marker>Fellbaum, ed, 1998</marker>
+<rawString>C. Fellbaum, ed. 1998. WordNet: An Electronic Lexical Database. MIT Press, Cambridge, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Gildea</author>
+<author>M Palmer</author>
+</authors>
+<title>The necessity of parsing for predicate argument recognition.</title>
+<date>2002</date>
+<booktitle>In Proc. of ACL,</booktitle>
+<pages>239--246</pages>
+<contexts>
+<context citStr="Gildea and Palmer, 2002" endWordPosition="3743" position="22679" startWordPosition="3740">r, some of these parses do not assign any role of our roleset to the PMW — only 76.9% of the PMWs are assigned such a role by RASP (in contrast to 90.2% in the manual annotation; see Table 3). RASP recognises PMW subjects with 79% precision and 81% recall. For PMW direct objects, precision is 60% and recall 86%.10 We reproduced all experiments using the automatically extracted relations. Although the relative performance of the algorithms remains mostly unchanged, most of the resulting F-measures are more than 10% lower than for hand annotated roles (Table 6). This is in line with results in (Gildea and Palmer, 2002), who compare the effect of manual and automatic parsing on semantic predicateargument recognition. 7 Related Work Previous Approaches to Metonymy Recognition. Our approach is the first machine learning algorithm to metonymy recognition, building on our previous 10We did not evaluate RASP’s performance on relations that do not involve the PMW. Table 6: Results summary for the different algorithms using RASP. For relax I and combination we report best results (50 thesaurus iterations). algorithm Acc Cov Accb P R F hmr .884 .514 .812 .674 .154 .251 relax I .841 .666 .821 .619 .319 .421 relax II </context>
+</contexts>
+<marker>Gildea, Palmer, 2002</marker>
+<rawString>D. Gildea and M. Palmer. 2002. The necessity of parsing for predicate argument recognition. In Proc. of ACL, 2002, pages 239–246.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Harabagiu</author>
+</authors>
+<title>Deriving metonymic coercions from WordNet.</title>
+<date>1998</date>
+<booktitle>In Workshop on the Usage of WordNet in Natural Language Processing Systems, COLINGACL,</booktitle>
+<pages>142--148</pages>
+<contexts>
+<context citStr="Harabagiu, 1998" endWordPosition="211" position="1457" startWordPosition="210">he complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction. 1 Introduction Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (</context>
+<context citStr="Harabagiu, 1998" endWordPosition="4088" position="24883" startWordPosition="4087">estrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without SR violations in our experiments. An empirical comparison between our approach in (Markert and Nissim, 2002a)12 and an SRs violation approach showed that our approach performed better. In contrast to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective 11(Markert and Hahn, 2002) and (Harabagiu, 1998) enhance this with anaphoric information. (Briscoe and Copestake, 1999) propose using frequency information besides syntactic/semantic restrictions, but use only a priori sense frequencies without contextual features. 12Note that our current approach even outperforms (Markert and Nissim, 2002a). evaluation procedures. Word Sense Disambiguation. We compared our approach to supervised WSD in Section 3, stressing word-to-word vs</context>
+</contexts>
+<marker>Harabagiu, 1998</marker>
+<rawString>S. Harabagiu. 1998. Deriving metonymic coercions from WordNet. In Workshop on the Usage of WordNet in Natural Language Processing Systems, COLINGACL, 1998, pages 142–148.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J R Hobbs</author>
+<author>M E Stickel</author>
+<author>D E Appelt</author>
+<author>P Martin</author>
+</authors>
+<title>Interpretation as abduction.</title>
+<date>1993</date>
+<journal>Artificial Intelligence,</journal>
+<pages>63--69</pages>
+<contexts>
+<context citStr="Hobbs et al., 1993" endWordPosition="3941" position="23916" startWordPosition="3938"> .340 .439 combination .850 .672 .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymi</context>
+</contexts>
+<marker>Hobbs, Stickel, Appelt, Martin, 1993</marker>
+<rawString>J. R. Hobbs, M. E. Stickel, D. E. Appelt, and P. Martin. 1993. Interpretation as abduction. Artificial Intelligence, 63:69–142.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Kamei</author>
+<author>T Wakao</author>
+</authors>
+<title>Metonymy: Reassessment, survey of acceptability and its treatment in machine translation systems.</title>
+<date>1992</date>
+<booktitle>In Proc. of ACL,</booktitle>
+<pages>309--311</pages>
+<contexts>
+<context citStr="Kamei and Wakao, 1992" endWordPosition="200" position="1379" startWordPosition="197">m generalises over two levels of contextual similarity. Resulting inferences exceed the complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction. 1 Introduction Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readin</context>
+</contexts>
+<marker>Kamei, Wakao, 1992</marker>
+<rawString>S. Kamei and T. Wakao. 1992. Metonymy: Reassessment, survey of acceptability and its treatment in machine translation systems. In Proc. of ACL, 1992, pages 309–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Karov</author>
+<author>S Edelman</author>
+</authors>
+<title>Similarity-based word sense disambiguation.</title>
+<date>1998</date>
+<journal>Computational Linguistics,</journal>
+<pages>24--1</pages>
+<contexts>
+<context citStr="Karov and Edelman, 1998" endWordPosition="4326" position="26438" startWordPosition="4323">dividual word to treat regular sense distinctions.13 By exploiting additional similarity levels and integrating a thesaurus we further generalise the kind of inferences we can make and limit the size of annotated training data: as our sampling frame contains 553 different names, an annotated data set of 925 samples is quite small. These generalisations over context and collocates are also applicable to standard WSD and can supplement those achieved e.g., by subcategorisation frames (Martinez et al., 2002). Our approach to word similarity to overcome data sparseness is perhaps most similar to (Karov and Edelman, 1998). However, they mainly focus on the computation of similarity measures from the training data. We instead use an off-the-shelf resource without adding much computational complexity and achieve a considerable improvement in our results. 8 Conclusions We presented a supervised classification algorithm for metonymy recognition, which exploits the similarity between examples of conventional metonymy, operates on semantic classes and thereby enables complex inferences from training to test examples. We showed that syntactic head-modifier relations are a high precision feature for metonymy recogniti</context>
+</contexts>
+<marker>Karov, Edelman, 1998</marker>
+<rawString>Y. Karov and S. Edelman. 1998. Similarity-based word sense disambiguation. Computational Linguistics, 24(1):41-59.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Krippendorff</author>
+</authors>
+<title>Content Analysis: An Introduction to Its Methodology.</title>
+<date>1980</date>
+<publisher>Sage Publications.</publisher>
+<contexts>
+<context citStr="Krippendorff, 1980" endWordPosition="1142" position="7380" startWordPosition="1141">s of people referred to, whenever possible (Markert and Nissim, 2002b). 5http://www.cia.gov/cia/publications/ factbook/ Pakistan had won the World Cup Scotland lost in the semi-final context reduction Pakistan-subj-of-win Scotland-subj-of-lose similarity semantic class role similarity head similarity Scotland subj-of lose Pakistan subj-of win 1998) to occur. Each country name is surrounded by three sentences of context. The 1000 examples of our corpus have been independently annotated by two computational linguists, who are the authors of this paper. The annotation can be considered reliable (Krippendorff, 1980) with 95% agreement and a kappa (Carletta, 1996) of .88. Our corpus for testing and training the algorithm includes only the examples which both annotators could agree on and which were not marked as noise (e.g. homonyms, as “Professor Greenland”), for a total of 925. Table 1 reports the reading distribution. Table 1: Distribution of readings in our corpus reading freq % literal 737 79.7 place-for-people 161 17.4 place-for-event 3 .3 place-for-product 0 .0 mixed 15 1.6 othermet 9 1.0 total non-literal 188 20.3 total 925 100.0 3 Metonymy Resolution as a Classification Task The corpus distributi</context>
+</contexts>
+<marker>Krippendorff, 1980</marker>
+<rawString>K. Krippendorff. 1980. Content Analysis: An Introduction to Its Methodology. Sage Publications.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Lakoff</author>
+<author>M Johnson</author>
+</authors>
+<title>Metaphors We Live By.</title>
+<date>1980</date>
+<publisher>Chicago University Press,</publisher>
+<location>Chicago, Ill.</location>
+<contexts>
+<context citStr="Lakoff and Johnson, 1980" endWordPosition="158" position="1146" startWordPosition="155">ature for metonymy recognition but suffer from data sparseness. We partially overcome this problem by integrating a thesaurus and introducing simpler grammatical features, thereby preserving precision and increasing recall. Our algorithm generalises over two levels of contextual similarity. Resulting inferences exceed the complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction. 1 Introduction Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned</context>
+<context citStr="Lakoff and Johnson, 1980" endWordPosition="815" position="5232" startWordPosition="812">mpact of automatic extraction of head-modifier relations in Section 6. Finally, we discuss related work and our contributions. 2 Corpus Study We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names. 2.1 Annotation Scheme for Location Names We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6). (5) coral coast ofPapua New Guinea (6) Britain’s current account deficit We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), (3), and (4), and for the government in (7).4 (7) a cardinal element in Iran’s strategy when Iranian naval craft [...] bombarded [...] In a place-for-event pattern, a location name refers to an event that occurred there (e.g., using the word Vietnam for the Vietnam war). In a place-for-product pattern a place stands for a product manufactured there (e.g., the word Bordeaux referring to the local wine). The category othermet covers unconvent</context>
+</contexts>
+<marker>Lakoff, Johnson, 1980</marker>
+<rawString>G. Lakoff and M. Johnson. 1980. Metaphors We Live By. Chicago University Press, Chicago, Ill.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Lin</author>
+</authors>
+<title>An information-theoretic definition of similarity.</title>
+<date>1998</date>
+<booktitle>In Proc. of International Conference on Machine Learning,</booktitle>
+<location>Madison, Wisconsin.</location>
+<contexts>
+<context citStr="Lin, 1998" endWordPosition="2472" position="15571" startWordPosition="2471">n over identical ones only. Secondly, we allow to discard the Table 4: Example thesaurus entries lose[V]: win1 0.216, gain2 0.209, have3 0.207, ... attitude[N]:stance1 0.181, behavior2 0.18, ..., strategy17 0.128 lexical head and generalise over the PMW’s grammatical role (e.g. subject). These generalisations allow us to double recall without sacrificing precision or increasing the size of the training set. 5.1 Relaxing Lexical Heads We regard two feature values r-of-h and r-of-h' as similar if h and h' are similar. In order to capture the similarity between h and h' we integrate a thesaurus (Lin, 1998) in our algorithm’s testing phase. In Lin’s thesaurus, similarity between words is determined by their distribution in dependency relations in a newswire corpus. For a content word h (e.g., “lose”) of a specific part-of-speech a set of similar words Eh of the same part-of-speech is given. The set members are ranked in decreasing order by a similarity score. Table 4 reports example entries.9 Our modified algorithm (relax I) is as follows: 1. train DL with role-of-head as in hmr; for each test instance observe the following procedure (r-of-h indicates the feature value of the test instance); 2. </context>
+</contexts>
+<marker>Lin, 1998</marker>
+<rawString>D. Lin. 1998. An information-theoretic definition of similarity. In Proc. of International Conference on Machine Learning, Madison, Wisconsin.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Markert</author>
+<author>U Hahn</author>
+</authors>
+<title>Understanding metonymies in discourse.</title>
+<date>2002</date>
+<journal>Artificial Intelligence,</journal>
+<pages>135--1</pages>
+<contexts>
+<context citStr="Markert and Hahn, 2002" endWordPosition="215" position="1482" startWordPosition="212">inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction. 1 Introduction Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name </context>
+<context citStr="Markert and Hahn, 2002" endWordPosition="4086" position="24866" startWordPosition="4083">tic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without SR violations in our experiments. An empirical comparison between our approach in (Markert and Nissim, 2002a)12 and an SRs violation approach showed that our approach performed better. In contrast to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective 11(Markert and Hahn, 2002) and (Harabagiu, 1998) enhance this with anaphoric information. (Briscoe and Copestake, 1999) propose using frequency information besides syntactic/semantic restrictions, but use only a priori sense frequencies without contextual features. 12Note that our current approach even outperforms (Markert and Nissim, 2002a). evaluation procedures. Word Sense Disambiguation. We compared our approach to supervised WSD in Section 3, stressin</context>
+</contexts>
+<marker>Markert, Hahn, 2002</marker>
+<rawString>K. Markert and U. Hahn. 2002. Understanding metonymies in discourse. Artificial Intelligence, 135(1/2):145–198.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Markert</author>
+<author>M Nissim</author>
+</authors>
+<title>Metonymy resolution as a classification task.</title>
+<date>2002</date>
+<booktitle>In Proc. of EMNLP,</booktitle>
+<pages>204--213</pages>
+<contexts>
+<context citStr="Markert and Nissim, 2002" endWordPosition="401" position="2611" startWordPosition="398">ctually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name of a location, refers to one of its national sports teams.3 (2) Pakistan had won the World Cup Similar examples can be regularly found for many other location names (see (3) and (4)). (3) England won the World Cup (4) Scotland lost in the semi-final In contrast to (1), the regularity of these examples can be exploited by a supervised machine learning algorithm, although this method is not pursued in standard approaches to regular polysemy and metonymy (with the exception of our own previous work in (Markert and Nissim, 2002a)). Such an algorithm needs to infer from examples like (2) (when labelled as a metonymy) that “England” and “Scotland” in (3) and (4) are also metonymic. In order to 2Due to its regularity, conventional metonymy is also known as regular polysemy (Copestake and Briscoe, 1995). We use the term “metonymy” to encompass both conventional and unconventional readings. 3All following examples are from the British National Corpus (BNC, http://info.ox.ac.uk/bnc). Figure 1: Context reduction and similarity levels draw this inference, two levels of similarity need to be taken into account. One concerns </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="750" position="4788" startWordPosition="747"> to (3), as they have the same feature value. Although the remaining context is discarded, this feature achieves high precision. In Section 5, we generalize context similarity to draw inferences from (2) or (3) to (4). We exploit both the similarity of the heads in the grammatical relation (e.g., “win” and “lose”) and that of the grammatical role (e.g. subject). Figure 1 illustrates context reduction and similarity levels. We evaluate the impact of automatic extraction of head-modifier relations in Section 6. Finally, we discuss related work and our contributions. 2 Corpus Study We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names. 2.1 Annotation Scheme for Location Names We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6). (5) coral coast ofPapua New Guinea (6) Britain’s current account deficit We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="1069" position="6829" startWordPosition="1066">iggered by “leading critic”) are invoked. We introduced the category mixed to deal with these cases. 2.2 Annotation Results Using Gsearch (Corley et al., 2001), we randomly extracted 1000 occurrences of country names from the BNC, allowing any country name and its variants listed in the CIA factbook5 or WordNet (Fellbaum, 4As the explicit referent is often underspecified, we introduce place-for-people as a supertype category and we evaluate our system on supertype classification in this paper. In the annotation, we further specify the different groups of people referred to, whenever possible (Markert and Nissim, 2002b). 5http://www.cia.gov/cia/publications/ factbook/ Pakistan had won the World Cup Scotland lost in the semi-final context reduction Pakistan-subj-of-win Scotland-subj-of-lose similarity semantic class role similarity head similarity Scotland subj-of lose Pakistan subj-of win 1998) to occur. Each country name is surrounded by three sentences of context. The 1000 examples of our corpus have been independently annotated by two computational linguists, who are the authors of this paper. The annotation can be considered reliable (Krippendorff, 1980) with 95% agreement and a kappa (Carletta, 1996) </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="1671" position="10693" startWordPosition="1668">e, we compute precision (P), recall (R), and Fmeasure (F), where A is the number of non-literal readings correctly identified as non-literal (true positives) and B the number of literal readings that are incorrectly identified as non-literal (false positives): P = A/(A + B) A R = #non-literal examples in the test data F = 2PR/(R + P) The baseline used for comparison is the assignment of the most frequent reading literal. 4 Context Reduction We show that reducing the context to head-modifier relations involving the Possibly Metonymic Word achieves high precision metonymy recognition.6 Log 6In (Markert and Nissim, 2002a), we also considered local and topical cooccurrences as contextual features. They constantly achieved lower precision than grammatical features. � �Pr(readingi featurek) � i Pr(readingj f eaturek) j Table 2: Example feature values for role-of-head role-of-head (r-of-h) example England won the World Cup (place-for-people) Britain has been governed by ... (literal) the Apostle had visited Spain (literal) in Iran’s strategy... (place-for-people) a Vietnam veteran from Rhode Island (place-for-event) its border with Hungary (literal) Table 3: Role distribution role freq #non-lit subj 92 65 subjp </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="3867" position="23418" startWordPosition="3864">Previous Approaches to Metonymy Recognition. Our approach is the first machine learning algorithm to metonymy recognition, building on our previous 10We did not evaluate RASP’s performance on relations that do not involve the PMW. Table 6: Results summary for the different algorithms using RASP. For relax I and combination we report best results (50 thesaurus iterations). algorithm Acc Cov Accb P R F hmr .884 .514 .812 .674 .154 .251 relax I .841 .666 .821 .619 .319 .421 relax II .820 .769 .823 .621 .340 .439 combination .850 .672 .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restric</context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="4154" position="25347" startWordPosition="4151"> to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective 11(Markert and Hahn, 2002) and (Harabagiu, 1998) enhance this with anaphoric information. (Briscoe and Copestake, 1999) propose using frequency information besides syntactic/semantic restrictions, but use only a priori sense frequencies without contextual features. 12Note that our current approach even outperforms (Markert and Nissim, 2002a). evaluation procedures. Word Sense Disambiguation. We compared our approach to supervised WSD in Section 3, stressing word-to-word vs. class-to-class inference. This allows for a level of abstraction not present in standard supervised WSD. We can infer readings for words that have not been seen in the training data before, allow an easy treatment of rare words that undergo regular sense alternations and do not have to annotate and train separately for every individual word to treat regular sense distinctions.13 By exploiting additional similarity levels and integrating a thesaurus we furthe</context>
+</contexts>
+<marker>Markert, Nissim, 2002</marker>
+<rawString>K. Markert and M. Nissim. 2002a. Metonymy resolution as a classification task. In Proc. of EMNLP, 2002, pages 204–213.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Katja Markert</author>
+<author>Malvina Nissim</author>
+</authors>
+<title>Towards a corpus annotated for metonymies: the case of location names.</title>
+<date>2002</date>
+<booktitle>In Proc. ofLREC,</booktitle>
+<pages>1385--1392</pages>
+<contexts>
+<context citStr="Markert and Nissim, 2002" endWordPosition="401" position="2611" startWordPosition="398">ctually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name of a location, refers to one of its national sports teams.3 (2) Pakistan had won the World Cup Similar examples can be regularly found for many other location names (see (3) and (4)). (3) England won the World Cup (4) Scotland lost in the semi-final In contrast to (1), the regularity of these examples can be exploited by a supervised machine learning algorithm, although this method is not pursued in standard approaches to regular polysemy and metonymy (with the exception of our own previous work in (Markert and Nissim, 2002a)). Such an algorithm needs to infer from examples like (2) (when labelled as a metonymy) that “England” and “Scotland” in (3) and (4) are also metonymic. In order to 2Due to its regularity, conventional metonymy is also known as regular polysemy (Copestake and Briscoe, 1995). We use the term “metonymy” to encompass both conventional and unconventional readings. 3All following examples are from the British National Corpus (BNC, http://info.ox.ac.uk/bnc). Figure 1: Context reduction and similarity levels draw this inference, two levels of similarity need to be taken into account. One concerns </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="750" position="4788" startWordPosition="747"> to (3), as they have the same feature value. Although the remaining context is discarded, this feature achieves high precision. In Section 5, we generalize context similarity to draw inferences from (2) or (3) to (4). We exploit both the similarity of the heads in the grammatical relation (e.g., “win” and “lose”) and that of the grammatical role (e.g. subject). Figure 1 illustrates context reduction and similarity levels. We evaluate the impact of automatic extraction of head-modifier relations in Section 6. Finally, we discuss related work and our contributions. 2 Corpus Study We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names. 2.1 Annotation Scheme for Location Names We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6). (5) coral coast ofPapua New Guinea (6) Britain’s current account deficit We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="1069" position="6829" startWordPosition="1066">iggered by “leading critic”) are invoked. We introduced the category mixed to deal with these cases. 2.2 Annotation Results Using Gsearch (Corley et al., 2001), we randomly extracted 1000 occurrences of country names from the BNC, allowing any country name and its variants listed in the CIA factbook5 or WordNet (Fellbaum, 4As the explicit referent is often underspecified, we introduce place-for-people as a supertype category and we evaluate our system on supertype classification in this paper. In the annotation, we further specify the different groups of people referred to, whenever possible (Markert and Nissim, 2002b). 5http://www.cia.gov/cia/publications/ factbook/ Pakistan had won the World Cup Scotland lost in the semi-final context reduction Pakistan-subj-of-win Scotland-subj-of-lose similarity semantic class role similarity head similarity Scotland subj-of lose Pakistan subj-of win 1998) to occur. Each country name is surrounded by three sentences of context. The 1000 examples of our corpus have been independently annotated by two computational linguists, who are the authors of this paper. The annotation can be considered reliable (Krippendorff, 1980) with 95% agreement and a kappa (Carletta, 1996) </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="1671" position="10693" startWordPosition="1668">e, we compute precision (P), recall (R), and Fmeasure (F), where A is the number of non-literal readings correctly identified as non-literal (true positives) and B the number of literal readings that are incorrectly identified as non-literal (false positives): P = A/(A + B) A R = #non-literal examples in the test data F = 2PR/(R + P) The baseline used for comparison is the assignment of the most frequent reading literal. 4 Context Reduction We show that reducing the context to head-modifier relations involving the Possibly Metonymic Word achieves high precision metonymy recognition.6 Log 6In (Markert and Nissim, 2002a), we also considered local and topical cooccurrences as contextual features. They constantly achieved lower precision than grammatical features. � �Pr(readingi featurek) � i Pr(readingj f eaturek) j Table 2: Example feature values for role-of-head role-of-head (r-of-h) example England won the World Cup (place-for-people) Britain has been governed by ... (literal) the Apostle had visited Spain (literal) in Iran’s strategy... (place-for-people) a Vietnam veteran from Rhode Island (place-for-event) its border with Hungary (literal) Table 3: Role distribution role freq #non-lit subj 92 65 subjp </context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="3867" position="23418" startWordPosition="3864">Previous Approaches to Metonymy Recognition. Our approach is the first machine learning algorithm to metonymy recognition, building on our previous 10We did not evaluate RASP’s performance on relations that do not involve the PMW. Table 6: Results summary for the different algorithms using RASP. For relax I and combination we report best results (50 thesaurus iterations). algorithm Acc Cov Accb P R F hmr .884 .514 .812 .674 .154 .251 relax I .841 .666 .821 .619 .319 .421 relax II .820 .769 .823 .621 .340 .439 combination .850 .672 .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restric</context>
+<context citStr="Markert and Nissim, 2002" endWordPosition="4154" position="25347" startWordPosition="4151"> to previous approaches (Fass, 1997; Hobbs et al., 1993; Copestake and Briscoe, 1995; Pustejovsky, 1995; Verspoor, 1996; Markert and Hahn, 2002; Harabagiu, 1998; Stallard, 1993), we use a corpus reliably annotated for metonymy for evaluation, moving the field towards more objective 11(Markert and Hahn, 2002) and (Harabagiu, 1998) enhance this with anaphoric information. (Briscoe and Copestake, 1999) propose using frequency information besides syntactic/semantic restrictions, but use only a priori sense frequencies without contextual features. 12Note that our current approach even outperforms (Markert and Nissim, 2002a). evaluation procedures. Word Sense Disambiguation. We compared our approach to supervised WSD in Section 3, stressing word-to-word vs. class-to-class inference. This allows for a level of abstraction not present in standard supervised WSD. We can infer readings for words that have not been seen in the training data before, allow an easy treatment of rare words that undergo regular sense alternations and do not have to annotate and train separately for every individual word to treat regular sense distinctions.13 By exploiting additional similarity levels and integrating a thesaurus we furthe</context>
+</contexts>
+<marker>Markert, Nissim, 2002</marker>
+<rawString>Katja Markert and Malvina Nissim. 2002b. Towards a corpus annotated for metonymies: the case of location names. In Proc. ofLREC, 2002, pages 1385–1392.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Martinez</author>
+<author>E Agirre</author>
+</authors>
+<title>One sense per collocation and genre/topic variations.</title>
+<date>2000</date>
+<booktitle>In Proc. of EMNLP,</booktitle>
+<contexts>
+<context citStr="Martinez and Agirre, 2000" endWordPosition="1458" position="9382" startWordPosition="1454">tion can be trained on a set of labelled instances of different words of one semantic class and assign literal readings and metonymic patterns to new test instances of possibly different words of the same semantic class. This class-based approach enables one to, for example, infer the reading of (3) from that of (2). We use a decision list (DL) classifier. All features encountered in the training data are ranked in the DL (best evidence first) according to the following loglikelihood ratio (Yarowsky, 1995): We estimated probabilities via maximum likelihood, adopting a simple smoothing method (Martinez and Agirre, 2000): 0.1 is added to both the denominator and numerator. The target readings to be distinguished are literal, place-for-people, place-forevent, place-for-product, othermet and mixed. All our algorithms are tested on our annotated corpus, employing 10-fold cross-validation. We evaluate accuracy and coverage: # correct decisions made Acc = # decisions made # decisions made Cov = # test data We also use a backing-off strategy to the most frequent reading (literal) for the cases where no decision can be made. We report the results as accuracy backoff (Accb); coverage backoff is always 1. We are also </context>
+</contexts>
+<marker>Martinez, Agirre, 2000</marker>
+<rawString>D. Martinez and E. Agirre. 2000. One sense per collocation and genre/topic variations. In Proc. of EMNLP, 2000.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Martinez</author>
+<author>E Agirre</author>
+<author>L Marquez</author>
+</authors>
+<title>Syntactic features for high precision word sense disambiguation.</title>
+<date>2002</date>
+<booktitle>In Proc. of COLING,</booktitle>
+<contexts>
+<context citStr="Martinez et al., 2002" endWordPosition="4308" position="26324" startWordPosition="4305">rare words that undergo regular sense alternations and do not have to annotate and train separately for every individual word to treat regular sense distinctions.13 By exploiting additional similarity levels and integrating a thesaurus we further generalise the kind of inferences we can make and limit the size of annotated training data: as our sampling frame contains 553 different names, an annotated data set of 925 samples is quite small. These generalisations over context and collocates are also applicable to standard WSD and can supplement those achieved e.g., by subcategorisation frames (Martinez et al., 2002). Our approach to word similarity to overcome data sparseness is perhaps most similar to (Karov and Edelman, 1998). However, they mainly focus on the computation of similarity measures from the training data. We instead use an off-the-shelf resource without adding much computational complexity and achieve a considerable improvement in our results. 8 Conclusions We presented a supervised classification algorithm for metonymy recognition, which exploits the similarity between examples of conventional metonymy, operates on semantic classes and thereby enables complex inferences from training to t</context>
+</contexts>
+<marker>Martinez, Agirre, Marquez, 2002</marker>
+<rawString>D. Martinez, E. Agirre, and L. Marquez. 2002. Syntactic features for high precision word sense disambiguation. In Proc. of COLING, 2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Nunberg</author>
+</authors>
+<title>The Pragmatics of Reference.</title>
+<date>1978</date>
+<tech>Ph.D. thesis,</tech>
+<institution>City University of New</institution>
+<location>York, New York.</location>
+<contexts>
+<context citStr="Nunberg, 1978" endWordPosition="268" position="1815" startWordPosition="267">t 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name of a location, refers to one of its national sports teams.3 (2) Pakistan had won the World Cup Similar examples can be regularly found for many other location names (see (3) and (4)). (3) England won the World Cup (4) Scotland lost in the semi-final In contrast to (1), the regularity of these examples can be exploited by a supervis</context>
+</contexts>
+<marker>Nunberg, 1978</marker>
+<rawString>G. Nunberg. 1978. The Pragmatics of Reference. Ph.D. thesis, City University of New York, New York.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Nunberg</author>
+</authors>
+<title>Transfers of meaning.</title>
+<date>1995</date>
+<journal>Journal of Semantics,</journal>
+<pages>12--109</pages>
+<contexts>
+<context citStr="Nunberg, 1995" endWordPosition="304" position="2050" startWordPosition="303">tion (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff and Johnson, 1980; Nunberg, 1995).2 In (2), “Pakistan”, the name of a location, refers to one of its national sports teams.3 (2) Pakistan had won the World Cup Similar examples can be regularly found for many other location names (see (3) and (4)). (3) England won the World Cup (4) Scotland lost in the semi-final In contrast to (1), the regularity of these examples can be exploited by a supervised machine learning algorithm, although this method is not pursued in standard approaches to regular polysemy and metonymy (with the exception of our own previous work in (Markert and Nissim, 2002a)). Such an algorithm needs to infer f</context>
+</contexts>
+<marker>Nunberg, 1995</marker>
+<rawString>G. Nunberg. 1995. Transfers of meaning. Journal of Semantics, 12:109–132.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Poesio</author>
+</authors>
+<date>2000</date>
+<booktitle>The GNOME Annotation Scheme Manual. University of Edinburgh, 4th version. Available from http://www.hcrc.ed.ac.uk/˜gnome.</booktitle>
+<contexts>
+<context citStr="Poesio, 2000" endWordPosition="2078" position="13254" startWordPosition="2077">” and some prepositions such as “with”, which can be used with metonymic (talk with Hungary) and literal (border with Hungary) readings. This problem is more serious for function than for content word heads: precision on the set of subjects and objects is 81.8%, but only 73.3% on PPs. • “Bad” relations: The premod relation suffers from noun-noun compound ambiguity. US op7We consider only one link per PMW, although cases like (8) would benefit from including all links the PMW participates in. 8The feature values were manually annotated for the following experiments, adapting the guidelines in (Poesio, 2000). The effect of automatic feature extraction is described in Section 6. eration can refer to an operation in the US (literal) or by the US (metonymic). • Other cases: Very rarely neglecting the remaining context leads to errors, even for “good” lexical heads and relations. Inferring from the metonymy in (4) that “Germany” in “Germany lost a fifth of its territory” is also metonymic, e.g., is wrong and lowers precision. However, wrong assignments (based on headmodifier relations) do not constitute a major problem as accuracy is very high (90.2%). Problem 2. The algorithm is often unable to make</context>
+</contexts>
+<marker>Poesio, 2000</marker>
+<rawString>M. Poesio, 2000. The GNOME Annotation Scheme Manual. University of Edinburgh, 4th version. Available from http://www.hcrc.ed.ac.uk/˜gnome.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Pustejovsky</author>
+</authors>
+<title>The Generative Lexicon.</title>
+<date>1995</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Mass.</location>
+<contexts>
+<context citStr="Pustejovsky, 1995" endWordPosition="3937" position="23896" startWordPosition="3936">.820 .769 .823 .621 .340 .439 combination .850 .672 .830 .640 .388 .483 baseline .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm al</context>
+</contexts>
+<marker>Pustejovsky, 1995</marker>
+<rawString>J. Pustejovsky. 1995. The Generative Lexicon. MIT Press, Cambridge, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Stallard</author>
+</authors>
+<title>Two kinds of metonymy.</title>
+<date>1993</date>
+<booktitle>In Proc. of ACL,</booktitle>
+<pages>87--94</pages>
+<contexts>
+<context citStr="Stallard, 1993" endWordPosition="205" position="1416" startWordPosition="204">similarity. Resulting inferences exceed the complexity of inferences undertaken in word sense disambiguation. We also compare automatic and manual methods for syntactic feature extraction. 1 Introduction Metonymy is a figure of speech, in which one expression is used to refer to the standard referent of a related one (Lakoff and Johnson, 1980). In (1),1 “seat 19” refers to the person occupying seat 19. (1) Ask seat 19 whether he wants to swap The importance of resolving metonymies has been shown for a variety of NLP tasks, e.g., machine translation (Kamei and Wakao, 1992), question answering (Stallard, 1993) and anaphora resolution (Harabagiu, 1998; Markert and Hahn, 2002). 1(1) was actually uttered by a flight attendant on a plane. In order to recognise and interpret the metonymy in (1), a large amount of knowledge and contextual inference is necessary (e.g. seats cannot be questioned, people occupy seats, people can be questioned). Metonymic readings are also potentially open-ended (Nunberg, 1978), so that developing a machine learning algorithm based on previous examples does not seem feasible. However, it has long been recognised that many metonymic readings are actually quite regular (Lakoff</context>
+<context citStr="Stallard, 1993" endWordPosition="3949" position="23974" startWordPosition="3948"> .797 1.00 .797 n/a .000 n/a work (Markert and Nissim, 2002a). The current approach expands on it by including a larger number of grammatical relations, thesaurus integration, and an assessment of the influence of parsing. Best Fmeasure for manual annotated roles increased from 46.7% to 62.7% on the same dataset. Most other traditional approaches rely on handcrafted knowledge bases or lexica and use violations of hand-modelled selectional restrictions (plus sometimes syntactic violations) for metonymy recognition (Pustejovsky, 1995; Hobbs et al., 1993; Fass, 1997; Copestake and Briscoe, 1995; Stallard, 1993).11 In these approaches, selectional restrictions (SRs) are not seen as preferences but as absolute constraints. If and only if such an absolute constraint is violated, a non-literal reading is proposed. Our system, instead, does not have any a priori knowledge of semantic predicate-argument restrictions. Rather, it refers to previously seen training examples in head-modifier relations and their labelled senses and computes the likelihood of each sense using this distribution. This is an advantage as our algorithm also resolved metonymies without SR violations in our experiments. An empirical </context>
+</contexts>
+<marker>Stallard, 1993</marker>
+<rawString>D. Stallard. 1993. Two kinds of metonymy. In Proc. of ACL, 1993, pages 87–94.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Stern</author>
+</authors>
+<title>Meaning and Change of Meaning.</title>
+<date>1931</date>
+<journal>G¨oteborg: Wettergren &amp; Kerbers</journal>
+<booktitle>In Proc. of CogSci,</booktitle>
+<pages>116--120</pages>
+<contexts>
+<context citStr="Stern, 1931" endWordPosition="819" position="5258" startWordPosition="818">modifier relations in Section 6. Finally, we discuss related work and our contributions. 2 Corpus Study We summarize (Markert and Nissim, 2002b)’s annotation scheme for location names and present an annotated corpus of occurrences of country names. 2.1 Annotation Scheme for Location Names We identify literal, metonymic, and mixed readings. The literal reading comprises a locative (5) and a political entity interpretation (6). (5) coral coast ofPapua New Guinea (6) Britain’s current account deficit We distinguish the following metonymic patterns (see also (Lakoff and Johnson, 1980; Fass, 1997; Stern, 1931)). In a place-for-people pattern, a place stands for any persons/organisations associated with it, e.g., for sports teams in (2), (3), and (4), and for the government in (7).4 (7) a cardinal element in Iran’s strategy when Iranian naval craft [...] bombarded [...] In a place-for-event pattern, a location name refers to an event that occurred there (e.g., using the word Vietnam for the Vietnam war). In a place-for-product pattern a place stands for a product manufactured there (e.g., the word Bordeaux referring to the local wine). The category othermet covers unconventional metonymies, as (1), </context>
+</contexts>
+<marker>Stern, 1931</marker>
+<rawString>G. Stern. 1931. Meaning and Change of Meaning. G¨oteborg: Wettergren &amp; Kerbers F¨orlag. C. Verspoor. 1996. Lexical limits on the influence of context. In Proc. of CogSci, 1996, pages 116–120.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Verspoor</author>
+</authors>
+<title>Conventionality-governed logical metonymy.</title>
+<date>1997</date>
+<booktitle>Proc. ofIWCS-2,</booktitle>
+<pages>300--312</pages>
+<editor>In H. Bunt et al., editors,</editor>
+<contexts>
+<context citStr="Verspoor, 1997" endWordPosition="1267" position="8161" startWordPosition="1266">e on and which were not marked as noise (e.g. homonyms, as “Professor Greenland”), for a total of 925. Table 1 reports the reading distribution. Table 1: Distribution of readings in our corpus reading freq % literal 737 79.7 place-for-people 161 17.4 place-for-event 3 .3 place-for-product 0 .0 mixed 15 1.6 othermet 9 1.0 total non-literal 188 20.3 total 925 100.0 3 Metonymy Resolution as a Classification Task The corpus distribution confirms that metonymies that do not follow established metonymic patterns (othermet) are very rare. This seems to be the case for other kinds of metonymies, too (Verspoor, 1997). We can therefore reformulate metonymy resolution as a classification task between the literal reading and a fixed set of metonymic patterns that can be identified in advance for particular semantic classes. This approach makes the task comparable to classic word sense disambiguation (WSD), which is also concerned with distinguishing between possible word senses/interpretations. However, whereas a classic (supervised) WSD algorithm is trained on a set of labelled instances of one particular word and assigns word senses to new test instances of the same word, (supervised) metonymy recognition </context>
+</contexts>
+<marker>Verspoor, 1997</marker>
+<rawString>C. Verspoor. 1997. Conventionality-governed logical metonymy. In H. Bunt et al., editors, Proc. ofIWCS-2, 1997, pages 300–312.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Yarowsky</author>
+</authors>
+<title>Unsupervised word sense disambiguation rivaling supervised methods.</title>
+<date>1995</date>
+<booktitle>In Proc. of ACL,</booktitle>
+<pages>189--196</pages>
+<contexts>
+<context citStr="Yarowsky, 1995" endWordPosition="1441" position="9267" startWordPosition="1440">cular word and assigns word senses to new test instances of the same word, (supervised) metonymy recognition can be trained on a set of labelled instances of different words of one semantic class and assign literal readings and metonymic patterns to new test instances of possibly different words of the same semantic class. This class-based approach enables one to, for example, infer the reading of (3) from that of (2). We use a decision list (DL) classifier. All features encountered in the training data are ranked in the DL (best evidence first) according to the following loglikelihood ratio (Yarowsky, 1995): We estimated probabilities via maximum likelihood, adopting a simple smoothing method (Martinez and Agirre, 2000): 0.1 is added to both the denominator and numerator. The target readings to be distinguished are literal, place-for-people, place-forevent, place-for-product, othermet and mixed. All our algorithms are tested on our annotated corpus, employing 10-fold cross-validation. We evaluate accuracy and coverage: # correct decisions made Acc = # decisions made # decisions made Cov = # test data We also use a backing-off strategy to the most frequent reading (literal) for the cases where no</context>
+</contexts>
+<marker>Yarowsky, 1995</marker>
+<rawString>D. Yarowsky. 1995. Unsupervised word sense disambiguation rivaling supervised methods. In Proc. of ACL, 1995, pages 189–196.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

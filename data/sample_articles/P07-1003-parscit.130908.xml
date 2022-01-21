@@ -1,0 +1,664 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000041" no="0">
+<title confidence="0.988988">
+Tailoring Word Alignments to Syntactic Machine Translation
+</title>
+<author confidence="0.996684">
+John DeNero
+</author>
+<affiliation confidence="0.998815">
+Computer Science Division
+University of California, Berkeley
+</affiliation>
+<email confidence="0.992075">
+denero@berkeley.edu
+</email>
+<author confidence="0.997469">
+Dan Klein
+</author>
+<affiliation confidence="0.999016">
+Computer Science Division
+University of California, Berkeley
+</affiliation>
+<email confidence="0.99667">
+klein@cs.berkeley.edu
+</email>
+<sectionHeader confidence="0.997378" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999348571428571">Extracting tree transducer rules for syntactic MT systems can be hindered by word alignment errors that violate syntactic correspondences. We propose a novel model for unsupervised word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments.</bodyText>
+<sectionHeader confidence="0.999518" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.989838145454545">Syntactic methods are an increasingly promising approach to statistical machine translation, being both algorithmically appealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both English (target side) parses and word alignments. Rules are extracted from target side constituents that can be projected onto contiguous spans of the source sentence via the word alignment. Constituents that project onto non-contiguous spans of the source sentence do not yield transducer rules themselves, and can only be incorporated into larger transducer rules. Thus, if the word alignment of a sentence pair does not respect the constituent structure of the target sentence, then the minimal translation units must span large tree fragments, which do not generalize well. We present and evaluate an unsupervised word alignment model similar in character and computation to the HMM model (Ney and Vogel, 1996), but which incorporates a novel, syntax-aware distortion component which conditions on target language parse trees. These trees, while automatically generated and therefore imperfect, are nonetheless (1) a useful source of structural bias and (2) the same trees which constrain future stages of processing anyway. In our model, the trees do not rule out any alignments, but rather softly influence the probability of transitioning between alignment positions. In particular, transition probabilities condition upon paths through the target parse tree, allowing the model to prefer distortions which respect the tree structure.</bodyText>
+<note confidence="0.902541">
+Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 17–24,
+Prague, Czech Republic, June 2007. c�2007 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999817416666667">Our model generates word alignments that better respect the parse trees upon which they are conditioned, without sacrificing alignment quality. Using the joint training technique of Liang et al. (2006) to initialize the model parameters, we achieve an AER superior to the GIZA++ implementation of IBM model 4 (Och and Ney, 2003) and a reduction of 56.3% in aligned interior nodes, a measure of agreement between alignments and parses. As a result, our alignments yield more rules, which better match those we would extract had we used manual alignments.</bodyText>
+<sectionHeader confidence="0.855973" genericHeader="method">
+2 Translation with Tree Transducers
+</sectionHeader>
+<bodyText confidence="0.999913428571429">In a tree transducer system, as in phrase-based systems, the coverage and generality of the transducer inventory is strongly related to the effectiveness of the translation model (Galley et al., 2006). We will demonstrate that this coverage, in turn, is related to the degree to which initial word alignments respect syntactic correspondences.</bodyText>
+<subsectionHeader confidence="0.995708">
+2.1 Rule Extraction
+</subsectionHeader>
+<bodyText confidence="0.999812380952381">Galley et al. (2004) proposes a method for extracting tree transducer rules from a parallel corpus. Given a source language sentence s, a target language parse tree t of its translation, and a word-level alignment, their algorithm identifies the constituents in t which map onto contiguous substrings of s via the alignment. The root nodes of such constituents – denoted frontier nodes – serve as the roots and leaves of tree fragments that form minimal transducer rules. Frontier nodes are distinguished by their compatibility with the word alignment. For a constituent c of t, we consider the set of source words sc that are aligned to c. If none of the source words in the linear closure s* (the words between the leftmost and rightmost members of sc) aligns to a target word outside of c, then the root of c is a frontier node. The remaining interior nodes do not generate rules, but can play a secondary role in a translation system.1 The roots of null-aligned constituents are not frontier nodes, but can attach productively to multiple minimal rules.</bodyText>
+<footnote confidence="0.9622565">
+1Interior nodes can be used, for instance, in evaluating
+syntax-based language models. They also serve to differentiate
+transducer rules that have the same frontier nodes but different
+internal structure.
+</footnote>
+<bodyText confidence="0.996065666666667">Two transducer rules, t1 —* s1 and t2 —* s2, can be combined to form larger translation units by composing t1 and t2 at a shared frontier node and appropriately concatenating s1 and s2. However, no technique has yet been shown to robustly extract smaller component rules from a large transducer rule. Thus, for the purpose of maximizing the coverage of the extracted translation model, we prefer to extract many small, minimal rules and generate larger rules via composition. Maximizing the number of frontier nodes supports this goal, while inducing many aligned interior nodes hinders it.</bodyText>
+<subsectionHeader confidence="0.997518">
+2.2 Word Alignment Interactions
+</subsectionHeader>
+<bodyText confidence="0.99998944117647">We now turn to the interaction between word alignments and the transducer extraction algorithm. Consider the example sentence in figure 1A, which demonstrates how a particular type of alignment error prevents the extraction of many useful transducer rules. The mistaken link [la ==&gt;. the] intervenes between ax´es and carri`er, which both align within an English adjective phrase, while la aligns to a distant subspan of the English parse tree. In this way, the alignment violates the constituent structure of the English parse. While alignment errors are undesirable in general, this error is particularly problematic for a syntax-based translation system. In a phrase-based system, this link would block extraction of the phrases [ax´es sur la carri`er ==&gt;. career oriented] and [les emplois ==&gt;. the jobs] because the error overlaps with both. However, the intervening phrase [emplois sont ==&gt;. jobs are] would still be extracted, at least capturing the transfer of subject-verb agreement. By contrast, the tree transducer extraction method fails to extract any of these fragments: the alignment error causes all non-terminal nodes in the parse tree to be interior nodes, excluding preterminals and the root. Figure 1B exposes the consequences: a wide array of desired rules are lost during extraction. The degree to which a word alignment respects the constituent structure of a parse tree can be quantified by the frequency of interior nodes, which indicate alignment patterns that cross constituent boundaries. To achieve maximum coverage of the translation model, we hope to infer tree-violating alignments only when syntactic structures truly diverge.</bodyText>
+<page confidence="0.993006">
+18
+</page>
+<figure confidence="0.999440058823529">
+les
+emplois
+sont
+ax6s
+sur
+la
+carri&amp;e
+.
+.
+DT NNS AUX
+ADJP
+NN VBN
+.
+S
+NP VP
+(A)
+.
+</figure>
+<figureCaption confidence="0.536569090909091">
+Correct proposed word alignment consistent with
+human annotation.
+Proposed word alignment error inconsistent with
+human annotation.
+Word alignment constellation that renders the
+root of the relevant constituent to be an interior
+node.
+Word alignment constellation that would allow a
+phrase extraction in a phrase-based translation
+system, but which does not correspond to an
+English constituent.
+</figureCaption>
+<figure confidence="0.933784363636364">
+Legend
+Bold Frontier node (agrees with alignment)
+Italic Interior node (inconsistent with alignment)
+(B) (i) (S NP[0] VP[1] .[2]) [0] [1] [2]
+(ii) (S (NP (DT[0] NNS[1]) VP[2] .[3]) [0] [1] [2] [3]
+(S (NP (DT[0] (NNS jobs)) VP[2] .[3]) [0] emplois [2] [3]
+(S (NP (DT[0] (NNS jobs)) (VP AUX[1] ADJV[2]) .[3]) [0] emplois [1] [2] [3]
+(S (NP (DT[0] (NNS jobs)) (VP (AUX are) ADJV[1]) .[2]) [0] emplois sont [1] [2]
+(S (NP (DT[0] NNS[1]) (VP AUX[2] (ADJV NN[3] VBN[4]) .[5]) [0] [1] [2] [3] [4] [5]
+(S (NP (DT[0] (NNS jobs)) (VP AUX[1] (ADJV NN[2] VBN[3]) .[4]) [0] sont [1] [2] [3] [4]
+(S (NP (DT[0] (NNS jobs)) (VP (AUX are) (ADJV NN[1] VBN[2]) .[3]) [0] emplois sont [1] [2] [3]
+</figure>
+<figureCaption confidence="0.992833">
+Figure 1: In this transducer extraction example, (A) shows a proposed alignment from our test set with
+an alignment error that violates the constituent structure of the English sentence.</figureCaption>
+<bodyText confidence="0.9265694">The resulting frontier nodes are printed in bold; all nodes would be frontier nodes under a correct alignment. (B) shows a small sample of the rules extracted under the proposed alignment, (ii), and the correct alignment, (i) and (ii). The single alignment error prevents the extraction of all rules in (i) and many more. This alignment pattern was observed in our test set and corrected by our model.</bodyText>
+<sectionHeader confidence="0.995903" genericHeader="method">
+3 Unsupervised Word Alignment
+</sectionHeader>
+<bodyText confidence="0.997949470588235">To allow for this preference, we present a novel conditional alignment model of a foreign (source) sentence f = {f1, ..., fJ} given an English (target) sentence e = {e1,..., eI} and a target tree structure t. Like the classic IBM models (Brown et al., 1994), our model will introduce a latent alignment vector a = {a1,..., aJ} that specifies the position of an aligned target word for each source word. Formally, our model describes p(a, f|e, t), but otherwise borrows heavily from the HMM alignment model of Ney and Vogel (1996). The HMM model captures the intuition that the alignment vector a will in general progress across the sentence e in a pattern which is mostly local, perhaps with a few large jumps. That is, alignments are locally monotonic more often than not. Formally, the HMM model factors as:</bodyText>
+<equation confidence="0.966054333333333">
+J
+p(a, f|e) = pd(aj|aj−,j)pt(fj|ea,)
+j=1
+</equation>
+<bodyText confidence="0.9998972">where j_ is the position of the last non-null-aligned source word before position j, pt is a lexical transfer model, and pd is a local distortion model. As in all such models, the lexical component pt is a collection of unsmoothed multinomial distributions over foreign words.</bodyText>
+<page confidence="0.995398">
+19
+</page>
+<bodyText confidence="0.999652545454545">The distortion model pd(aj|aj_, j) is a distribution over the signed distance aj − aj_, typically parameterized as a multinomial, Gaussian or exponential distribution. The implementation that serves as our baseline uses a multinomial distribution with separate parameters for j = 1, j = J and shared parameters for all 1 &lt; j &lt; J. Null alignments have fixed probability at any position. Inference over a requires only the standard forward-backward algorithm.</bodyText>
+<subsectionHeader confidence="0.991807">
+3.1 Syntax-Sensitive Distortion
+</subsectionHeader>
+<bodyText confidence="0.988579647058824">The broad and robust success of the HMM alignment model underscores the utility of its assumptions: that word-level translations can be usefully modeled via first-degree Markov transitions and independent lexical productions. However, its distortion model considers only string distance, disregarding the constituent structure of the English sentence. To allow syntax-sensitive distortion, we consider a new distortion model of the form pd(aj|aj_, j, t). We condition on t via a generative process that transitions between two English positions by traversing the unique shortest path ρ(aj_,aj,t) through t from aj_ to aj. We constrain ourselves to this shortest path using a staged generative process. Stage 1 (POP(n), STOP(n)): Starting in the leaf node at aj_, we choose whether to STOP or POP from child to parent, conditioning on the type of the parent node n. Upon choosing STOP, we transition to stage 2. Stage 2 (MOVE(ft, d)): Again, conditioning on the type of the parent n� of the current node n, we choose a sibling n� based on the signed distance d = φf,(n) − φf,(n), where φf,(n) is the index of n in the child list of n. Zero distance moves are disallowed. After exactly one MOVE, we transition to stage 3. Stage 3 (PUSH(n, φn(ii))): Given the current node n, we select one of its children n, conditioning on the type of n and the position of the child φn(n). We continue to PUSH until reaching a leaf. This process is a first-degree Markov walk through the tree, conditioning on the current node The jobs are career oriented .</bodyText>
+<figureCaption confidence="0.82847625">
+Stage 1: { Pop(VBN), Pop(ADJP), Pop(VP), Stop(S) }
+Stage 2: { Move(S, -1) }
+Stage 3: { Push(NP, 1), Push(DT, 1) }
+Figure 2: An example sequence of staged tree tran-
+sitions implied by the unique shortest path from the word oriented (aj_ = 5) to the word the (aj = 1).</figureCaption>
+<bodyText confidence="0.958997357142857">and its immediate surroundings at each step. We enforce the property that ρ(aj_,aj,t) be unique by staging the process and disallowing zero distance moves in stage 2. Figure 2 gives an example sequence of tree transitions for a small parse tree. The parameterization of this distortion model follows directly from its generative process. Given a path ρ(aj_,aj,t) with r = k + m + 3 nodes including the two leaves, the nearest common ancestor, k intervening nodes on the ascent and m on the descent, we express it as a triple of staged tree transitions that include k POPs, a STOP, a MOVE, and m PUSHes:</bodyText>
+<table confidence="0.717404">
+� {POP(n2), ..., POP(nk+1), STOP(nk+2)} �
+� {MOVE (nk+2, φ(nk+3) − φ(nk+1))} �
+{PUSH (nk+3, φ(nk+4)) , ..., PUSH (nr−1, φ(nr))}
+</table>
+<bodyText confidence="0.99978825">Next, we assign probabilities to each tree transition in each stage. In selecting these distributions, we aim to maintain the original HMM’s sensitivity to target word order:</bodyText>
+<listItem confidence="0.883989">• Selecting POP or STOP is a simple Bernoulli distribution conditioned upon a node type. • We model both MOVE and PUSH as multinomial distributions over the signed distance in positions (assuming a starting position of 0 for PUSH), echoing the parameterization popular in implementations of the HMM model.</listItem>
+<bodyText confidence="0.9997075">This model reduces to the classic HMM distortion model given minimal English trees of only uniformly labeled pre-terminals and a root node. The classic 0-distance distortion would correspond to the .</bodyText>
+<figure confidence="0.958146428571429">DT NNS AUX
+ADJP
+NN VBN
+S
+NP VP
+20</figure>
+<figureCaption confidence="0.933164166666667">
+Figure 3: For this example sentence, the learned dis-
+tortion distribution of pd(aj aj_, j, t) resembles its
+counterpart pd(aj aj_, j) of the HMM model but re-
+flects the constituent structure of the English tree t.
+For instance, the short path from relieve to on gives
+a high transition likelihood.
+</figureCaption>
+<bodyText confidence="0.992110782608696">STOP probability of the pre-terminal label; all other distances would correspond to MOVE probabilities conditioned on the root label, and the probability of transitioning to the terminal state would correspond to the POP probability of the root label. As in a multinomial-distortion implementation of the classic HMM model, we must sometimes artificially normalize these distributions in the deficient case that certain jumps extend beyond the ends of the local rules. For this reason, MOVE and PUSH are actually parameterized by three values: a node type, a signed distance, and a range of options that dictates a normalization adjustment. Once each tree transition generates a score, their product gives the probability of the entire path, and thereby the cost of the transition between string positions. Figure 3 shows an example learned distribution that reflects the structure of the given parse. With these derivation steps in place, we must address a handful of special cases to complete the generative model. We require that the Markov walk from leaf to leaf of the English tree must start and end at the root, using the following assumptions.</bodyText>
+<listItem confidence="0.9703304">1. Given no previous alignment, we forego stages 1 and 2 and begin with a series of PUSHes from the root of the tree to the desired leaf. 2. Given no subsequent alignments, we skip stages 2 and 3 after a series of POPs including a pop conditioned on the root node. 3. If the first choice in stage 1 is to STOP at the current leaf, then stage 2 and 3 are unnecessary. Hence, a choice to STOP immediately is a choice to emit another foreign word from the current English word. 4. We flatten unary transitions from the tree when computing distortion probabilities. 5. Null alignments are treated just as in the HMM model, incurring a fixed cost from any position.</listItem>
+<bodyText confidence="0.9998848">This model can be simplified by removing all conditioning on node types. However, we found this variant to slightly underperform the full model described above. Intuitively, types carry information about cross-linguistic ordering preferences.</bodyText>
+<subsectionHeader confidence="0.99977">
+3.2 Training Approach
+</subsectionHeader>
+<bodyText confidence="0.999917086956522">Because our model largely mirrors the generative process and structure of the original HMM model, we apply a nearly identical training procedure to fit the parameters to the training data via the Expectation-Maximization algorithm. Och and Ney (2003) gives a detailed exposition of the technique. In the E-step, we employ the forward-backward algorithm and current parameters to find expected counts for each potential pair of links in each training pair. In this familiar dynamic programming approach, we must compute the distortion probabilities for each pair of English positions. The minimal path between two leaves in a tree can be computed efficiently by first finding the path from the root to each leaf, then comparing those paths to find the nearest common ancestor and a path through it – requiring time linear in the height of the tree. Computing distortion costs independently for each pair of words in the sentence imposed a computational overhead of roughly 50% over the original HMM model. The bulk of this increase arises from the fact that distortion probabilities in this model must be computed for each unique tree, in contrast to the original HMM which has the same distortion probabilities for all sentences of a given length.</bodyText>
+<figure confidence="0.999524733333333">
+S
+DT VP .
+MD VP
+VB
+NP PP
+DT NN IN NN
+0.6
+HMM
+Syntactic
+0
+-2 -1 0 1 2 3 4 5
+Likelihood
+0.4
+0.2
+.
+</figure>
+<page confidence="0.998357">
+21
+</page>
+<bodyText confidence="0.999712190476191">In the M-step, we re-estimate the parameters of the model using the expected counts collected during the E-step. All of the component distributions of our lexical and distortion models are multinomials. Thus, upon assuming these expectations as values for the hidden alignment vectors, we maximize likelihood of the training data simply by computing relative frequencies for each component multinomial. For the distortion model, an expected count c(aj, aj−) is allocated to all tree transitions along the path ρ(ai−,ai,t). These allocations are summed and normalized for each tree transition type to complete re-estimation. The method of re-estimating the lexical model remains unchanged. Initialization of the lexical model affects performance dramatically. Using the simple but effective joint training technique of Liang et al.(2006), we initialized the model with lexical parameters from a jointly trained implementation of IBM Model 1.</bodyText>
+<subsectionHeader confidence="0.998504">
+3.3 Improved Posterior Inference
+</subsectionHeader>
+<bodyText confidence="0.99992925">Liang et al. (2006) shows that thresholding the posterior probabilities of alignments improves AER relative to computing Viterbi alignments. That is, we choose a threshold τ (typically τ = 0.5), and take</bodyText>
+<equation confidence="0.862241">
+a = {(i, j) : p(aj = i|f, e) &gt; τ}.
+</equation>
+<bodyText confidence="0.99845475">Posterior thresholding provides computationally convenient ways to combine multiple alignments, and bidirectional combination often corrects for errors in individual directional alignment models. Liang et al. (2006) suggests a soft intersection of a model m with a reverse model r (foreign to English) that thresholds the product of their posteriors at each position:</bodyText>
+<equation confidence="0.655775">
+a = {(i,j) : pm(aj = i|f, e) · pr(ai = j|f, e) &gt; τ}.
+</equation>
+<bodyText confidence="0.9928936">These intersected alignments can be quite sparse, boosting precision at the expense of recall. We explore a generalized version to this approach by varying the function c that combines pm and pr: a = {(i, j) : c(pm, pr) &gt; τ}. If c is the max function, we recover the (hard) union of the forward and reverse posterior alignments. If c is the min function, we recover the (hard) intersection. A novel, high performing alternative is the soft union, which we evaluate in the next section:</bodyText>
+<equation confidence="0.982971">
+pm(aj = i|f, e) + pr(ai = j|f, e)
+.
+2
+</equation>
+<bodyText confidence="0.9998784">Syntax-alignment compatibility can be further promoted with a simple posterior decoding heuristic we call competitive thresholding. Given a threshold and a matrix c of combined weights for each possible link in an alignment, we include a link (i, j) only if its weight cij is above-threshold and it is connected to the maximum weighted link in both row i and column j. That is, only the maximum in each column and row and a contiguous enclosing span of above-threshold links are included in the alignment.</bodyText>
+<subsectionHeader confidence="0.84703">
+3.4 Related Work
+</subsectionHeader>
+<bodyText confidence="0.999973666666667">This proposed model is not the first variant of the HMM model that incorporates syntax-based distortion. Lopez and Resnik (2005) considers a simpler tree distance distortion model. Daum´e III and Marcu (2005) employs a syntax-aware distortion model for aligning summaries to documents, but condition upon the roots of the constituents that are jumped over during a transition, instead of those that are visited during a walk through the tree. In the case of syntactic machine translation, we want to condition on crossing constituent boundaries, even if no constituents are skipped in the process.</bodyText>
+<sectionHeader confidence="0.994018" genericHeader="evaluation and result">
+4 Experimental Results
+</sectionHeader>
+<bodyText confidence="0.999908666666667">To understand the behavior of this model, we computed the standard alignment error rate (AER) performance metric.2 We also investigated extractionspecific metrics: the frequency of interior nodes – a measure of how often the alignments violate the constituent structure of English parses – and a variant of the CPER metric of Ayan and Dorr (2006). We evaluated the performance of our model on both French-English and Chinese-English manually aligned data sets. For Chinese, we trained on the FBIS corpus and the LDC bilingual dictionary, then tested on 491 hand-aligned sentences from the 2002</bodyText>
+<footnote confidence="0.958683">
+2The hand-aligned test data has been annotated with both
+sure alignments S and possible alignments P, with S C_ P, ac-
+cording to the specifications described in Och and Ney (2003).
+With these alignments, we compute AER for a proposed align-
+ment A as: (1 − |A∩|A||+|A|P |/ x 100%.
+</footnote>
+<equation confidence="0.973993">
+c(pm,pr) =
+</equation>
+<page confidence="0.996386">
+22
+</page>
+<table confidence="0.999829375">
+Precision Recall AER
+93.9 93.0 6.5
+95.2 91.5 6.4
+96.0 86.1 8.6
+Precision Recall AER
+81.6 78.8 19.8
+82.2 76.8 20.5
+61.9 82.6 29.7
+</table>
+<tableCaption confidence="0.853667666666667">
+Table 1: Alignment error rates (AER) for 100k train-
+ing sentences. The evaluated alignments are a soft
+union for French and a hard union for Chinese, both
+using competitive thresholding decoding. *From
+Ayan and Dorr (2006), grow-diag-final heuristic.
+NIST MT evaluation set. For French, we used the
+</tableCaption>
+<bodyText confidence="0.734022">Hansards data from the NAACL 2003 Shared Task.3 We trained on 100k sentences for each language.</bodyText>
+<subsectionHeader confidence="0.999731">
+4.1 Alignment Error Rate
+</subsectionHeader>
+<bodyText confidence="0.99966765">We compared our model to the original HMM model, identical in implementation to our syntactic HMM model save the distortion component. Both models were initialized using the same jointly trained Model 1 parameters (5 iterations), then trained independently for 5 iterations. Both models were then combined with an independently trained HMM model in the opposite direction: f -* e.4 Table 1 summarizes the results; the two models perform similarly. The main benefit of our model is the effect on rule extraction, discussed below. We also compared our French results to the public baseline GIZA++ using the script published for the NAACL 2006 Machine Translation Workshop Shared Task.5 Similarly, we compared our Chinese results to the GIZA++ results in Ayan and Dorr (2006). Our models substantially outperform GIZA++, confirming results in Liang et al. (2006). Table 2 shows the effect on AER of competitive thresholding and different combination functions.</bodyText>
+<footnote confidence="0.9666964">
+3Following previous work, we developed our system on the
+37 provided validation sentences and the first 100 sentences of
+the corpus test set. We used the remainder as a test set.
+4Null emission probabilities were fixed to 1
+e , inversely pro-
+portional to the length of the English sentence. The decoding
+threshold was held fixed at T = 0.5.
+5Training includes 16 iterations of various IBM models and
+a fixed null emission probability of .01. The output of running
+GIZA++ in both directions was combined via intersection.
+</footnote>
+<note confidence="0.597933">
+French
+</note>
+<reference confidence="0.985923444444445">
+Hard Intersection (Min)
+Hard Union (Max)
+Soft Intersection (Product)
+Soft Union (Average)
+Chinese
+Hard Intersection (Min)
+Hard Union (Max)
+Soft Intersection (Product)
+Soft Union (Average)
+</reference>
+<tableCaption confidence="0.8707">
+Table 2: Alignment error rates (AER) by decoding
+method for the syntactic HMM model.</tableCaption>
+<bodyText confidence="0.936546666666667">The competitive thresholding heuristic (CT) is particularly helpful for the hard union combination method. The most dramatic effect of competitive thresholding is to improve alignment quality for hard unions. It also impacts rule extraction substantially.</bodyText>
+<subsectionHeader confidence="0.99186">
+4.2 Rule Extraction Results
+</subsectionHeader>
+<bodyText confidence="0.999979884615385">While its competitive AER certainly speaks to the potential utility of our syntactic distortion model, we proposed the model for a different purpose: to minimize the particularly troubling alignment errors that cross constituent boundaries and violate the structure of English parse trees. We found that while the HMM and Syntactic models have very similar AER, they make substantially different errors. To investigate the differences, we measured the degree to which each set of alignments violated the supplied parse trees, by counting the frequency of interior nodes that are not null aligned. Figure 4 summarizes the results of the experiment for French: the Syntactic distortion with competitive thresholding reduces tree violations substantially. Interior node frequency is reduced by 56% overall, with the most dramatic improvement observed for clausal constituents. We observed a similar 50% reduction for the Chinese data. Additionally, we evaluated our model with the transducer analog to the consistent phrase error rate (CPER) metric of Ayan and Dorr (2006). This evaluation computes precision, recall, and F1 of the rules extracted under a proposed alignment, relative to the rules extracted under the gold-standard sure alignments. Table 3 shows improvements in F1 by using the syntactic HMM model and competitive thresholding together.</bodyText>
+<figure confidence="0.963384693548387">
+French
+Classic HMM
+Syntactic HMM
+GIZA++
+Chinese
+Classic HMM
+Syntactic HMM
+GIZA++*
+w/o CT with CT
+8.4 8.4
+12.3 7.7
+6.9 7.1
+6.7 6.4
+w/o CT with CT
+27.4 27.4
+25.0 20.5
+25.0 25.2
+21.1 21.6
+23
+Non-
+Terminals
+NP
+VP
+PP
+All
+S SBAR
+54.1 46.3 52.4 77.5 58.0 53.1 56.3
+14.6 10.3 6.3 4.8 1.9 41.1 100.0
+Interior Node Frequency
+(percent)
+Reduction
+(percent)
+Corpus
+Frequency
+30.0
+25.0
+20.0
+15.0
+10.0
+0.0
+5.0
+HMM Model Syntactic Model + CT
+French
+Classic HMM Baseline
+Syntactic HMM + CT
+Relative change
+Chinese
+HMM Baseline (hard)
+HMM Baseline (soft)
+Syntactic + CT (hard)
+Syntactic + CT (soft)
+Relative change*
+Prec. Recall F1
+40.9 17.6 24.6
+33.9 22.4 27.0
+-17% 27% 10%
+Prec. Recall F1
+66.1 14.5 23.7
+36.7 39.1 37.8
+48.0 41.6 44.6
+32.9 48.7 39.2
+31% 6% 18%
+</figure>
+<figureCaption confidence="0.997971">
+Figure 4: The syntactic distortion model with com-
+petitive thresholding decreases the frequency of interior nodes for each type and the whole corpus.</figureCaption>
+<bodyText confidence="0.976387142857143">Individually, each of these changes contributes substantially to this increase.Together, 54.597 43.7 45.1 their benefits are partially, but not fully, additive.</bodyText>
+<sectionHeader confidence="0.998989" genericHeader="conclusion">
+5 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999974166666667">In light of the need to reconcile word alignments with phrase structure trees for syntactic MT, we have proposed an HMM-like model whose distortion is sensitive to such trees. Our model substantially reduces the number of interior nodes in the aligned corpus and improves rule extraction while nearly retaining the speed and alignment accuracy of the HMM model. While it remains to be seen whether these improvements impact final translation accuracy, it is reasonable to hope that, all else equal, alignments which better respect syntactic correspondences will be superior for syntactic MT.</bodyText>
+<sectionHeader confidence="0.999389" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.994024428571428">
+Necip Fazil Ayan and Bonnie J. Dorr. 2006. Going beyond aer:
+An extensive analysis of word alignments and their impact
+on mt. In ACL.
+Peter F. Brown, Stephen A. Della Pietra, Vincent J. Della Pietra,
+and Robert L. Mercer. 1994. The mathematics of statistical
+machine translation: Parameter estimation. Computational
+Linguistics, 19:263–311.
+Colin Cherry and Dekang Lin. 2006. Soft syntactic constraints
+for word alignment through discriminative training. In ACL.
+David Chiang. 2005. A hierarchical phrase-based model for
+statistical machine translation. In ACL.
+Hal Daum´e III and Daniel Marcu. 2005. Induction of word and
+phrase alignments for automatic document summarization.
+Computational Linguistics, 31(4):505–530, December.
+</reference>
+<tableCaption confidence="0.877519">
+Table 3: Relative to the classic HMM baseline, our
+syntactic distortion model with competitive thresholding improves the tradeoff between precision and recall of extracted transducer rules.</tableCaption>
+<bodyText confidence="0.973486857142857">Both French aligners were decoded using the best-performing soft union combiner. For Chinese, we show aligners under both soft and hard union combiners. *Denotes relative change from the second line to the third line.</bodyText>
+<reference confidence="0.999186814814815">
+Michel Galley, Mark Hopkins, Kevin Knight, and Daniel
+Marcu. 2004. What’s in a translation rule? In HLT-NAACL.
+Michel Galley, Jonathan Graehl, Kevin Knight, Daniel Marcu,
+Steve DeNeefe, Wei Wang, and Ignacio Thayer. 2006. Scal-
+able inference and training of context-rich syntactic transla-
+tion models. In ACL.
+Percy Liang, Ben Taskar, and Dan Klein. 2006. Alignment by
+agreement. In HLT-NAACL.
+A. Lopez and P. Resnik. 2005. Improved hmm alignment mod-
+els for languages with scarce resources. In ACL WPT-05.
+I. Dan Melamed. 2004. Algorithms for syntax-aware statistical
+machine translation. In Proceedings of the Conference on
+Theoretical and Methodological Issues in Machine Transla-
+tion.
+Robert C. Moore. 2005. A discriminative framework for bilin-
+gual word alignment. In EMNLP.
+Hermann Ney and Stephan Vogel. 1996. Hmm-based word
+alignment in statistical translation. In COLING.
+Franz Josef Och and Hermann Ney. 2003. A systematic com-
+parison of various statistical alignment models. Computa-
+tional Linguistics, 29:19–51.
+Ben Taskar, Simon Lacoste-Julien, and Dan Klein. 2005. A
+discriminative matching approach to word alignment. In
+EMNLP.
+Dekai Wu. 1997. Stochastic inversion transduction grammars
+and bilingual parsing of parallel corpora. Computational
+Linguistics, 23:377–404.
+</reference>
+<page confidence="0.999175">
+24
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.939366" no="0">
+<title confidence="0.999728">Tailoring Word Alignments to Syntactic Machine Translation</title>
+<author confidence="0.999631">John DeNero</author>
+<affiliation confidence="0.9988505">Computer Science Division University of California, Berkeley</affiliation>
+<email confidence="0.999724">denero@berkeley.edu</email>
+<author confidence="0.999982">Dan Klein</author>
+<affiliation confidence="0.999336">Computer Science Division University of California, Berkeley</affiliation>
+<email confidence="0.999786">klein@cs.berkeley.edu</email>
+<abstract confidence="0.996156666666667">Extracting tree transducer rules for syntactic MT systems can be hindered by word alignment errors that violate syntactic correspondences. We propose a novel model for unsupervised word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="false">
+<institution>Hard Intersection (Min) Hard Union (Max) Soft Intersection (Product) Soft Union (Average) Chinese</institution>
+<marker/>
+<rawString>Hard Intersection (Min) Hard Union (Max) Soft Intersection (Product) Soft Union (Average) Chinese</rawString>
+</citation>
+<citation valid="false">
+<institution>Hard Intersection (Min) Hard Union (Max) Soft Intersection (Product) Soft Union (Average)</institution>
+<marker/>
+<rawString>Hard Intersection (Min) Hard Union (Max) Soft Intersection (Product) Soft Union (Average)</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Necip Fazil Ayan</author>
+<author>Bonnie J Dorr</author>
+</authors>
+<title>Going beyond aer: An extensive analysis of word alignments and their impact on mt.</title>
+<date>2006</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Ayan and Dorr (2006)" endWordPosition="3676" position="22218" startWordPosition="3673">ped over during a transition, instead of those that are visited during a walk through the tree. In the case of syntactic machine translation, we want to condition on crossing constituent boundaries, even if no constituents are skipped in the process. 4 Experimental Results To understand the behavior of this model, we computed the standard alignment error rate (AER) performance metric.2 We also investigated extractionspecific metrics: the frequency of interior nodes – a measure of how often the alignments violate the constituent structure of English parses – and a variant of the CPER metric of Ayan and Dorr (2006). We evaluated the performance of our model on both French-English and Chinese-English manually aligned data sets. For Chinese, we trained on the FBIS corpus and the LDC bilingual dictionary, then tested on 491 hand-aligned sentences from the 2002 2The hand-aligned test data has been annotated with both sure alignments S and possible alignments P, with S C_ P, according to the specifications described in Och and Ney (2003). With these alignments, we compute AER for a proposed alignment A as: (1 − |A∩|A||+|A|P |/ x 100%. c(pm,pr) = 22 Precision Recall AER 93.9 93.0 6.5 95.2 91.5 6.4 96.0 86.1 8</context>
+<context citStr="Ayan and Dorr (2006)" endWordPosition="3985" position="24078" startWordPosition="3982">initialized using the same jointly trained Model 1 parameters (5 iterations), then trained independently for 5 iterations. Both models were then combined with an independently trained HMM model in the opposite direction: f -* e.4 Table 1 summarizes the results; the two models perform similarly. The main benefit of our model is the effect on rule extraction, discussed below. We also compared our French results to the public baseline GIZA++ using the script published for the NAACL 2006 Machine Translation Workshop Shared Task.5 Similarly, we compared our Chinese results to the GIZA++ results in Ayan and Dorr (2006). Our models substantially outperform GIZA++, confirming results in Liang et al. (2006). Table 2 shows the effect on AER of competitive thresholding and different combination functions. 3Following previous work, we developed our system on the 37 provided validation sentences and the first 100 sentences of the corpus test set. We used the remainder as a test set. 4Null emission probabilities were fixed to 1 e , inversely proportional to the length of the English sentence. The decoding threshold was held fixed at T = 0.5. 5Training includes 16 iterations of various IBM models and a fixed null em</context>
+</contexts>
+<marker>Ayan, Dorr, 2006</marker>
+<rawString>Necip Fazil Ayan and Bonnie J. Dorr. 2006. Going beyond aer: An extensive analysis of word alignments and their impact on mt. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Peter F Brown</author>
+<author>Stephen A Della Pietra</author>
+<author>Vincent J Della Pietra</author>
+<author>Robert L Mercer</author>
+</authors>
+<title>The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics,</title>
+<date>1994</date>
+<contexts>
+<context citStr="Brown et al., 1994" endWordPosition="1633" position="10231" startWordPosition="1630">rontier nodes under a correct alignment. (B) shows a small sample of the rules extracted under the proposed alignment, (ii), and the correct alignment, (i) and (ii). The single alignment error prevents the extraction of all rules in (i) and many more. This alignment pattern was observed in our test set and corrected by our model. 3 Unsupervised Word Alignment To allow for this preference, we present a novel conditional alignment model of a foreign (source) sentence f = {f1, ..., fJ} given an English (target) sentence e = {e1,..., eI} and a target tree structure t. Like the classic IBM models (Brown et al., 1994), our model will introduce a latent alignment vector a = {a1,..., aJ} that specifies the position of an aligned target word for each source word. Formally, our model describes p(a, f|e, t), but otherwise borrows heavily from the HMM alignment model of Ney and Vogel (1996). The HMM model captures the intuition that the alignment vector a will in general progress across the sentence e in a pattern which is mostly local, perhaps with a few large jumps. That is, alignments are locally monotonic more often than not. Formally, the HMM model factors as: J p(a, f|e) = pd(aj|aj−,j)pt(fj|ea,) j=1 where </context>
+</contexts>
+<marker>Brown, Pietra, Pietra, Mercer, 1994</marker>
+<rawString>Peter F. Brown, Stephen A. Della Pietra, Vincent J. Della Pietra, and Robert L. Mercer. 1994. The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics, 19:263–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Colin Cherry</author>
+<author>Dekang Lin</author>
+</authors>
+<title>Soft syntactic constraints for word alignment through discriminative training.</title>
+<date>2006</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Cherry and Lin, 2006" endWordPosition="273" position="1899" startWordPosition="270">quires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both English (target side) parses and word alignments. Rules are extracted from target side constituents that can be projected onto contiguous spans of the source sentence via the word alignment. Constituents that project onto non-contiguous spans of the source sentence do not yield transducer rules themselves, and can only be inc</context>
+</contexts>
+<marker>Cherry, Lin, 2006</marker>
+<rawString>Colin Cherry and Dekang Lin. 2006. Soft syntactic constraints for word alignment through discriminative training. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Chiang</author>
+</authors>
+<title>A hierarchical phrase-based model for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Chiang, 2005" endWordPosition="137" position="1033" startWordPosition="136"> unsupervised word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments. 1 Introduction Syntactic methods are an increasingly promising approach to statistical machine translation, being both algorithmically appealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host</context>
+</contexts>
+<marker>Chiang, 2005</marker>
+<rawString>David Chiang. 2005. A hierarchical phrase-based model for statistical machine translation. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hal Daum´e</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Induction of word and phrase alignments for automatic document summarization.</title>
+<date>2005</date>
+<journal>Computational Linguistics,</journal>
+<volume>31</volume>
+<issue>4</issue>
+<marker>Daum´e, Marcu, 2005</marker>
+<rawString>Hal Daum´e III and Daniel Marcu. 2005. Induction of word and phrase alignments for automatic document summarization. Computational Linguistics, 31(4):505–530, December.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michel Galley</author>
+<author>Mark Hopkins</author>
+<author>Kevin Knight</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>What’s in a translation rule?</title>
+<date>2004</date>
+<booktitle>In HLT-NAACL.</booktitle>
+<contexts>
+<context citStr="Galley et al. (2004)" endWordPosition="702" position="4673" startWordPosition="699">in aligned interior nodes, a measure of agreement between alignments and parses. As a result, our alignments yield more rules, which better match those we would extract had we used manual alignments. 2 Translation with Tree Transducers In a tree transducer system, as in phrase-based systems, the coverage and generality of the transducer inventory is strongly related to the effectiveness of the translation model (Galley et al., 2006). We will demonstrate that this coverage, in turn, is related to the degree to which initial word alignments respect syntactic correspondences. 2.1 Rule Extraction Galley et al. (2004) proposes a method for extracting tree transducer rules from a parallel corpus. Given a source language sentence s, a target language parse tree t of its translation, and a word-level alignment, their algorithm identifies the constituents in t which map onto contiguous substrings of s via the alignment. The root nodes of such constituents – denoted frontier nodes – serve as the roots and leaves of tree fragments that form minimal transducer rules. Frontier nodes are distinguished by their compatibility with the word alignment. For a constituent c of t, we consider the set of source words sc th</context>
+</contexts>
+<marker>Galley, Hopkins, Knight, Marcu, 2004</marker>
+<rawString>Michel Galley, Mark Hopkins, Kevin Knight, and Daniel Marcu. 2004. What’s in a translation rule? In HLT-NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michel Galley</author>
+<author>Jonathan Graehl</author>
+<author>Kevin Knight</author>
+<author>Daniel Marcu</author>
+<author>Steve DeNeefe</author>
+<author>Wei Wang</author>
+<author>Ignacio Thayer</author>
+</authors>
+<title>Scalable inference and training of context-rich syntactic translation models.</title>
+<date>2006</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Galley et al., 2006" endWordPosition="141" position="1055" startWordPosition="138">word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments. 1 Introduction Syntactic methods are an increasingly promising approach to statistical machine translation, being both algorithmically appealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative met</context>
+<context citStr="Galley et al., 2006" endWordPosition="674" position="4489" startWordPosition="671">echnique of Liang et al. (2006) to initialize the model parameters, we achieve an AER superior to the GIZA++ implementation of IBM model 4 (Och and Ney, 2003) and a reduction of 56.3% in aligned interior nodes, a measure of agreement between alignments and parses. As a result, our alignments yield more rules, which better match those we would extract had we used manual alignments. 2 Translation with Tree Transducers In a tree transducer system, as in phrase-based systems, the coverage and generality of the transducer inventory is strongly related to the effectiveness of the translation model (Galley et al., 2006). We will demonstrate that this coverage, in turn, is related to the degree to which initial word alignments respect syntactic correspondences. 2.1 Rule Extraction Galley et al. (2004) proposes a method for extracting tree transducer rules from a parallel corpus. Given a source language sentence s, a target language parse tree t of its translation, and a word-level alignment, their algorithm identifies the constituents in t which map onto contiguous substrings of s via the alignment. The root nodes of such constituents – denoted frontier nodes – serve as the roots and leaves of tree fragments </context>
+</contexts>
+<marker>Galley, Graehl, Knight, Marcu, DeNeefe, Wang, Thayer, 2006</marker>
+<rawString>Michel Galley, Jonathan Graehl, Kevin Knight, Daniel Marcu, Steve DeNeefe, Wei Wang, and Ignacio Thayer. 2006. Scalable inference and training of context-rich syntactic translation models. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Percy Liang</author>
+<author>Ben Taskar</author>
+<author>Dan Klein</author>
+</authors>
+<title>Alignment by agreement.</title>
+<date>2006</date>
+<booktitle>In HLT-NAACL.</booktitle>
+<contexts>
+<context citStr="Liang et al., 2006" endWordPosition="222" position="1577" startWordPosition="219">ppealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both Engli</context>
+<context citStr="Liang et al. (2006)" endWordPosition="577" position="3900" startWordPosition="574">nce the probability of transitioning between alignment positions. In particular, transition probabilities condition upon paths through the target parse tree, allowing the model to prefer distortions which respect the tree structure. Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 17–24, Prague, Czech Republic, June 2007. c�2007 Association for Computational Linguistics Our model generates word alignments that better respect the parse trees upon which they are conditioned, without sacrificing alignment quality. Using the joint training technique of Liang et al. (2006) to initialize the model parameters, we achieve an AER superior to the GIZA++ implementation of IBM model 4 (Och and Ney, 2003) and a reduction of 56.3% in aligned interior nodes, a measure of agreement between alignments and parses. As a result, our alignments yield more rules, which better match those we would extract had we used manual alignments. 2 Translation with Tree Transducers In a tree transducer system, as in phrase-based systems, the coverage and generality of the transducer inventory is strongly related to the effectiveness of the translation model (Galley et al., 2006). We will d</context>
+<context citStr="Liang et al. (2006)" endWordPosition="3197" position="19406" startWordPosition="3194">ming these expectations as values for the hidden alignment vectors, we maximize likelihood of the training data simply by computing relative frequencies for each component multinomial. For the distortion model, an expected count c(aj, aj−) is allocated to all tree transitions along the path ρ(ai−,ai,t). These allocations are summed and normalized for each tree transition type to complete re-estimation. The method of re-estimating the lexical model remains unchanged. Initialization of the lexical model affects performance dramatically. Using the simple but effective joint training technique of Liang et al. (2006), we initialized the model with lexical parameters from a jointly trained implementation of IBM Model 1. 3.3 Improved Posterior Inference Liang et al. (2006) shows that thresholding the posterior probabilities of alignments improves AER relative to computing Viterbi alignments. That is, we choose a threshold τ (typically τ = 0.5), and take a = {(i, j) : p(aj = i|f, e) &gt; τ}. Posterior thresholding provides computationally convenient ways to combine multiple alignments, and bidirectional combination often corrects for errors in individual directional alignment models. Liang et al. (2006) suggest</context>
+<context citStr="Liang et al. (2006)" endWordPosition="3997" position="24165" startWordPosition="3994">ed independently for 5 iterations. Both models were then combined with an independently trained HMM model in the opposite direction: f -* e.4 Table 1 summarizes the results; the two models perform similarly. The main benefit of our model is the effect on rule extraction, discussed below. We also compared our French results to the public baseline GIZA++ using the script published for the NAACL 2006 Machine Translation Workshop Shared Task.5 Similarly, we compared our Chinese results to the GIZA++ results in Ayan and Dorr (2006). Our models substantially outperform GIZA++, confirming results in Liang et al. (2006). Table 2 shows the effect on AER of competitive thresholding and different combination functions. 3Following previous work, we developed our system on the 37 provided validation sentences and the first 100 sentences of the corpus test set. We used the remainder as a test set. 4Null emission probabilities were fixed to 1 e , inversely proportional to the length of the English sentence. The decoding threshold was held fixed at T = 0.5. 5Training includes 16 iterations of various IBM models and a fixed null emission probability of .01. The output of running GIZA++ in both directions was combined</context>
+</contexts>
+<marker>Liang, Taskar, Klein, 2006</marker>
+<rawString>Percy Liang, Ben Taskar, and Dan Klein. 2006. Alignment by agreement. In HLT-NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Lopez</author>
+<author>P Resnik</author>
+</authors>
+<title>Improved hmm alignment models for languages with scarce resources.</title>
+<date>2005</date>
+<booktitle>In ACL WPT-05.</booktitle>
+<contexts>
+<context citStr="Lopez and Resnik, 2005" endWordPosition="282" position="1952" startWordPosition="279">arget language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both English (target side) parses and word alignments. Rules are extracted from target side constituents that can be projected onto contiguous spans of the source sentence via the word alignment. Constituents that project onto non-contiguous spans of the source sentence do not yield transducer rules themselves, and can only be incorporated into larger transducer rules. Thus, if the </context>
+<context citStr="Lopez and Resnik (2005)" endWordPosition="3539" position="21379" startWordPosition="3536">ty can be further promoted with a simple posterior decoding heuristic we call competitive thresholding. Given a threshold and a matrix c of combined weights for each possible link in an alignment, we include a link (i, j) only if its weight cij is above-threshold and it is connected to the maximum weighted link in both row i and column j. That is, only the maximum in each column and row and a contiguous enclosing span of above-threshold links are included in the alignment. 3.4 Related Work This proposed model is not the first variant of the HMM model that incorporates syntax-based distortion. Lopez and Resnik (2005) considers a simpler tree distance distortion model. Daum´e III and Marcu (2005) employs a syntax-aware distortion model for aligning summaries to documents, but condition upon the roots of the constituents that are jumped over during a transition, instead of those that are visited during a walk through the tree. In the case of syntactic machine translation, we want to condition on crossing constituent boundaries, even if no constituents are skipped in the process. 4 Experimental Results To understand the behavior of this model, we computed the standard alignment error rate (AER) performance m</context>
+</contexts>
+<marker>Lopez, Resnik, 2005</marker>
+<rawString>A. Lopez and P. Resnik. 2005. Improved hmm alignment models for languages with scarce resources. In ACL WPT-05.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>I Dan Melamed</author>
+</authors>
+<title>Algorithms for syntax-aware statistical machine translation.</title>
+<date>2004</date>
+<booktitle>In Proceedings of the Conference on Theoretical and Methodological Issues in Machine Translation.</booktitle>
+<contexts>
+<context citStr="Melamed, 2004" endWordPosition="130" position="981" startWordPosition="129">ntactic correspondences. We propose a novel model for unsupervised word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments. 1 Introduction Syntactic methods are an increasingly promising approach to statistical machine translation, being both algorithmically appealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as </context>
+</contexts>
+<marker>Melamed, 2004</marker>
+<rawString>I. Dan Melamed. 2004. Algorithms for syntax-aware statistical machine translation. In Proceedings of the Conference on Theoretical and Methodological Issues in Machine Translation.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert C Moore</author>
+</authors>
+<title>A discriminative framework for bilingual word alignment.</title>
+<date>2005</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Moore, 2005" endWordPosition="244" position="1714" startWordPosition="243">yntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both English (target side) parses and word alignments. Rules are extracted from target side constituents that can be projected onto contiguous span</context>
+</contexts>
+<marker>Moore, 2005</marker>
+<rawString>Robert C. Moore. 2005. A discriminative framework for bilingual word alignment. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hermann Ney</author>
+<author>Stephan Vogel</author>
+</authors>
+<title>Hmm-based word alignment in statistical translation.</title>
+<date>1996</date>
+<booktitle>In COLING.</booktitle>
+<contexts>
+<context citStr="Ney and Vogel, 1996" endWordPosition="429" position="2886" startWordPosition="426">uents that can be projected onto contiguous spans of the source sentence via the word alignment. Constituents that project onto non-contiguous spans of the source sentence do not yield transducer rules themselves, and can only be incorporated into larger transducer rules. Thus, if the word alignment of a sentence pair does not respect the constituent structure of the target sentence, then the minimal translation units must span large tree fragments, which do not generalize well. We present and evaluate an unsupervised word alignment model similar in character and computation to the HMM model (Ney and Vogel, 1996), but which incorporates a novel, syntax-aware distortion component which conditions on target language parse trees. These trees, while automatically generated and therefore imperfect, are nonetheless (1) a useful source of structural bias and (2) the same trees which constrain future stages of processing anyway. In our model, the trees do not rule out any alignments, but rather softly influence the probability of transitioning between alignment positions. In particular, transition probabilities condition upon paths through the target parse tree, allowing the model to prefer distortions which </context>
+<context citStr="Ney and Vogel (1996)" endWordPosition="1680" position="10503" startWordPosition="1677">ern was observed in our test set and corrected by our model. 3 Unsupervised Word Alignment To allow for this preference, we present a novel conditional alignment model of a foreign (source) sentence f = {f1, ..., fJ} given an English (target) sentence e = {e1,..., eI} and a target tree structure t. Like the classic IBM models (Brown et al., 1994), our model will introduce a latent alignment vector a = {a1,..., aJ} that specifies the position of an aligned target word for each source word. Formally, our model describes p(a, f|e, t), but otherwise borrows heavily from the HMM alignment model of Ney and Vogel (1996). The HMM model captures the intuition that the alignment vector a will in general progress across the sentence e in a pattern which is mostly local, perhaps with a few large jumps. That is, alignments are locally monotonic more often than not. Formally, the HMM model factors as: J p(a, f|e) = pd(aj|aj−,j)pt(fj|ea,) j=1 where j_ is the position of the last non-null-aligned source word before position j, pt is a lexical transfer model, and pd is a local distortion model. As in all such models, the lexical component pt is a collection of unsmoothed multinomial distributions over 19 foreign words</context>
+</contexts>
+<marker>Ney, Vogel, 1996</marker>
+<rawString>Hermann Ney and Stephan Vogel. 1996. Hmm-based word alignment in statistical translation. In COLING.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Franz Josef Och</author>
+<author>Hermann Ney</author>
+</authors>
+<title>A systematic comparison of various statistical alignment models.</title>
+<date>2003</date>
+<journal>Computational Linguistics,</journal>
+<pages>29--19</pages>
+<contexts>
+<context citStr="Och and Ney, 2003" endWordPosition="599" position="4027" startWordPosition="596">hrough the target parse tree, allowing the model to prefer distortions which respect the tree structure. Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 17–24, Prague, Czech Republic, June 2007. c�2007 Association for Computational Linguistics Our model generates word alignments that better respect the parse trees upon which they are conditioned, without sacrificing alignment quality. Using the joint training technique of Liang et al. (2006) to initialize the model parameters, we achieve an AER superior to the GIZA++ implementation of IBM model 4 (Och and Ney, 2003) and a reduction of 56.3% in aligned interior nodes, a measure of agreement between alignments and parses. As a result, our alignments yield more rules, which better match those we would extract had we used manual alignments. 2 Translation with Tree Transducers In a tree transducer system, as in phrase-based systems, the coverage and generality of the transducer inventory is strongly related to the effectiveness of the translation model (Galley et al., 2006). We will demonstrate that this coverage, in turn, is related to the degree to which initial word alignments respect syntactic corresponde</context>
+<context citStr="Och and Ney (2003)" endWordPosition="2871" position="17472" startWordPosition="2868">es. 5. Null alignments are treated just as in the HMM model, incurring a fixed cost from any position. This model can be simplified by removing all conditioning on node types. However, we found this variant to slightly underperform the full model described above. Intuitively, types carry information about cross-linguistic ordering preferences. 3.2 Training Approach Because our model largely mirrors the generative process and structure of the original HMM model, we apply a nearly identical training procedure to fit the parameters to the training data via the Expectation-Maximization algorithm. Och and Ney (2003) gives a detailed exposition of the technique. In the E-step, we employ the forward-backward algorithm and current parameters to find expected counts for each potential pair of links in each training pair. In this familiar dynamic programming approach, we must compute the distortion probabilities for each pair of English positions. The minimal path between two leaves in a tree can be computed efficiently by first finding the path from the root to each leaf, then comparing those paths to find the nearest common ancestor and a path through it – requiring time linear in the height of the tree. Co</context>
+<context citStr="Och and Ney (2003)" endWordPosition="3745" position="22644" startWordPosition="3742"> metrics: the frequency of interior nodes – a measure of how often the alignments violate the constituent structure of English parses – and a variant of the CPER metric of Ayan and Dorr (2006). We evaluated the performance of our model on both French-English and Chinese-English manually aligned data sets. For Chinese, we trained on the FBIS corpus and the LDC bilingual dictionary, then tested on 491 hand-aligned sentences from the 2002 2The hand-aligned test data has been annotated with both sure alignments S and possible alignments P, with S C_ P, according to the specifications described in Och and Ney (2003). With these alignments, we compute AER for a proposed alignment A as: (1 − |A∩|A||+|A|P |/ x 100%. c(pm,pr) = 22 Precision Recall AER 93.9 93.0 6.5 95.2 91.5 6.4 96.0 86.1 8.6 Precision Recall AER 81.6 78.8 19.8 82.2 76.8 20.5 61.9 82.6 29.7 Table 1: Alignment error rates (AER) for 100k training sentences. The evaluated alignments are a soft union for French and a hard union for Chinese, both using competitive thresholding decoding. *From Ayan and Dorr (2006), grow-diag-final heuristic. NIST MT evaluation set. For French, we used the Hansards data from the NAACL 2003 Shared Task.3 We trained </context>
+</contexts>
+<marker>Och, Ney, 2003</marker>
+<rawString>Franz Josef Och and Hermann Ney. 2003. A systematic comparison of various statistical alignment models. Computational Linguistics, 29:19–51.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ben Taskar</author>
+<author>Simon Lacoste-Julien</author>
+<author>Dan Klein</author>
+</authors>
+<title>A discriminative matching approach to word alignment.</title>
+<date>2005</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Taskar et al., 2005" endWordPosition="242" position="1701" startWordPosition="239">rogress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by the now much-maligned AER metric. A host of discriminative methods have been introduced (Taskar et al., 2005; Moore, 2005; Ayan 17 and Dorr, 2006). However, few of these methods have explicitly addressed the tension between word alignments and the syntactic processes that employ them (Cherry and Lin, 2006; Daum´e III and Marcu, 2005; Lopez and Resnik, 2005). We are particularly motivated by systems like the one described in Galley et al. (2006), which constructs translations using tree-to-string transducer rules. These rules are extracted from a bitext annotated with both English (target side) parses and word alignments. Rules are extracted from target side constituents that can be projected onto co</context>
+</contexts>
+<marker>Taskar, Lacoste-Julien, Klein, 2005</marker>
+<rawString>Ben Taskar, Simon Lacoste-Julien, and Dan Klein. 2005. A discriminative matching approach to word alignment. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dekai Wu</author>
+</authors>
+<title>Stochastic inversion transduction grammars and bilingual parsing of parallel corpora.</title>
+<date>1997</date>
+<journal>Computational Linguistics,</journal>
+<pages>23--377</pages>
+<contexts>
+<context citStr="Wu, 1997" endWordPosition="132" position="992" startWordPosition="131">ondences. We propose a novel model for unsupervised word alignment which explicitly takes into account target language constituent structure, while retaining the robustness and efficiency of the HMM alignment model. Our model’s predictions improve the yield of a tree transducer extraction system, without sacrificing alignment quality. We also discuss the impact of various posteriorbased methods of reconciling bidirectional alignments. 1 Introduction Syntactic methods are an increasingly promising approach to statistical machine translation, being both algorithmically appealing (Melamed, 2004; Wu, 1997) and empirically successful (Chiang, 2005; Galley et al., 2006). However, despite recent progress, almost all syntactic MT systems, indeed statistical MT systems in general, build upon crude legacy models of word alignment. This dependence runs deep; for example, Galley et al. (2006) requires word alignments to project trees from the target language to the source, while Chiang (2005) requires alignments to induce grammar rules. Word alignment models have not stood still in recent years. Unsupervised methods have seen substantial reductions in alignment error (Liang et al., 2006) as measured by</context>
+</contexts>
+<marker>Wu, 1997</marker>
+<rawString>Dekai Wu. 1997. Stochastic inversion transduction grammars and bilingual parsing of parallel corpora. Computational Linguistics, 23:377–404.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

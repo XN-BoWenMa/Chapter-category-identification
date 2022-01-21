@@ -1,0 +1,1250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000001" no="0">
+<title confidence="0.99966">
+Learning Structured Perceptrons for Coreference Resolution
+with Latent Antecedents and Non-local Features
+</title>
+<author confidence="0.996882">
+Anders Bj¨orkelund and Jonas Kuhn
+</author>
+<affiliation confidence="0.995882">
+Institute for Natural Language Processing
+University of Stuttgart
+</affiliation>
+<email confidence="0.997958">
+{anders,jonas}@ims.uni-stuttgart.de
+</email>
+<sectionHeader confidence="0.994776" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.9997875">We investigate different ways of learning structured perceptron models for coreference resolution when using non-local features and beam search. Our experimental results indicate that standard techniques such as early updates or Learning as Search Optimization (LaSO) perform worse than a greedy baseline that only uses local features. By modifying LaSO to delay updates until the end of each instance we obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English.</bodyText>
+<sectionHeader confidence="0.998428" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999923282608696">This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training data. Put another way, early updates happen too early, and the learning algorithm rarely reaches the end of the instances as it halts, updates, and moves on to the next instance. An alternative would be to continue decoding the same instance after the early updates, which is equivalent to Learning as Search Optimization (LaSO; Daum´e III and Marcu (2005b)). The learning task we are tackling is however further complicated since the target structure is under-determined by the gold standard annotation. Coreferent mentions in a document are usually annotated as sets of mentions, where all mentions in a set are coreferent. We adopt the recently popularized approach of inducing a latent structure within these sets (Fernandes et al., 2012; Chang et al., 2013; Durrett and Klein, 2013). This approach provides a powerful boost to the performance of coreference resolvers, but we find that it does not combine well with the LaSO learning strategy. We therefore propose a modification to LaSO, which delays updates until after each instance. The combination of this modification with non-local features leads to further improvements in the clustering accuracy, as we show in evaluation results on all languages from the CoNLL 2012 Shared Task – Arabic, Chinese, and English. We obtain the best results to date on these data sets.1</bodyText>
+<sectionHeader confidence="0.987569" genericHeader="related work">
+2 Background
+</sectionHeader>
+<bodyText confidence="0.996593">Coreference resolution is the task of grouping referring expressions (or mentions) in a text into disjoint clusters such that all mentions in a cluster refer to the same entity. An example is given in Figure 1 below, where mentions from two clusters are marked with brackets: [Drug Emporium Inc.].1 said [Gary Wilber]b1 was named CEO of [this drugstore chain].2. [He]b2 succeeds his father, Philip T. Wilber, who founded [the company].3 and remains chairman. Robert E. Lyons III, who headed the [company].4’s Philadelphia region, was appointed president and chief operating officer, succeeding [Gary Wilber]b3.</bodyText>
+<figureCaption confidence="0.940473">
+Figure 1: An excerpt of a document with the men-
+tions from two clusters marked.
+</figureCaption>
+<footnote confidence="0.985181">
+1Our system is available at http://www.ims.
+uni-stuttgart.de/˜anders/coref.html
+</footnote>
+<page confidence="0.986755">
+47
+</page>
+<note confidence="0.8311815">
+Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 47–57,
+Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999986511627907">In recent years much work on coreference resolution has been devoted to increasing the expressivity of the classical mention-pair model, in which each coreference classification decision is limited to information about two mentions that make up a pair. This shortcoming has been addressed by entity-mention models, which relate a candidate mention to the full cluster of mentions predicted to be coreferent so far (for more discussion on the model types, see, e.g., (Ng, 2010)). Nevertheless, the two best systems in the latest CoNLL Shared Task on coreference resolution (Pradhan et al., 2012) were both variants of the mention-pair model. While the second best system (Bj¨orkelund and Farkas, 2012) followed the widely used baseline of Soon et al. (2001), the winning system (Fernandes et al., 2012) proposed the use of a tree representation. The tree-based model of Fernandes et al. (2012) construes the representation of coreference clusters as a rooted tree. Figure 2 displays an example tree over the clusters from Figure 1. Every mention corresponds to a node in the tree, and arcs between mentions indicate that they are coreferent. The tree additionally has a dummy root node. Every subtree under the root node corresponds to a cluster of coreferent mentions. Since coreference training data is typically not annotated with trees, Fernandes et al. (2012) proposed the use of latent trees that are induced during the training phase of a coreference resolver. The latent tree provides more meaningful antecedents for training.2 For instance, the popular pair-wise instance creation method suggested by Soon et al. (2001) assumes non-branching trees, where the antecedent of every mention is its linear predecessor (i.e., heb2 is the antecedent of Gary Wilberb3). Comparing the two alternative antecedents of Gary Wilberb3, the tree in Figure 2 provides a more reliable basis for training a coreference resolver, as the two mentions of Gary Wilber are both proper names and have an exact string match.</bodyText>
+<sectionHeader confidence="0.991823" genericHeader="method">
+3 Representation and Learning
+</sectionHeader>
+<bodyText confidence="0.999689333333333">Let M = {m0, m1, ..., mn} denote the set of mentions in a document, including the artificial root mention (denoted by m0). We assume that the mentions are ordered ascendingly with respect to the linear order of the document, where the document root precedes all other mentions.3 For each mention mj, let Aj denote the set of potential antecedents.</bodyText>
+<footnote confidence="0.6956465">
+2We follow standard practice and overload the terms
+anaphor and antecedent to be any type of mention, i.e., names
+as well as pronouns. An antecedent is simply the mention to
+the left of the anaphor.
+</footnote>
+<figureCaption confidence="0.999093">
+Figure 2: A tree representation of Figure 1.
+</figureCaption>
+<bodyText confidence="0.992289047619048">That is, the set of all mentions that precede mj according to the linear order including the root node, or, Aj = {mi  |i &lt; j}. Finally, let A denote the set of all antecedent sets {A0, A1,..., An}. In the tree model, each mention corresponds to a node, and an antecedent-anaphor pair (ai, mi), where ai E Ai, corresponds to a directed edge (or arc) pointing from antecedent to anaphor. The score of an arc (ai, mi) is defined as the scalar product between a weight vector w and a feature vector Φ((ai, mi)), where Φ is a feature extraction function over an arc (thus extracting features from the antecedent and the anaphor). The score of a coreference tree y = {(a1, m1), (a2, m2), ..., (an, mn)} is defined as the sum of the scores of all the mention pairs:</bodyText>
+<equation confidence="0.992293333333333">
+score((ai, mi)) = w · Φ((ai, mi)) (1)
+�score(y) = score((ai, mi))
+(ai,mi)Ey
+</equation>
+<bodyText confidence="0.5717555">The objective is to find the output yˆ that maximizes the scoring function:</bodyText>
+<equation confidence="0.997787">
+yˆ = arg max score(y) (2)
+yEY(A)
+</equation>
+<bodyText confidence="0.999689666666667">where Y(A) denotes the set of possible trees given the antecedent sets A. By treating the mentions as nodes in a directed graph and assigning scores to the arcs according to (1), Fernandes et al. (2012) solved the search problem using the Chu-LiuEdmonds (CLE) algorithm (Chu and Liu, 1965; this drugstore chaina2 the companya3
+Drug Emporium Inc.a1
+companya4
+root
+Gary Wilberb1
+Heb2 Gary Wilberb3</bodyText>
+<footnote confidence="0.8937555">
+3We impose a total order on mentions. In case of nested
+mentions, the mention that begins first is assumed to precede
+the embedded one. If two mentions begin at the same token,
+the longer one is taken to precede the shorter one.
+</footnote>
+<page confidence="0.999053">
+48
+</page>
+<bodyText confidence="0.999219142857143">Edmonds, 1967), which is a maximum spanning tree algorithm that finds the optimal tree over a connected directed graph. CLE, however, has the drawback that the scores of the arcs must remain fixed and can not change depending on other arcs and it is not clear how to include non-local features in a CLE decoder.</bodyText>
+<subsectionHeader confidence="0.995929">
+3.1 Online learning
+</subsectionHeader>
+<bodyText confidence="0.999971277777778">We find the weight vector w by online learning using a variant of the structured perceptron (Collins, 2002). Specifically, we use the passive-aggressive (PA) algorithm (Crammer et al., 2006), since we found that this performed slightly better in preliminary experiments.4 The structured perceptron iterates over training instances (xi, yi), where xi are inputs and yi are outputs. For each instance it uses the current weight vector w to make a prediction ˆyi given the input xi. If the prediction is incorrect, the weight vector is updated in favor of the correct structure. Otherwise the weight vector is left untouched. In our setting inputs xi correspond to documents and outputs yi are trees over mentions in a document. The training data is, however, not annotated with trees, but only with clusters of mentions. That is, the yi’s are not defined a priori.</bodyText>
+<subsectionHeader confidence="0.999904">
+3.2 Latent antecedents
+</subsectionHeader>
+<bodyText confidence="0.9999957">In order to have a tree structure to update against, we use the current weight vector and apply the decoder to a constrained antecedent set and obtain a latent tree over the mentions in a document, where each mention is assigned a single correct antecedent (Fernandes et al., 2012). We constrain the antecedent sets such that only trees that correspond to the correct clustering can be built. Specifically, let ˜Aj denote the set of correct antecedents for a mention mj, or that is, if mention mj is non-referential or the first mention of its cluster, ˜Aj contains only the document root.</bodyText>
+<equation confidence="0.981370333333333">
+�
+{m0} if mj has no correct antecedent
+˜Aj = {ai  |COREF(ai, mj), ai E Aj} otherwise
+</equation>
+<bodyText confidence="0.9943425">Otherwise it is the set of all mentions to the left that belong to the same cluster as mj. Analogously to A, let A˜ denote the set of constrained antecedent sets. The latent tree y˜ needed for updates is then defined to be the optimal tree over Y(˜A), subject to the current weight vector:</bodyText>
+<footnote confidence="0.975946666666667">
+4We also implement the feature mapping function Φ as
+a hash kernel (Bohnet, 2010) and apply averaging (Collins,
+2002), though for brevity we omit this from the pseudocode.
+</footnote>
+<equation confidence="0.9973485">
+y˜ = arg max score(y)
+y∈Y(˜A)
+</equation>
+<bodyText confidence="0.833113428571429">The intuition behind the latent tree is that during online learning, the weight vector will start favoring latent trees that are easier to learn (such as the one in Figure 2). Algorithm 1 PA algorithm with latent trees Input: Training data D, number of iterations T Output: Weight vector w</bodyText>
+<listItem confidence="0.935146666666667">1: w = 0 �− 2: for t E 1..T do ˜Ai) E D do 3: for (Mi, Ai, 4: ˆyi = arg maxY(A) score(y) . Predict 5: if CORRECT(ˆyi) then 6: ˜yi = arg maxY( ˜A) score(y) . Latent tree 7: A = Φ(ˆyi) − Φ(˜yi)</listItem>
+<equation confidence="0.8778935">
+Δ·w+LOSS(ˆyi)
+8: τ =
+. PA weight
+kΔk2
+9: w = w + τA . PA update
+10: return w
+</equation>
+<bodyText confidence="0.981767916666667">Algorithm 1 shows pseudocode for the learning algorithm, which we will refer to as the baseline learning algorithm. Instead of looping over pairs (x, y) of documents and trees, it loops over triples (M, A, ˜A) that comprise the set of mentions M and the two sets of antecedent candidates (line 3). Moreover, rather than checking that the tree is identical to the latent tree, it only requires the tree to correctly encode the gold clustering (line 5). The update that occurs in lines 7-9 is the passive-aggressive update. A loss function LOSS that quantifies the error in the prediction is used to compute a scalar T that controls how much the weights are moved in each update. If T is set to 1, the update reduces to the standard structured perceptron update. The loss function can be an arbitrarily complex function that returns a numerical value of how bad the prediction is. In the simplest case, Hamming loss can be used, i.e., for each incorrect arc add 1. We follow Fernandes et al. (2012) and penalize erroneous root attachments, i.e., mentions that erroneously get the root node as their antecedent, with a loss of 1.5. For all other arcs we use Hamming loss.</bodyText>
+<sectionHeader confidence="0.99918" genericHeader="method">
+4 Incremental Search
+</sectionHeader>
+<bodyText confidence="0.99986875">We now show that the search problem in (2) can equivalently be solved by the more intuitive bestfirst decoder (Ng and Cardie, 2002), rather than using the CLE decoder. The best-first decoder works incrementally by making a left-to-right pass over the mentions, selecting for each mention the highest scoring antecedent.</bodyText>
+<page confidence="0.996742">
+49
+</page>
+<bodyText confidence="0.999975761904762">The key aspect that makes the best-first decoder equivalent to the CLE decoder is that all arcs point from left to right, both in this paper and in the work of Fernandes et al.(2012). We sketch a proof that this decoder also returns the highest scoring tree. First, note that this algorithm indeed returns a tree. This can be shown by assuming the opposite, in which case the tree has to have a cycle. Then there must be a mention that has its antecedent to the right. Though this is not possible since all arcs point from left to right. Second, this tree is the highest scoring tree. Again, assume the contrary, i.e., that there is a higher scoring tree in Y(A). This implies that for some mention there is a higher scoring antecedent than the one selected by the decoder. This contradicts the fact that the best-first decoder selects the highest scoring antecedent for each mention.5</bodyText>
+<sectionHeader confidence="0.973287" genericHeader="method">
+5 Introducing Non-local Features
+</sectionHeader>
+<bodyText confidence="0.998368828571428">Since the best-first decoder makes a left-to-right pass, it is possible to extract features on the partial structure on the left. Such non-local features are able to capture information beyond that of a mention and its potential antecedent, e.g., the size of a partially built cluster, or features extracted from the antecedent of the antecedent. When only local features are used, greedy search (either with CLE or the best-first decoder) suffices to find the highest scoring tree. That is, greedy search provides an exact solution to equation 2. Non-local features, however, render the exact search problem intractable. This is because with non-local features, locally suboptimal (i.e., non-greedy) antecedents for some mentions may lead to a higher total score over a whole document. In order to keep some options around during search, we extend the best-first decoder with beam search. Beam search works incrementally by keeping an agenda of state items. At each step, all items on the agenda are expanded. The subset of size k (the beam size) of the highest scoring expansions are retained and put back into the agenda for the next step. The feature extraction function Φ 5In case there are multiple maximum spanning trees, the best-first decoder will return one of them. This also holds for the CLE algorithm. With proper definitions, the proof can be constructed to show that both search algorithms return trees belonging to the set of maximum spanning trees over a graph. is also extended such that it also receives the current state s as an argument: Φ((mi, mj), s). The state encodes the previous decisions and enables Φ to extract features from the partial tree on the left. We now outline three different ways of learning the weight vector w with non-local features.</bodyText>
+<subsectionHeader confidence="0.996546">
+5.1 Early updates
+</subsectionHeader>
+<bodyText confidence="0.99992523255814">The beam search decoder can be plugged into the training algorithm, replacing the calls to arg max. Since state items leading to the best tree may be pruned from the agenda before the decoder reaches the end of the document, the introduction of non-local features may cause the decoder to return a non-optimal tree. This is problematic as it might cause updates although the correct tree has a higher score than the predicted one. It has previously been observed (Huang et al., 2012) that substantial gains can be made by applying an early update strategy (Collins and Roark, 2004): if the correct item is pruned before reaching the end of the document, then stop and update. While beam search and early updates have been successfully applied to other NLP applications, our task differs in two important aspects: First, coreference resolution is a much more difficult task, which relies on more (world) knowledge than what is available in the training data. In other words, it is unlikely that we can devise a feature set that is informative enough to allow the weight vector to converge towards a solution that lets the learning algorithm see the entire documents during training, at least in the situation when no external knowledge sources are used. Second, our gold structure is not known but is induced latently, and may vary from iteration to iteration. With non-local features this is troublesome since the best latent tree of a complete document may not necessarily coincide with the best partial tree at some intermediate mention mj, j &lt; n, i.e., a mention before the last in a document. We therefore also apply beam search to find the latent tree to have a partial gold structure for every mention in a document. Algorithm 2 shows pseudocode for the beam search and early update training procedure. The algorithm maintains two parallel agendas, one for gold items and one for predicted items. At every mention, both agendas are expanded and thus cover the same set of mentions. Then the predicted agenda is checked to see if it contains any correct item.</bodyText>
+<page confidence="0.957738">
+50
+</page>
+<figure confidence="0.330088666666667">
+Algorithm 2 Beam search and early update
+˜Aj, mj, k)
+8: AgendaP = EXPAND(AgendaP, Aj, mj, k)
+9: if ¬ CONTAINSCORRECT(AgendaP) then
+10: y˜ = EXTRACTBEST(AgendaG)
+11: yˆ = EXTRACTBEST(AgendaP)
+12: update . PA update
+13: GOTO 3 . Skip and move to next instance
+14: yˆ = EXTRACTBEST(AgendaP)
+15: if ¬ CORRECT(ˆy) then
+16: y˜ = EXTRACTBEST(AgendaG)
+17: update . PA update
+</figure>
+<bodyText confidence="0.999935904761905">If there is no correct item in the predicted agenda, search is halted and an update is made against the best item from the gold agenda. The algorithm then moves on to the next document. If the end of a document is reached, the top scoring predicted item is checked for correctness. If it is not, an update is made against the best gold item. A drawback of early updates is that the remainder of the document is skipped when an early update is applied, effectively discarding some training data.6 An alternative strategy that makes better use of the training data is to apply the maxviolation procedure suggested by Huang et al.(2012). However, since our gold trees change from iteration to iteration, and even inside of a single document, it is not entirely clear with respect to what gold tree the maximum violation should be computed. Initial experiments with max-violation updates indicated that they did not improve much over early updates, and also had a tendency to only consider a smaller portion of the training data.</bodyText>
+<subsectionHeader confidence="0.987098">
+5.2 LaSO
+</subsectionHeader>
+<bodyText confidence="0.999841">To make full use of the training data we implemented Learning as Search Optimization (LaSO; Daum´e III and Marcu, 2005b). It is very similar to early updates, but differs in one crucial respect: When an early update is made, search is continued rather than aborted. Thus the learning algorithm always reaches the end of a document, avoiding the problem that early updates discard parts of the training data.</bodyText>
+<footnote confidence="0.580005">
+6In fact, after 50 iterations about 70% of the mentions in
+the training data are still being ignored due to early updates.
+</footnote>
+<bodyText confidence="0.9990838125">Correct items are computed the same way as with early updates, where an agenda of gold items is maintained in parallel. When search is resumed after an intermediate LaSO update, the prediction agenda is re-seeded with gold items (i.e., items that are all correct). This is necessary since the update influences what the partial gold structure looks like, and the gold agenda therefore needs to be recreated from the beginning of the document. Specifically, after each intermediate LaSO update, the gold agenda is expanded repeatedly from the beginning of the document to the point where the update was made, and is then copied over to seed the prediction agenda. In terms of pseudocode, this is accomplished by replacing lines 12 and 13 in Algorithm 2 with the following:</bodyText>
+<listItem confidence="0.987344333333333">12: update . PA update 13: AgendaG = {} 14: for mi E {ml, ..., mj} . Recreate gold agenda 15: AgendaG = EXPAND(AgendaG, ˜Ai, mi, k) 16: AgendaP = COPY(AgendaG) 17: GOTO 6 . Continue</listItem>
+<subsectionHeader confidence="0.978648">
+5.3 Delayed LaSO updates
+</subsectionHeader>
+<bodyText confidence="0.999954827586207">When we applied LaSO, we noticed that it performed worse than the baseline learning algorithm when only using local features. We believe that the reason is that updates are made in the middle of documents which means that lexical forms of antecedents are “fresh in memory” of the weight vector. This results in fewer mistakes during training and leads to fewer updates. While this feedback makes it easier during training, such feedback is not available during test time, and the LaSO learning setting therefore mimics the testing setting to a lesser extent. We also found that LaSO updates change the shape of the latent tree and that the average distance between mentions connected by an arc increased. This problem can also be attributed to how lexical items are fresh in memory. Such trees tend to deviate from the intuition that the latent trees are easier to learn. They also render distancebased features (which are standard practice and generally rather useful) less powerful, as distance in sentences or mentions becomes less of a reliable indicator for coreference. To cope with this problem, we devised the delayed LaSO update, which differs from LaSO only in the respect that it postpones the actual updates until the end of a document. This is accomplished by summing the distance vectors Δ at every point where LaSO would make an update. At the end of a document, an update is made with respect to the sum of all Δ’s.</bodyText>
+<figure confidence="0.860572472222222">
+Input: Data set D, epochs T, beam size k
+Output: weight vector w
+→−
+1: w = 0
+2: fort E 1..T do
+3: for (Mi, Ai, ˜Ai) E D do
+4: AgendaG = {}
+5: AgendaP = {}
+6: for j E 1..n do
+7: AgendaG = EXPAND(AgendaG,
+51
+Algorithm 3 Delayed LaSO update
+Input: Data set D, iterations T, beam size k
+Output: weight vector w
+�−
+1: w = 0
+2: fort E 1..T do
+3: for (Mi, Ai, ˜Ai) E D do
+4: Agendas = {}
+5: AgendaP = {}
+0
+˜Aj, mj, k)
+10: AgendaP = EXPAND(AgendaP, Aj, mj, k)
+11: if - CONTAINSCORRECT(AgendaP) then
+12: y˜ = EXTRACTBEST(Agendas)
+13: yˆ = EXTRACTBEST(AgendaP)
+14: Δacc = Δacc + Φ(ˆy) − Φ(˜y)
+15: lossacc = lossacc + LOSS(ˆy)
+16: AgendaP = Agendas
+17: yˆ = EXTRACTBEST(AgendaP)
+18: if - CORRECT(ˆy) then
+19: y˜ = EXTRACTBEST(Agendas)
+20: Δacc = Δacc + Φ(ˆy) − Φ(˜y)
+21: lossacc = lossacc + LOSS(ˆy)
+�− 0 then
+23: update w.r.t. Δacc and lossacc
+</figure>
+<bodyText confidence="0.999653428571428">Similarly, a running sum of the partial loss is maintained within a document. Since the PA update only depends on the distance vector Δ and the loss, it can be applied with respect to these sums at the end of the document. When only local features are used, this update is equivalent to the updates in the baseline learning algorithm. This follows because greedy search finds the optimal tree when only local features are used. Similarly, using only local features, the beam-based best-first decoder will also return the optimal tree. Algorithm 3 shows the pseudocode for the delayed LaSO learning algorithm.</bodyText>
+<sectionHeader confidence="0.999685" genericHeader="method">
+6 Features
+</sectionHeader>
+<bodyText confidence="0.999972875">In this section we briefly outline the type of features we use. The feature sets are customized for each language. As a baseline we use the features from Bj¨orkelund and Farkas (2012), who ranked second in the 2012 CoNLL shared task and is publicly available. The exact definitions and feature sets that we use are available as part of the download package of our system.</bodyText>
+<subsectionHeader confidence="0.993346">
+6.1 Local features
+</subsectionHeader>
+<bodyText confidence="0.999871315789474">Basic features that can be extracted on one or both mentions in a pair include (among others): Mention type, which is either root, pronoun, name, or common; Distance features, e.g., the distance in sentences or mentions; Rule-based features, e.g., StringMatch or SubStringMatch; Syntax-based features, e.g., category labels or paths in the syntax tree; Lexical features, e.g., the head word of a mention or the last word of a mention. In order to have a strong local baseline, we applied greedy forward/backward feature selection on the training data using a large set of local feature templates. Specifically, the training set of each language was split into two parts where 75% was used for training, and 25% for testing. Feature templates were incrementally added or removed in order to optimize the mean of MUC, B3, and CEAFe (i.e., the CoNLL average).</bodyText>
+<subsectionHeader confidence="0.973785">
+6.2 Non-local Features
+</subsectionHeader>
+<bodyText confidence="0.999938606060606">We experimented with non-local features drawn from previous work on entity-mention models (Luo et al., 2004; Rahman and Ng, 2009), however they did not improve performance in preliminary experiments. The one exception is the size of a cluster (Culotta et al., 2007). Additional features we use are Shape encodes the linear “shape” of a cluster in terms of mention type. For instance, the clusters representing Gary Wilber and Drug Emporium Inc. from the example in Figure 1, would be represented as RNPN and RNCCC, respectively. Where R, N, P, and C denote the root node, names, pronouns, and common noun phrases, respectively. Local syntactic context is inspired by the Entity Grid (Barzilay and Lapata, 2008), where the basic assumption is that references to an entity follow particular syntactic patterns. For instance, an entity may be introduced as an object in one sentence, whereas in subsequent sentences it is referred to in subject position. Grammatical functions are approximated by the path in the syntax tree from a mention to its closest S node. The partial paths of a mention and its linear predecessor, given the cluster of the current antecedent, informs the model about the local syntactic context. Cluster start distance denotes the distance in mentions from the beginning of the document where the cluster of the antecedent in consideration begins. Additionally, the non-local model also has access to the basic properties of other mentions in the partial tree structure, such as head words. The non-local features were selected with the same greedy forward strategy as the local features, starting from the optimized local feature sets.</bodyText>
+<figure confidence="0.9198588">
+6: Δacc =
+7: lossacc = 0
+8: for j E 1..n do
+9: Agendas = EXPAND(Agendas,
+22: if Δacc =�
+</figure>
+<page confidence="0.992875">
+52
+</page>
+<sectionHeader confidence="0.994423" genericHeader="evaluation">
+7 Experimental Setup
+</sectionHeader>
+<bodyText confidence="0.999953818181818">We apply our model to the CoNLL 2012 Shared Task data, which includes a training, development, and test set split for three languages: Arabic, Chinese and English. We follow the closed track setting where systems may only be trained on the provided training data, with the exception of the English gender and number data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse trees). Unless otherwise stated we use 25 iterations of perceptron training and a beam size of 20. We did not attempt to tune either of these parameters. We experiment with two feature sets for each language: the optimized local feature sets (denoted local), and the optimized local feature sets extended with non-local features (denoted non-local).</bodyText>
+<sectionHeader confidence="0.999829" genericHeader="result">
+8 Results
+</sectionHeader>
+<bodyText confidence="0.933676444444445">Learning strategies. We begin by looking at the different learning strategies. Since early updates do not always make use of the complete documents during training, it can be expected that it will require either a very wide beam or more iterations to get up to par with the baseline learning algorithm. Figure 3 shows the CoNLL average on 7i.e., mentions that appear in the prediction but not in gold, or the other way around the English development set as a function of number of training iterations with two different beam sizes, 20 and 100, over the local and non-local feature sets.</bodyText>
+<footnote confidence="0.993432">
+8Available at http://conll.cemantix.org/
+2012/software.html
+</footnote>
+<table confidence="0.8456196">
+Baseline
+Early (local), k=20
+Early (local), k=100
+Early (non-local), k=20
+Early (non-local), k=100
+</table>
+<figure confidence="0.9023025">
+0 10 20 30 40 50
+Iterations
+</figure>
+<figureCaption confidence="0.9992805">
+Figure 3: Comparing early update training with
+the baseline training algorithm.
+</figureCaption>
+<bodyText confidence="0.99960040625">The figure shows that even after 50 iterations, early update falls short of the baseline, even when the early update system has access to more informative non-local features.9 In Figure 4 we compare early update with LaSO and delayed LaSO on the English development set. The left half uses the local feature set, and the right the extended non-local feature set. Recall that with only local features, delayed LaSO is equivalent to the baseline learning algorithm. As before, early update is considerably worse than other learning strategies. We also see that delayed LaSO outperforms LaSO, both with and without non-local features. Note that plain LaSO with non-local features only barely outperforms the delayed LaSO with only local features (i.e., the baseline), which indicates that only delayed LaSO is able to fully leverage non-local features. From these results we conclude that we are better off when the learning algorithm handles one document at a time, instead of getting feedback within documents. Local vs. Non-local feature sets. Table 1 displays the differences in F-measures and CoNLL average between the local and non-local systems when applied to the development sets for each language. All metrics improve when more informative non-local features are added to the local feature set. Arabic and English show considerable improvements, and the CoNLL average increases</bodyText>
+<footnote confidence="0.9524404">
+9Although the Early systems still seem to show slight in-
+creases after 50 iterations, it needs a considerable number of
+iterations to catch up with the baseline – after 100 iterations
+the best early system is still more than half a point behind the
+baseline.
+</footnote>
+<figure confidence="0.717964333333333">
+CoNLL avg. 64
+62
+60
+58
+56
+54
+</figure>
+<page confidence="0.712849">
+53
+</page>
+<figure confidence="0.94351">
+65
+64
+63
+62
+61
+60
+59
+58
+</figure>
+<figureCaption confidence="0.9966225">
+Figure 4: Comparison of learning algorithms eval-
+uated on the English development set.
+</figureCaption>
+<table confidence="0.9999">
+MUC B3 CEAFm CEAFe CoNLL
+Arabic
+local 47.33 42.51 49.71 46.49 45.44
+non-local 49.31 43.52 50.96 47.18 46.67
+Chinese
+local 65.84 57.94 62.23 57.05 60.27
+non-local 66.4 57.99 62.37 57.12 60.5
+English
+local 69.95 58.7 62.91 56.03 61.56
+non-local 70.74 60.03 65.01 56.8 62.52
+</table>
+<tableCaption confidence="0.99945">
+Table 1: Comparison of local and non-local fea-
+ture sets on the development sets.about one point.</tableCaption>
+<bodyText confidence="0.95210708">For Chinese the gains are generally not as pronounced, though the MUC metric goes up by more than half a point.Final results. In Table 2 we compare the results of the non-local system (This paper) to the best results from the CoNLL 2012 Shared Task.10 Specifically, this includes Fernandes et al.’s (2012) system for Arabic and English (denoted Fernandes), and Chen and Ng’s (2012) system for Chinese (denoted C&amp;N). For English we also compare it to the Berkeley system (Durrett and Klein, 2013), which, to our knowledge, is the best publicly available system for English coreference resolution (denoted D&amp;K). As a general baseline, we also include Bj¨orkelund and Farkas’ (2012) system (denoted B&amp;F), which was the second best system in the shared task. For almost all metrics our system is significantly better than the best competitor. For a few metrics the best competitor outperforms our results for either precision or recall, but in terms of F-measures and the CoNLL average our system is the best for all languages. 10Thanks to Sameer Pradhan for providing us with the outputs of the other systems for significance testing.</bodyText>
+<sectionHeader confidence="0.986075" genericHeader="related work">
+9 Related Work
+</sectionHeader>
+<bodyText confidence="0.991004530612245">On the machine learning side Collins and Roark’s (2004) work on the early update constitutes our starting point. The LaSO framework was introduced by Daum´e III and Marcu (2005b), but has, to our knowledge, only been applied to the related task of entity detection and tracking (Daum´e III and Marcu, 2005a). The theoretical motivation for early updates was only recently explained rigorously (Huang et al., 2012). The delayed LaSO update that we propose decomposes the prediction task of a complex structure into a number of subproblems, each of which guarantee violation, using Huang et al.’s (2012) terminology. We believe this is an interesting novelty, as it leverages the complete structures for every training instance during every iteration, and expect it to be applicable also to other structured prediction tasks. Our approach also resembles imitation learning techniques such as SEARN (Daum´e III et al., 2009) and DAGGER (Ross et al., 2011), where the search problem is reduced to a sequence of classification steps that guide the search algorithm through the search space. These frameworks, however, rely on the notion of an expert policy which provides an optimal decision at each point during search. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search algorithm. Latent antecedents. The use of latent antecedents goes back to the work of Yu and Joachims (2009), although the idea of determining meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach.</bodyText>
+<figure confidence="0.9671502">
+CoNLL avg.
+Early
+LaSO
+Delayed LaSO
+Local Non-local
+</figure>
+<page confidence="0.987673">
+54
+</page>
+<table confidence="0.9998378">
+Rec MUC F1 Rec B3 F1 Rec CEAF. Rec CEAF, F1 CoNLL
+Prec Prec Prec F1 Prec avg.
+Arabic
+B&amp;F 43.9 52.51 47.82 35.7 49.77 41.58 43.8 50.03 46.71 40.45 41.86 41.15 43.51
+Fernandes 43.63 49.69 46.46 38.39 47.7 42.54 47.6 50.85 49.17 48.16 45.03 46.54 45.18
+This paper 47.53 53.3 50.25 44.14 49.34 46.6 50.94 55.19 52.98 49.2 49.45 49.33 48.72
+Chinese
+B&amp;F 58.72 58.49 58.61 49.17 53.2 51.11 56.68 51.86 54.14 55.36 41.8 47.63 52.45
+C&amp;N 59.92 64.69 62.21 51.76 60.26 55.69 59.58 60.45 60.02 58.84 51.61 54.99 57.63
+This paper 62.57 69.39 65.8 53.87 61.64 57.49 58.75 64.76 61.61 54.65 59.33 56.89 60.06
+English
+B&amp;F 65.23 70.1 67.58 49.51 60.69 54.47 56.93 59.51 58.19 51.34 49.14 59.21 57.42
+Fernandes 65.83 75.91 70.51 51.55 65.19 57.58 57.48 65.93 61.42 50.82 57.28 53.86 60.65
+D&amp;K 66.58 74.94 70.51 53.2 64.56 58.33 59.19 66.23 62.51 52.9 58.06 55.36 61.4
+This paper 67.46 74.3 70.72 54.96 62.71 58.58 60.33 66.92 63.45 52.27 59.4 55.61 61.63
+</table>
+<tableCaption confidence="0.8127875">
+Table 2: Comparison with other systems on the test sets. Bold numbers indicate significance at the
+p &lt; 0.05 level between the best and the second best systems (according to the CoNLL average) using
+a Wilcoxon signed rank sum test. We refrain from significance tests on the CoNLL average, as it is an
+average over other F-measures.
+</tableCaption>
+<bodyText confidence="0.99842859375">Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al.(2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however.Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al.(2004) also apply beam search at test time, but use a static assignment of antecedents and learns log-linear model using batch learning. Moreover, these works alter the basic feature definitions from their pairwise models when introducing entity-level features. This contrasts with our work, as our mention-pair model simply constitutes a special case of the non-local system.</bodyText>
+<sectionHeader confidence="0.995654" genericHeader="conclusion">
+10 Conclusion
+</sectionHeader>
+<bodyText confidence="0.99999752173913">We presented experiments with a coreference resolver that leverages non-local features to improve its performance. The application of non-local features requires the use of an approximate search algorithm to keep the problem tractable. We evaluated standard perceptron learning techniques for this setting both using early updates and LaSO. We found that the early update strategy is considerably worse than a local baseline, as it is unable to exploit all training data. LaSO resolves this issue by giving feedback within documents, but still underperforms compared to the baseline as it distorts the choice of latent antecedents. We introduced a modification to LaSO, where updates are delayed until each document is processed. In the special case where only local features are used, this method coincides with standard structured perceptron learning that uses exact search. Moreover, it is also able to profit from nonlocal features resulting in improved performance. We evaluated our system on all three languages from the CoNLL 2012 Shared Task and present the best results to date on these data sets.</bodyText>
+<sectionHeader confidence="0.998027" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.9987096">We are grateful to the anonymous reviewers as well as Christian Scheible and Wolfgang Seeker for comments on earlier versions of this paper. This research has been funded by the DFG via SFB 732, project D8.</bodyText>
+<page confidence="0.99558">
+55
+</page>
+<bodyText confidence="0.6819104">Jeju Island, Korea, July. Association for Computational Linguistics. Yoeng-jin Chu and Tseng-hong Liu. 1965. On the shortest aborescence of a directed graph. Science Sinica, 14:1396–1400.</bodyText>
+<sectionHeader confidence="0.772891" genericHeader="references">
+References
+</sectionHeader>
+<bodyText confidence="0.9888894">Amit Bagga and Breck Baldwin. 1998. Algorithms for scoring coreference chains. In In The First International Conference on Language Resources and Evaluation Workshop on Linguistics Coreference, pages 563–566.</bodyText>
+<reference confidence="0.99892221">
+Regina Barzilay and Mirella Lapata. 2008. Modeling
+local coherence: An entity-based approach. Compu-
+tational Linguistics, 34(1):1–34.
+Eric Bengtson and Dan Roth. 2008. Understand-
+ing the value of features for coreference resolution.
+In Proceedings of the 2008 Conference on Empiri-
+cal Methods in Natural Language Processing, pages
+294–303, Honolulu, Hawaii, October. Association
+for Computational Linguistics.
+Shane Bergsma and Dekang Lin. 2006. Bootstrapping
+path-based pronoun resolution. In Proceedings of
+the 21st International Conference on Computational
+Linguistics and 44th Annual Meeting of the Associ-
+ation for Computational Linguistics, pages 33–40,
+Sydney, Australia, July. Association for Computa-
+tional Linguistics.
+Anders Bj¨orkelund and Rich´ard Farkas. 2012. Data-
+driven multilingual coreference resolution using re-
+solver stacking. In Joint Conference on EMNLP and
+CoNLL - Shared Task, pages 49–55, Jeju Island, Ko-
+rea, July. Association for Computational Linguistics.
+Bernd Bohnet, Simon Mille, Benoit Favre, and Leo
+Wanner. 2011. &lt;stumaba &gt;: From deep represen-
+tation to surface. In Proceedings of the Generation
+Challenges Session at the 13th European Workshop
+on Natural Language Generation, pages 232–235,
+Nancy, France, September. Association for Compu-
+tational Linguistics.
+Bernd Bohnet. 2010. Top accuracy and fast depen-
+dency parsing is not a contradiction. In Proceedings
+of the 23rd International Conference on Computa-
+tional Linguistics (Coling 2010), pages 89–97, Bei-
+jing, China, August.
+Kai-Wei Chang, Rajhans Samdani, Alla Rozovskaya,
+Mark Sammons, and Dan Roth. 2012. Illinois-
+coref: The ui system in the conll-2012 shared task.
+In Joint Conference on EMNLP and CoNLL - Shared
+Task, pages 113–117, Jeju Island, Korea, July. Asso-
+ciation for Computational Linguistics.
+Kai-Wei Chang, Rajhans Samdani, and Dan Roth.
+2013. A constrained latent variable model for coref-
+erence resolution. In Proceedings of the 2013 Con-
+ference on Empirical Methods in Natural Language
+Processing, pages 601–612, Seattle, Washington,
+USA, October. Association for Computational Lin-
+guistics.
+Chen Chen and Vincent Ng. 2012. Combining the
+best of two worlds: A hybrid approach to multilin-
+gual coreference resolution. In Joint Conference on
+EMNLP and CoNLL - Shared Task, pages 56–63,
+Michael Collins and Brian Roark. 2004. Incremen-
+tal parsing with the perceptron algorithm. In Pro-
+ceedings of the 42nd Meeting of the Association for
+Computational Linguistics (ACL’04), Main Volume,
+pages 111–118, Barcelona, Spain, July.
+Michael Collins. 2002. Discriminative training meth-
+ods for hidden markov models: Theory and experi-
+ments with perceptron algorithms. In Proceedings
+of the 2002 Conference on Empirical Methods in
+Natural Language Processing, pages 1–8. Associ-
+ation for Computational Linguistics, July.
+Koby Crammer, Ofer Dekel, Joseph Keshet, Shai
+Shalev-Shwartz, and Yoram Singer. 2006. Online
+passive–aggressive algorithms. Journal of Machine
+Learning Reseach, 7:551–585, March.
+Aron Culotta, Michael Wick, and Andrew McCallum.
+2007. First-order probabilistic models for corefer-
+ence resolution. In Human Language Technologies
+2007: The Conference of the North American Chap-
+ter of the Association for Computational Linguistics;
+Proceedings of the Main Conference, pages 81–88,
+Rochester, New York, April. Association for Com-
+putational Linguistics.
+Hal Daum´e III and Daniel Marcu. 2005a. A large-
+scale exploration of effective global features for a
+joint entity detection and tracking model. In Pro-
+ceedings of Human Language Technology Confer-
+ence and Conference on Empirical Methods in Natu-
+ral Language Processing, pages 97–104, Vancouver,
+British Columbia, Canada, October. Association for
+Computational Linguistics.
+Hal Daum´e III and Daniel Marcu. 2005b. Learning
+as search optimization: approximate large margin
+methods for structured prediction. In ICML, pages
+169–176.
+Hal Daum´e III, John Langford, and Daniel Marcu.
+2009. Search-based structured prediction. Machine
+Learning, 75(3):297–325.
+Pascal Denis and Jason Baldridge. 2009. Global Joint
+Models for Coreference Resolution and Named En-
+tity Classification. In Procesamiento del Lenguaje
+Natural 42, pages 87–96, Barcelona: SEPLN.
+John Duchi, Elad Hazan, and Yoram Singer. 2011.
+Adaptive subgradient methods for online learning
+and stochastic optimization. J. Mach. Learn. Res.,
+12:2121–2159, July.
+Greg Durrett and Dan Klein. 2013. Easy victories and
+uphill battles in coreference resolution. In Proceed-
+ings of the 2013 Conference on Empirical Methods
+in Natural Language Processing, pages 1971–1982,
+</reference>
+<page confidence="0.96549">
+56
+</page>
+<reference confidence="0.999892590476191">
+Seattle, Washington, USA, October. Association for
+Computational Linguistics.
+Jack Edmonds. 1967. Optimum branchings. Jour-
+nal of Research of the National Bureau of Standards,
+71(B):233–240.
+Eraldo Fernandes, C´ıcero dos Santos, and Ruy Milidi´u.
+2012. Latent structure perceptron with feature in-
+duction for unrestricted coreference resolution. In
+Joint Conference on EMNLP and CoNLL - Shared
+Task, pages 41–48, Jeju Island, Korea, July. Associ-
+ation for Computational Linguistics.
+Liang Huang, Suphan Fayong, and Yang Guo. 2012.
+Structured perceptron with inexact search. In Pro-
+ceedings of the 2012 Conference of the North Amer-
+ican Chapter of the Association for Computational
+Linguistics: Human Language Technologies, pages
+142–151, Montr´eal, Canada, June. Association for
+Computational Linguistics.
+Liang Huang. 2008. Forest reranking: Discrimina-
+tive parsing with non-local features. In Proceedings
+of ACL-08: HLT, pages 586–594, Columbus, Ohio,
+June. Association for Computational Linguistics.
+Xiaoqiang Luo, Abe Ittycheriah, Hongyan Jing, Nanda
+Kambhatla, and Salim Roukos. 2004. A mention-
+synchronous coreference resolution algorithm based
+on the bell tree. In Proceedings of the 42nd Meet-
+ing of the Association for Computational Linguis-
+tics, pages 135–142, Barcelona, Spain, July.
+Xiaoqiang Luo. 2005. On coreference resolution
+performance metrics. In Proceedings of Human
+Language Technology Conference and Conference
+on Empirical Methods in Natural Language Pro-
+cessing, pages 25–32, Vancouver, British Columbia,
+Canada, October. Association for Computational
+Linguistics.
+Vincent Ng and Claire Cardie. 2002. Improving ma-
+chine learning approaches to coreference resolution.
+In Proceedings of 40th Annual Meeting of the Asso-
+ciation for Computational Linguistics, pages 104–
+111, Philadelphia, Pennsylvania, USA, July. Asso-
+ciation for Computational Linguistics.
+Vincent Ng. 2010. Supervised noun phrase coref-
+erence research: The first fifteen years. In Pro-
+ceedings of the 48th Annual Meeting of the Asso-
+ciation for Computational Linguistics, pages 1396–
+1411, Uppsala, Sweden, July. Association for Com-
+putational Linguistics.
+Sameer Pradhan, Alessandro Moschitti, Nianwen Xue,
+Olga Uryupina, and Yuchen Zhang. 2012. Conll-
+2012 shared task: Modeling multilingual unre-
+stricted coreference in ontonotes. In Joint Confer-
+ence on EMNLP and CoNLL - Shared Task, pages
+1–40, Jeju Island, Korea, July. Association for Com-
+putational Linguistics.
+Altaf Rahman and Vincent Ng. 2009. Supervised mod-
+els for coreference resolution. In Proceedings of the
+2009 Conference on Empirical Methods in Natural
+Language Processing, pages 968–977, Singapore,
+August. Association for Computational Linguistics.
+Lev Ratinov and Dan Roth. 2009. Design chal-
+lenges and misconceptions in named entity recog-
+nition. In Proceedings of the Thirteenth Confer-
+ence on Computational Natural Language Learning
+(CoNLL-2009), pages 147–155, Boulder, Colorado,
+June. Association for Computational Linguistics.
+St´ephane Ross, Geoffrey J. Gordon, and J. Andrew
+Bagnell. 2011. A reduction of imitation learning
+and structured prediction to no-regret online learn-
+ing. In AISTATS, pages 627–635.
+Wee Meng Soon, Hwee Tou Ng, and Daniel
+Chung Yong Lim. 2001. A machine learning ap-
+proach to coreference resolution of noun phrases.
+Computational Linguistics, 27(4):521–544.
+Veselin Stoyanov and Jason Eisner. 2012. Easy-first
+coreference resolution. In Proceedings of COLING
+2012, pages 2519–2534, Mumbai, India, December.
+Veselin Stoyanov, Nathan Gilbert, Claire Cardie, and
+Ellen Riloff. 2009. Conundrums in noun phrase
+coreference resolution: Making sense of the state-
+of-the-art. In Proceedings of the Joint Conference of
+the 47th Annual Meeting of the ACL and the 4th In-
+ternational Joint Conference on Natural Language
+Processing of the AFNLP, pages 656–664, Suntec,
+Singapore, August. Association for Computational
+Linguistics.
+Marc Vilain, John Burger, John Aberdeen, Dennis Con-
+nolly, and Lynette Hirschman. 1995. A model the-
+oretic coreference scoring scheme. In Proceedings
+MUC-6, pages 45–52, Columbia, Maryland.
+Xiaofeng Yang, Jian Su, Jun Lang, Chew Lim Tan,
+Ting Liu, and Sheng Li. 2008. An entity-
+mention model for coreference resolution with in-
+ductive logic programming. In Proceedings ofACL-
+08: HLT, pages 843–851, Columbus, Ohio, June.
+Association for Computational Linguistics.
+Chun-Nam Yu and T. Joachims. 2009. Learning struc-
+tural svms with latent variables. In International
+Conference on Machine Learning (ICML).
+Yue Zhang and Stephen Clark. 2008. A tale of two
+parsers: Investigating and combining graph-based
+and transition-based dependency parsing. In Pro-
+ceedings of the 2008 Conference on Empirical Meth-
+ods in Natural Language Processing, pages 562–
+571, Honolulu, Hawaii, October. Association for
+Computational Linguistics.
+</reference>
+<page confidence="0.999143">
+57
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.604222" no="0">
+<title confidence="0.9965665">Learning Structured Perceptrons for Coreference with Latent Antecedents and Non-local Features</title>
+<author confidence="0.903906">Bj¨orkelund</author>
+<affiliation confidence="0.9922525">Institute for Natural Language University of</affiliation>
+<abstract confidence="0.9778512">We investigate different ways of learning structured perceptron models for coreference resolution when using non-local features and beam search. Our experimental results indicate that standard techniques such as early updates or Learning as Search Optimization (LaSO) perform worse than a greedy baseline that only uses local features. By modifying LaSO to delay updates until the end of each instance we obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Regina Barzilay</author>
+<author>Mirella Lapata</author>
+</authors>
+<title>Modeling local coherence: An entity-based approach.</title>
+<date>2008</date>
+<journal>Computational Linguistics,</journal>
+<volume>34</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Barzilay and Lapata, 2008" endWordPosition="4350" position="25217" startWordPosition="4347">odels (Luo et al., 2004; Rahman and Ng, 2009), however they did not improve performance in preliminary experiments. The one exception is the size of a cluster (Culotta et al., 2007). Additional features we use are Shape encodes the linear “shape” of a cluster in terms of mention type. For instance, the clusters representing Gary Wilber and Drug Emporium Inc. from the example in Figure 1, would be represented as RNPN and RNCCC, respectively. Where R, N, P, and C denote the root node, names, pronouns, and common noun phrases, respectively. Local syntactic context is inspired by the Entity Grid (Barzilay and Lapata, 2008), where the basic assumption is that references to an entity follow particular syntactic patterns. For instance, an entity may be introduced as an object in one sentence, whereas in subsequent sentences it is referred to in subject position. Grammatical functions are approximated by the path in the syntax tree from a mention to its closest S node. The partial paths of a mention and its linear predecessor, given the cluster of the current antecedent, informs the model about the local syntactic context. Cluster start distance denotes the distance in mentions from the beginning of the document wh</context>
+</contexts>
+<marker>Barzilay, Lapata, 2008</marker>
+<rawString>Regina Barzilay and Mirella Lapata. 2008. Modeling local coherence: An entity-based approach. Computational Linguistics, 34(1):1–34.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eric Bengtson</author>
+<author>Dan Roth</author>
+</authors>
+<title>Understanding the value of features for coreference resolution.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>294--303</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Honolulu, Hawaii,</location>
+<contexts>
+<context citStr="Bengtson and Roth, 2008" endWordPosition="5750" position="33574" startWordPosition="5747">he search problem is reduced to a sequence of classification steps that guide the search algorithm through the search space. These frameworks, however, rely on the notion of an expert policy which provides an optimal decision at each point during search. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though</context>
+</contexts>
+<marker>Bengtson, Roth, 2008</marker>
+<rawString>Eric Bengtson and Dan Roth. 2008. Understanding the value of features for coreference resolution. In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing, pages 294–303, Honolulu, Hawaii, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shane Bergsma</author>
+<author>Dekang Lin</author>
+</authors>
+<title>Bootstrapping path-based pronoun resolution.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>33--40</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Sydney, Australia,</location>
+<contexts>
+<context citStr="Bergsma and Lin (2006)" endWordPosition="4596" position="26632" startWordPosition="4593">d words. The 6: Δacc = 7: lossacc = 0 8: for j E 1..n do 9: Agendas = EXPAND(Agendas, 22: if Δacc =� 52 non-local features were selected with the same greedy forward strategy as the local features, starting from the optimized local feature sets. 7 Experimental Setup We apply our model to the CoNLL 2012 Shared Task data, which includes a training, development, and test set split for three languages: Arabic, Chinese and English. We follow the closed track setting where systems may only be trained on the provided training data, with the exception of the English gender and number data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009).</context>
+</contexts>
+<marker>Bergsma, Lin, 2006</marker>
+<rawString>Shane Bergsma and Dekang Lin. 2006. Bootstrapping path-based pronoun resolution. In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics, pages 33–40, Sydney, Australia, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Anders Bj¨orkelund</author>
+<author>Rich´ard Farkas</author>
+</authors>
+<title>Datadriven multilingual coreference resolution using resolver stacking.</title>
+<date>2012</date>
+<booktitle>In Joint Conference on EMNLP and CoNLL - Shared Task,</booktitle>
+<pages>49--55</pages>
+<institution>Jeju Island, Korea, July. Association for Computational Linguistics.</institution>
+<marker>Bj¨orkelund, Farkas, 2012</marker>
+<rawString>Anders Bj¨orkelund and Rich´ard Farkas. 2012. Datadriven multilingual coreference resolution using resolver stacking. In Joint Conference on EMNLP and CoNLL - Shared Task, pages 49–55, Jeju Island, Korea, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bernd Bohnet</author>
+<author>Simon Mille</author>
+<author>Benoit Favre</author>
+<author>Leo Wanner</author>
+</authors>
+<title>From deep representation to surface.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the Generation Challenges Session at the 13th European Workshop on Natural Language Generation,</booktitle>
+<pages>232--235</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Nancy, France,</location>
+<contexts>
+<context citStr="Bohnet et al., 2011" endWordPosition="195" position="1317" startWordPosition="192">baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English. 1 Introduction This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training data. Put another way, early updates happen too early, and the learning algorithm rarely reaches the end of the instances as it halts, updates, and moves on to the next instance. An alternative would be to continue decoding the same in</context>
+</contexts>
+<marker>Bohnet, Mille, Favre, Wanner, 2011</marker>
+<rawString>Bernd Bohnet, Simon Mille, Benoit Favre, and Leo Wanner. 2011. &lt;stumaba &gt;: From deep representation to surface. In Proceedings of the Generation Challenges Session at the 13th European Workshop on Natural Language Generation, pages 232–235, Nancy, France, September. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bernd Bohnet</author>
+</authors>
+<title>Top accuracy and fast dependency parsing is not a contradiction.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 23rd International Conference on Computational Linguistics (Coling</booktitle>
+<pages>89--97</pages>
+<location>Beijing, China,</location>
+<contexts>
+<context citStr="Bohnet, 2010" endWordPosition="1730" position="10356" startWordPosition="1729">trees that correspond to the correct clustering can be built. Specifically, let ˜Aj denote the set of correct antecedents for a mention mj, or � {m0} if mj has no correct antecedent ˜Aj = {ai |COREF(ai, mj), ai E Aj} otherwise that is, if mention mj is non-referential or the first mention of its cluster, ˜Aj contains only the document root. Otherwise it is the set of all mentions to the left that belong to the same cluster as mj. Analogously to A, let A˜ denote the set of constrained antecedent sets. The latent tree y˜ needed 4We also implement the feature mapping function Φ as a hash kernel (Bohnet, 2010) and apply averaging (Collins, 2002), though for brevity we omit this from the pseudocode. for updates is then defined to be the optimal tree over Y(˜A), subject to the current weight vector: y˜ = arg max score(y) y∈Y(˜A) The intuition behind the latent tree is that during online learning, the weight vector will start favoring latent trees that are easier to learn (such as the one in Figure 2). Algorithm 1 PA algorithm with latent trees Input: Training data D, number of iterations T Output: Weight vector w 1: w = 0 �− 2: for t E 1..T do ˜Ai) E D do 3: for (Mi, Ai, 4: ˆyi = arg maxY(A) score(y)</context>
+</contexts>
+<marker>Bohnet, 2010</marker>
+<rawString>Bernd Bohnet. 2010. Top accuracy and fast dependency parsing is not a contradiction. In Proceedings of the 23rd International Conference on Computational Linguistics (Coling 2010), pages 89–97, Beijing, China, August.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kai-Wei Chang</author>
+<author>Rajhans Samdani</author>
+<author>Alla Rozovskaya</author>
+<author>Mark Sammons</author>
+<author>Dan Roth</author>
+</authors>
+<title>Illinoiscoref: The ui system in the conll-2012 shared task.</title>
+<date>2012</date>
+<booktitle>In Joint Conference on EMNLP and CoNLL - Shared Task,</booktitle>
+<pages>113--117</pages>
+<institution>Jeju Island, Korea, July. Association for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Chang et al., 2012" endWordPosition="5759" position="33617" startWordPosition="5756">assification steps that guide the search algorithm through the search space. These frameworks, however, rely on the notion of an expert policy which provides an optimal decision at each point during search. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search algorithm. Latent an</context>
+<context citStr="Chang et al., 2012" endWordPosition="6154" position="35956" startWordPosition="6151">2: Comparison with other systems on the test sets. Bold numbers indicate significance at the p &lt; 0.05 level between the best and the second best systems (according to the CoNLL average) using a Wilcoxon signed rank sum test. We refrain from significance tests on the CoNLL average, as it is an average over other F-measures. meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach. Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention m</context>
+</contexts>
+<marker>Chang, Samdani, Rozovskaya, Sammons, Roth, 2012</marker>
+<rawString>Kai-Wei Chang, Rajhans Samdani, Alla Rozovskaya, Mark Sammons, and Dan Roth. 2012. Illinoiscoref: The ui system in the conll-2012 shared task. In Joint Conference on EMNLP and CoNLL - Shared Task, pages 113–117, Jeju Island, Korea, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kai-Wei Chang</author>
+<author>Rajhans Samdani</author>
+<author>Dan Roth</author>
+</authors>
+<title>A constrained latent variable model for coreference resolution.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>601--612</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Seattle, Washington, USA,</location>
+<contexts>
+<context citStr="Chang et al., 2013" endWordPosition="381" position="2443" startWordPosition="378"> and moves on to the next instance. An alternative would be to continue decoding the same instance after the early updates, which is equivalent to Learning as Search Optimization (LaSO; Daum´e III and Marcu (2005b)). The learning task we are tackling is however further complicated since the target structure is under-determined by the gold standard annotation. Coreferent mentions in a document are usually annotated as sets of mentions, where all mentions in a set are coreferent. We adopt the recently popularized approach of inducing a latent structure within these sets (Fernandes et al., 2012; Chang et al., 2013; Durrett and Klein, 2013). This approach provides a powerful boost to the performance of coreference resolvers, but we find that it does not combine well with the LaSO learning strategy. We therefore propose a modification to LaSO, which delays updates until after each instance. The combination of this modification with non-local features leads to further improvements in the clustering accuracy, as we show in evaluation results on all languages from the CoNLL 2012 Shared Task – Arabic, Chinese, and English. We obtain the best results to date on these data sets.1 2 Background Coreference resol</context>
+<context citStr="Chang et al. (2013)" endWordPosition="6195" position="36209" startWordPosition="6192"> tests on the CoNLL average, as it is an average over other F-measures. meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach. Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al. (2004) also apply beam searc</context>
+</contexts>
+<marker>Chang, Samdani, Roth, 2013</marker>
+<rawString>Kai-Wei Chang, Rajhans Samdani, and Dan Roth. 2013. A constrained latent variable model for coreference resolution. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, pages 601–612, Seattle, Washington, USA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chen Chen</author>
+<author>Vincent Ng</author>
+</authors>
+<title>Combining the best of two worlds: A hybrid approach to multilingual coreference resolution.</title>
+<date>2012</date>
+<booktitle>In Joint Conference on EMNLP and CoNLL - Shared Task,</booktitle>
+<pages>56--63</pages>
+<marker>Chen, Ng, 2012</marker>
+<rawString>Chen Chen and Vincent Ng. 2012. Combining the best of two worlds: A hybrid approach to multilingual coreference resolution. In Joint Conference on EMNLP and CoNLL - Shared Task, pages 56–63,</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+<author>Brian Roark</author>
+</authors>
+<title>Incremental parsing with the perceptron algorithm.</title>
+<date>2004</date>
+<booktitle>In Proceedings of the 42nd Meeting of the Association for Computational Linguistics (ACL’04), Main Volume,</booktitle>
+<pages>111--118</pages>
+<location>Barcelona, Spain,</location>
+<contexts>
+<context citStr="Collins and Roark, 2004" endWordPosition="157" position="1083" startWordPosition="154"> as early updates or Learning as Search Optimization (LaSO) perform worse than a greedy baseline that only uses local features. By modifying LaSO to delay updates until the end of each instance we obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English. 1 Introduction This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training d</context>
+<context citStr="Collins and Roark, 2004" endWordPosition="2717" position="15950" startWordPosition="2714">with non-local features. 5.1 Early updates The beam search decoder can be plugged into the training algorithm, replacing the calls to arg max. Since state items leading to the best tree may be pruned from the agenda before the decoder reaches the end of the document, the introduction of non-local features may cause the decoder to return a non-optimal tree. This is problematic as it might cause updates although the correct tree has a higher score than the predicted one. It has previously been observed (Huang et al., 2012) that substantial gains can be made by applying an early update strategy (Collins and Roark, 2004): if the correct item is pruned before reaching the end of the document, then stop and update. While beam search and early updates have been successfully applied to other NLP applications, our task differs in two important aspects: First, coreference resolution is a much more difficult task, which relies on more (world) knowledge than what is available in the training data. In other words, it is unlikely that we can devise a feature set that is informative enough to allow the weight vector to converge towards a solution that lets the learning algorithm see the entire documents during training,</context>
+</contexts>
+<marker>Collins, Roark, 2004</marker>
+<rawString>Michael Collins and Brian Roark. 2004. Incremental parsing with the perceptron algorithm. In Proceedings of the 42nd Meeting of the Association for Computational Linguistics (ACL’04), Main Volume, pages 111–118, Barcelona, Spain, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+</authors>
+<title>Discriminative training methods for hidden markov models: Theory and experiments with perceptron algorithms.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the 2002 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1--8</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics,</institution>
+<contexts>
+<context citStr="Collins, 2002" endWordPosition="130" position="918" startWordPosition="129">perceptron models for coreference resolution when using non-local features and beam search. Our experimental results indicate that standard techniques such as early updates or Learning as Search Optimization (LaSO) perform worse than a greedy baseline that only uses local features. By modifying LaSO to delay updates until the end of each instance we obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English. 1 Introduction This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The </context>
+<context citStr="Collins, 2002" endWordPosition="1427" position="8633" startWordPosition="1426">e same token, the longer one is taken to precede the shorter one. this drugstore chaina2 the companya3 Drug Emporium Inc.a1 companya4 root Gary Wilberb1 Heb2 Gary Wilberb3 48 Edmonds, 1967), which is a maximum spanning tree algorithm that finds the optimal tree over a connected directed graph. CLE, however, has the drawback that the scores of the arcs must remain fixed and can not change depending on other arcs and it is not clear how to include non-local features in a CLE decoder. 3.1 Online learning We find the weight vector w by online learning using a variant of the structured perceptron (Collins, 2002). Specifically, we use the passive-aggressive (PA) algorithm (Crammer et al., 2006), since we found that this performed slightly better in preliminary experiments.4 The structured perceptron iterates over training instances (xi, yi), where xi are inputs and yi are outputs. For each instance it uses the current weight vector w to make a prediction ˆyi given the input xi. If the prediction is incorrect, the weight vector is updated in favor of the correct structure. Otherwise the weight vector is left untouched. In our setting inputs xi correspond to documents and outputs yi are trees over menti</context>
+<context citStr="Collins, 2002" endWordPosition="1735" position="10392" startWordPosition="1734">t clustering can be built. Specifically, let ˜Aj denote the set of correct antecedents for a mention mj, or � {m0} if mj has no correct antecedent ˜Aj = {ai |COREF(ai, mj), ai E Aj} otherwise that is, if mention mj is non-referential or the first mention of its cluster, ˜Aj contains only the document root. Otherwise it is the set of all mentions to the left that belong to the same cluster as mj. Analogously to A, let A˜ denote the set of constrained antecedent sets. The latent tree y˜ needed 4We also implement the feature mapping function Φ as a hash kernel (Bohnet, 2010) and apply averaging (Collins, 2002), though for brevity we omit this from the pseudocode. for updates is then defined to be the optimal tree over Y(˜A), subject to the current weight vector: y˜ = arg max score(y) y∈Y(˜A) The intuition behind the latent tree is that during online learning, the weight vector will start favoring latent trees that are easier to learn (such as the one in Figure 2). Algorithm 1 PA algorithm with latent trees Input: Training data D, number of iterations T Output: Weight vector w 1: w = 0 �− 2: for t E 1..T do ˜Ai) E D do 3: for (Mi, Ai, 4: ˆyi = arg maxY(A) score(y) . Predict 5: if - CORRECT(ˆyi) then</context>
+</contexts>
+<marker>Collins, 2002</marker>
+<rawString>Michael Collins. 2002. Discriminative training methods for hidden markov models: Theory and experiments with perceptron algorithms. In Proceedings of the 2002 Conference on Empirical Methods in Natural Language Processing, pages 1–8. Association for Computational Linguistics, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Koby Crammer</author>
+<author>Ofer Dekel</author>
+<author>Joseph Keshet</author>
+<author>Shai Shalev-Shwartz</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Online passive–aggressive algorithms.</title>
+<date>2006</date>
+<journal>Journal of Machine Learning Reseach,</journal>
+<pages>7--551</pages>
+<contexts>
+<context citStr="Crammer et al., 2006" endWordPosition="1438" position="8716" startWordPosition="1435">tore chaina2 the companya3 Drug Emporium Inc.a1 companya4 root Gary Wilberb1 Heb2 Gary Wilberb3 48 Edmonds, 1967), which is a maximum spanning tree algorithm that finds the optimal tree over a connected directed graph. CLE, however, has the drawback that the scores of the arcs must remain fixed and can not change depending on other arcs and it is not clear how to include non-local features in a CLE decoder. 3.1 Online learning We find the weight vector w by online learning using a variant of the structured perceptron (Collins, 2002). Specifically, we use the passive-aggressive (PA) algorithm (Crammer et al., 2006), since we found that this performed slightly better in preliminary experiments.4 The structured perceptron iterates over training instances (xi, yi), where xi are inputs and yi are outputs. For each instance it uses the current weight vector w to make a prediction ˆyi given the input xi. If the prediction is incorrect, the weight vector is updated in favor of the correct structure. Otherwise the weight vector is left untouched. In our setting inputs xi correspond to documents and outputs yi are trees over mentions in a document. The training data is, however, not annotated with trees, but onl</context>
+</contexts>
+<marker>Crammer, Dekel, Keshet, Shalev-Shwartz, Singer, 2006</marker>
+<rawString>Koby Crammer, Ofer Dekel, Joseph Keshet, Shai Shalev-Shwartz, and Yoram Singer. 2006. Online passive–aggressive algorithms. Journal of Machine Learning Reseach, 7:551–585, March.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Aron Culotta</author>
+<author>Michael Wick</author>
+<author>Andrew McCallum</author>
+</authors>
+<title>First-order probabilistic models for coreference resolution.</title>
+<date>2007</date>
+<booktitle>In Human Language Technologies 2007: The Conference of the North American Chapter of the Association for Computational Linguistics; Proceedings of the Main Conference,</booktitle>
+<pages>81--88</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Rochester, New York,</location>
+<contexts>
+<context citStr="Culotta et al., 2007" endWordPosition="4275" position="24772" startWordPosition="4272">ction on the training data using a large set of local feature templates. Specifically, the training set of each language was split into two parts where 75% was used for training, and 25% for testing. Feature templates were incrementally added or removed in order to optimize the mean of MUC, B3, and CEAFe (i.e., the CoNLL average). 6.2 Non-local Features We experimented with non-local features drawn from previous work on entity-mention models (Luo et al., 2004; Rahman and Ng, 2009), however they did not improve performance in preliminary experiments. The one exception is the size of a cluster (Culotta et al., 2007). Additional features we use are Shape encodes the linear “shape” of a cluster in terms of mention type. For instance, the clusters representing Gary Wilber and Drug Emporium Inc. from the example in Figure 1, would be represented as RNPN and RNCCC, respectively. Where R, N, P, and C denote the root node, names, pronouns, and common noun phrases, respectively. Local syntactic context is inspired by the Entity Grid (Barzilay and Lapata, 2008), where the basic assumption is that references to an entity follow particular syntactic patterns. For instance, an entity may be introduced as an object i</context>
+<context citStr="Culotta et al. (2007)" endWordPosition="5831" position="34074" startWordPosition="5828">ing the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search algorithm. Latent antecedents. The use of latent antecedents goes back to the work of Yu and Joachims (2009), although the idea of determining CoNLL avg. Early LaSO Delayed LaSO Local Non-local 54 Rec MUC F1 Rec B3 F1 Rec CEAF. Rec CEAF, F1 CoNLL Prec Prec Prec F1 Prec avg. Arabic B&amp;F 43.9 52.51 47.82 35.7 49.77 41.58 43.8 50.03 46.71 40.45 41.86 41.15 43.51 Fernandes 43.63 49.69 46.46 38.39 47.7 42.54 47.6 50.85 49.17 48.16 45.03 46.54 45.18 This paper 47.53 53.3 50.25 44</context>
+</contexts>
+<marker>Culotta, Wick, McCallum, 2007</marker>
+<rawString>Aron Culotta, Michael Wick, and Andrew McCallum. 2007. First-order probabilistic models for coreference resolution. In Human Language Technologies 2007: The Conference of the North American Chapter of the Association for Computational Linguistics; Proceedings of the Main Conference, pages 81–88, Rochester, New York, April. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hal Daum´e</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>A largescale exploration of effective global features for a joint entity detection and tracking model.</title>
+<date>2005</date>
+<booktitle>In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>97--104</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Vancouver, British Columbia, Canada,</location>
+<marker>Daum´e, Marcu, 2005</marker>
+<rawString>Hal Daum´e III and Daniel Marcu. 2005a. A largescale exploration of effective global features for a joint entity detection and tracking model. In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing, pages 97–104, Vancouver, British Columbia, Canada, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hal Daum´e</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Learning as search optimization: approximate large margin methods for structured prediction. In</title>
+<date>2005</date>
+<booktitle>ICML,</booktitle>
+<pages>169--176</pages>
+<marker>Daum´e, Marcu, 2005</marker>
+<rawString>Hal Daum´e III and Daniel Marcu. 2005b. Learning as search optimization: approximate large margin methods for structured prediction. In ICML, pages 169–176.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hal Daum´e John Langford</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Search-based structured prediction.</title>
+<date>2009</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>75</volume>
+<issue>3</issue>
+<marker>Langford, Marcu, 2009</marker>
+<rawString>Hal Daum´e III, John Langford, and Daniel Marcu. 2009. Search-based structured prediction. Machine Learning, 75(3):297–325.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Pascal Denis</author>
+<author>Jason Baldridge</author>
+</authors>
+<title>Global Joint Models for Coreference Resolution and Named Entity Classification.</title>
+<date>2009</date>
+<booktitle>In Procesamiento del Lenguaje Natural 42,</booktitle>
+<pages>87--96</pages>
+<publisher>SEPLN.</publisher>
+<location>Barcelona:</location>
+<contexts>
+<context citStr="Denis and Baldridge (2009)" endWordPosition="4658" position="27018" startWordPosition="4655">or three languages: Arabic, Chinese and English. We follow the closed track setting where systems may only be trained on the provided training data, with the exception of the English gender and number data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse trees). Unless otherwise stated we use 25 iterations of perceptron training and a beam size of 20. We did not attempt to tune either of these par</context>
+</contexts>
+<marker>Denis, Baldridge, 2009</marker>
+<rawString>Pascal Denis and Jason Baldridge. 2009. Global Joint Models for Coreference Resolution and Named Entity Classification. In Procesamiento del Lenguaje Natural 42, pages 87–96, Barcelona: SEPLN.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John Duchi</author>
+<author>Elad Hazan</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Adaptive subgradient methods for online learning and stochastic optimization.</title>
+<date>2011</date>
+<journal>J. Mach. Learn. Res.,</journal>
+<pages>12--2121</pages>
+<contexts>
+<context citStr="Duchi et al., 2011" endWordPosition="6191" position="36188" startWordPosition="6188">ain from significance tests on the CoNLL average, as it is an average over other F-measures. meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach. Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al. (2004) </context>
+</contexts>
+<marker>Duchi, Hazan, Singer, 2011</marker>
+<rawString>John Duchi, Elad Hazan, and Yoram Singer. 2011. Adaptive subgradient methods for online learning and stochastic optimization. J. Mach. Learn. Res., 12:2121–2159, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Greg Durrett</author>
+<author>Dan Klein</author>
+</authors>
+<title>Easy victories and uphill battles in coreference resolution.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1971--1982</pages>
+<contexts>
+<context citStr="Durrett and Klein, 2013" endWordPosition="385" position="2469" startWordPosition="382"> next instance. An alternative would be to continue decoding the same instance after the early updates, which is equivalent to Learning as Search Optimization (LaSO; Daum´e III and Marcu (2005b)). The learning task we are tackling is however further complicated since the target structure is under-determined by the gold standard annotation. Coreferent mentions in a document are usually annotated as sets of mentions, where all mentions in a set are coreferent. We adopt the recently popularized approach of inducing a latent structure within these sets (Fernandes et al., 2012; Chang et al., 2013; Durrett and Klein, 2013). This approach provides a powerful boost to the performance of coreference resolvers, but we find that it does not combine well with the LaSO learning strategy. We therefore propose a modification to LaSO, which delays updates until after each instance. The combination of this modification with non-local features leads to further improvements in the clustering accuracy, as we show in evaluation results on all languages from the CoNLL 2012 Shared Task – Arabic, Chinese, and English. We obtain the best results to date on these data sets.1 2 Background Coreference resolution is the task of group</context>
+<context citStr="Durrett and Klein, 2013" endWordPosition="5382" position="31338" startWordPosition="5379"> 70.74 60.03 65.01 56.8 62.52 Table 1: Comparison of local and non-local feature sets on the development sets. about one point. For Chinese the gains are generally not as pronounced, though the MUC metric goes up by more than half a point. Final results. In Table 2 we compare the results of the non-local system (This paper) to the best results from the CoNLL 2012 Shared Task.10 Specifically, this includes Fernandes et al.’s (2012) system for Arabic and English (denoted Fernandes), and Chen and Ng’s (2012) system for Chinese (denoted C&amp;N). For English we also compare it to the Berkeley system (Durrett and Klein, 2013), which, to our knowledge, is the best publicly available system for English coreference resolution (denoted D&amp;K). As a general baseline, we also include Bj¨orkelund and Farkas’ (2012) system (denoted B&amp;F), which was the second best system in the shared task. For almost all metrics our system is significantly better than the best competitor. For a few metrics the best competitor outperforms our results for either precision or recall, but in terms of F-measures and the CoNLL average our system is the best for all languages. 10Thanks to Sameer Pradhan for providing us with the outputs of the oth</context>
+<context citStr="Durrett and Klein (2013)" endWordPosition="6158" position="35982" startWordPosition="6155">her systems on the test sets. Bold numbers indicate significance at the p &lt; 0.05 level between the best and the second best systems (according to the CoNLL average) using a Wilcoxon signed rank sum test. We refrain from significance tests on the CoNLL average, as it is an average over other F-measures. meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach. Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a singl</context>
+</contexts>
+<marker>Durrett, Klein, 2013</marker>
+<rawString>Greg Durrett and Dan Klein. 2013. Easy victories and uphill battles in coreference resolution. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, pages 1971–1982,</rawString>
+</citation>
+<citation valid="false">
+<date/>
+<publisher>Association for</publisher>
+<institution>Computational Linguistics.</institution>
+<location>Seattle, Washington, USA,</location>
+<marker/>
+<rawString>Seattle, Washington, USA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jack Edmonds</author>
+</authors>
+<title>Optimum branchings.</title>
+<date>1967</date>
+<journal>Journal of Research of the National Bureau of Standards,</journal>
+<pages>71--233</pages>
+<contexts>
+<context citStr="Edmonds, 1967" endWordPosition="1352" position="8208" startWordPosition="1351">f possible trees given the antecedent sets A. By treating the mentions as nodes in a directed graph and assigning scores to the arcs according to (1), Fernandes et al. (2012) solved the search problem using the Chu-LiuEdmonds (CLE) algorithm (Chu and Liu, 1965; 3We impose a total order on mentions. In case of nested mentions, the mention that begins first is assumed to precede the embedded one. If two mentions begin at the same token, the longer one is taken to precede the shorter one. this drugstore chaina2 the companya3 Drug Emporium Inc.a1 companya4 root Gary Wilberb1 Heb2 Gary Wilberb3 48 Edmonds, 1967), which is a maximum spanning tree algorithm that finds the optimal tree over a connected directed graph. CLE, however, has the drawback that the scores of the arcs must remain fixed and can not change depending on other arcs and it is not clear how to include non-local features in a CLE decoder. 3.1 Online learning We find the weight vector w by online learning using a variant of the structured perceptron (Collins, 2002). Specifically, we use the passive-aggressive (PA) algorithm (Crammer et al., 2006), since we found that this performed slightly better in preliminary experiments.4 The struct</context>
+</contexts>
+<marker>Edmonds, 1967</marker>
+<rawString>Jack Edmonds. 1967. Optimum branchings. Journal of Research of the National Bureau of Standards, 71(B):233–240.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eraldo Fernandes</author>
+<author>C´ıcero dos Santos</author>
+<author>Ruy Milidi´u</author>
+</authors>
+<title>Latent structure perceptron with feature induction for unrestricted coreference resolution.</title>
+<date>2012</date>
+<booktitle>In Joint Conference on EMNLP and CoNLL - Shared Task,</booktitle>
+<pages>41--48</pages>
+<institution>Jeju Island, Korea, July. Association for Computational Linguistics.</institution>
+<marker>Fernandes, Santos, Milidi´u, 2012</marker>
+<rawString>Eraldo Fernandes, C´ıcero dos Santos, and Ruy Milidi´u. 2012. Latent structure perceptron with feature induction for unrestricted coreference resolution. In Joint Conference on EMNLP and CoNLL - Shared Task, pages 41–48, Jeju Island, Korea, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liang Huang</author>
+<author>Suphan Fayong</author>
+<author>Yang Guo</author>
+</authors>
+<title>Structured perceptron with inexact search.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 2012 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>142--151</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Montr´eal, Canada,</location>
+<contexts>
+<context citStr="Huang et al., 2012" endWordPosition="2701" position="15852" startWordPosition="2698">artial tree on the left. We now outline three different ways of learning the weight vector w with non-local features. 5.1 Early updates The beam search decoder can be plugged into the training algorithm, replacing the calls to arg max. Since state items leading to the best tree may be pruned from the agenda before the decoder reaches the end of the document, the introduction of non-local features may cause the decoder to return a non-optimal tree. This is problematic as it might cause updates although the correct tree has a higher score than the predicted one. It has previously been observed (Huang et al., 2012) that substantial gains can be made by applying an early update strategy (Collins and Roark, 2004): if the correct item is pruned before reaching the end of the document, then stop and update. While beam search and early updates have been successfully applied to other NLP applications, our task differs in two important aspects: First, coreference resolution is a much more difficult task, which relies on more (world) knowledge than what is available in the training data. In other words, it is unlikely that we can devise a feature set that is informative enough to allow the weight vector to conv</context>
+<context citStr="Huang et al. (2012)" endWordPosition="3154" position="18438" startWordPosition="3151">correct item in the predicted agenda, search is halted and an update is made against the best item from the gold agenda. The algorithm then moves on to the next document. If the end of a document is reached, the top scoring predicted item is checked for correctness. If it is not, an update is made against the best gold item. A drawback of early updates is that the remainder of the document is skipped when an early update is applied, effectively discarding some training data.6 An alternative strategy that makes better use of the training data is to apply the maxviolation procedure suggested by Huang et al. (2012). However, since our gold trees change from iteration to iteration, and even inside of a single document, it is not entirely clear with respect to what gold tree the maximum violation should be computed. Initial experiments with max-violation updates indicated that they did not improve much over early updates, and also had a tendency to only consider a smaller portion of the training data. 5.2 LaSO To make full use of the training data we implemented Learning as Search Optimization (LaSO; Daum´e III and Marcu, 2005b). It is very similar to early updates, but differs in one crucial respect: Whe</context>
+<context citStr="Huang et al., 2012" endWordPosition="5561" position="32403" startWordPosition="5558">erms of F-measures and the CoNLL average our system is the best for all languages. 10Thanks to Sameer Pradhan for providing us with the outputs of the other systems for significance testing. 9 Related Work On the machine learning side Collins and Roark’s (2004) work on the early update constitutes our starting point. The LaSO framework was introduced by Daum´e III and Marcu (2005b), but has, to our knowledge, only been applied to the related task of entity detection and tracking (Daum´e III and Marcu, 2005a). The theoretical motivation for early updates was only recently explained rigorously (Huang et al., 2012). The delayed LaSO update that we propose decomposes the prediction task of a complex structure into a number of subproblems, each of which guarantee violation, using Huang et al.’s (2012) terminology. We believe this is an interesting novelty, as it leverages the complete structures for every training instance during every iteration, and expect it to be applicable also to other structured prediction tasks. Our approach also resembles imitation learning techniques such as SEARN (Daum´e III et al., 2009) and DAGGER (Ross et al., 2011), where the search problem is reduced to a sequence of classi</context>
+</contexts>
+<marker>Huang, Fayong, Guo, 2012</marker>
+<rawString>Liang Huang, Suphan Fayong, and Yang Guo. 2012. Structured perceptron with inexact search. In Proceedings of the 2012 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 142–151, Montr´eal, Canada, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liang Huang</author>
+</authors>
+<title>Forest reranking: Discriminative parsing with non-local features.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-08: HLT,</booktitle>
+<pages>586--594</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Huang, 2008" endWordPosition="185" position="1253" startWordPosition="184">h instance we obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English. 1 Introduction This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training data. Put another way, early updates happen too early, and the learning algorithm rarely reaches the end of the instances as it halts, updates, and moves on to the next in</context>
+</contexts>
+<marker>Huang, 2008</marker>
+<rawString>Liang Huang. 2008. Forest reranking: Discriminative parsing with non-local features. In Proceedings of ACL-08: HLT, pages 586–594, Columbus, Ohio, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiaoqiang Luo</author>
+<author>Abe Ittycheriah</author>
+<author>Hongyan Jing</author>
+<author>Nanda Kambhatla</author>
+<author>Salim Roukos</author>
+</authors>
+<title>A mentionsynchronous coreference resolution algorithm based on the bell tree.</title>
+<date>2004</date>
+<booktitle>In Proceedings of the 42nd Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>135--142</pages>
+<location>Barcelona, Spain,</location>
+<contexts>
+<context citStr="Luo et al., 2004" endWordPosition="4247" position="24614" startWordPosition="4244">e.g., the head word of a mention or the last word of a mention. In order to have a strong local baseline, we applied greedy forward/backward feature selection on the training data using a large set of local feature templates. Specifically, the training set of each language was split into two parts where 75% was used for training, and 25% for testing. Feature templates were incrementally added or removed in order to optimize the mean of MUC, B3, and CEAFe (i.e., the CoNLL average). 6.2 Non-local Features We experimented with non-local features drawn from previous work on entity-mention models (Luo et al., 2004; Rahman and Ng, 2009), however they did not improve performance in preliminary experiments. The one exception is the size of a cluster (Culotta et al., 2007). Additional features we use are Shape encodes the linear “shape” of a cluster in terms of mention type. For instance, the clusters representing Gary Wilber and Drug Emporium Inc. from the example in Figure 1, would be represented as RNPN and RNCCC, respectively. Where R, N, P, and C denote the root node, names, pronouns, and common noun phrases, respectively. Local syntactic context is inspired by the Entity Grid (Barzilay and Lapata, 20</context>
+<context citStr="Luo et al., 2004" endWordPosition="6275" position="36727" startWordPosition="6272"> with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al. (2004) also apply beam search at test time, but use a static assignment of antecedents and learns log-linear model using batch learning. Moreover, these works alter the basic feature definitions from their pairwise models when introducing entity-level features. This contrasts with our work, as our mention-pair model simply constitutes a special case of the non-local system. 10 Conclusion We presented experiments with a coreference resolver that leverages non-local features to improve its performance. The application of non-local features re</context>
+</contexts>
+<marker>Luo, Ittycheriah, Jing, Kambhatla, Roukos, 2004</marker>
+<rawString>Xiaoqiang Luo, Abe Ittycheriah, Hongyan Jing, Nanda Kambhatla, and Salim Roukos. 2004. A mentionsynchronous coreference resolution algorithm based on the bell tree. In Proceedings of the 42nd Meeting of the Association for Computational Linguistics, pages 135–142, Barcelona, Spain, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiaoqiang Luo</author>
+</authors>
+<title>On coreference resolution performance metrics.</title>
+<date>2005</date>
+<booktitle>In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>25--32</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Vancouver, British Columbia, Canada,</location>
+<contexts>
+<context citStr="Luo, 2005" endWordPosition="4644" position="26936" startWordPosition="4643">data, which includes a training, development, and test set split for three languages: Arabic, Chinese and English. We follow the closed track setting where systems may only be trained on the provided training data, with the exception of the English gender and number data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse trees). Unless otherwise stated we use 25 iterations of percept</context>
+</contexts>
+<marker>Luo, 2005</marker>
+<rawString>Xiaoqiang Luo. 2005. On coreference resolution performance metrics. In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing, pages 25–32, Vancouver, British Columbia, Canada, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vincent Ng</author>
+<author>Claire Cardie</author>
+</authors>
+<title>Improving machine learning approaches to coreference resolution.</title>
+<date>2002</date>
+<booktitle>In Proceedings of 40th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>104--111</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Philadelphia, Pennsylvania, USA,</location>
+<contexts>
+<context citStr="Ng and Cardie, 2002" endWordPosition="2125" position="12460" startWordPosition="2122">pdate reduces to the standard structured perceptron update. The loss function can be an arbitrarily complex function that returns a numerical value of how bad the prediction is. In the simplest case, Hamming loss can be used, i.e., for each incorrect arc add 1. We follow Fernandes et al. (2012) and penalize erroneous root attachments, i.e., mentions that erroneously get the root node as their antecedent, with a loss of 1.5. For all other arcs we use Hamming loss. 4 Incremental Search We now show that the search problem in (2) can equivalently be solved by the more intuitive bestfirst decoder (Ng and Cardie, 2002), rather than using the CLE decoder. The best-first decoder 49 works incrementally by making a left-to-right pass over the mentions, selecting for each mention the highest scoring antecedent. The key aspect that makes the best-first decoder equivalent to the CLE decoder is that all arcs point from left to right, both in this paper and in the work of Fernandes et al. (2012). We sketch a proof that this decoder also returns the highest scoring tree. First, note that this algorithm indeed returns a tree. This can be shown by assuming the opposite, in which case the tree has to have a cycle. Then </context>
+<context citStr="Ng and Cardie (2002)" endWordPosition="6117" position="35740" startWordPosition="6114">58 57.48 65.93 61.42 50.82 57.28 53.86 60.65 D&amp;K 66.58 74.94 70.51 53.2 64.56 58.33 59.19 66.23 62.51 52.9 58.06 55.36 61.4 This paper 67.46 74.3 70.72 54.96 62.71 58.58 60.33 66.92 63.45 52.27 59.4 55.61 61.63 Table 2: Comparison with other systems on the test sets. Bold numbers indicate significance at the p &lt; 0.05 level between the best and the second best systems (according to the CoNLL average) using a Wilcoxon signed rank sum test. We refrain from significance tests on the CoNLL average, as it is an average over other F-measures. meaningful antecedents for mentions can be traced back to Ng and Cardie (2002) who used a rulebased approach. Latent antecedents have recently gained popularity and were used by two systems in the CoNLL 2012 Shared Task, including the winning system (Fernandes et al., 2012; Chang et al., 2012). Durrett and Klein (2013) present a coreference resolver with latent antecedents that predicts clusterings over entire documents and fit a loglinear model with a custom task-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of </context>
+</contexts>
+<marker>Ng, Cardie, 2002</marker>
+<rawString>Vincent Ng and Claire Cardie. 2002. Improving machine learning approaches to coreference resolution. In Proceedings of 40th Annual Meeting of the Association for Computational Linguistics, pages 104– 111, Philadelphia, Pennsylvania, USA, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vincent Ng</author>
+</authors>
+<title>Supervised noun phrase coreference research: The first fifteen years.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>1396--1411</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Uppsala, Sweden,</location>
+<contexts>
+<context citStr="Ng, 2010" endWordPosition="701" position="4469" startWordPosition="700"> Computational Linguistics, pages 47–57, Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics In recent years much work on coreference resolution has been devoted to increasing the expressivity of the classical mention-pair model, in which each coreference classification decision is limited to information about two mentions that make up a pair. This shortcoming has been addressed by entity-mention models, which relate a candidate mention to the full cluster of mentions predicted to be coreferent so far (for more discussion on the model types, see, e.g., (Ng, 2010)). Nevertheless, the two best systems in the latest CoNLL Shared Task on coreference resolution (Pradhan et al., 2012) were both variants of the mention-pair model. While the second best system (Bj¨orkelund and Farkas, 2012) followed the widely used baseline of Soon et al. (2001), the winning system (Fernandes et al., 2012) proposed the use of a tree representation. The tree-based model of Fernandes et al. (2012) construes the representation of coreference clusters as a rooted tree. Figure 2 displays an example tree over the clusters from Figure 1. Every mention corresponds to a node in the tr</context>
+</contexts>
+<marker>Ng, 2010</marker>
+<rawString>Vincent Ng. 2010. Supervised noun phrase coreference research: The first fifteen years. In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 1396– 1411, Uppsala, Sweden, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sameer Pradhan</author>
+<author>Alessandro Moschitti</author>
+<author>Nianwen Xue</author>
+<author>Olga Uryupina</author>
+<author>Yuchen Zhang</author>
+</authors>
+<title>Conll2012 shared task: Modeling multilingual unrestricted coreference in ontonotes.</title>
+<date>2012</date>
+<booktitle>In Joint Conference on EMNLP and CoNLL - Shared Task,</booktitle>
+<pages>1--40</pages>
+<institution>Jeju Island, Korea, July. Association for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Pradhan et al., 2012" endWordPosition="721" position="4587" startWordPosition="718"> Computational Linguistics In recent years much work on coreference resolution has been devoted to increasing the expressivity of the classical mention-pair model, in which each coreference classification decision is limited to information about two mentions that make up a pair. This shortcoming has been addressed by entity-mention models, which relate a candidate mention to the full cluster of mentions predicted to be coreferent so far (for more discussion on the model types, see, e.g., (Ng, 2010)). Nevertheless, the two best systems in the latest CoNLL Shared Task on coreference resolution (Pradhan et al., 2012) were both variants of the mention-pair model. While the second best system (Bj¨orkelund and Farkas, 2012) followed the widely used baseline of Soon et al. (2001), the winning system (Fernandes et al., 2012) proposed the use of a tree representation. The tree-based model of Fernandes et al. (2012) construes the representation of coreference clusters as a rooted tree. Figure 2 displays an example tree over the clusters from Figure 1. Every mention corresponds to a node in the tree, and arcs between mentions indicate that they are coreferent. The tree additionally has a dummy root node. Every su</context>
+</contexts>
+<marker>Pradhan, Moschitti, Xue, Uryupina, Zhang, 2012</marker>
+<rawString>Sameer Pradhan, Alessandro Moschitti, Nianwen Xue, Olga Uryupina, and Yuchen Zhang. 2012. Conll2012 shared task: Modeling multilingual unrestricted coreference in ontonotes. In Joint Conference on EMNLP and CoNLL - Shared Task, pages 1–40, Jeju Island, Korea, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Altaf Rahman</author>
+<author>Vincent Ng</author>
+</authors>
+<title>Supervised models for coreference resolution.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>968--977</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Rahman and Ng, 2009" endWordPosition="4251" position="24636" startWordPosition="4248">d of a mention or the last word of a mention. In order to have a strong local baseline, we applied greedy forward/backward feature selection on the training data using a large set of local feature templates. Specifically, the training set of each language was split into two parts where 75% was used for training, and 25% for testing. Feature templates were incrementally added or removed in order to optimize the mean of MUC, B3, and CEAFe (i.e., the CoNLL average). 6.2 Non-local Features We experimented with non-local features drawn from previous work on entity-mention models (Luo et al., 2004; Rahman and Ng, 2009), however they did not improve performance in preliminary experiments. The one exception is the size of a cluster (Culotta et al., 2007). Additional features we use are Shape encodes the linear “shape” of a cluster in terms of mention type. For instance, the clusters representing Gary Wilber and Drug Emporium Inc. from the example in Figure 1, would be represented as RNPN and RNCCC, respectively. Where R, N, P, and C denote the root node, names, pronouns, and common noun phrases, respectively. Local syntactic context is inspired by the Entity Grid (Barzilay and Lapata, 2008), where the basic a</context>
+<context citStr="Rahman and Ng, 2009" endWordPosition="4692" position="27207" startWordPosition="4689">mber data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse trees). Unless otherwise stated we use 25 iterations of perceptron training and a beam size of 20. We did not attempt to tune either of these parameters. We experiment with two feature sets for each language: the optimized local feature sets (denoted local), and the optimized local feature sets extended with non-local features (deno</context>
+<context citStr="Rahman and Ng, 2009" endWordPosition="6284" position="36768" startWordPosition="6280">ction using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al. (2004) also apply beam search at test time, but use a static assignment of antecedents and learns log-linear model using batch learning. Moreover, these works alter the basic feature definitions from their pairwise models when introducing entity-level features. This contrasts with our work, as our mention-pair model simply constitutes a special case of the non-local system. 10 Conclusion We presented experiments with a coreference resolver that leverages non-local features to improve its performance. The application of non-local features requires the use of an approximate search a</context>
+</contexts>
+<marker>Rahman, Ng, 2009</marker>
+<rawString>Altaf Rahman and Vincent Ng. 2009. Supervised models for coreference resolution. In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing, pages 968–977, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lev Ratinov</author>
+<author>Dan Roth</author>
+</authors>
+<title>Design challenges and misconceptions in named entity recognition.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Thirteenth Conference on Computational Natural Language Learning (CoNLL-2009),</booktitle>
+<pages>147--155</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Boulder, Colorado,</location>
+<contexts>
+<context citStr="Ratinov and Roth, 2009" endWordPosition="223" position="1512" startWordPosition="220">ed perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training data. Put another way, early updates happen too early, and the learning algorithm rarely reaches the end of the instances as it halts, updates, and moves on to the next instance. An alternative would be to continue decoding the same instance after the early updates, which is equivalent to Learning as Search Optimization (LaSO; Daum´e III and Marcu (2005b)). The learning task we are tackling is however further complicated since</context>
+</contexts>
+<marker>Ratinov, Roth, 2009</marker>
+<rawString>Lev Ratinov and Dan Roth. 2009. Design challenges and misconceptions in named entity recognition. In Proceedings of the Thirteenth Conference on Computational Natural Language Learning (CoNLL-2009), pages 147–155, Boulder, Colorado, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>St´ephane Ross</author>
+<author>Geoffrey J Gordon</author>
+<author>J Andrew Bagnell</author>
+</authors>
+<title>A reduction of imitation learning and structured prediction to no-regret online learning.</title>
+<date>2011</date>
+<booktitle>In AISTATS,</booktitle>
+<pages>627--635</pages>
+<contexts>
+<context citStr="Ross et al., 2011" endWordPosition="5648" position="32942" startWordPosition="5645">n for early updates was only recently explained rigorously (Huang et al., 2012). The delayed LaSO update that we propose decomposes the prediction task of a complex structure into a number of subproblems, each of which guarantee violation, using Huang et al.’s (2012) terminology. We believe this is an interesting novelty, as it leverages the complete structures for every training instance during every iteration, and expect it to be applicable also to other structured prediction tasks. Our approach also resembles imitation learning techniques such as SEARN (Daum´e III et al., 2009) and DAGGER (Ross et al., 2011), where the search problem is reduced to a sequence of classification steps that guide the search algorithm through the search space. These frameworks, however, rely on the notion of an expert policy which provides an optimal decision at each point during search. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in is</context>
+</contexts>
+<marker>Ross, Gordon, Bagnell, 2011</marker>
+<rawString>St´ephane Ross, Geoffrey J. Gordon, and J. Andrew Bagnell. 2011. A reduction of imitation learning and structured prediction to no-regret online learning. In AISTATS, pages 627–635.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wee Meng Soon</author>
+<author>Hwee Tou Ng</author>
+<author>Daniel Chung Yong Lim</author>
+</authors>
+<title>A machine learning approach to coreference resolution of noun phrases.</title>
+<date>2001</date>
+<journal>Computational Linguistics,</journal>
+<volume>27</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Soon et al. (2001)" endWordPosition="747" position="4749" startWordPosition="744">n which each coreference classification decision is limited to information about two mentions that make up a pair. This shortcoming has been addressed by entity-mention models, which relate a candidate mention to the full cluster of mentions predicted to be coreferent so far (for more discussion on the model types, see, e.g., (Ng, 2010)). Nevertheless, the two best systems in the latest CoNLL Shared Task on coreference resolution (Pradhan et al., 2012) were both variants of the mention-pair model. While the second best system (Bj¨orkelund and Farkas, 2012) followed the widely used baseline of Soon et al. (2001), the winning system (Fernandes et al., 2012) proposed the use of a tree representation. The tree-based model of Fernandes et al. (2012) construes the representation of coreference clusters as a rooted tree. Figure 2 displays an example tree over the clusters from Figure 1. Every mention corresponds to a node in the tree, and arcs between mentions indicate that they are coreferent. The tree additionally has a dummy root node. Every subtree under the root node corresponds to a cluster of coreferent mentions. Since coreference training data is typically not annotated with trees, Fernandes et al.</context>
+</contexts>
+<marker>Soon, Ng, Lim, 2001</marker>
+<rawString>Wee Meng Soon, Hwee Tou Ng, and Daniel Chung Yong Lim. 2001. A machine learning approach to coreference resolution of noun phrases. Computational Linguistics, 27(4):521–544.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Veselin Stoyanov</author>
+<author>Jason Eisner</author>
+</authors>
+<title>Easy-first coreference resolution.</title>
+<date>2012</date>
+<booktitle>In Proceedings of COLING 2012,</booktitle>
+<pages>2519--2534</pages>
+<location>Mumbai, India,</location>
+<contexts>
+<context citStr="Stoyanov and Eisner (2012)" endWordPosition="5794" position="33830" startWordPosition="5791">. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search algorithm. Latent antecedents. The use of latent antecedents goes back to the work of Yu and Joachims (2009), although the idea of determining CoNLL avg. Early LaSO Delayed LaSO Local Non-local 54 Rec MUC F1 Rec B3 F1 Rec CEAF. Rec C</context>
+</contexts>
+<marker>Stoyanov, Eisner, 2012</marker>
+<rawString>Veselin Stoyanov and Jason Eisner. 2012. Easy-first coreference resolution. In Proceedings of COLING 2012, pages 2519–2534, Mumbai, India, December.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Veselin Stoyanov</author>
+<author>Nathan Gilbert</author>
+<author>Claire Cardie</author>
+<author>Ellen Riloff</author>
+</authors>
+<title>Conundrums in noun phrase coreference resolution: Making sense of the stateof-the-art.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP,</booktitle>
+<pages>656--664</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Suntec, Singapore,</location>
+<contexts>
+<context citStr="Stoyanov et al., 2009" endWordPosition="4697" position="27231" startWordPosition="4693"> Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse trees). Unless otherwise stated we use 25 iterations of perceptron training and a beam size of 20. We did not attempt to tune either of these parameters. We experiment with two feature sets for each language: the optimized local feature sets (denoted local), and the optimized local feature sets extended with non-local features (denoted non-local). 8 Result</context>
+<context citStr="Stoyanov et al., 2009" endWordPosition="5755" position="33597" startWordPosition="5751">ced to a sequence of classification steps that guide the search algorithm through the search space. These frameworks, however, rely on the notion of an expert policy which provides an optimal decision at each point during search. In our context that would require antecedents for every mention to be given a priori, rather than using latent antecedents as we do. Perceptrons for coreference. The perceptron has previously been used to train coreference resolvers either by casting the problem as a binary classification problem that considers pairs of mentions in isolation (Bengtson and Roth, 2008; Stoyanov et al., 2009; Chang et al., 2012, inter alia) or in the structured manner, where a clustering for an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search </context>
+</contexts>
+<marker>Stoyanov, Gilbert, Cardie, Riloff, 2009</marker>
+<rawString>Veselin Stoyanov, Nathan Gilbert, Claire Cardie, and Ellen Riloff. 2009. Conundrums in noun phrase coreference resolution: Making sense of the stateof-the-art. In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP, pages 656–664, Suntec, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marc Vilain</author>
+<author>John Burger</author>
+<author>John Aberdeen</author>
+<author>Dennis Connolly</author>
+<author>Lynette Hirschman</author>
+</authors>
+<title>A model theoretic coreference scoring scheme.</title>
+<date>1995</date>
+<booktitle>In Proceedings MUC-6,</booktitle>
+<pages>45--52</pages>
+<location>Columbia, Maryland.</location>
+<contexts>
+<context citStr="Vilain et al., 1995" endWordPosition="4633" position="26873" startWordPosition="4630">s. 7 Experimental Setup We apply our model to the CoNLL 2012 Shared Task data, which includes a training, development, and test set split for three languages: Arabic, Chinese and English. We follow the closed track setting where systems may only be trained on the provided training data, with the exception of the English gender and number data compiled by Bergsma and Lin (2006). We use automatically extracted mentions using the same mention extraction procedure as Bj¨orkelund and Farkas (2012). We evaluate our system using the CoNLL 2012 scorer, which computes several coreference metrics: MUC (Vilain et al., 1995), B3 (Bagga and Baldwin, 1998), and CEAFe and CEAFm (Luo, 2005). We also report the CoNLL average (also known as MELA; Denis and Baldridge (2009)), i.e., the arithmetic mean of MUC, B3, and CEAFe. It should be noted that for B3 and the CEAF metrics, multiple ways of handling twinless mentions7 have been proposed (Rahman and Ng, 2009; Stoyanov et al., 2009). We use the most recent version of the CoNLL scorer (version 7), which implements the original definitions of these metrics.8 Our system is evaluated on the version of the data with automatic preprocessing information (e.g., predicted parse </context>
+</contexts>
+<marker>Vilain, Burger, Aberdeen, Connolly, Hirschman, 1995</marker>
+<rawString>Marc Vilain, John Burger, John Aberdeen, Dennis Connolly, and Lynette Hirschman. 1995. A model theoretic coreference scoring scheme. In Proceedings MUC-6, pages 45–52, Columbia, Maryland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiaofeng Yang</author>
+<author>Jian Su</author>
+<author>Jun Lang</author>
+<author>Chew Lim Tan</author>
+<author>Ting Liu</author>
+<author>Sheng Li</author>
+</authors>
+<title>An entitymention model for coreference resolution with inductive logic programming.</title>
+<date>2008</date>
+<booktitle>In Proceedings ofACL08: HLT,</booktitle>
+<pages>843--851</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Yang et al., 2008" endWordPosition="6279" position="36746" startWordPosition="6276">k-specific loss function using AdaGrad (Duchi et al., 2011). Chang et al. (2013) use a max-margin approach to learn a pairwise model and rely on stochastic gradient descent to circumvent the costly operation of decoding the entire training set in order to compute the gradients and the latent antecedents. None of the aforementioned works use non-local features in their models, however. Entity-mention models. Entity-mention models that compare a single mention to a (partial) cluster have been studied extensively and several works have evaluated non-local entity-level features (Luo et al., 2004; Yang et al., 2008; Rahman and Ng, 2009). Luo et al. (2004) also apply beam search at test time, but use a static assignment of antecedents and learns log-linear model using batch learning. Moreover, these works alter the basic feature definitions from their pairwise models when introducing entity-level features. This contrasts with our work, as our mention-pair model simply constitutes a special case of the non-local system. 10 Conclusion We presented experiments with a coreference resolver that leverages non-local features to improve its performance. The application of non-local features requires the use of a</context>
+</contexts>
+<marker>Yang, Su, Lang, Tan, Liu, Li, 2008</marker>
+<rawString>Xiaofeng Yang, Jian Su, Jun Lang, Chew Lim Tan, Ting Liu, and Sheng Li. 2008. An entitymention model for coreference resolution with inductive logic programming. In Proceedings ofACL08: HLT, pages 843–851, Columbus, Ohio, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chun-Nam Yu</author>
+<author>T Joachims</author>
+</authors>
+<title>Learning structural svms with latent variables.</title>
+<date>2009</date>
+<booktitle>In International Conference on Machine Learning (ICML).</booktitle>
+<contexts>
+<context citStr="Yu and Joachims (2009)" endWordPosition="5869" position="34305" startWordPosition="5866">an entire document is predicted in one go (Fernandes et al., 2012). However, none of these works use non-local features. Stoyanov and Eisner (2012) train an Easy-First coreference system with the perceptron to learn a sequence of join operations between arbitrary mentions in a document and accesses non-local features through previous merge operations in later stages. Culotta et al. (2007) also apply online learning in a first-order logic framework that enables non-local features, though using a greedy search algorithm. Latent antecedents. The use of latent antecedents goes back to the work of Yu and Joachims (2009), although the idea of determining CoNLL avg. Early LaSO Delayed LaSO Local Non-local 54 Rec MUC F1 Rec B3 F1 Rec CEAF. Rec CEAF, F1 CoNLL Prec Prec Prec F1 Prec avg. Arabic B&amp;F 43.9 52.51 47.82 35.7 49.77 41.58 43.8 50.03 46.71 40.45 41.86 41.15 43.51 Fernandes 43.63 49.69 46.46 38.39 47.7 42.54 47.6 50.85 49.17 48.16 45.03 46.54 45.18 This paper 47.53 53.3 50.25 44.14 49.34 46.6 50.94 55.19 52.98 49.2 49.45 49.33 48.72 Chinese B&amp;F 58.72 58.49 58.61 49.17 53.2 51.11 56.68 51.86 54.14 55.36 41.8 47.63 52.45 C&amp;N 59.92 64.69 62.21 51.76 60.26 55.69 59.58 60.45 60.02 58.84 51.61 54.99 57.63 This </context>
+</contexts>
+<marker>Yu, Joachims, 2009</marker>
+<rawString>Chun-Nam Yu and T. Joachims. 2009. Learning structural svms with latent variables. In International Conference on Machine Learning (ICML).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yue Zhang</author>
+<author>Stephen Clark</author>
+</authors>
+<title>A tale of two parsers: Investigating and combining graph-based and transition-based dependency parsing.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>562--571</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Honolulu, Hawaii,</location>
+<contexts>
+<context citStr="Zhang and Clark, 2008" endWordPosition="189" position="1277" startWordPosition="186"> obtain significant improvements over the baseline. Our model obtains the best results to date on recent shared task data for Arabic, Chinese, and English. 1 Introduction This paper studies and extends previous work using the structured perceptron (Collins, 2002) for complex NLP tasks. We show that for the task of coreference resolution the straightforward combination of beam search and early update (Collins and Roark, 2004) falls short of more limited feature sets that allow for exact search. This contrasts with previous work on, e.g., syntactic parsing (Collins and Roark, 2004; Huang, 2008; Zhang and Clark, 2008) and linearization (Bohnet et al., 2011), and even simpler structured prediction problems, where early updates are not even necessary, such as part-of-speech tagging (Collins, 2002) and named entity recognition (Ratinov and Roth, 2009). The main reason why early updates underperform in our setting is that the task is too difficult and that the learning algorithm is not able to profit from all training data. Put another way, early updates happen too early, and the learning algorithm rarely reaches the end of the instances as it halts, updates, and moves on to the next instance. An alternative w</context>
+</contexts>
+<marker>Zhang, Clark, 2008</marker>
+<rawString>Yue Zhang and Stephen Clark. 2008. A tale of two parsers: Investigating and combining graph-based and transition-based dependency parsing. In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing, pages 562– 571, Honolulu, Hawaii, October. Association for Computational Linguistics.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

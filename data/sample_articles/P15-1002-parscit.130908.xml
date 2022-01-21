@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.998131">
+Addressing the Rare Word Problem in
+Neural Machine Translation
+</title>
+<author confidence="0.643876">
+Minh-Thang Luong† ∗
+Stanford
+</author>
+<email confidence="0.979549">
+lmthang@stanford.edu
+</email>
+<author confidence="0.744448">
+Ilya Sutskever† Quoc V. Le† Oriol Vinyals Wojciech Zaremba∗
+</author>
+<affiliation confidence="0.698051">
+Google Google Google New York University
+</affiliation>
+<email confidence="0.997735">
+{ilyasu,qvl,vinyals}@google.com woj.zaremba@gmail.com
+</email>
+<sectionHeader confidence="0.993835" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.99971724137931">Neural Machine Translation (NMT) is a new approach to machine translation that has shown promising results that are comparable to traditional approaches. A significant weakness in conventional NMT systems is their inability to correctly translate very rare words: end-to-end NMTs tend to have relatively small vocabularies with a single unk symbol that represents every possible out-of-vocabulary (OOV) word. In this paper, we propose and implement an effective technique to address this problem. We train an NMT system on data that is augmented by the output of a word alignment algorithm, allowing the NMT system to emit, for each OOV word in the target sentence, the position of its corresponding word in the source sentence. This information is later utilized in a post-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task.</bodyText>
+<sectionHeader confidence="0.999252" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.992151976744186">Neural Machine Translation (NMT) is a novel approach to MT that has achieved promising results (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015; Jean et al., 2015). An NMT system is a conceptually simple large neural network that reads the en∗Work done while the authors were in Google. † indicates equal contribution. tire source sentence and produces an output translation one word at a time. NMT systems are appealing because they use minimal domain knowledge which makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize implies that NMT systems will also generalize to novel word phrases and sentences that do not occur in the training set. In addition, NMT systems potentially remove the need to store explicit phrase tables and language models which are used in conventional systems. Finally, the decoder of an NMT system is easy to implement, unlike the highly intricate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phraseen: The ecotax portico in Pont-de-Buis , ... [truncated] ..., was taken down on Thursday morning &gt;&lt; ❆ ❅ fr: Le portique ´ecotaxe de Pont-de-Buis , ... [truncated] ..., a ´et´e d´emont´e jeudi matin nn: Le unk de unk a` unk , ... [truncated] ..., a ´et´e pris le jeudi matin</bodyText>
+<footnote confidence="0.952382">
+1Due to the computationally intensive nature of the soft-
+max, NMT systems often limit their vocabularies to be the
+top 30K-80K most frequent words in each language. How-
+ever, Jean et al. (2015) has very recently proposed an efficient
+approximation to the softmax that allows for training NTMs
+with very large vocabularies. As discussed in Section 2, this
+technique is complementary to ours.
+</footnote>
+<page confidence="0.984109">
+11
+</page>
+<note confidence="0.981710333333333">
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics
+and the 7th International Joint Conference on Natural Language Processing, pages 11–19,
+Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics
+</note>
+<figureCaption confidence="0.88331">
+Figure 1: Example of the rare word problem – An English source sentence (en), a human translation to
+</figureCaption>
+<bodyText confidence="0.980173714285714">French (fr), and a translation produced by one of our neural network systems (nn) before handling OOV words. We highlight words that are unknown to our model. The token unk indicates an OOV word. We also show a few important alignments between the pair of sentences. based system, we propose and implement a novel approach to address the rare word problem of NMTs. Our approach annotates the training corpus with explicit alignment information that enables the NMT system to emit, for each OOV word, a “pointer” to its corresponding word in the source sentence. This information is later utilized in a post-processing step that translates the OOV words using a dictionary or with the identity translation, if no translation is found. Our experiments confirm that this approach is effective. On the English to French WMT’14 translation task, this approach provides an improvement of up to 2.8 (if the vocabulary is relatively small) BLEU points over an equivalent NMT system that does not use this technique. Moreover, our system is the first NMT that outperforms the winner of a WMT’14 task.</bodyText>
+<sectionHeader confidence="0.984006" genericHeader="method">
+2 Neural Machine Translation
+</sectionHeader>
+<bodyText confidence="0.999916">A neural machine translation system is any neural network that maps a source sentence, s1, ... , sn, to a target sentence, t1, ... , tm, where all sentences are assumed to terminate with a special “end-of-sentence” token &lt;eos&gt;. More concretely, an NMT system uses a neural network to parameterize the conditional distributions for 1 &lt; j &lt; m. By doing so, it becomes possible to compute and therefore maximize the log probability of the target sentence given the source sentence</bodyText>
+<equation confidence="0.965457">
+p(tj|t&lt;j, s&lt;n) (1)
+</equation>
+<equation confidence="0.9955005">
+log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2)
+j=1
+</equation>
+<bodyText confidence="0.9999545">There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The decoder is initialized with this vector and generates a translation, one word at a time, until it emits the end-of-sentence symbol &lt;eos&gt;. None the early work in neural machine translation systems has addressed the rare word problem, but the recent work of Jean et al. (2015) has tackled it with an efficient approximation to the softmax to accommodate for a very large vocabulary (500K words). However, even with a large vocabulary, the problem with rare words, e.g., names, numbers, etc., still persists, and Jean et al. (2015) found that using techniques similar to ours are beneficial and complementary to their approach.</bodyText>
+<sectionHeader confidence="0.991555" genericHeader="method">
+3 Rare Word Models
+</sectionHeader>
+<bodyText confidence="0.999830333333333">Despite the relatively large amount of work done on pure neural machine translation systems, there has been no work addressing the OOV problem in NMT systems, with the notable exception of Jean et al. (2015)’s work mentioned earlier. We propose to address the rare word problem by training the NMT system to track the origins of the unknown words in the target sentences. If we knew the source word responsible for each unen: The unk1 portico in unk2 ... fr: Le unko unk1 de unk2 ...</bodyText>
+<page confidence="0.996177">
+12
+</page>
+<bodyText confidence="0.915455527777778">Figure 2: Copyable Model – an annotated example with two types of unknown tokens: “copyable” unkn and null unko.en: The unk portico in unk ... fr: Le p0 unk p−1 unk p1 de po unk p−1 ... Figure 3: Positional All Model – an example of the PosAll model. Each word is followed by the relative positional tokens pd or the null token po.known target word, we could introduce a postprocessing step that would replace each unk in the system’s output with a translation of its source word, using either a dictionary or the identity translation. For example, in Figure 1, if the model knows that the second unknown token in the NMT (line nn) originates from the source word ecotax, it can perform a word dictionary lookup to replace that unknown token by ´ecotaxe. Similarly, an identity translation of the source word Pont-de-Buis can be applied to the third unknown token. We present three annotation strategies that can easily be applied to any NMT system (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014). We treat the NMT system as a black box and train it on a corpus annotated by one of the models below. First, the alignments are produced with an unsupervised aligner. Next, we use the alignment links to construct a word dictionary that will be used for the word translations in the post-processing step.2 If a word does not appear in our dictionary, then we apply the identity translation. The first few words of the sentence pair in Figure 1 (lines en and fr) illustrate our models.</bodyText>
+<subsectionHeader confidence="0.987952">
+3.1 Copyable Model
+</subsectionHeader>
+<bodyText confidence="0.998488227272727">In this approach, we introduce multiple tokens to represent the various unknown words in the source and in the target language, as opposed to using only one unk token. We annotate the OOV words in the source sentence with unk1, unk2, unk3, in that order, while assigning repeating unknown words identical tokens. The annotation of the unknown words in the target language is slightly more elaborate: (a) each unknown target word that is aligned to an unknown source word is assigned the same unknown token (hence, the 2When a source word has multiple translations, we use the translation with the highest probability. These translation probabilities are estimated from the unsupervised alignment links. When constructing the dictionary from these alignment links, we add a word pair to the dictionary only if its alignment count exceeds 100. “copy” model) and (b) an unknown target word that has no alignment or that is aligned with a known word uses the special null token unko. See Figure 2 for an example. This annotation enables us to translate every non-null unknown token.</bodyText>
+<subsectionHeader confidence="0.995965">
+3.2 Positional All Model (PosAll)
+</subsectionHeader>
+<bodyText confidence="0.99995424">The copyable model is limited by its inability to translate unknown target words that are aligned to known words in the source sentence, such as the pair of words, “portico” and “portique”, in our running example. The former word is known on the source sentence; whereas latter is not, so it is labelled with unko. This happens often since the source vocabularies of our models tend to be much larger than the target vocabulary since a large source vocabulary is cheap. This limitation motivated us to develop an annotation model that includes the complete alignments between the source and the target sentences, which is straightforward to obtain since the complete alignments are available at training time. Specifically, we return to using only a single universal unk token. However, on the target side, we insert a positional token pd after every word. Here, d indicates a relative position (d = −7, ... , −1, 0, 1, ... , 7) to denote that a target word at position j is aligned to a source word at position i = j − d. Aligned words that are too far apart are considered unaligned, and unaligned words rae annotated with a null token pn. Our annotation is illustrated in Figure 3.</bodyText>
+<subsectionHeader confidence="0.99684">
+3.3 Positional Unknown Model (PosUnk)
+</subsectionHeader>
+<bodyText confidence="0.9999592">The main weakness of the PosAll model is that it doubles the length of the target sentence. This makes learning more difficult and slows the speed of parameter updates by a factor of two. However, given that our post-processing step is concerned only with the alignments of the unknown words, so it is more sensible to only annotate the unknown words. This motivates our positional unknown model which uses unkposd tokens (for d in −7,..., 7 or ∅) to simultaneously denote (a)</bodyText>
+<page confidence="0.994505">
+13
+</page>
+<bodyText confidence="0.985828222222222">the fact that a word is unknown and (b) its relative position d with respect to its aligned source word. Like the PosAll model, we use the symbol unkpos∅ for unknown target words that do not have an alignment. We use the universal unk for all unknown tokens in the source language. See Figure 4 for an annotated example. en: The unk portico in unk ... fr: Le unkpos1 unkpos−1 de unkpos1 ...</bodyText>
+<figureCaption confidence="0.624171333333333">
+Figure 4: Positional Unknown Model – an exam-
+ple of the PosUnk model: only aligned unknown
+words are annotated with the unkposd tokens.
+</figureCaption>
+<bodyText confidence="0.998974">It is possible that despite its slower speed, the PosAll model will learn better alignments because it is trained on many more examples of words and their alignments. However, we show that this is not the case (see §5.2).</bodyText>
+<sectionHeader confidence="0.999547" genericHeader="evaluation and result">
+4 Experiments
+</sectionHeader>
+<bodyText confidence="0.9999596">We evaluate the effectiveness of our OOV models on the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences).</bodyText>
+<subsectionHeader confidence="0.998765">
+4.1 Training Data
+</subsectionHeader>
+<bodyText confidence="0.98332732">To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model treats all other words as unknowns.3 We annotate our training data using the three schemes described in the previous section. The alignment is computed with the Berkeley aligner (Liang et al., 2006) using its default settings. We 3When the French vocabulary has 40K words, there are on average 1.33 unknown words per sentence on the target side of the test set. discard sentence pairs in which the source or the target sentence exceed 100 tokens.</bodyText>
+<subsectionHeader confidence="0.992187">
+4.2 Training Details
+</subsectionHeader>
+<bodyText confidence="0.999687333333333">Our training procedure and hyperparameter choices are similar to those used by Sutskever et al. (2014). In more details, we train multi-layer deep LSTMs, each of which has 1000 cells, with 1000 dimensional embeddings. Like Sutskever et al. (2014), we reverse the words in the source sentences which has been shown to improve LSTM memory utilization and results in better translations of long sentences. Our hyperparameters can be summarized as follows: (a) the parameters are initialized uniformly in [-0.08, 0.08] for 4-layer models and [-0.06, 0.06] for 6-layer models, (b) SGD has a fixed learning rate of 0.7, (c) we train for 8 epochs (after 5 epochs, we begin to halve the learning rate every 0.5 epoch), (d) the size of the mini-batch is 128, and (e) we rescale the normalized gradient to ensure that its norm does not exceed 5 (Pascanu et al., 2012). We also follow the GPU parallelization scheme proposed in (Sutskever et al., 2014), allowing us to reach a training speed of 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine.</bodyText>
+<subsectionHeader confidence="0.995888">
+4.3 A note on BLEU scores
+</subsectionHeader>
+<bodyText confidence="0.999973153846154">We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1).</bodyText>
+<footnote confidence="0.998571666666667">
+4http://matrix.statmt.org/matrix
+5The tokenizer.perl and multi-bleu.pl
+scripts are used to tokenize and score translations.
+</footnote>
+<page confidence="0.989582">
+14
+</page>
+<table confidence="0.994702476190476">
+System Vocab Corpus BLEU
+State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0
+Standard MT + neural components
+Schwenk (2014) – neural language model All 12M 33.3
+Cho et al. (2014)– phrase table neural features All 12M 34.5
+Sutskever et al. (2014) – 5 LSTMs, reranking 1000-best lists All 12M 36.5
+Existing end-to-end NMT systems
+Bahdanau et al. (2015) – single gated RNN with search 30K 12M 28.5
+Sutskever et al. (2014) – 5 LSTMs 80K 12M 34.8
+Jean et al. (2015) – 8 gated RNNs with search + UNK replacement 500K 12M 37.2
+Our end-to-end NMT systems
+Single LSTM with 4 layers 40K 12M 29.5
+Single LSTM with 4 layers + PosUnk 40K 12M 31.8 (+2.3)
+Single LSTM with 6 layers 40K 12M 30.4
+Single LSTM with 6 layers + PosUnk 40K 12M 32.7 (+2.3)
+Ensemble of 8 LSTMs 40K 12M 34.1
+Ensemble of 8 LSTMs + PosUnk 40K 12M 36.9 (+2.8)
+Single LSTM with 6 layers 80K 36M 31.5
+Single LSTM with 6 layers + PosUnk 80K 36M 33.1 (+1.6)
+Ensemble of 8 LSTMs 80K 36M 35.6
+Ensemble of 8 LSTMs + PosUnk 80K 36M 37.5 (+1.9)
+</table>
+<tableCaption confidence="0.999133">
+Table 1: Tokenized BLEU on newstest2014 – Translation results of various systems which differ in
+terms of: (a) the architecture, (b) the size of the vocabulary used, and (c) the training corpus, either using the full WMT’14 corpus of 36M sentence pairs or a subset of it with 12M pairs.</tableCaption>
+<bodyText confidence="0.972543428571429">We highlight the performance of our best system in bolded text and state the improvements obtained by our technique of handling rare words (namely, the PosUnk model). Notice that, for a given vocabulary size, the more accurate systems achieve a greater improvement from the post-processing step. This is the case because the more accurate models are able to pin-point the origin of an unknown word with greater accuracy, making the post-processing more useful.</bodyText>
+<subsectionHeader confidence="0.687894">
+System BLEU
+</subsectionHeader>
+<bodyText confidence="0.7326236">Existing SOTA (Durrani et al., 2014) 35.8 Ensemble of 8 LSTMs + PosUnk 36.6 Table 2: Detokenized BLEU on newstest2014 – translation results of the existing state-of-the-art system and our best system.</bodyText>
+<subsectionHeader confidence="0.998844">
+4.4 Main Results
+</subsectionHeader>
+<bodyText confidence="0.99991324">We compare our systems to others, including the current state-of-the-art MT system (Durrani et al., 2014), recent end-to-end neural systems, as well as phrase-based baselines with neural components. The results shown in Table 1 demonstrate that our unknown word translation technique (in particular, the PosUnk model) significantly improves the translation quality for both the individual (nonensemble) LSTM models and the ensemble models.6 For 40K-word vocabularies, the performance gains are in the range of 2.3-2.8 BLEU points. With larger vocabularies (80K), the performance gains are diminished, but our technique can still provide a nontrivial gains of 1.6-1.9 BLEU points. It is interesting to observe that our approach is more useful for ensemble models as compared to the individual ones. This is because the usefulness of the PosUnk model directly depends on the ability of the NMT to correctly locate, for a given OOV target word, its corresponding word in the source sentence. An ensemble of large models identifies these source words with greater accuracy. This is why for the same vocabulary size, better models obtain a greater performance gain</bodyText>
+<footnote confidence="0.999380166666667">
+6For the 40K-vocabulary ensemble, we combine 5 mod-
+els with 4 layers and 3 models with 6 layers. For the 80K-
+vocabulary ensemble, we combine 3 models with 4 layers and
+5 models with 6 layers. Two of the depth-6 models are reg-
+ularized with dropout, similar to Zaremba et al. (2015) with
+the dropout probability set to 0.2.
+</footnote>
+<page confidence="0.994336">
+15
+</page>
+<bodyText confidence="0.9234285">BLEU our post-processing step. e Except for the very recent work of Jean et al. (2015) that employs a similar unknown treatment strategy7 as ours, our best result of 37.5 BLEU outperforms all other NMT systems by a arge margin, and more importanly, our system has established a new record on the WMT’14 English to French translation.</bodyText>
+<sectionHeader confidence="0.990151" genericHeader="result">
+5 Analysis
+</sectionHeader>
+<bodyText confidence="0.9999743">We analyze and quantify the improvement obtained by our rare word translation approach and provide a detailed comparison of the different rare word techniques proposed in Section 3. We also examine the effect of depth on the LSTM architectures and demonstrate a strong correlation between perplexities and BLEU scores. We also highlight a few translation examples where our models succeed in correctly translating OOV words, and present several failures.</bodyText>
+<subsectionHeader confidence="0.979129">
+5.1 Rare Word Analysis
+</subsectionHeader>
+<bodyText confidence="0.933563584905661">To analyze the effect of rare words on translation quality, we follow Sutskever et al. (Sutskever et al., 2014) and sort sentences in newstest2014 by the average inverse frequency of their words. We split the test sentences into groups where the sentences within each group have a comparable number of rare words and evaluate each group independently. We evaluate our systems before and after translating the OOV words and compare with the standard MT systems – we use the best system from the WMT’14 contest (Durrani et al., 2014), and neural MT systems – we use the ensemble systems described in (Sutskever et al., 2014) and Section 4. Rare word translation is challenging for neural machine translation systems as shown in Figure 5. Specifically, the translation quality of our model before applying the postprocessing step is shown by the green curve, and the current best NMT system (Sutskever et al., 2014) is the purple curve. While (Sutskever et al., 2014) produces better translations for sentences with frequent words (the left part of the graph), they are worse than best 7Their unknown replacement method and ours both track the locations of target unknown words and use a word dictionary to post-process the translation. However, the mechanism used to achieve the “tracking” behavior is different. Jean et al. (2015)’s uses the attentional mechanism to track the origins of all target words, not just the unknown ones. In contrast, we only focus on tracking unknown words using unsupervised alignments. Our method can be easily applied to any sequence-to-sequence models since we treat any model as a blackbox and manipulate only at the input and output levels. Sents Figure 5: Rare word translation – On the x-axis, we order newstest2014 sentences by their average frequency rank and divide the sentences into groups of sentences with a comparable prevalence of rare words. We compute the BLEU score of each group independently. system (red curve) on sentences with many rare words (the right side of the graph). When applying our unknown word translation technique (purple curve), we significantly improve the translation quality of our NMT: for the last group of 500 sentences which have the greatest proportion of OOV words in the test set, we increase the BLEU score of our system by 4.8 BLEU points. Overall, our rare word translation model interpolates between the SOTA system and the system of Sutskever et al. (2014), which allows us to outperform the winning entry of WMT’14 on sentences that consist predominantly of frequent words and approach its performance on sentences with many OOV words.</bodyText>
+<subsectionHeader confidence="0.999244">
+5.2 Rare Word Models
+</subsectionHeader>
+<bodyText confidence="0.993094235294118">We examine the effect of the different rare word models presented in Section 3, namely: (a) Copyable – which aligns the unknown words on both the input and the target side by learning to copy indices, (b) the Positional All (PosAll) – which predicts the aligned source positions for every target word, and (c) the Positional Unknown (PosUnk) – which predicts the aligned source positions for only the unknown target words.8 It is also interest8In this section and in section 5.3, all models are trained on the unreversed sentences, and we use the following hyperparameters: we initialize the parameters uniformly in [-0.1, 0.1], the learning rate is 1, the maximal gradient norm is 1, with a source vocabulary of 90k words, and a target vocabulary of 40k (see Section 4.2 for more details). While these LSTMs do not achieve the best possible performance, it is still useful to analyze them.</bodyText>
+<figure confidence="0.901076882352941">
+42
+40
+38
+36
+34
+32
+30
+280 500 1000 1500 2000 2500 3000
+SOTA Durrani et al. (37.0)
+Sutskever et al. (34.8)
+Ours (35.6)
+Ours + PosUnk (37.5)
+16
+32
++2.2
++0.8
+NoAlign (5.31) Copyable (5.38) PosAll (5.30, 1.37) PosUnk (5.32)
+</figure>
+<figureCaption confidence="0.7837635">
+Figure 6: Rare word models – translation perfor-
+mance of 6-layer LSTMs: a model that uses no
+alignment (NoAlign) and the other rare word mod-
+els (Copyable, PosAll, PosUnk). For each model,
+we show results before (left) and after (right) the rare word translation as well as the perplexity (in parentheses). For PosAll, we report the perplexities of predicting the words and the positions.</figureCaption>
+<bodyText confidence="0.9868122">ing to measure the improvement obtained when no alignment information is used during training. As such, we include a baseline model with no alignment knowledge (NoAlign) in which we simply assume that the ith unknown word on the target sentence is aligned to the ith unknown word in the source sentence. From the results in Figure 6, a simple monotone alignment assumption for the NoAlign model yields a modest gain of 0.8 BLEU points. If we train the model to predict the alignment, then the Copyable model offers a slightly better gain of 1.0 BLEU. Note, however, that English and French have similar word order structure, so it would be interesting to experiment with other language pairs, such as English and Chinese, in which the word order is not as monotonic. These harder language pairs potentially imply a smaller gain for the NoAlign model and a larger gain for the Copyable model. We leave it for future work. The positional models (PosAll and PosUnk) improve translation performance by more than 2 BLEU points. This proves that the limitation of the copyable model, which forces it to align each unknown output word with an unknown input word, is considerable. In contrast, the positional models can align the unknown target words with any source word, and as a result, post-processing has a much stronger effect. The PosUnk model achieves better translation results than the PosAll model which suggests that it is easier to train the LSTM on shorter sequences.</bodyText>
+<figure confidence="0.953133625">
+32
++2.2
++2.
++1.9
+26
+24
+22
+20
+</figure>
+<figureCaption confidence="0.856013">
+Figure 7: Effect of depths – BLEU scores
+achieved by PosUnk models of various depths (3,
+4, and 6) before and after the rare word transla-
+tion. Notice that the PosUnk model is more useful
+on more accurate models.
+</figureCaption>
+<subsectionHeader confidence="0.921196">
+5.3 Other Effects
+</subsectionHeader>
+<bodyText confidence="0.9999299">Deep LSTM architecture – We compare PosUnk models trained with different number of layers (3, 4, and 6). We observe that the gain obtained by the PosUnk model increases in tandem with the overall accuracy of the model, which is consistent with the idea that larger models can point to the appropriate source word more accurately. Additionally, we observe that on average, each extra LSTM layer provides roughly 1.0 BLEU point improvement as demonstrated in Figure 7.</bodyText>
+<figure confidence="0.989845888888889">
+26.5
+26
+25.5
+25
+24.5
+24
+23.5
+235.6 5.8 6 6.2 6.4 6.6 6.8
+Perplexity
+</figure>
+<figureCaption confidence="0.996195333333333">
+Figure 8: Perplexity vs. BLEU – we show the
+correlation by evaluating an LSTM model with 4
+layers at various stages of training.
+</figureCaption>
+<bodyText confidence="0.999755666666667">Perplexity and BLEU – Lastly, we find it interesting to observe a strong correlation between the perplexity (our training objective) and the translation quality as measured by BLEU. Figure 8 shows the performance of a 4-layer LSTM, in which we compute both perplexity and BLEU scores at different points during training. We find that on average, a reduction of 0.5 perplexity gives us roughly 1.0 BLEU point improvement.</bodyText>
+<figure confidence="0.997788461538461">
+BLEU 30
+28
+26
+24
+22
+20
++1.0
++2.4
+BLEU
+30
+28
+Depth 3 (6.01) Depth 4 (5.71) Depth 6 (5.46)
+BLEU
+</figure>
+<page confidence="0.966953">
+17
+</page>
+<bodyText confidence="0.947634173913043">Sentences src An additional 2600 operations including orthopedic and cataract surgery will help clear a backlog . trans En outre , unkpos1 op´erations suppl´ementaires , dont la chirurgie unkpos5 et la unkpos6 , permettront de r´esorber l’ arri´er´e . +unk En outre , 2600 op´erations suppl´ementaires , dont la chirurgie orthop´ediques et la cataracte , permettront de r´esorber l’ arri´er´e . tgt 2600 op´erations suppl´ementaires , notamment dans le domaine de la chirurgie orthop´edique et de la cataracte , aideront a` rattraper le retard . src This trader , Richard Usher , left RBS in 2010 and is understand to have be given leave from his current position as European head of forex spot trading at JPMorgan . trans Ce unkpos0 , Richard unkpos0 , a quitt´e unkpos1 en 2010 et a compris qu’ il est autoris´e a` quitter son poste actuel en tant que leader europ´een du march´e des points de vente au unkpos5 . +unk Ce n´egociateur , Richard Usher , a quitt´e RBS en 2010 et a compris qu’ il est autoris´e a` quitter son poste actuel en tant que leader europ´een du march´e des points de vente au JPMorgan . tgt Ce trader , Richard Usher , a quitt´e RBS en 2010 et aurait ´et´e mis suspendu de son poste de responsable europ´een du trading au comptant pour les devises chez JPMorgan src But concerns have grown after Mr Mazanga was quoted as saying Renamo was abandoning the 1992 peace accord .</bodyText>
+<table confidence="0.960330166666667">
+trans Mais les inqui´etudes se sont accrues apr`es que M. unkpos3 a d´eclar´e que la
+unkpos3 unkpos3 l’ accord de paix de 1992 .
++unk Mais les inqui´etudes se sont accrues apr`es que M. Mazanga a d´eclar´e que la
+Renamo ´etait l’ accord de paix de 1992 .
+tgt Mais l’ inqui´etude a grandi apr`es que M. Mazanga a d´eclar´e que la Renamo
+abandonnait l’ accord de paix de 1992 .
+</table>
+<tableCaption confidence="0.978225">
+Table 3: Sample translations – the table shows the source (src) and the translations of our best model
+before (trans) and after (+unk) unknown word translations.</tableCaption>
+<bodyText confidence="0.74524">We also show the human translations (tgt) and italicize words that are involved in the unknown word translation process.</bodyText>
+<subsectionHeader confidence="0.990308">
+5.4 Sample Translations
+</subsectionHeader>
+<bodyText confidence="0.999997578947369">We present three sample translations of our best system (with 37.5 BLEU) in Table 3. In our first example, the model translates all the unknown words correctly: 2600, orthop´ediques, and cataracte. It is interesting to observe that the model can accurately predict an alignment of distances of 5 and 6 words. The second example highlights the fact that our model can translate long sentences reasonably well and that it was able to correctly translate the unknown word for JPMorgan at the very far end of the source sentence. Lastly, our examples also reveal several penalties incurred by our model: (a) incorrect entries in the word dictionary, as with n´egociateur vs. trader in the second example, and (b) incorrect alignment prediction, such as when unkpos3 is incorrectly aligned with the source word was and not with abandoning, which resulted in an incorrect translation in the third sentence.</bodyText>
+<sectionHeader confidence="0.99955" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999970666666666">We have shown that a simple alignment-based technique can mitigate and even overcome one of the main weaknesses of current NMT systems, which is their inability to translate words that are not in their vocabulary. A key advantage of our technique is the fact that it is applicable to any NMT system and not only to the deep LSTM model of Sutskever et al. (2014). A technique like ours is likely necessary if an NMT system is to achieve state-of-the-art performance on machine translation. We have demonstrated empirically that on the</bodyText>
+<page confidence="0.996575">
+18
+</page>
+<bodyText confidence="0.999528">WMT’14 English-French translation task, our technique yields a consistent and substantial improvement of up to 2.8 BLEU points over various NMT systems of different architectures. Most importantly, with 37.5 BLEU points, we have established the first NMT system that outperformed the best MT system on a WMT’14 contest dataset.</bodyText>
+<sectionHeader confidence="0.998278" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.9999865">We thank members of the Google Brain team for thoughtful discussions and insights. The first author especially thanks Chris Manning and the Stanford NLP group for helpful comments on the early drafts of the paper. Lastly, we thank the annonymous reviewers for their valuable feedback.</bodyText>
+<sectionHeader confidence="0.99944" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999877841269841">
+Amittai Axelrod, Xiaodong He, and Jianfeng Gao.
+2011. Domain adaptation via pseudo in-domain data
+selection. In EMNLP.
+D. Bahdanau, K. Cho, and Y. Bengio. 2015. Neural
+machine translation by jointly learning to align and
+translate. In ICLR.
+D. Cer, M. Galley, D. Jurafsky, and C. D. Manning.
+2010. Phrasal: A statistical machine translation
+toolkit for exploring new model features. In ACL,
+Demonstration Session.
+David Chiang. 2007. Hierarchical phrase-based trans-
+lation. Computational Linguistics, 33(2):201–228.
+Kyunghyun Cho, Bart van Merrienboer, Caglar Gul-
+cehre, Fethi Bougares, Holger Schwenk, and Yoshua
+Bengio. 2014. Learning phrase representations
+using rnn encoder-decoder for statistical machine
+translation. In EMNLP.
+Nadir Durrani, Barry Haddow, Philipp Koehn, and
+Kenneth Heafield. 2014. Edinburgh’s phrase-based
+machine translation systems for WMT-14. In WMT.
+Chris Dyer, Jonathan Weese, Hendra Setiawan, Adam
+Lopez, Ferhan Ture, Vladimir Eidelman, Juri Gan-
+itkevitch, Phil Blunsom, and Philip Resnik. 2010.
+cdec: A decoder, alignment, and learning framework
+for finite-state and context-free translation models.
+In ACL, Demonstration Session.
+A. Graves, G. Wayne, and I. Danihelka. 2014. Neural
+turing machines. arXiv preprint arXiv:1410.5401.
+A. Graves. 2013. Generating sequences with
+recurrent neural networks. In Arxiv preprint
+arXiv:1308.0850.
+S´ebastien Jean, Kyunghyun Cho, Roland Memisevic,
+and Yoshua Bengio. 2015. On using very large tar-
+get vocabulary for neural machine translation. In
+ACL.
+N. Kalchbrenner and P. Blunsom. 2013. Recurrent
+continuous translation models. In EMNLP.
+Philipp Koehn, Franz Josef Och, and Daniel Marcu.
+2003. Statistical phrase-based translation. In
+NAACL.
+Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris
+Callison-Burch, Marcello Federico, Nicola Bertoldi,
+Brooke Cowan, Wade Shen, Christine Moran,
+Richard Zens, et al. 2007. Moses: Open source
+toolkit for statistical machine translation. In ACL,
+Demonstration Session.
+P. Liang, B. Taskar, and D. Klein. 2006. Alignment by
+agreement. In NAACL.
+Kishore Papineni, Salim Roukos, Todd Ward, and Wei
+jing Zhu. 2002. BLEU: a method for automatic
+evaluation of machine translation. In ACL.
+R. Pascanu, T. Mikolov, and Y. Bengio. 2012. On
+the difficulty of training recurrent neural networks.
+arXiv preprint arXiv:1211.5063.
+H. Schwenk. 2014. University le mans.
+http://www-lium.univ-lemans.fr/
+˜schwenk/cslm_joint_paper/. [Online;
+accessed 03-September-2014].
+I. Sutskever, O. Vinyals, and Q. V. Le. 2014. Sequence
+to sequence learning with neural networks. In NIPS.
+Wojciech Zaremba, Ilya Sutskever, and Oriol Vinyals.
+2015. Recurrent neural network regularization. In
+ICLR.
+</reference>
+<page confidence="0.999311">
+19
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.767403" no="0">
+<title confidence="0.972023666666667">Addressing the Rare Word Problem in Neural Machine Translation ∗</title>
+<author confidence="0.938175">Stanford</author>
+<email confidence="0.999758">lmthang@stanford.edu</email>
+<author confidence="0.890419">V Vinyals Wojciech</author>
+<affiliation confidence="0.996468">Google Google Google New York University</affiliation>
+<email confidence="0.999186">woj.zaremba@gmail.com</email>
+<abstract confidence="0.998473366666666">Neural Machine Translation (NMT) is a new approach to machine translation that has shown promising results that are comparable to traditional approaches. A significant weakness in conventional NMT systems is their inability to correctly translate very rare words: end-to-end NMTs tend to have relatively small vocabularies a single unksymbol that represents every possible out-of-vocabulary (OOV) word. In this paper, we propose and implement an effective technique to address this problem. We train an NMT system on data that is augmented by the output of a word alignment algorithm, allowing the NMT system to emit, for each OOV word in the target sentence, the position of its corresponding word in the source sentence. This information is later utilized in a post-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Amittai Axelrod</author>
+<author>Xiaodong He</author>
+<author>Jianfeng Gao</author>
+</authors>
+<title>Domain adaptation via pseudo in-domain data selection.</title>
+<date>2011</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Axelrod et al. (2011)" endWordPosition="2373" position="13905" startWordPosition="2370">the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences). 4.1 Training Data To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model treats all other words as unknowns.3 We annotate our training data using the three schemes described in the previous section. The alignment is computed with the Berkeley aligner (Liang et al., 2006) using its default settings. We 3When the French vocabulary has 40K words, there are on average 1.33 u</context>
+</contexts>
+<marker>Axelrod, He, Gao, 2011</marker>
+<rawString>Amittai Axelrod, Xiaodong He, and Jianfeng Gao. 2011. Domain adaptation via pseudo in-domain data selection. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Bahdanau</author>
+<author>K Cho</author>
+<author>Y Bengio</author>
+</authors>
+<title>Neural machine translation by jointly learning to align and translate.</title>
+<date>2015</date>
+<booktitle>In ICLR.</booktitle>
+<contexts>
+<context citStr="Bahdanau et al., 2015" endWordPosition="260" position="1648" startWordPosition="257">ater utilized in a post-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task. 1 Introduction Neural Machine Translation (NMT) is a novel approach to MT that has achieved promising results (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015; Jean et al., 2015). An NMT system is a conceptually simple large neural network that reads the en∗Work done while the authors were in Google. † indicates equal contribution. tire source sentence and produces an output translation one word at a time. NMT systems are appealing because they use minimal domain knowledge which makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize implies that NMT systems will also generalize to novel word phrases an</context>
+<context citStr="Bahdanau et al. (2015)" endWordPosition="477" position="2937" startWordPosition="474"> systems potentially remove the need to store explicit phrase tables and language models which are used in conventional systems. Finally, the decoder of an NMT system is easy to implement, unlike the highly intricate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of t</context>
+<context citStr="Bahdanau et al. (2015)" endWordPosition="1079" position="6534" startWordPosition="1076">ork to parameterize the conditional distributions p(tj|t&lt;j, s&lt;n) (1) for 1 &lt; j &lt; m. By doing so, it becomes possible to compute and therefore maximize the log probability of the target sentence given the source sentence log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2) j=1 There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The decoder is initialized with this vector and generates a translation, one word at a time, until it emits the end-of-sentence symbol &lt;eos&gt;. No</context>
+<context citStr="Bahdanau et al., 2015" endWordPosition="2330" position="13646" startWordPosition="2327"> its slower speed, the PosAll model will learn better alignments because it is trained on many more examples of words and their alignments. However, we show that this is not the case (see §5.2). 4 Experiments We evaluate the effectiveness of our OOV models on the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences). 4.1 Training Data To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model treats all other words as unknowns.3 We a</context>
+<context citStr="Bahdanau et al., 2015" endWordPosition="2771" position="16215" startWordPosition="2768">skever et al., 2014), allowing us to reach a training speed of 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1). 4http://matrix.statmt.org/matrix 5The tokenizer.perl and multi-bleu.pl scripts are used to tokenize and score translations. 14 System Vocab Corpus BLEU State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0 Standard MT + neural components Schwenk (2014) – neural </context>
+</contexts>
+<marker>Bahdanau, Cho, Bengio, 2015</marker>
+<rawString>D. Bahdanau, K. Cho, and Y. Bengio. 2015. Neural machine translation by jointly learning to align and translate. In ICLR.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Cer</author>
+<author>M Galley</author>
+<author>D Jurafsky</author>
+<author>C D Manning</author>
+</authors>
+<title>Phrasal: A statistical machine translation toolkit for exploring new model features. In ACL, Demonstration Session.</title>
+<date>2010</date>
+<contexts>
+<context citStr="Cer et al., 2010" endWordPosition="511" position="3157" startWordPosition="508">used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of the softmax, NMT systems often limit their vocabularies to be the top 30K-80K most frequent words in each language. However, Jean et al. (2015) has very recently proposed an efficient approximation to the softmax that all</context>
+</contexts>
+<marker>Cer, Galley, Jurafsky, Manning, 2010</marker>
+<rawString>D. Cer, M. Galley, D. Jurafsky, and C. D. Manning. 2010. Phrasal: A statistical machine translation toolkit for exploring new model features. In ACL, Demonstration Session.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Chiang</author>
+</authors>
+<title>Hierarchical phrase-based translation.</title>
+<date>2007</date>
+<journal>Computational Linguistics,</journal>
+<volume>33</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Chiang, 2007" endWordPosition="507" position="3139" startWordPosition="506">cate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of the softmax, NMT systems often limit their vocabularies to be the top 30K-80K most frequent words in each language. However, Jean et al. (2015) has very recently proposed an efficient approximation to th</context>
+</contexts>
+<marker>Chiang, 2007</marker>
+<rawString>David Chiang. 2007. Hierarchical phrase-based translation. Computational Linguistics, 33(2):201–228.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kyunghyun Cho</author>
+<author>Bart van Merrienboer</author>
+</authors>
+<title>Caglar Gulcehre, Fethi Bougares, Holger Schwenk, and Yoshua Bengio.</title>
+<date>2014</date>
+<booktitle>In EMNLP.</booktitle>
+<marker>Cho, van Merrienboer, 2014</marker>
+<rawString>Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Fethi Bougares, Holger Schwenk, and Yoshua Bengio. 2014. Learning phrase representations using rnn encoder-decoder for statistical machine translation. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nadir Durrani</author>
+<author>Barry Haddow</author>
+<author>Philipp Koehn</author>
+<author>Kenneth Heafield</author>
+</authors>
+<title>Edinburgh’s phrase-based machine translation systems for WMT-14. In WMT.</title>
+<date>2014</date>
+<contexts>
+<context citStr="Durrani et al., 2014" endWordPosition="2790" position="16343" startWordPosition="2787">nd 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1). 4http://matrix.statmt.org/matrix 5The tokenizer.perl and multi-bleu.pl scripts are used to tokenize and score translations. 14 System Vocab Corpus BLEU State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0 Standard MT + neural components Schwenk (2014) – neural language model All 12M 33.3 Cho et al. (2014)– phrase table neural features All 12M 34.5 Sutskever et al. (2014) – 5 LSTMs, rera</context>
+<context citStr="Durrani et al., 2014" endWordPosition="3163" position="18471" startWordPosition="3160">he training corpus, either using the full WMT’14 corpus of 36M sentence pairs or a subset of it with 12M pairs. We highlight the performance of our best system in bolded text and state the improvements obtained by our technique of handling rare words (namely, the PosUnk model). Notice that, for a given vocabulary size, the more accurate systems achieve a greater improvement from the post-processing step. This is the case because the more accurate models are able to pin-point the origin of an unknown word with greater accuracy, making the post-processing more useful. System BLEU Existing SOTA (Durrani et al., 2014) 35.8 Ensemble of 8 LSTMs + PosUnk 36.6 Table 2: Detokenized BLEU on newstest2014 – translation results of the existing state-of-the-art system and our best system. 4.4 Main Results We compare our systems to others, including the current state-of-the-art MT system (Durrani et al., 2014), recent end-to-end neural systems, as well as phrase-based baselines with neural components. The results shown in Table 1 demonstrate that our unknown word translation technique (in particular, the PosUnk model) significantly improves the translation quality for both the individual (nonensemble) LSTM models and</context>
+<context citStr="Durrani et al., 2014" endWordPosition="3663" position="21490" startWordPosition="3660"> in correctly translating OOV words, and present several failures. 5.1 Rare Word Analysis To analyze the effect of rare words on translation quality, we follow Sutskever et al. (Sutskever et al., 2014) and sort sentences in newstest2014 by the average inverse frequency of their words. We split the test sentences into groups where the sentences within each group have a comparable number of rare words and evaluate each group independently. We evaluate our systems before and after translating the OOV words and compare with the standard MT systems – we use the best system from the WMT’14 contest (Durrani et al., 2014), and neural MT systems – we use the ensemble systems described in (Sutskever et al., 2014) and Section 4. Rare word translation is challenging for neural machine translation systems as shown in Figure 5. Specifically, the translation quality of our model before applying the postprocessing step is shown by the green curve, and the current best NMT system (Sutskever et al., 2014) is the purple curve. While (Sutskever et al., 2014) produces better translations for sentences with frequent words (the left part of the graph), they are worse than best 7Their unknown replacement method and ours both </context>
+</contexts>
+<marker>Durrani, Haddow, Koehn, Heafield, 2014</marker>
+<rawString>Nadir Durrani, Barry Haddow, Philipp Koehn, and Kenneth Heafield. 2014. Edinburgh’s phrase-based machine translation systems for WMT-14. In WMT.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chris Dyer</author>
+<author>Jonathan Weese</author>
+<author>Hendra Setiawan</author>
+<author>Adam Lopez</author>
+<author>Ferhan Ture</author>
+<author>Vladimir Eidelman</author>
+<author>Juri Ganitkevitch</author>
+<author>Phil Blunsom</author>
+<author>Philip Resnik</author>
+</authors>
+<title>cdec: A decoder, alignment, and learning framework for finite-state and context-free translation models.</title>
+<date>2010</date>
+<booktitle>In ACL, Demonstration Session.</booktitle>
+<contexts>
+<context citStr="Dyer et al., 2010" endWordPosition="515" position="3177" startWordPosition="512">ed systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of the softmax, NMT systems often limit their vocabularies to be the top 30K-80K most frequent words in each language. However, Jean et al. (2015) has very recently proposed an efficient approximation to the softmax that allows for training NTM</context>
+</contexts>
+<marker>Dyer, Weese, Setiawan, Lopez, Ture, Eidelman, Ganitkevitch, Blunsom, Resnik, 2010</marker>
+<rawString>Chris Dyer, Jonathan Weese, Hendra Setiawan, Adam Lopez, Ferhan Ture, Vladimir Eidelman, Juri Ganitkevitch, Phil Blunsom, and Philip Resnik. 2010. cdec: A decoder, alignment, and learning framework for finite-state and context-free translation models. In ACL, Demonstration Session.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Graves</author>
+<author>G Wayne</author>
+<author>I Danihelka</author>
+</authors>
+<title>Neural turing machines. arXiv preprint arXiv:1410.5401.</title>
+<date>2014</date>
+<contexts>
+<context citStr="Graves et al. (2014)" endWordPosition="1106" position="6694" startWordPosition="1103">bability of the target sentence given the source sentence log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2) j=1 There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The decoder is initialized with this vector and generates a translation, one word at a time, until it emits the end-of-sentence symbol &lt;eos&gt;. None the early work in neural machine translation systems has addressed the rare word problem, but the recent work of Jean et al. (2015) has tackled it with an ef</context>
+</contexts>
+<marker>Graves, Wayne, Danihelka, 2014</marker>
+<rawString>A. Graves, G. Wayne, and I. Danihelka. 2014. Neural turing machines. arXiv preprint arXiv:1410.5401.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Graves</author>
+</authors>
+<title>Generating sequences with recurrent neural networks.</title>
+<date>2013</date>
+<booktitle>In Arxiv preprint arXiv:1308.0850.</booktitle>
+<contexts>
+<context citStr="Graves (2013)" endWordPosition="1101" position="6669" startWordPosition="1100">ximize the log probability of the target sentence given the source sentence log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2) j=1 There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The decoder is initialized with this vector and generates a translation, one word at a time, until it emits the end-of-sentence symbol &lt;eos&gt;. None the early work in neural machine translation systems has addressed the rare word problem, but the recent work of Jean et al. (2015) </context>
+</contexts>
+<marker>Graves, 2013</marker>
+<rawString>A. Graves. 2013. Generating sequences with recurrent neural networks. In Arxiv preprint arXiv:1308.0850.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S´ebastien Jean</author>
+<author>Kyunghyun Cho</author>
+<author>Roland Memisevic</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>On using very large target vocabulary for neural machine translation.</title>
+<date>2015</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Jean et al., 2015" endWordPosition="264" position="1668" startWordPosition="261">-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task. 1 Introduction Neural Machine Translation (NMT) is a novel approach to MT that has achieved promising results (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015; Jean et al., 2015). An NMT system is a conceptually simple large neural network that reads the en∗Work done while the authors were in Google. † indicates equal contribution. tire source sentence and produces an output translation one word at a time. NMT systems are appealing because they use minimal domain knowledge which makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize implies that NMT systems will also generalize to novel word phrases and sentences that do </context>
+<context citStr="Jean et al. (2015)" endWordPosition="600" position="3679" startWordPosition="597">requent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of the softmax, NMT systems often limit their vocabularies to be the top 30K-80K most frequent words in each language. However, Jean et al. (2015) has very recently proposed an efficient approximation to the softmax that allows for training NTMs with very large vocabularies. As discussed in Section 2, this technique is complementary to ours. 11 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing, pages 11–19, Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics en: The ecotax portico in Pont-de-Buis , ... [truncated] ..., was taken down on Thursday morning &gt;&lt; ❆ ❅ fr: Le portique ´ecotaxe de Pont-de-</context>
+<context citStr="Jean et al. (2015)" endWordPosition="1209" position="7268" startWordPosition="1206">ar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The decoder is initialized with this vector and generates a translation, one word at a time, until it emits the end-of-sentence symbol &lt;eos&gt;. None the early work in neural machine translation systems has addressed the rare word problem, but the recent work of Jean et al. (2015) has tackled it with an efficient approximation to the softmax to accommodate for a very large vocabulary (500K words). However, even with a large vocabulary, the problem with rare words, e.g., names, numbers, etc., still persists, and Jean et al. (2015) found that using techniques similar to ours are beneficial and complementary to their approach. 3 Rare Word Models Despite the relatively large amount of work done on pure neural machine translation systems, there has been no work addressing the OOV problem in NMT systems, with the notable exception of Jean et al. (2015)’s work mentioned earli</context>
+<context citStr="Jean et al., 2015" endWordPosition="2781" position="16274" startWordPosition="2778"> 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1). 4http://matrix.statmt.org/matrix 5The tokenizer.perl and multi-bleu.pl scripts are used to tokenize and score translations. 14 System Vocab Corpus BLEU State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0 Standard MT + neural components Schwenk (2014) – neural language model All 12M 33.3 Cho et al. (2014)– phrase table</context>
+<context citStr="Jean et al. (2015)" endWordPosition="3453" position="20222" startWordPosition="3450">sponding word in the source sentence. An ensemble of large models identifies these source words with greater accuracy. This is why for the same vocabulary size, better models obtain a greater performance gain 6For the 40K-vocabulary ensemble, we combine 5 models with 4 layers and 3 models with 6 layers. For the 80Kvocabulary ensemble, we combine 3 models with 4 layers and 5 models with 6 layers. Two of the depth-6 models are regularized with dropout, similar to Zaremba et al. (2015) with the dropout probability set to 0.2. 15 BLEU our post-processing step. e Except for the very recent work of Jean et al. (2015) that employs a similar unknown treatment strategy7 as ours, our best result of 37.5 BLEU outperforms all other NMT systems by a arge margin, and more importanly, our system has established a new record on the WMT’14 English to French translation. 5 Analysis We analyze and quantify the improvement obtained by our rare word translation approach and provide a detailed comparison of the different rare word techniques proposed in Section 3. We also examine the effect of depth on the LSTM architectures and demonstrate a strong correlation between perplexities and BLEU scores. We also highlight a fe</context>
+<context citStr="Jean et al. (2015)" endWordPosition="3793" position="22288" startWordPosition="3790">ms as shown in Figure 5. Specifically, the translation quality of our model before applying the postprocessing step is shown by the green curve, and the current best NMT system (Sutskever et al., 2014) is the purple curve. While (Sutskever et al., 2014) produces better translations for sentences with frequent words (the left part of the graph), they are worse than best 7Their unknown replacement method and ours both track the locations of target unknown words and use a word dictionary to post-process the translation. However, the mechanism used to achieve the “tracking” behavior is different. Jean et al. (2015)’s uses the attentional mechanism to track the origins of all target words, not just the unknown ones. In contrast, we only focus on tracking unknown words using unsupervised alignments. Our method can be easily applied to any sequence-to-sequence models since we treat any model as a blackbox and manipulate only at the input and output levels. Sents Figure 5: Rare word translation – On the x-axis, we order newstest2014 sentences by their average frequency rank and divide the sentences into groups of sentences with a comparable prevalence of rare words. We compute the BLEU score of each group i</context>
+</contexts>
+<marker>Jean, Cho, Memisevic, Bengio, 2015</marker>
+<rawString>S´ebastien Jean, Kyunghyun Cho, Roland Memisevic, and Yoshua Bengio. 2015. On using very large target vocabulary for neural machine translation. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Kalchbrenner</author>
+<author>P Blunsom</author>
+</authors>
+<title>Recurrent continuous translation models.</title>
+<date>2013</date>
+<booktitle>In EMNLP.</booktitle>
+<contexts>
+<context citStr="Kalchbrenner and Blunsom, 2013" endWordPosition="248" position="1583" startWordPosition="245">on of its corresponding word in the source sentence. This information is later utilized in a post-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task. 1 Introduction Neural Machine Translation (NMT) is a novel approach to MT that has achieved promising results (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015; Jean et al., 2015). An NMT system is a conceptually simple large neural network that reads the en∗Work done while the authors were in Google. † indicates equal contribution. tire source sentence and produces an output translation one word at a time. NMT systems are appealing because they use minimal domain knowledge which makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize impli</context>
+<context citStr="Kalchbrenner and Blunsom (2013)" endWordPosition="1037" position="6289" startWordPosition="1034">ation system is any neural network that maps a source sentence, s1, ... , sn, to a target sentence, t1, ... , tm, where all sentences are assumed to terminate with a special “end-of-sentence” token &lt;eos&gt;. More concretely, an NMT system uses a neural network to parameterize the conditional distributions p(tj|t&lt;j, s&lt;n) (1) for 1 &lt; j &lt; m. By doing so, it becomes possible to compute and therefore maximize the log probability of the target sentence given the source sentence log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2) j=1 There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source s</context>
+<context citStr="Kalchbrenner and Blunsom, 2013" endWordPosition="1536" position="9107" startWordPosition="1532">we could introduce a postprocessing step that would replace each unk in the system’s output with a translation of its source word, using either a dictionary or the identity translation. For example, in Figure 1, if the model knows that the second unknown token in the NMT (line nn) originates from the source word ecotax, it can perform a word dictionary lookup to replace that unknown token by ´ecotaxe. Similarly, an identity translation of the source word Pont-de-Buis can be applied to the third unknown token. We present three annotation strategies that can easily be applied to any NMT system (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014). We treat the NMT system as a black box and train it on a corpus annotated by one of the models below. First, the alignments are produced with an unsupervised aligner. Next, we use the alignment links to construct a word dictionary that will be used for the word translations in the post-processing step.2 If a word does not appear in our dictionary, then we apply the identity translation. The first few words of the sentence pair in Figure 1 (lines en and fr) illustrate our models. 3.1 Copyable Model In this approach, we introduce multiple tokens to re</context>
+</contexts>
+<marker>Kalchbrenner, Blunsom, 2013</marker>
+<rawString>N. Kalchbrenner and P. Blunsom. 2013. Recurrent continuous translation models. In EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+<author>Franz Josef Och</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Statistical phrase-based translation.</title>
+<date>2003</date>
+<booktitle>In NAACL.</booktitle>
+<contexts>
+<context citStr="Koehn et al., 2003" endWordPosition="422" position="2590" startWordPosition="419">ch makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize implies that NMT systems will also generalize to novel word phrases and sentences that do not occur in the training set. In addition, NMT systems potentially remove the need to store explicit phrase tables and language models which are used in conventional systems. Finally, the decoder of an NMT system is easy to implement, unlike the highly intricate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the othe</context>
+</contexts>
+<marker>Koehn, Och, Marcu, 2003</marker>
+<rawString>Philipp Koehn, Franz Josef Och, and Daniel Marcu. 2003. Statistical phrase-based translation. In NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+<author>Hieu Hoang</author>
+<author>Alexandra Birch</author>
+<author>Chris Callison-Burch</author>
+<author>Marcello Federico</author>
+<author>Nicola Bertoldi</author>
+<author>Brooke Cowan</author>
+<author>Wade Shen</author>
+<author>Christine Moran</author>
+<author>Richard Zens</author>
+</authors>
+<title>Moses: Open source toolkit for statistical machine translation.</title>
+<date>2007</date>
+<booktitle>In ACL, Demonstration Session.</booktitle>
+<contexts>
+<context citStr="Koehn et al., 2007" endWordPosition="505" position="3125" startWordPosition="502">ike the highly intricate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computationally intensive nature of the softmax, NMT systems often limit their vocabularies to be the top 30K-80K most frequent words in each language. However, Jean et al. (2015) has very recently proposed an efficient appro</context>
+</contexts>
+<marker>Koehn, Hoang, Birch, Callison-Burch, Federico, Bertoldi, Cowan, Shen, Moran, Zens, 2007</marker>
+<rawString>Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris Callison-Burch, Marcello Federico, Nicola Bertoldi, Brooke Cowan, Wade Shen, Christine Moran, Richard Zens, et al. 2007. Moses: Open source toolkit for statistical machine translation. In ACL, Demonstration Session.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Liang</author>
+<author>B Taskar</author>
+<author>D Klein</author>
+</authors>
+<title>Alignment by agreement.</title>
+<date>2006</date>
+<booktitle>In NAACL.</booktitle>
+<contexts>
+<context citStr="Liang et al., 2006" endWordPosition="2457" position="14403" startWordPosition="2454">14). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model treats all other words as unknowns.3 We annotate our training data using the three schemes described in the previous section. The alignment is computed with the Berkeley aligner (Liang et al., 2006) using its default settings. We 3When the French vocabulary has 40K words, there are on average 1.33 unknown words per sentence on the target side of the test set. discard sentence pairs in which the source or the target sentence exceed 100 tokens. 4.2 Training Details Our training procedure and hyperparameter choices are similar to those used by Sutskever et al. (2014). In more details, we train multi-layer deep LSTMs, each of which has 1000 cells, with 1000 dimensional embeddings. Like Sutskever et al. (2014), we reverse the words in the source sentences which has been shown to improve LSTM </context>
+</contexts>
+<marker>Liang, Taskar, Klein, 2006</marker>
+<rawString>P. Liang, B. Taskar, and D. Klein. 2006. Alignment by agreement. In NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kishore Papineni</author>
+<author>Salim Roukos</author>
+<author>Todd Ward</author>
+<author>Wei jing Zhu</author>
+</authors>
+<title>BLEU: a method for automatic evaluation of machine translation.</title>
+<date>2002</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Papineni et al., 2002" endWordPosition="2289" position="13407" startWordPosition="2286">ample. en: The unk portico in unk ... fr: Le unkpos1 unkpos−1 de unkpos1 ... Figure 4: Positional Unknown Model – an example of the PosUnk model: only aligned unknown words are annotated with the unkposd tokens. It is possible that despite its slower speed, the PosAll model will learn better alignments because it is trained on many more examples of words and their alignments. However, we show that this is not the case (see §5.2). 4 Experiments We evaluate the effectiveness of our OOV models on the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences). 4.1 Training Data To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (th</context>
+</contexts>
+<marker>Papineni, Roukos, Ward, Zhu, 2002</marker>
+<rawString>Kishore Papineni, Salim Roukos, Todd Ward, and Wei jing Zhu. 2002. BLEU: a method for automatic evaluation of machine translation. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Pascanu</author>
+<author>T Mikolov</author>
+<author>Y Bengio</author>
+</authors>
+<title>On the difficulty of training recurrent neural networks. arXiv preprint arXiv:1211.5063.</title>
+<date>2012</date>
+<contexts>
+<context citStr="Pascanu et al., 2012" endWordPosition="2650" position="15530" startWordPosition="2647">al. (2014), we reverse the words in the source sentences which has been shown to improve LSTM memory utilization and results in better translations of long sentences. Our hyperparameters can be summarized as follows: (a) the parameters are initialized uniformly in [-0.08, 0.08] for 4-layer models and [-0.06, 0.06] for 6-layer models, (b) SGD has a fixed learning rate of 0.7, (c) we train for 8 epochs (after 5 epochs, we begin to halve the learning rate every 0.5 epoch), (d) the size of the mini-batch is 128, and (e) we rescale the normalized gradient to ensure that its norm does not exceed 5 (Pascanu et al., 2012). We also follow the GPU parallelization scheme proposed in (Sutskever et al., 2014), allowing us to reach a training speed of 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translation</context>
+</contexts>
+<marker>Pascanu, Mikolov, Bengio, 2012</marker>
+<rawString>R. Pascanu, T. Mikolov, and Y. Bengio. 2012. On the difficulty of training recurrent neural networks. arXiv preprint arXiv:1211.5063.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Schwenk</author>
+</authors>
+<date>2014</date>
+<note>University le mans. http://www-lium.univ-lemans.fr/ ˜schwenk/cslm_joint_paper/. [Online; accessed 03-September-2014].</note>
+<contexts>
+<context citStr="Schwenk, 2014" endWordPosition="2353" position="13787" startWordPosition="2352">we show that this is not the case (see §5.2). 4 Experiments We evaluate the effectiveness of our OOV models on the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences). 4.1 Training Data To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model treats all other words as unknowns.3 We annotate our training data using the three schemes described in the previous section. The alignment is computed with the Berkeley aligner (Lia</context>
+<context citStr="Schwenk, 2014" endWordPosition="2773" position="16230" startWordPosition="2772">llowing us to reach a training speed of 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1). 4http://matrix.statmt.org/matrix 5The tokenizer.perl and multi-bleu.pl scripts are used to tokenize and score translations. 14 System Vocab Corpus BLEU State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0 Standard MT + neural components Schwenk (2014) – neural language model </context>
+</contexts>
+<marker>Schwenk, 2014</marker>
+<rawString>H. Schwenk. 2014. University le mans. http://www-lium.univ-lemans.fr/ ˜schwenk/cslm_joint_paper/. [Online; accessed 03-September-2014].</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>I Sutskever</author>
+<author>O Vinyals</author>
+<author>Q V Le</author>
+</authors>
+<title>Sequence to sequence learning with neural networks.</title>
+<date>2014</date>
+<booktitle>In NIPS.</booktitle>
+<contexts>
+<context citStr="Sutskever et al., 2014" endWordPosition="252" position="1607" startWordPosition="249">the source sentence. This information is later utilized in a post-processing step that translates every OOV word using a dictionary. Our experiments on the WMT’14 English to French translation task show that this method provides a substantial improvement of up to 2.8 BLEU points over an equivalent NMT system that does not use this technique. With 37.5 BLEU points, our NMT system is the first to surpass the best result achieved on a WMT’14 contest task. 1 Introduction Neural Machine Translation (NMT) is a novel approach to MT that has achieved promising results (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015; Jean et al., 2015). An NMT system is a conceptually simple large neural network that reads the en∗Work done while the authors were in Google. † indicates equal contribution. tire source sentence and produces an output translation one word at a time. NMT systems are appealing because they use minimal domain knowledge which makes them well-suited to any problem that can be formulated as mapping an input sequence to an output sequence (Sutskever et al., 2014). In addition, the natural ability of neural networks to generalize implies that NMT systems will</context>
+<context citStr="Sutskever et al. (2014)" endWordPosition="472" position="2910" startWordPosition="469">aining set. In addition, NMT systems potentially remove the need to store explicit phrase tables and language models which are used in conventional systems. Finally, the decoder of an NMT system is easy to implement, unlike the highly intricate decoders used by phrase-based systems (Koehn et al., 2003). Despite these advantages, conventional NMT systems are incapable of translating rare words because they have a fixed modest-sized vocabulary1 which forces them to use the unk symbol to represent the large number of out-of-vocabulary (OOV) words, as illustrated in Figure 1. Unsurprisingly, both Sutskever et al. (2014) and Bahdanau et al. (2015) have observed that sentences with many rare words tend to be translated much more poorly than sentences containing mainly frequent words. Standard phrase-based systems (Koehn et al., 2007; Chiang, 2007; Cer et al., 2010; Dyer et al., 2010), on the other hand, do not suffer from the rare word problem to the same extent because they can support a much larger vocabulary, and because their use of explicit alignments and phrase tables allows them to memorize the translations of even extremely rare words. Motivated by the strengths of standard phrase1Due to the computatio</context>
+<context citStr="Sutskever et al. (2014)" endWordPosition="1055" position="6398" startWordPosition="1052">re all sentences are assumed to terminate with a special “end-of-sentence” token &lt;eos&gt;. More concretely, an NMT system uses a neural network to parameterize the conditional distributions p(tj|t&lt;j, s&lt;n) (1) for 1 &lt; j &lt; m. By doing so, it becomes possible to compute and therefore maximize the log probability of the target sentence given the source sentence log p(t|s) = �m log p (tj|t&lt;j, s&lt;n) (2) j=1 There are many ways to parameterize these conditional distributions. For example, Kalchbrenner and Blunsom (2013) used a combination of a convolutional neural network and a recurrent neural network, Sutskever et al. (2014) used a deep Long Short-Term Memory (LSTM) model, Cho et al. (2014) used an architecture similar to the LSTM, and Bahdanau et al. (2015) used a more elaborate neural network architecture that uses an attentional mechanism over the input sequence, similar to Graves (2013) and Graves et al. (2014). In this work, we use the model of Sutskever et al. (2014), which uses a deep LSTM to encode the input sequence and a separate deep LSTM to output the translation. The encoder reads the source sentence, one word at a time, and produces a large vector that represents the entire source sentence. The deco</context>
+<context citStr="Sutskever et al., 2014" endWordPosition="1540" position="9131" startWordPosition="1537">ing step that would replace each unk in the system’s output with a translation of its source word, using either a dictionary or the identity translation. For example, in Figure 1, if the model knows that the second unknown token in the NMT (line nn) originates from the source word ecotax, it can perform a word dictionary lookup to replace that unknown token by ´ecotaxe. Similarly, an identity translation of the source word Pont-de-Buis can be applied to the third unknown token. We present three annotation strategies that can easily be applied to any NMT system (Kalchbrenner and Blunsom, 2013; Sutskever et al., 2014; Cho et al., 2014). We treat the NMT system as a black box and train it on a corpus annotated by one of the models below. First, the alignments are produced with an unsupervised aligner. Next, we use the alignment links to construct a word dictionary that will be used for the word translations in the post-processing step.2 If a word does not appear in our dictionary, then we apply the identity translation. The first few words of the sentence pair in Figure 1 (lines en and fr) illustrate our models. 3.1 Copyable Model In this approach, we introduce multiple tokens to represent the various unkn</context>
+<context citStr="Sutskever et al., 2014" endWordPosition="2322" position="13604" startWordPosition="2319">nkposd tokens. It is possible that despite its slower speed, the PosAll model will learn better alignments because it is trained on many more examples of words and their alignments. However, we show that this is not the case (see §5.2). 4 Experiments We evaluate the effectiveness of our OOV models on the WMT’14 English-to-French translation task. Translation quality is measured with the BLEU metric (Papineni et al., 2002) on the newstest2014 test set (which has 3003 sentences). 4.1 Training Data To be comparable with the results reported by previous work on neural machine translation systems (Sutskever et al., 2014; Cho et al., 2014; Bahdanau et al., 2015), we train our models on the same training data of 12M parallel sentences (348M French and 304M English words), obtained from (Schwenk, 2014). The 12M subset was selected from the full WMT’14 parallel corpora using the method proposed in Axelrod et al. (2011). Due to the computationally intensive nature of the naive softmax, we limit the French vocabulary (the target language) to the either the 40K or the 80K most frequent French words. On the source side, we can afford a much larger vocabulary, so we use the 200K most frequent English words. The model</context>
+<context citStr="Sutskever et al. (2014)" endWordPosition="2542" position="14919" startWordPosition="2539">described in the previous section. The alignment is computed with the Berkeley aligner (Liang et al., 2006) using its default settings. We 3When the French vocabulary has 40K words, there are on average 1.33 unknown words per sentence on the target side of the test set. discard sentence pairs in which the source or the target sentence exceed 100 tokens. 4.2 Training Details Our training procedure and hyperparameter choices are similar to those used by Sutskever et al. (2014). In more details, we train multi-layer deep LSTMs, each of which has 1000 cells, with 1000 dimensional embeddings. Like Sutskever et al. (2014), we reverse the words in the source sentences which has been shown to improve LSTM memory utilization and results in better translations of long sentences. Our hyperparameters can be summarized as follows: (a) the parameters are initialized uniformly in [-0.08, 0.08] for 4-layer models and [-0.06, 0.06] for 6-layer models, (b) SGD has a fixed learning rate of 0.7, (c) we train for 8 epochs (after 5 epochs, we begin to halve the learning rate every 0.5 epoch), (d) the size of the mini-batch is 128, and (e) we rescale the normalized gradient to ensure that its norm does not exceed 5 (Pascanu et</context>
+<context citStr="Sutskever et al., 2014" endWordPosition="2777" position="16254" startWordPosition="2774">each a training speed of 5.4K words per second to train a depth-6 model with 200K source and 80K target vocabularies ; whereas Sutskever et al. (2014) achieved 6.3K words per second for a depth-4 models with 80K source and target vocabularies. Training takes about 10-14 days on an 8-GPU machine. 4.3 A note on BLEU scores We report BLEU scores based on both: (a) detokenized translations, i.e., WMT’14 style, to be comparable with results reported on the WMT website4 and (b) tokenized translations, so as to be consistent with previous work (Cho et al., 2014; Bahdanau et al., 2015; Schwenk, 2014; Sutskever et al., 2014; Jean et al., 2015).5 The existing WMT’14 state-of-the-art system (Durrani et al., 2014) achieves a detokenized BLEU score of 35.8 on the newstest2014 test set for English to French language pair (see Table 2). In terms of the tokenized BLEU, its performance is 37.0 points (see Table 1). 4http://matrix.statmt.org/matrix 5The tokenizer.perl and multi-bleu.pl scripts are used to tokenize and score translations. 14 System Vocab Corpus BLEU State of the art in WMT’14 (Durrani et al., 2014) All 36M 37.0 Standard MT + neural components Schwenk (2014) – neural language model All 12M 33.3 Cho et al. </context>
+<context citStr="Sutskever et al., 2014" endWordPosition="3591" position="21070" startWordPosition="3588">to French translation. 5 Analysis We analyze and quantify the improvement obtained by our rare word translation approach and provide a detailed comparison of the different rare word techniques proposed in Section 3. We also examine the effect of depth on the LSTM architectures and demonstrate a strong correlation between perplexities and BLEU scores. We also highlight a few translation examples where our models succeed in correctly translating OOV words, and present several failures. 5.1 Rare Word Analysis To analyze the effect of rare words on translation quality, we follow Sutskever et al. (Sutskever et al., 2014) and sort sentences in newstest2014 by the average inverse frequency of their words. We split the test sentences into groups where the sentences within each group have a comparable number of rare words and evaluate each group independently. We evaluate our systems before and after translating the OOV words and compare with the standard MT systems – we use the best system from the WMT’14 contest (Durrani et al., 2014), and neural MT systems – we use the ensemble systems described in (Sutskever et al., 2014) and Section 4. Rare word translation is challenging for neural machine translation syste</context>
+<context citStr="Sutskever et al. (2014)" endWordPosition="3978" position="23397" startWordPosition="3975">ces into groups of sentences with a comparable prevalence of rare words. We compute the BLEU score of each group independently. system (red curve) on sentences with many rare words (the right side of the graph). When applying our unknown word translation technique (purple curve), we significantly improve the translation quality of our NMT: for the last group of 500 sentences which have the greatest proportion of OOV words in the test set, we increase the BLEU score of our system by 4.8 BLEU points. Overall, our rare word translation model interpolates between the SOTA system and the system of Sutskever et al. (2014), which allows us to outperform the winning entry of WMT’14 on sentences that consist predominantly of frequent words and approach its performance on sentences with many OOV words. 5.2 Rare Word Models We examine the effect of the different rare word models presented in Section 3, namely: (a) Copyable – which aligns the unknown words on both the input and the target side by learning to copy indices, (b) the Positional All (PosAll) – which predicts the aligned source positions for every target word, and (c) the Positional Unknown (PosUnk) – which predicts the aligned source positions for only t</context>
+<context citStr="Sutskever et al. (2014)" endWordPosition="5374" position="31368" startWordPosition="5371">h n´egociateur vs. trader in the second example, and (b) incorrect alignment prediction, such as when unkpos3 is incorrectly aligned with the source word was and not with abandoning, which resulted in an incorrect translation in the third sentence. 6 Conclusion We have shown that a simple alignment-based technique can mitigate and even overcome one of the main weaknesses of current NMT systems, which is their inability to translate words that are not in their vocabulary. A key advantage of our technique is the fact that it is applicable to any NMT system and not only to the deep LSTM model of Sutskever et al. (2014). A technique like ours is likely necessary if an NMT system is to achieve state-of-the-art performance on machine translation. We have demonstrated empirically that on the 18 WMT’14 English-French translation task, our technique yields a consistent and substantial improvement of up to 2.8 BLEU points over various NMT systems of different architectures. Most importantly, with 37.5 BLEU points, we have established the first NMT system that outperformed the best MT system on a WMT’14 contest dataset. Acknowledgments We thank members of the Google Brain team for thoughtful discussions and insight</context>
+</contexts>
+<marker>Sutskever, Vinyals, Le, 2014</marker>
+<rawString>I. Sutskever, O. Vinyals, and Q. V. Le. 2014. Sequence to sequence learning with neural networks. In NIPS.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wojciech Zaremba</author>
+</authors>
+<title>Ilya Sutskever, and Oriol Vinyals.</title>
+<date>2015</date>
+<booktitle>In ICLR.</booktitle>
+<marker>Zaremba, 2015</marker>
+<rawString>Wojciech Zaremba, Ilya Sutskever, and Oriol Vinyals. 2015. Recurrent neural network regularization. In ICLR.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

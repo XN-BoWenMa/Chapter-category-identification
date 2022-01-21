@@ -1,0 +1,765 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.014134" no="0">
+<title confidence="0.988131">
+The Tradeoffs Between Open and Traditional Relation Extraction
+</title>
+<author confidence="0.938498">
+Michele Banko and Oren Etzioni
+</author>
+<affiliation confidence="0.952717666666667">
+Turing Center
+University of Washington
+Computer Science and Engineering
+</affiliation>
+<address confidence="0.9807745">
+Box 352350
+Seattle, WA 98195, USA
+</address>
+<email confidence="0.998178">
+banko,etzioni@cs.washington.edu
+</email>
+<sectionHeader confidence="0.915797" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999862369230769">Traditional Information Extraction (IE) takes a relation name and hand-tagged examples of that relation as input. Open IE is a relationindependent extraction paradigm that is tailored to massive and heterogeneous corpora such as the Web. An Open IE system extracts a diverse set of relational tuples from text without any relation-specific input. How is Open IE possible? We analyze a sample of English sentences to demonstrate that numerous relationships are expressed using a compact set of relation-independent lexico-syntactic patterns, which can be learned by an Open IE system. What are the tradeoffs between Open IE and traditional IE? We consider this question in the context of two tasks. First, when the number of relations is massive, and the relations themselves are not pre-specified, we argue that Open IE is necessary. We then present a new model for Open IE called O-CRF and show that it achieves increased precision and nearly double the recall than the model employed by TEXTRUNNER, the previous stateof-the-art Open IE system. Second, when the number of target relations is small, and their names are known in advance, we show that O-CRF is able to match the precision of a traditional extraction system, though at substantially lower recall. Finally, we show how to combine the two types of systems into a hybrid that achieves higher precision than a traditional extractor, with comparable recall.</bodyText>
+<sectionHeader confidence="0.915797" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999862369230769">Relation Extraction (RE) is the task of recognizing the assertion of a particular relationship between two or more entities in text. Typically, the target relation (e.g., seminar location) is given to the RE system as input along with hand-crafted extraction patterns or patterns learned from hand-labeled training examples (Brin, 1998; Riloff and Jones, 1999; Agichtein and Gravano, 2000). Such inputs are specific to the target relation. Shifting to a new relation requires a person to manually create new extraction patterns or specify new training examples. This manual labor scales linearly with the number of target relations. In 2007, we introduced a new approach to the RE task, called Open Information Extraction (Open IE), which scales RE to the Web. An Open IE system extracts a diverse set of relational tuples without requiring any relation-specific human input. Open IE’s extraction process is linear in the number of documents in the corpus, and constant in the number of relations. Open IE is ideally suited to corpora such as the Web, where the target relations are not known in advance, and their number is massive. The relationship between standard RE systems and the new Open IE paradigm is analogous to the relationship between lexicalized and unlexicalized parsers. Statistical parsers are usually lexicalized (i.e. they make parsing decisions based on n-gram statistics computed for specific lexemes). However, Klein and Manning (2003) showed that unlexicalized parsers are more accurate than previously believed, and can be learned in an unsupervised manner. Klein and Manning analyze the tradeoffs between the two approaches to parsing and argue that state-of-the-art parsing will benefit from employing both approaches in concert.</bodyText>
+<page confidence="0.98524">
+28
+</page>
+<note confidence="0.713359">
+Proceedings of ACL-08: HLT, pages 28–36,
+</note>
+<page confidence="0.538128">
+Columbus, Ohio, USA, June 2008. c�2008 Association for Computational Linguistics
+</page>
+<bodyText confidence="0.9987121">In this paper, we examine the tradeoffs between relation-specific (“lexicalized”) extraction and relation-independent (“unlexicalized”) extraction and reach an analogous conclusion. Is it, in fact, possible to learn relation-independent extraction patterns? What do they look like? We first consider the task of open extraction, in which the goal is to extract relationships from text when their number is large and identity unknown. We then consider the targeted extraction task, in which the goal is to locate instances of a known relation. How does the precision and recall of Open IE compare with that of relation-specific extraction? Is it possible to combine Open IE with a “lexicalized” RE system to improve performance? This paper addresses the questions raised above and makes the following contributions:</bodyText>
+<listItem confidence="0.976256769230769">• We present O-CRF, a new Open IE system that uses Conditional Random Fields, and demonstrate its ability to extract a variety of relations with a precision of 88.3% and recall of 45.2%. We compare O-CRF to O-NB, the extraction model previously used by TEXTRUNNER (Banko et al., 2007), a state-of-the-art Open IE system. We show that O-CRF achieves a relative gain in F-measure of 63% over O-NB. • We provide a corpus-based characterization of how binary relationships are expressed in English to demonstrate that learning a relationindependent extractor is feasible, at least for the English language. • In the targeted extraction case, we compare the performance of O-CRF to a traditional RE system and find that without any relation-specific input, O-CRF obtains the same precision with lower recall compared to a lexicalized extractor trained using hundreds, and sometimes thousands, of labeled examples per relation. • We present H-CRF, an ensemble-based extractor that learns to combine the output of the lexicalized and unlexicalized RE systems and achieves a 10% relative increase in precision with comparable recall over traditional RE.</listItem>
+<bodyText confidence="0.99965">The remainder of this paper is organized as follows. Section 2 assesses the promise of relationindependent extraction for the English language by characterizing how a sample of relations is expressed in text. Section 3 describes O-CRF, a new Open IE system, as well as R1-CRF, a standard RE system; a hybrid RE system is then presented in Section 4. Section 5 reports on our experimental results. Section 6 considers related work, which is then followed by a discussion of future work.</bodyText>
+<sectionHeader confidence="0.728166" genericHeader="related work">
+2 The Nature of Relations in English
+</sectionHeader>
+<bodyText confidence="0.999935176470588">How are relationships expressed in English sentences? In this section, we show that many relationships are consistently expressed using a compact set of relation-independent lexico-syntactic patterns, and quantify their frequency based on a sample of 500 sentences selected at random from an IE training corpus developed by (Bunescu and Mooney, 2007).1 This observation helps to explain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni et al., 2005; Snow et al., 2005; Girju et al., 2006), It is quite natural then to consider whether the same can be done for all binary relationships. To characterize how binary relationships are expressed, one of the authors of this paper carefully studied the labeled relation instances and produced a lexico-syntactic pattern that captured the relation for each instance. Interestingly, we found that 95% of the patterns could be grouped into the categories listed in Table 1. Note, however, that the patterns shown in Table 1 are greatly simplified by omitting the exact conditions under which they will reliably produce a correct extraction. For instance, while many relationships are indicated strictly by a verb, detailed contextual cues are required to determine, exactly which, if any, verb observed in the context of two entities is indicative of a relationship between them.</bodyText>
+<footnote confidence="0.989778">
+1For simplicity, we restrict our study to binary relationships.
+</footnote>
+<page confidence="0.996435">
+29
+</page>
+<table confidence="0.999638736842105">
+Relative Category Simplified
+Frequency Lexico-Syntactic
+Pattern
+37.8 Verb E1 Verb E2
+X established Y
+22.8 Noun+Prep E1 NP Prep E2
+X settlement with Y
+16.0 Verb+Prep E1 Verb Prep E2
+X moved to Y
+9.4 Infinitive E1 to Verb E2
+X plans to acquire Y
+5.2 Modifier E1 Verb E2 Noun
+X is Ywinner
+1.8 Coordinate� E1 (andl,1-1:) E2 NP
+X-Y deal
+1.0 Coordinate� E1 (and|,) E2 Verb
+X , Y merge
+0.8 Appositive E1 NP (:|,)? E2
+X hometown: Y
+</table>
+<tableCaption confidence="0.991823333333333">
+Table 1: Taxonomy of Binary Relationships: Nearly 95%
+of 500 randomly selected sentences belongs to one of the
+eight categories above.
+</tableCaption>
+<bodyText confidence="0.999489375">In the next section, we show how we can use a Conditional Random Field, a model that can be described as a finite state machine with weighted transitions, to learn a model of how binary relationships are expressed in English.</bodyText>
+<sectionHeader confidence="0.988568" genericHeader="evaluation">
+3 Relation Extraction
+</sectionHeader>
+<bodyText confidence="0.999872826923077">Given a relation name, labeled examples of the relation, and a corpus, traditional Relation Extraction (RE) systems output instances of the given relation found in the corpus. In the open extraction task, relation names are not known in advance. The sole input to an Open IE system is a corpus, along with a small set of relation-independent heuristics, which are used to learn a general model of extraction for all relations at once. The task of open extraction is notably more difficult than the traditional formulation of RE for several reasons. First, traditional RE systems do not attempt to extract the text that signifies a relation in a sentence, since the relation name is given. In contrast, an Open IE system has to locate both the set of entities believed to participate in a relation, and the salient textual cues that indicate the relation among them. Knowledge extracted by an open system takes the form of relational tuples (r, e1,... , en) that contain two or more entities el, ... , en, and r, the name of the relationship among them. For example, from the sentence, “Microsoft is headquartered in beautiful Redmond”, we expect to extract (is headquartered in, Microsoft, Redmond). Moreover, following extraction, the system must identify exactly which relation strings r correspond to a general relation of interest. To ensure high-levels of coverage on a perrelation basis, we need, for example to deduce that “ ’s headquarters in”, “is headquartered in” and “is based in” are different ways of expressing HEADQUARTERS(X,Y). Second, a relation-independent extraction process makes it difficult to leverage the full set of features typically used when performing extraction one relation at a time. For instance, the presence of the words company and headquarters will be useful in detecting instances of the HEADQUARTERS(X,Y) relation, but are not useful features for identifying relations in general. Finally, RE systems typically use named-entity types as a guide (e.g., the second argument to HEADQUARTERS should be a LOCATION). In Open IE, the relations are not known in advance, and neither are their argument types. The unique nature of the open extraction task has led us to develop O-CRF, an open extraction system that uses the power of graphical models to identify relations in text. The remainder of this section describes O-CRF, and compares it to the extraction model employed by TEXTRUNNER, the first Open IE system (Banko et al., 2007). We then describe R1-CRF, a RE system that can be applied in a typical one-relation-at-a-time setting.</bodyText>
+<subsectionHeader confidence="0.956969">
+3.1 Open Extraction with Conditional Random
+Fields
+</subsectionHeader>
+<bodyText confidence="0.999969285714286">TEXTRUNNER initially treated Open IE as a classification problem, using a Naive Bayes classifier to predict whether heuristically-chosen tokens between two entities indicated a relationship or not. For the remainder of this paper, we refer to this model as O-NB. Whereas classifiers predict the label of a single variable, graphical models model multiple, in-</bodyText>
+<page confidence="0.995767">
+30
+</page>
+<figureCaption confidence="0.994846333333333">
+Figure 1: Relation Extraction as Sequence Labeling: A
+CRF is used to identify the relationship, born in, between
+Kafka and Prague
+terdependent variables.</figureCaption>
+<bodyText confidence="0.996014214285714">Conditional Random Fields (CRFs) (Lafferty et al., 2001), are undirected graphical models trained to maximize the conditional probability of a finite set of labels Y given a set of input observations X. By making a first-order Markov assumption about the dependencies among the output variables Y , and arranging variables sequentially in a linear chain, RE can be treated as a sequence labeling problem. Linear-chain CRFs have been applied to a variety of sequential text processing tasks including named-entity recognition, part-of-speech tagging, word segmentation, semantic role identification, and recently relation extraction (Culotta et al., 2006).</bodyText>
+<subsectionHeader confidence="0.899877">
+3.1.1 Training
+</subsectionHeader>
+<bodyText confidence="0.999891074626866">As with O-NB, O-CRF’s training process is selfsupervised. O-CRF applies a handful of relationindependent heuristics to the PennTreebank and obtains a set of labeled examples in the form of relational tuples. The heuristics were designed to capture dependencies typically obtained via syntactic parsing and semantic role labelling. For example, a heuristic used to identify positive examples is the extraction of noun phrases participating in a subjectverb-object relationship, e.g., “&lt;Einstein&gt; received &lt;the Nobel Prize&gt; in 1921.” An example of a heuristic that locates negative examples is the extraction of objects that cross the boundary of an adverbial clause, e.g. “He studied &lt;Einstein’s work&gt; when visiting &lt;Germany&gt;.” The resulting set of labeled examples are described using features that can be extracted without syntactic or semantic analysis and used to train a CRF, a sequence model that learns to identify spans of tokens believed to indicate explicit mentions of relationships between entities. O-CRF first applies a phrase chunker to each document, and treats the identified noun phrases as candidate entities for extraction. Each pair of entities appearing no more than a maximum number of words apart and their surrounding context are considered as possible evidence for RE. The entity pair serves to anchor each end of a linear-chain CRF, and both entities in the pair are assigned a fixed label of ENT. Tokens in the surrounding context are treated as possible textual cues that indicate a relation, and can be assigned one of the following labels: B-REL, indicating the start of a relation, I-REL, indicating the continuation of a predicted relation, or O, indicating the token is not believed to be part of an explicit relationship. An illustration is given in Figure 1. The set of features used by O-CRF is largely similar to those used by O-NB and other stateof-the-art relation extraction systems, They include part-of-speech tags (predicted using a separately trained maximum-entropy model), regular expressions (e.g.detecting capitalization, punctuation, etc.), context words, and conjunctions of features occurring in adjacent positions within six words to the left and six words to the right of the current word. A unique aspect of O-CRF is that O-CRF uses context words belonging only to closed classes (e.g. prepositions and determiners) but not function words such as verbs or nouns. Thus, unlike most RE systems, O-CRF does not try to recognize semantic classes of entities. O-CRF has a number of limitations, most of which are shared with other systems that perform extraction from natural language text. First, O-CRF only extracts relations that are explicitly mentioned in the text; implicit relationships that could inferred from the text would need to be inferred from OCRF extractions. Second, O-CRF focuses on relationships that are primarily word-based, and not indicated solely from punctuation or document-level features. Finally, relations must occur between entity names within the same sentence. O-CRF was built using the CRF implementation provided by MALLET (McCallum, 2002), as well as part-of-speech tagging and phrase-chunking tools available from OPENNLP.2</bodyText>
+<footnote confidence="0.964635">
+2http://opennlp.sourceforge.net
+</footnote>
+<page confidence="0.999665">
+31
+</page>
+<subsectionHeader confidence="0.519938">
+3.1.2 Extraction
+</subsectionHeader>
+<bodyText confidence="0.999476769230769">Given an input corpus, O-CRF makes a single pass over the data, and performs entity identification using a phrase chunker. The CRF is then used to label instances relations for each possible entity pair, subject to the constraints mentioned previously. Following extraction, O-CRF applies the RESOLVER algorithm (Yates and Etzioni, 2007) to find relation synonyms, the various ways in which a relation is expressed in text. RESOLVER uses a probabilistic model to predict if two strings refer to the same item, based on relational features, in an unsupervised manner. In Section 5.2 we report that RESOLVER boosts the recall of O-CRF by 50%.</bodyText>
+<subsectionHeader confidence="0.965848">
+3.2 Relation-Specific Extraction
+</subsectionHeader>
+<bodyText confidence="0.999989428571428">To compare the behavior of open, or “unlexicalized,” extraction to relation-specific, or “lexicalized” extraction, we developed a CRF-based extractor under the traditional RE paradigm. We refer to this system as R1-CRF. Although the graphical structure of R1-CRF is the same as O-CRF R1-CRF differs in a few ways. A given relation R is specified a priori, and R1-CRF is trained from hand-labeled positive and negative instances of R. The extractor is also permitted to use all lexical features, and is not restricted to closedclass words as is O-CRF. Since R is known in advance, if R1-CRF outputs a tuple at extraction time, the tuple is believed to be an instance of R.</bodyText>
+<sectionHeader confidence="0.995487" genericHeader="evaluation and result">
+4 Hybrid Relation Extraction
+</sectionHeader>
+<bodyText confidence="0.999827666666667">Since O-CRF and R1-CRF have complementary views of the extraction process, it is natural to wonder whether they can be combined to produce a more powerful extractor. In many machine learning settings, the use of an ensemble of diverse classifiers during prediction has been observed to yield higher levels of performance compared to individual algorithms. We now describe an ensemble-based or hybrid approach to RE that leverages the different views offered by open, self-supervised extraction in O-CRF, and lexicalized, supervised extraction in R1-CRF.</bodyText>
+<subsectionHeader confidence="0.996043">
+4.1 Stacking
+</subsectionHeader>
+<bodyText confidence="0.999968523809524">Stacked generalization, or stacking, (Wolpert, 1992), is an ensemble-based framework in which the goal is learn a meta-classifier from the output of several base-level classifiers. The training set used to train the meta-classifier is generated using a leaveone-out procedure: for each base-level algorithm, a classifier is trained from all but one training example and then used to generate a prediction for the leftout example. The meta-classifier is trained using the predictions of the base-level classifiers as features, and the true label as given by the training data. Previous studies (Ting and Witten, 1999; Zenko and Dzeroski, 2002; Sigletos et al., 2005) have shown that the probabilities of each class value as estimated by each base-level algorithm are effective features when training meta-learners. Stacking was shown to be consistently more effective than voting, another popular ensemble-based method in which the outputs of the base-classifiers are combined either through majority vote or by taking the class value with the highest average probability.</bodyText>
+<subsectionHeader confidence="0.986886">
+4.2 Stacked Relation Extraction
+</subsectionHeader>
+<bodyText confidence="0.999986521739131">We used the stacking methodology to build an ensemble-based extractor, referred to as H-CRF. Treating the output of an O-CRF and R1-CRF as black boxes, H-CRF learns to predict which, if any, tokens found between a pair of entities (e1, e2), indicates a relationship. Due to the sequential nature of our RE task, H-CRF employs a CRF as the metalearner, as opposed to a decision tree or regressionbased classifier. H-CRF uses the probability distribution over the set of possible labels according to each O-CRF and R1-CRF as features. To obtain the probability at each position of a linear-chain CRF, the constrained forward-backward technique described in (Culotta and McCallum, 2004) is used. H-CRF also computes the Monge Elkan distance (Monge and Elkan, 1996) between the relations predicted by O-CRF and R1CRF and includes the result in the feature set. An additional meta-feature utilized by H-CRF indicates whether either or both base extractors return “no relation” for a given pair of entities. In addition to these numeric features, H-CRF uses a subset of the base features used by O-CRF and R1-CRF. At each</bodyText>
+<page confidence="0.997308">
+32
+</page>
+<table confidence="0.999901625">
+Category P O-CRF P O-NB F1
+R F1 R
+Verb 93.9 65.1 76.9 100 38.6 55.7
+Noun+Prep 89.1 36.0 51.3 100 9.7 55.7
+Verb+Prep 95.2 50.0 65.6 95.2 25.3 40.0
+Infinitive 95.7 46.8 62.9 100 25.5 40.6
+Other 0 0 0 0 0 0
+All 88.3 45.2 59.8 86.6 23.2 36.6
+</table>
+<tableCaption confidence="0.9314846">
+Table 2: Open Extraction by Relation Category. O-CRF
+outperforms O-NB, obtaining nearly double its recall and
+increased precision. O-CRF’s gains are partly due to its
+lower false positive rate for relationships categorized as
+“Other.”
+given position i between e1 and e2, the presence of the word observed at i as a feature, as well as the presence of the part-of-speech-tag at i.</tableCaption>
+<sectionHeader confidence="0.998326" genericHeader="result">
+5 Experimental Results
+</sectionHeader>
+<bodyText confidence="0.999983409090909">The following experiments demonstrate the benefits of Open IE for two tasks: open extraction and targeted extraction. Section 5.1, assesses the ability of O-CRF to locate instances of relationships when the number of relationships is large and their identity is unknown. We show that without any relation-specific input, OCRF extracts binary relationships with high precision and a recall that nearly doubles that of O-NB. Sections 5.2 and 5.3 compare O-CRF to traditional and hybrid RE when the goal is to locate instances of a small set of known target relations. We find that while single-relation extraction, as embodied by R1-CRF, achieves comparatively higher levels of recall, it takes hundreds, and sometimes thousands, of labeled examples per relation, for R1CRF to approach the precision obtained by O-CRF, which is self-trained without any relation-specific input. We also show that the combination of unlexicalized, open extraction in O-CRF and lexicalized, supervised extraction in R1-CRF improves precision and F-measure compared to a standalone RE system.</bodyText>
+<subsectionHeader confidence="0.990536">
+5.1 Open Extraction
+</subsectionHeader>
+<bodyText confidence="0.999955793103448">This section contrasts the performance of O-CRF with that of O-NB on an Open IE task, and shows that O-CRF achieves both double the recall and increased precision relative to O-NB. For this experiment, we used the set of 500 sentences3 described in Section 2. Both IE systems were designed and trained prior to the examination of the sample sentences; thus the results on this sentence sample provide a fair measurement of their performance. While the TEXTRUNNER system was previously found to extract over 7.5 million tuples from a corpus of 9 million Web pages, these experiments are the first to assess its true recall over a known set of relational tuples. As reported in Table 2, O-CRF extracts relational tuples with a precision of 88.3% and a recall of 45.2%. O-CRF achieves a relative gain in F1 of 63.4% over the O-NB model employed by TEXTRUNNER, which obtains a precision of 86.6% and a recall of 23.2%. The recall of O-CRF nearly doubles that of O-NB. O-CRF is able to extract instances of the four most frequently observed relation types – Verb, Noun+Prep, Verb+Prep and Infinitive. Three of the four remaining types – Modifier, Coordinates, and Coordinate„ – which comprise only 8% of the sample, are not handled due to simplifying assumptions made by both O-CRF and O-NB that tokens indicating a relation occur between entity mentions in the sentence.</bodyText>
+<subsectionHeader confidence="0.997921">
+5.2 O-CRF vs. R1-CRF Extraction
+</subsectionHeader>
+<bodyText confidence="0.995041888888889">To compare performance of the extractors when a small set of target relationships is known in advance, we used labeled data for four different relations – corporate acquisitions, birthplaces, inventors of products and award winners. The first two datasets were collected from the Web, and made available by Bunescu and Mooney (2007). To augment the size of our corpus, we used the same technique to collect data for two additional relations, and manually labelled positive and negative instances by hand over all collections. For each of the four relations in our collection, we trained R1-CRF from labeled training data, and ran each of R1-CRF and O-CRF over the respective test sets, and compared the precision and recall of all tuples output by each system. Table 3 shows that from the start, O-CRF achieves a high level of precision – 75.0% – without any relation-specific data.</bodyText>
+<footnote confidence="0.999044">
+3Available at http://www.cs.washington.edu/research/
+knowitall/hlt-naacl08-data.txt
+</footnote>
+<page confidence="0.993336">
+33
+</page>
+<table confidence="0.999969285714286">
+Relation O-CRF P R1-CRF
+P R R Train Ex
+Acquisition 75.6 19.5 67.6 69.2 3042
+Birthplace 90.6 31.1 92.3 64.4 1853
+InventorOf 88.0 17.5 81.3 50.8 682
+WonAward 62.5 15.3 73.6 52.8 354
+All 75.0 18.4 73.9 58.4 5930
+</table>
+<tableCaption confidence="0.9719125">
+Table 3: Precision (P) and Recall (R) of O-CRF and R1-
+CRF.
+</tableCaption>
+<table confidence="0.999976714285714">
+Relation O-CRF P R1-CRF
+P R R Train Ex
+Acquisition 75.6 19.5 67.6 69.2 3042*
+Birthplace 90.6 31.1 92.3 53.3 600
+InventorOf 88.0 17.5 81.3 50.8 682*
+WonAward 62.5 15.3 65.4 61.1 50
+All 75.0 18.4 70.17 60.7 &gt;4374
+</table>
+<tableCaption confidence="0.5610484">
+Table 4: For 4 relations, a minimum of 4374 hand-tagged
+examples is needed for R1-CRF to approximately match
+the precision of O-CRF for each relation. A “*” indicates
+the use of all available training data; in these cases, R1-
+CRF was unable to match the precision of O-CRF.
+</tableCaption>
+<bodyText confidence="0.999788666666667">Using labeled training data, the R1-CRF system achieves a slightly lower precision of 73.9%. Exactly how many training examples per relation does it take R1-CRF to achieve a comparable level of precision? We varied the number of training examples given to R1-CRF, and found that in 3 out of 4 cases it takes hundreds, if not thousands of labeled examples for R1-CRF to achieve acceptable levels of precision. In two cases – acquisitions and inventions – R1-CRF is unable to match the precision of O-CRF, even with many labeled examples. Table 4 summarizes these findings. Using labeled data, R1-CRF obtains a recall of 58.4%, compared to O-CRF, whose recall is 18.4%. A large number of false negatives on the part of OCRF can be attributed to its lack of lexical features, which are often crucial when part-of-speech tagging errors are present. For instance, in the sentence, “Yahoo To Acquire Inktomi”, “Acquire” is mistaken for a proper noun, and sufficient evidence of the existence of a relationship is absent. The lexicalized R1CRF extractor is able to recover from this error; the presence of the word “Acquire” is enough to recognize the positive instance, despite the incorrect partof-speech tag.</bodyText>
+<table confidence="0.999901428571428">
+Relation P R1-CRF P Hybrid
+R F1 R F1
+Acquisition 67.6 69.2 68.4 76.0 67.5 71.5
+Birthplace 93.6 64.4 76.3 96.5 62.2 75.6
+InventorOf 81.3 50.8 62.5 87.5 52.5 65.6
+WonAward 73.6 52.8 61.5 75.0 50.0 60.0
+All 73.9 58.4 65.2 79.2 56.9 66.2
+</table>
+<tableCaption confidence="0.998425">
+Table 5: A hybrid extractor that uses O-CRF improves
+precision for all relations, at a small cost to recall.
+</tableCaption>
+<bodyText confidence="0.999421956521739">Another source of recall issues facing O-CRF is its ability to discover synonyms for a given relation. We found that while RESOLVER improves the relative recall of O-CRF by nearly 50%, O-CRF locates fewer synonyms per relation compared to its lexicalized counterpart. With RESOLVER, O-CRF finds an average of 6.5 synonyms per relation compared to R1-CRF’s 16.25. In light of our findings, the relative tradeoffs of open versus traditional RE are as follows. Open IE automatically offers a high level of precision without requiring manual labor per relation, at the expense of recall. When relationships in a corpus are not known, or their number is massive, Open IE is essential for RE. When higher levels of recall are desirable for a small set of target relations, traditional RE is more appropriate. However, in this case, one must be willing to undertake the cost of acquiring labeled training data for each relation, either via a computational procedure such as bootstrapped learning or by the use of human annotators.</bodyText>
+<subsectionHeader confidence="0.996042">
+5.3 Hybrid Extraction
+</subsectionHeader>
+<bodyText confidence="0.999986916666667">In this section, we explore the performance of HCRF, an ensemble-based extractor that learns to perform RE for a set of known relations based on the individual behaviors of O-CRF and R1-CRF. As shown in Table 5, the use of O-CRF as part of H-CRF, improves precision from 73.9% to 79.2% with only a slight decrease in recall. Overall, F1 improved from 65.2% to 66.2%. One disadvantage of a stacking-based hybrid system is that labeled training data is still required. In the future, we would like to explore the development of hybrid systems that leverage Open IE methods, like O-CRF, to reduce the number of training examples required per relation.</bodyText>
+<page confidence="0.99654">
+34
+</page>
+<sectionHeader confidence="0.999923" genericHeader="related work">
+6 Related Work
+</sectionHeader>
+<bodyText confidence="0.99997962">TEXTRUNNER, the first Open IE system, is part of a body of work that reflects a growing interest in avoiding relation-specificity during extraction. Sekine (2006) developed a paradigm for “ondemand information extraction” in order to reduce the amount of effort involved when porting IE systems to new domains. Shinyama and Sekine’s “preemptive” IE system (2006) discovers relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machines fitted with language-oriented kernels to classify pairs of entities. Roth and Yih (2004) also described a classification-based framework in which they jointly learn to identify named entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given relations. Under these restrictions, RE became an instance of entity labeling, where the label assigned to an entity (e.g. Father) is its relation to the topic of the article. Others have also found the stacking framework to yield benefits for IE. Freitag (2000) used linear regression to model the relationship between the confidence of several inductive learning algorithms and the probability that a prediction is correct. Over three different document collections, the combined method yielded improvements over the best individual learner for all but one relation. The efficacy of ensemble-based methods for extraction was further investigated by (Sigletos et al., 2005), who experimented with combining the outputs of a rule-based learner, a Hidden Markov Model and a wrapperinduction algorithm in five different domains. Of a variety ensemble-based methods, stacking proved to consistently outperform the best base-level system, obtaining more precise results at the cost of somewhat lower recall. (Feldman et al., 2005) demonstrated that a hybrid extractor composed of a statistical and knowledge-based models outperform either in isolation.</bodyText>
+<sectionHeader confidence="0.996964" genericHeader="conclusion">
+7 Conclusions and Future Work
+</sectionHeader>
+<bodyText confidence="0.999953269230769">Our experiments have demonstrated the promise of relation-independent extraction using the Open IE paradigm. We have shown that binary relationships can be categorized using a compact set of lexicosyntactic patterns, and presented O-CRF, a CRFbased Open IE system that can extract different relationships with a precision of 88.3% and a recall of 45.2%4. Open IE is essential when the number of relationships of interest is massive or unknown. Traditional IE is more appropriate for targeted extraction when the number of relations of interest is small and one is willing to incur the cost of acquiring labeled training data. Compared to traditional IE, the recall of our Open IE system is admittedly lower. However, in a targeted extraction scenario, Open IE can still be used to reduce the number of hand-labeled examples. As Table 4 shows, numerous hand-labeled examples (ranging from 50 for one relation to over 3,000 for another) are necessary to match the precision of O-CRF. In the future, O-CRF’s recall may be improved by enhancements to its ability to locate the various ways in which a given relation is expressed. We also plan to explore the capacity of Open IE to automatically provide labeled training data, when traditional relation extraction is a more appropriate choice.</bodyText>
+<sectionHeader confidence="0.998361" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.998854">This research was supported in part by NSF grants IIS-0535284 and IIS-0312988, ONR grant N0001408-1-0431 as well as gifts from Google, and carried out at the University of Washington’s Turing Center. Doug Downey, Stephen Soderland and Dan Weld provided helpful comments on previous drafts.</bodyText>
+<footnote confidence="0.999573333333333">
+4The TEXTRUNNER Open IE system now indexes extrac-
+tions found by O-CRF from millions of Web pages, and is lo-
+cated at http://www.cs.washington.edu/research/textrunner
+</footnote>
+<page confidence="0.999413">
+35
+</page>
+<sectionHeader confidence="0.995886" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999904540229885">
+E. Agichtein and L. Gravano. 2000. Snowball: Ex-
+tracting relations from large plain-text collections. In
+Procs. of the Fifth ACM International Conference on
+Digital Libraries.
+M. Banko, M. Cararella, S. Soderland, M. Broadhead,
+and O. Etzioni. 2007. Open information extraction
+from the web. In Procs. of IJCAI.
+S. Brin. 1998. Extracting Patterns and Relations from the
+World Wide Web. In WebDB Workshop at 6th Interna-
+tional Conference on Extending Database Technology,
+EDBT’98, pages 172–183, Valencia, Spain.
+R. Bunescu and R. Mooney. 2005. Subsequence kernels
+for relation extraction. In In Procs. of Neural Informa-
+tion Processing Systems.
+R. Bunescu and R. Mooney. 2007. Learning to extract
+relations from the web using minimal supervision. In
+Proc. of ACL.
+A. Culotta and A. McCallum. 2004. Confidence es-
+timation for information extraction. In Procs of
+HLT/NAACL.
+A. Culotta, A. McCallum, and J. Betz. 2006. Integrat-
+ing probabilistic extraction models and data mining
+to discover relations and patterns in text. In Procs of
+HLT/NAACL, pages 296–303.
+P. Domingos. 1996. Unifying instance-based and rule-
+based induction. Machine Learning, 24(2):141–168.
+O. Etzioni, M. Cafarella, D. Downey, S. Kok, A. Popescu,
+T. Shaked, S. Soderland, D. Weld, and A. Yates.
+2005. Unsupervised named-entity extraction from the
+web: An experimental study. Artificial Intelligence,
+165(1):91–134.
+R. Feldman, B. Rosenfeld, and M. Fresko. 2005. Teg - a
+hybrid approach to information extraction. Knowledge
+and Information Systems, 9(1):1–18.
+D. Freitag. 2000. Machine learning for information
+extraction in informal domains. Machine Learning,
+39(2-3):169–202.
+R. Girju, A. Badulescu, and D. Moldovan. 2006. Au-
+tomatic discovery of part-whole relations. Computa-
+tional Linguistics, 32(1).
+M. Hearst. 1992. Automatic acquisition of hyponyms
+from large text corpora. In Procs. of the 14th In-
+ternational Conference on Computational Linguistics,
+pages 539–545.
+D. Klein and C. Manning. 2003. Accurate unlexicalized
+parsing. In ACL.
+J. Lafferty, A. McCallum, and F. Pereira. 2001. Con-
+ditional random fields: Probabilistic models for seg-
+menting and labeling sequence data. In Procs. of
+ICML.
+A. McCallum. 2002. Mallet: A machine learning for
+language toolkit. http://mallet.cs.umass.edu.
+A. E. Monge and C. P. Elkan. 1996. The field matching
+problem: Algorithms and applications. In Procs. of
+KDD.
+E. Riloff and R. Jones. 1999. Learning Dictionaries for
+Information Extraction by Multi-level Boot-strapping.
+In Procs. of AAAI-99, pages 1044–1049.
+D. Roth and W. Yih. 2004. A linear progamming formu-
+lation for global inference in natural language tasks.
+In Procs. of CoNLL.
+S. Sekine. 2006. On-demand information extraction. In
+Proc. of COLING.
+Y. Shinyama and S. Sekine. 2006. Preemptive informa-
+tion extraction using unrestricted relation discovery.
+In Proc. of the HLT-NAACL.
+G. Sigletos, G. Paliouras, C. D. Spyropoulos, and M. Hat-
+zopoulos. 2005. Combining infomation extraction
+systems using voting and stacked generalization. Jour-
+nal of Machine Learning Research, 6:1751,1782.
+R. Snow, D. Jurafsky, and A. Ng. 2005. Learning syn-
+tactic patterns for automatic hypernym discovery. In
+Advances in Neural Information Processing Systems
+17. MIT Press.
+K.M. Ting and I. H. Witten. 1999. Issues in stacked gen-
+eralization. Artificial Intelligence Research, 10:271–
+289.
+D. Wolpert. 1992. Stacked generalization. Neural Net-
+works, 5(2):241–260.
+A. Yates and O. Etzioni. 2007. Unsupervised resolu-
+tion of objects and relations on the web. In Procs of
+NAACL/HLT.
+D. Zelenko, C. Aone, and A. Richardella. 2003. Kernel
+methods for relation extraction. JMLR, 3:1083–1106.
+B. Zenko and S. Dzeroski. 2002. Stacking with an ex-
+tended set of meta-level attributes and mlr. In Proc. of
+ECML.
+</reference>
+<page confidence="0.998938">
+36
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.500953" no="0">
+<title confidence="0.999873">The Tradeoffs Between Open and Traditional Relation Extraction</title>
+<author confidence="0.999974">Michele Banko</author>
+<author confidence="0.999974">Oren Etzioni</author>
+<affiliation confidence="0.996769333333333">Turing Center University of Washington Computer Science and Engineering</affiliation>
+<address confidence="0.999854">Box 352350 Seattle, WA 98195, USA</address>
+<email confidence="0.999685">banko,etzioni@cs.washington.edu</email>
+<intro confidence="0.506217">Abstract</intro>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>E Agichtein</author>
+<author>L Gravano</author>
+</authors>
+<title>Snowball: Extracting relations from large plain-text collections.</title>
+<date>2000</date>
+<booktitle>In Procs. of the Fifth ACM International Conference on Digital Libraries.</booktitle>
+<contexts>
+<context citStr="Agichtein and Gravano, 2000" endWordPosition="90" position="645" startWordPosition="87">ween Open and Traditional Relation Extraction Michele Banko and Oren Etzioni Turing Center University of Washington Computer Science and Engineering Box 352350 Seattle, WA 98195, USA banko,etzioni@cs.washington.edu Abstract 1 Introduction Relation Extraction (RE) is the task of recognizing the assertion of a particular relationship between two or more entities in text. Typically, the target relation (e.g., seminar location) is given to the RE system as input along with hand-crafted extraction patterns or patterns learned from hand-labeled training examples (Brin, 1998; Riloff and Jones, 1999; Agichtein and Gravano, 2000). Such inputs are specific to the target relation. Shifting to a new relation requires a person to manually create new extraction patterns or specify new training examples. This manual labor scales linearly with the number of target relations. In 2007, we introduced a new approach to the RE task, called Open Information Extraction (Open IE), which scales RE to the Web. An Open IE system extracts a diverse set of relational tuples without requiring any relation-specific human input. Open IE’s extraction process is linear in the number of documents in the corpus, and constant in the number of re</context>
+</contexts>
+<marker>Agichtein, Gravano, 2000</marker>
+<rawString>E. Agichtein and L. Gravano. 2000. Snowball: Extracting relations from large plain-text collections. In Procs. of the Fifth ACM International Conference on Digital Libraries.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Banko</author>
+<author>M Cararella</author>
+<author>S Soderland</author>
+<author>M Broadhead</author>
+<author>O Etzioni</author>
+</authors>
+<title>Open information extraction from the web. In Procs. of IJCAI.</title>
+<date>2007</date>
+<contexts>
+<context citStr="Banko et al., 2007" endWordPosition="746" position="4655" startWordPosition="743"> in which the goal is to locate instances of a known relation. How does the precision and recall of Open IE compare with that of relation-specific extraction? Is it possible to combine Open IE with a “lexicalized” RE system to improve performance? This paper addresses the questions raised above and makes the following contributions: • We present O-CRF, a new Open IE system that uses Conditional Random Fields, and demonstrate its ability to extract a variety of relations with a precision of 88.3% and recall of 45.2%. We compare O-CRF to O-NB, the extraction model previously used by TEXTRUNNER (Banko et al., 2007), a state-of-the-art Open IE system. We show that O-CRF achieves a relative gain in F-measure of 63% over O-NB. • We provide a corpus-based characterization of how binary relationships are expressed in English to demonstrate that learning a relationindependent extractor is feasible, at least for the English language. • In the targeted extraction case, we compare the performance of O-CRF to a traditional RE system and find that without any relation-specific input, O-CRF obtains the same precision with lower recall compared to a lexicalized extractor trained using hundreds, and sometimes thousan</context>
+<context citStr="Banko et al., 2007" endWordPosition="1832" position="11217" startWordPosition="1829">ion, but are not useful features for identifying relations in general. Finally, RE systems typically use named-entity types as a guide (e.g., the second argument to HEADQUARTERS should be a LOCATION). In Open IE, the relations are not known in advance, and neither are their argument types. The unique nature of the open extraction task has led us to develop O-CRF, an open extraction system that uses the power of graphical models to identify relations in text. The remainder of this section describes O-CRF, and compares it to the extraction model employed by TEXTRUNNER, the first Open IE system (Banko et al., 2007). We then describe R1-CRF, a RE system that can be applied in a typical one-relation-at-a-time setting. 3.1 Open Extraction with Conditional Random Fields TEXTRUNNER initially treated Open IE as a classification problem, using a Naive Bayes classifier to predict whether heuristically-chosen tokens between two entities indicated a relationship or not. For the remainder of this paper, we refer to this model as O-NB. Whereas classifiers predict the label of a single variable, graphical models model multiple, in30 Figure 1: Relation Extraction as Sequence Labeling: A CRF is used to identify the re</context>
+</contexts>
+<marker>Banko, Cararella, Soderland, Broadhead, Etzioni, 2007</marker>
+<rawString>M. Banko, M. Cararella, S. Soderland, M. Broadhead, and O. Etzioni. 2007. Open information extraction from the web. In Procs. of IJCAI.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Brin</author>
+</authors>
+<title>Extracting Patterns and Relations from the World Wide Web. In</title>
+<date>1998</date>
+<booktitle>WebDB Workshop at 6th International Conference on Extending Database Technology, EDBT’98,</booktitle>
+<pages>172--183</pages>
+<location>Valencia,</location>
+<marker>Brin, 1998</marker>
+<rawString>S. Brin. 1998. Extracting Patterns and Relations from the World Wide Web. In WebDB Workshop at 6th International Conference on Extending Database Technology, EDBT’98, pages 172–183, Valencia, Spain.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bunescu</author>
+<author>R Mooney</author>
+</authors>
+<title>Subsequence kernels for relation extraction. In</title>
+<date>2005</date>
+<booktitle>In Procs. of Neural Information Processing Systems.</booktitle>
+<contexts>
+<context citStr="Bunescu and Mooney, 2005" endWordPosition="4745" position="28836" startWordPosition="4742">iding relation-specificity during extraction. Sekine (2006) developed a paradigm for “ondemand information extraction” in order to reduce the amount of effort involved when porting IE systems to new domains. Shinyama and Sekine’s “preemptive” IE system (2006) discovers relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machines fitted with language-oriented kernels to classify pairs of entities. Roth and Yih (2004) also described a classification-based framework in which they jointly learn to identify named entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given relations. Under these restricti</context>
+</contexts>
+<marker>Bunescu, Mooney, 2005</marker>
+<rawString>R. Bunescu and R. Mooney. 2005. Subsequence kernels for relation extraction. In In Procs. of Neural Information Processing Systems.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bunescu</author>
+<author>R Mooney</author>
+</authors>
+<title>Learning to extract relations from the web using minimal supervision.</title>
+<date>2007</date>
+<booktitle>In Proc. of ACL.</booktitle>
+<contexts>
+<context citStr="Bunescu and Mooney, 2007" endWordPosition="1030" position="6390" startWordPosition="1027">E system, as well as R1-CRF, a standard RE system; a hybrid RE system is then presented in Section 4. Section 5 reports on our experimental results. Section 6 considers related work, which is then followed by a discussion of future work. 2 The Nature of Relations in English How are relationships expressed in English sentences? In this section, we show that many relationships are consistently expressed using a compact set of relation-independent lexico-syntactic patterns, and quantify their frequency based on a sample of 500 sentences selected at random from an IE training corpus developed by (Bunescu and Mooney, 2007).1 This observation helps to explain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni e</context>
+<context citStr="Bunescu and Mooney (2007)" endWordPosition="3824" position="23452" startWordPosition="3821">he four remaining types – Modifier, Coordinates, and Coordinate„ – which comprise only 8% of the sample, are not handled due to simplifying assumptions made by both O-CRF and O-NB that tokens indicating a relation occur between entity mentions in the sentence. 5.2 O-CRF vs. R1-CRF Extraction To compare performance of the extractors when a small set of target relationships is known in advance, we used labeled data for four different relations – corporate acquisitions, birthplaces, inventors of products and award winners. The first two datasets were collected from the Web, and made available by Bunescu and Mooney (2007). To augment the size of our corpus, we used the same technique to collect data for two additional relations, and manually labelled positive and negative instances by hand over all collections. For each of the four relations in our collection, we trained R1-CRF from labeled training data, and ran each of R1-CRF and O-CRF over the respective test sets, and compared the precision and recall of all tuples output by each system. Table 3 shows that from the start, O-CRF achieves a high level of precision – 75.0% – without any 3Available at http://www.cs.washington.edu/research/ knowitall/hlt-naacl0</context>
+</contexts>
+<marker>Bunescu, Mooney, 2007</marker>
+<rawString>R. Bunescu and R. Mooney. 2007. Learning to extract relations from the web using minimal supervision. In Proc. of ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Culotta</author>
+<author>A McCallum</author>
+</authors>
+<title>Confidence estimation for information extraction.</title>
+<date>2004</date>
+<booktitle>In Procs of HLT/NAACL.</booktitle>
+<contexts>
+<context citStr="Culotta and McCallum, 2004" endWordPosition="3160" position="19549" startWordPosition="3157">sed extractor, referred to as H-CRF. Treating the output of an O-CRF and R1-CRF as black boxes, H-CRF learns to predict which, if any, tokens found between a pair of entities (e1, e2), indicates a relationship. Due to the sequential nature of our RE task, H-CRF employs a CRF as the metalearner, as opposed to a decision tree or regressionbased classifier. H-CRF uses the probability distribution over the set of possible labels according to each O-CRF and R1-CRF as features. To obtain the probability at each position of a linear-chain CRF, the constrained forward-backward technique described in (Culotta and McCallum, 2004) is used. H-CRF also computes the Monge Elkan distance (Monge and Elkan, 1996) between the relations predicted by O-CRF and R1- CRF and includes the result in the feature set. An additional meta-feature utilized by H-CRF indicates whether either or both base extractors return “no relation” for a given pair of entities. In addition to these numeric features, H-CRF uses a subset of the base features used by O-CRF and R1-CRF. At each 32 Category P O-CRF P O-NB F1 R F1 R Verb 93.9 65.1 76.9 100 38.6 55.7 Noun+Prep 89.1 36.0 51.3 100 9.7 55.7 Verb+Prep 95.2 50.0 65.6 95.2 25.3 40.0 Infinitive 95.7 </context>
+</contexts>
+<marker>Culotta, McCallum, 2004</marker>
+<rawString>A. Culotta and A. McCallum. 2004. Confidence estimation for information extraction. In Procs of HLT/NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Culotta</author>
+<author>A McCallum</author>
+<author>J Betz</author>
+</authors>
+<title>Integrating probabilistic extraction models and data mining to discover relations and patterns in text.</title>
+<date>2006</date>
+<booktitle>In Procs of HLT/NAACL,</booktitle>
+<pages>296--303</pages>
+<contexts>
+<context citStr="Culotta et al., 2006" endWordPosition="2037" position="12541" startWordPosition="2034">(Lafferty et al., 2001), are undirected graphical models trained to maximize the conditional probability of a finite set of labels Y given a set of input observations X. By making a first-order Markov assumption about the dependencies among the output variables Y , and arranging variables sequentially in a linear chain, RE can be treated as a sequence labeling problem. Linear-chain CRFs have been applied to a variety of sequential text processing tasks including named-entity recognition, part-of-speech tagging, word segmentation, semantic role identification, and recently relation extraction (Culotta et al., 2006). 3.1.1 Training As with O-NB, O-CRF’s training process is selfsupervised. O-CRF applies a handful of relationindependent heuristics to the PennTreebank and obtains a set of labeled examples in the form of relational tuples. The heuristics were designed to capture dependencies typically obtained via syntactic parsing and semantic role labelling. For example, a heuristic used to identify positive examples is the extraction of noun phrases participating in a subjectverb-object relationship, e.g., “&lt;Einstein&gt; received &lt;the Nobel Prize&gt; in 1921.” An example of a heuristic that locates negative exa</context>
+<context citStr="Culotta et al. (2006)" endWordPosition="4782" position="29100" startWordPosition="4779">s relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machines fitted with language-oriented kernels to classify pairs of entities. Roth and Yih (2004) also described a classification-based framework in which they jointly learn to identify named entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given relations. Under these restrictions, RE became an instance of entity labeling, where the label assigned to an entity (e.g. Father) is its relation to the topic of the article. Others have also found the stacking framework to yield benefits for IE. Freitag (2000) used linear regression to model t</context>
+</contexts>
+<marker>Culotta, McCallum, Betz, 2006</marker>
+<rawString>A. Culotta, A. McCallum, and J. Betz. 2006. Integrating probabilistic extraction models and data mining to discover relations and patterns in text. In Procs of HLT/NAACL, pages 296–303.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Domingos</author>
+</authors>
+<title>Unifying instance-based and rulebased induction.</title>
+<date>1996</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>24</volume>
+<issue>2</issue>
+<marker>Domingos, 1996</marker>
+<rawString>P. Domingos. 1996. Unifying instance-based and rulebased induction. Machine Learning, 24(2):141–168.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>O Etzioni</author>
+<author>M Cafarella</author>
+<author>D Downey</author>
+<author>S Kok</author>
+<author>A Popescu</author>
+<author>T Shaked</author>
+<author>S Soderland</author>
+<author>D Weld</author>
+<author>A Yates</author>
+</authors>
+<title>Unsupervised named-entity extraction from the web: An experimental study.</title>
+<date>2005</date>
+<journal>Artificial Intelligence,</journal>
+<volume>165</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Etzioni et al., 2005" endWordPosition="1121" position="7001" startWordPosition="1118">ey, 2007).1 This observation helps to explain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni et al., 2005; Snow et al., 2005; Girju et al., 2006), It is quite natural then to consider whether the same can be done for all binary relationships. To characterize how binary relationships are expressed, one of the authors of this paper carefully studied the labeled relation instances and produced a lexico-syntactic pattern that captured the relation for each instance. Interestingly, we found that 95% of the patterns could be grouped into the categories listed in Table 1. Note, however, that the patterns shown in Table 1 are greatly simplified by omitting the exact conditions under which they will relia</context>
+</contexts>
+<marker>Etzioni, Cafarella, Downey, Kok, Popescu, Shaked, Soderland, Weld, Yates, 2005</marker>
+<rawString>O. Etzioni, M. Cafarella, D. Downey, S. Kok, A. Popescu, T. Shaked, S. Soderland, D. Weld, and A. Yates. 2005. Unsupervised named-entity extraction from the web: An experimental study. Artificial Intelligence, 165(1):91–134.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Feldman</author>
+<author>B Rosenfeld</author>
+<author>M Fresko</author>
+</authors>
+<title>Teg - a hybrid approach to information extraction.</title>
+<date>2005</date>
+<journal>Knowledge and Information Systems,</journal>
+<volume>9</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Feldman et al., 2005" endWordPosition="4999" position="30430" startWordPosition="4996">ediction is correct. Over three different document collections, the combined method yielded improvements over the best individual learner for all but one relation. The efficacy of ensemble-based methods for extraction was further investigated by (Sigletos et al., 2005), who experimented with combining the outputs of a rule-based learner, a Hidden Markov Model and a wrapperinduction algorithm in five different domains. Of a variety ensemble-based methods, stacking proved to consistently outperform the best base-level system, obtaining more precise results at the cost of somewhat lower recall. (Feldman et al., 2005) demonstrated that a hybrid extractor composed of a statistical and knowledge-based models outperform either in isolation. 7 Conclusions and Future Work Our experiments have demonstrated the promise of relation-independent extraction using the Open IE paradigm. We have shown that binary relationships can be categorized using a compact set of lexicosyntactic patterns, and presented O-CRF, a CRFbased Open IE system that can extract different relationships with a precision of 88.3% and a recall of 45.2%4. Open IE is essential when the number of relationships of interest is massive or unknown. Tra</context>
+</contexts>
+<marker>Feldman, Rosenfeld, Fresko, 2005</marker>
+<rawString>R. Feldman, B. Rosenfeld, and M. Fresko. 2005. Teg - a hybrid approach to information extraction. Knowledge and Information Systems, 9(1):1–18.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Freitag</author>
+</authors>
+<title>Machine learning for information extraction in informal domains.</title>
+<date>2000</date>
+<booktitle>Machine Learning,</booktitle>
+<pages>39--2</pages>
+<contexts>
+<context citStr="Freitag (2000)" endWordPosition="4884" position="29666" startWordPosition="4883">ed entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given relations. Under these restrictions, RE became an instance of entity labeling, where the label assigned to an entity (e.g. Father) is its relation to the topic of the article. Others have also found the stacking framework to yield benefits for IE. Freitag (2000) used linear regression to model the relationship between the confidence of several inductive learning algorithms and the probability that a prediction is correct. Over three different document collections, the combined method yielded improvements over the best individual learner for all but one relation. The efficacy of ensemble-based methods for extraction was further investigated by (Sigletos et al., 2005), who experimented with combining the outputs of a rule-based learner, a Hidden Markov Model and a wrapperinduction algorithm in five different domains. Of a variety ensemble-based methods</context>
+</contexts>
+<marker>Freitag, 2000</marker>
+<rawString>D. Freitag. 2000. Machine learning for information extraction in informal domains. Machine Learning, 39(2-3):169–202.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Girju</author>
+<author>A Badulescu</author>
+<author>D Moldovan</author>
+</authors>
+<title>Automatic discovery of part-whole relations.</title>
+<date>2006</date>
+<journal>Computational Linguistics,</journal>
+<volume>32</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Girju et al., 2006" endWordPosition="1129" position="7041" startWordPosition="1126">lain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni et al., 2005; Snow et al., 2005; Girju et al., 2006), It is quite natural then to consider whether the same can be done for all binary relationships. To characterize how binary relationships are expressed, one of the authors of this paper carefully studied the labeled relation instances and produced a lexico-syntactic pattern that captured the relation for each instance. Interestingly, we found that 95% of the patterns could be grouped into the categories listed in Table 1. Note, however, that the patterns shown in Table 1 are greatly simplified by omitting the exact conditions under which they will reliably produce a correct extraction. For in</context>
+</contexts>
+<marker>Girju, Badulescu, Moldovan, 2006</marker>
+<rawString>R. Girju, A. Badulescu, and D. Moldovan. 2006. Automatic discovery of part-whole relations. Computational Linguistics, 32(1).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Hearst</author>
+</authors>
+<title>Automatic acquisition of hyponyms from large text corpora.</title>
+<date>1992</date>
+<booktitle>In Procs. of the 14th International Conference on Computational Linguistics,</booktitle>
+<pages>539--545</pages>
+<contexts>
+<context citStr="Hearst, 1992" endWordPosition="1081" position="6740" startWordPosition="1080">y relationships are consistently expressed using a compact set of relation-independent lexico-syntactic patterns, and quantify their frequency based on a sample of 500 sentences selected at random from an IE training corpus developed by (Bunescu and Mooney, 2007).1 This observation helps to explain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni et al., 2005; Snow et al., 2005; Girju et al., 2006), It is quite natural then to consider whether the same can be done for all binary relationships. To characterize how binary relationships are expressed, one of the authors of this paper carefully studied the labeled relation instances and produced a lexico-syntactic pattern that captured the relat</context>
+</contexts>
+<marker>Hearst, 1992</marker>
+<rawString>M. Hearst. 1992. Automatic acquisition of hyponyms from large text corpora. In Procs. of the 14th International Conference on Computational Linguistics, pages 539–545.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Klein</author>
+<author>C Manning</author>
+</authors>
+<title>Accurate unlexicalized parsing.</title>
+<date>2003</date>
+<booktitle>In ACL.</booktitle>
+<contexts>
+<context citStr="Klein and Manning (2003)" endWordPosition="261" position="1714" startWordPosition="258">uiring any relation-specific human input. Open IE’s extraction process is linear in the number of documents in the corpus, and constant in the number of relations. Open IE is ideally suited to corpora such as the Web, where the target relations are not known in advance, and their number is massive. The relationship between standard RE systems and the new Open IE paradigm is analogous to the relationship between lexicalized and unlexicalized parsers. Statistical parsers are usually lexicalized (i.e. they make parsing decisions based on n-gram statistics computed for specific lexemes). However, Klein and Manning (2003) showed that unlexicalized parsers are more accurate than previously believed, and can be learned in an unsupervised manner. Klein and Manning analyze the tradeoffs beTraditional Information Extraction (IE) takes a relation name and hand-tagged examples of that relation as input. Open IE is a relationindependent extraction paradigm that is tailored to massive and heterogeneous corpora such as the Web. An Open IE system extracts a diverse set of relational tuples from text without any relation-specific input. How is Open IE possible? We analyze a sample of English sentences to demonstrate that </context>
+</contexts>
+<marker>Klein, Manning, 2003</marker>
+<rawString>D. Klein and C. Manning. 2003. Accurate unlexicalized parsing. In ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Lafferty</author>
+<author>A McCallum</author>
+<author>F Pereira</author>
+</authors>
+<title>Conditional random fields: Probabilistic models for segmenting and labeling sequence data.</title>
+<date>2001</date>
+<booktitle>In Procs. of ICML.</booktitle>
+<contexts>
+<context citStr="Lafferty et al., 2001" endWordPosition="1944" position="11943" startWordPosition="1941">3.1 Open Extraction with Conditional Random Fields TEXTRUNNER initially treated Open IE as a classification problem, using a Naive Bayes classifier to predict whether heuristically-chosen tokens between two entities indicated a relationship or not. For the remainder of this paper, we refer to this model as O-NB. Whereas classifiers predict the label of a single variable, graphical models model multiple, in30 Figure 1: Relation Extraction as Sequence Labeling: A CRF is used to identify the relationship, born in, between Kafka and Prague terdependent variables. Conditional Random Fields (CRFs) (Lafferty et al., 2001), are undirected graphical models trained to maximize the conditional probability of a finite set of labels Y given a set of input observations X. By making a first-order Markov assumption about the dependencies among the output variables Y , and arranging variables sequentially in a linear chain, RE can be treated as a sequence labeling problem. Linear-chain CRFs have been applied to a variety of sequential text processing tasks including named-entity recognition, part-of-speech tagging, word segmentation, semantic role identification, and recently relation extraction (Culotta et al., 2006). </context>
+</contexts>
+<marker>Lafferty, McCallum, Pereira, 2001</marker>
+<rawString>J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional random fields: Probabilistic models for segmenting and labeling sequence data. In Procs. of ICML.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A McCallum</author>
+</authors>
+<title>Mallet: A machine learning for language toolkit.</title>
+<date>2002</date>
+<note>http://mallet.cs.umass.edu.</note>
+<contexts>
+<context citStr="McCallum, 2002" endWordPosition="2542" position="15681" startWordPosition="2541"> O-CRF has a number of limitations, most of which are shared with other systems that perform extraction from natural language text. First, O-CRF only extracts relations that are explicitly mentioned in the text; implicit relationships that could inferred from the text would need to be inferred from OCRF extractions. Second, O-CRF focuses on relationships that are primarily word-based, and not indicated solely from punctuation or document-level features. Finally, relations must occur between entity names within the same sentence. O-CRF was built using the CRF implementation provided by MALLET (McCallum, 2002), as well as part-of-speech tagging and phrase-chunking tools available from OPENNLP.2 2http://opennlp.sourceforge.net 31 3.1.2 Extraction Given an input corpus, O-CRF makes a single pass over the data, and performs entity identification using a phrase chunker. The CRF is then used to label instances relations for each possible entity pair, subject to the constraints mentioned previously. Following extraction, O-CRF applies the RESOLVER algorithm (Yates and Etzioni, 2007) to find relation synonyms, the various ways in which a relation is expressed in text. RESOLVER uses a probabilistic model t</context>
+</contexts>
+<marker>McCallum, 2002</marker>
+<rawString>A. McCallum. 2002. Mallet: A machine learning for language toolkit. http://mallet.cs.umass.edu.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A E Monge</author>
+<author>C P Elkan</author>
+</authors>
+<title>The field matching problem: Algorithms and applications. In</title>
+<date>1996</date>
+<booktitle>Procs. of KDD.</booktitle>
+<contexts>
+<context citStr="Monge and Elkan, 1996" endWordPosition="3173" position="19627" startWordPosition="3170">black boxes, H-CRF learns to predict which, if any, tokens found between a pair of entities (e1, e2), indicates a relationship. Due to the sequential nature of our RE task, H-CRF employs a CRF as the metalearner, as opposed to a decision tree or regressionbased classifier. H-CRF uses the probability distribution over the set of possible labels according to each O-CRF and R1-CRF as features. To obtain the probability at each position of a linear-chain CRF, the constrained forward-backward technique described in (Culotta and McCallum, 2004) is used. H-CRF also computes the Monge Elkan distance (Monge and Elkan, 1996) between the relations predicted by O-CRF and R1- CRF and includes the result in the feature set. An additional meta-feature utilized by H-CRF indicates whether either or both base extractors return “no relation” for a given pair of entities. In addition to these numeric features, H-CRF uses a subset of the base features used by O-CRF and R1-CRF. At each 32 Category P O-CRF P O-NB F1 R F1 R Verb 93.9 65.1 76.9 100 38.6 55.7 Noun+Prep 89.1 36.0 51.3 100 9.7 55.7 Verb+Prep 95.2 50.0 65.6 95.2 25.3 40.0 Infinitive 95.7 46.8 62.9 100 25.5 40.6 Other 0 0 0 0 0 0 All 88.3 45.2 59.8 86.6 23.2 36.6 Ta</context>
+</contexts>
+<marker>Monge, Elkan, 1996</marker>
+<rawString>A. E. Monge and C. P. Elkan. 1996. The field matching problem: Algorithms and applications. In Procs. of KDD.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Riloff</author>
+<author>R Jones</author>
+</authors>
+<title>Learning Dictionaries for Information Extraction by Multi-level Boot-strapping.</title>
+<date>1999</date>
+<booktitle>In Procs. of AAAI-99,</booktitle>
+<pages>1044--1049</pages>
+<marker>Riloff, Jones, 1999</marker>
+<rawString>E. Riloff and R. Jones. 1999. Learning Dictionaries for Information Extraction by Multi-level Boot-strapping. In Procs. of AAAI-99, pages 1044–1049.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Roth</author>
+<author>W Yih</author>
+</authors>
+<title>A linear progamming formulation for global inference in natural language tasks.</title>
+<date>2004</date>
+<booktitle>In Procs. of CoNLL.</booktitle>
+<contexts>
+<context citStr="Roth and Yih (2004)" endWordPosition="4762" position="28960" startWordPosition="4759"> reduce the amount of effort involved when porting IE systems to new domains. Shinyama and Sekine’s “preemptive” IE system (2006) discovers relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machines fitted with language-oriented kernels to classify pairs of entities. Roth and Yih (2004) also described a classification-based framework in which they jointly learn to identify named entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given relations. Under these restrictions, RE became an instance of entity labeling, where the label assigned to an entity (e.g. Father) is its relation to the to</context>
+</contexts>
+<marker>Roth, Yih, 2004</marker>
+<rawString>D. Roth and W. Yih. 2004. A linear progamming formulation for global inference in natural language tasks. In Procs. of CoNLL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Sekine</author>
+</authors>
+<title>On-demand information extraction.</title>
+<date>2006</date>
+<booktitle>In Proc. of COLING.</booktitle>
+<contexts>
+<context citStr="Sekine (2006)" endWordPosition="4652" position="28270" startWordPosition="4651">use of O-CRF as part of H-CRF, improves precision from 73.9% to 79.2% with only a slight decrease in recall. Overall, F1 improved from 65.2% to 66.2%. One disadvantage of a stacking-based hybrid system is that labeled training data is still required. In the future, we would like to explore the development of hybrid systems that leverage Open IE methods, 34 like O-CRF, to reduce the number of training examples required per relation. 6 Related Work TEXTRUNNER, the first Open IE system, is part of a body of work that reflects a growing interest in avoiding relation-specificity during extraction. Sekine (2006) developed a paradigm for “ondemand information extraction” in order to reduce the amount of effort involved when porting IE systems to new domains. Shinyama and Sekine’s “preemptive” IE system (2006) discovers relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machine</context>
+</contexts>
+<marker>Sekine, 2006</marker>
+<rawString>S. Sekine. 2006. On-demand information extraction. In Proc. of COLING.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Shinyama</author>
+<author>S Sekine</author>
+</authors>
+<title>Preemptive information extraction using unrestricted relation discovery.</title>
+<date>2006</date>
+<booktitle>In Proc. of the HLT-NAACL.</booktitle>
+<marker>Shinyama, Sekine, 2006</marker>
+<rawString>Y. Shinyama and S. Sekine. 2006. Preemptive information extraction using unrestricted relation discovery. In Proc. of the HLT-NAACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Sigletos</author>
+<author>G Paliouras</author>
+<author>C D Spyropoulos</author>
+<author>M Hatzopoulos</author>
+</authors>
+<title>Combining infomation extraction systems using voting and stacked generalization.</title>
+<date>2005</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>6--1751</pages>
+<contexts>
+<context citStr="Sigletos et al., 2005" endWordPosition="2984" position="18427" startWordPosition="2981">rt, 1992), is an ensemble-based framework in which the goal is learn a meta-classifier from the output of several base-level classifiers. The training set used to train the meta-classifier is generated using a leaveone-out procedure: for each base-level algorithm, a classifier is trained from all but one training example and then used to generate a prediction for the leftout example. The meta-classifier is trained using the predictions of the base-level classifiers as features, and the true label as given by the training data. Previous studies (Ting and Witten, 1999; Zenko and Dzeroski, 2002; Sigletos et al., 2005) have shown that the probabilities of each class value as estimated by each base-level algorithm are effective features when training meta-learners. Stacking was shown to be consistently more effective than voting, another popular ensemble-based method in which the outputs of the base-classifiers are combined either through majority vote or by taking the class value with the highest average probability. 4.2 Stacked Relation Extraction We used the stacking methodology to build an ensemble-based extractor, referred to as H-CRF. Treating the output of an O-CRF and R1-CRF as black boxes, H-CRF lea</context>
+<context citStr="Sigletos et al., 2005" endWordPosition="4945" position="30078" startWordPosition="4942">stance of entity labeling, where the label assigned to an entity (e.g. Father) is its relation to the topic of the article. Others have also found the stacking framework to yield benefits for IE. Freitag (2000) used linear regression to model the relationship between the confidence of several inductive learning algorithms and the probability that a prediction is correct. Over three different document collections, the combined method yielded improvements over the best individual learner for all but one relation. The efficacy of ensemble-based methods for extraction was further investigated by (Sigletos et al., 2005), who experimented with combining the outputs of a rule-based learner, a Hidden Markov Model and a wrapperinduction algorithm in five different domains. Of a variety ensemble-based methods, stacking proved to consistently outperform the best base-level system, obtaining more precise results at the cost of somewhat lower recall. (Feldman et al., 2005) demonstrated that a hybrid extractor composed of a statistical and knowledge-based models outperform either in isolation. 7 Conclusions and Future Work Our experiments have demonstrated the promise of relation-independent extraction using the Open</context>
+</contexts>
+<marker>Sigletos, Paliouras, Spyropoulos, Hatzopoulos, 2005</marker>
+<rawString>G. Sigletos, G. Paliouras, C. D. Spyropoulos, and M. Hatzopoulos. 2005. Combining infomation extraction systems using voting and stacked generalization. Journal of Machine Learning Research, 6:1751,1782.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Snow</author>
+<author>D Jurafsky</author>
+<author>A Ng</author>
+</authors>
+<title>Learning syntactic patterns for automatic hypernym discovery.</title>
+<date>2005</date>
+<booktitle>In Advances in Neural Information Processing Systems 17.</booktitle>
+<publisher>MIT Press.</publisher>
+<contexts>
+<context citStr="Snow et al., 2005" endWordPosition="1125" position="7020" startWordPosition="1122">vation helps to explain the success of open relation extraction, which learns a relation-independent extraction model as described in Section 3.1. Previous work has noted that distinguished relations, such as hypernymy (is-a) and meronymy (part-whole), are often expressed using a small number of lexico-syntactic patterns (Hearst, 1992). The manual identification of these patterns inspired a body of work in which this initial set of extraction patterns is used to seed a bootstrapping process that automatically acquires additional patterns for is-a or part-whole relations (Etzioni et al., 2005; Snow et al., 2005; Girju et al., 2006), It is quite natural then to consider whether the same can be done for all binary relationships. To characterize how binary relationships are expressed, one of the authors of this paper carefully studied the labeled relation instances and produced a lexico-syntactic pattern that captured the relation for each instance. Interestingly, we found that 95% of the patterns could be grouped into the categories listed in Table 1. Note, however, that the patterns shown in Table 1 are greatly simplified by omitting the exact conditions under which they will reliably produce a corre</context>
+</contexts>
+<marker>Snow, Jurafsky, Ng, 2005</marker>
+<rawString>R. Snow, D. Jurafsky, and A. Ng. 2005. Learning syntactic patterns for automatic hypernym discovery. In Advances in Neural Information Processing Systems 17. MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K M Ting</author>
+<author>I H Witten</author>
+</authors>
+<title>Issues in stacked generalization.</title>
+<date>1999</date>
+<journal>Artificial Intelligence Research,</journal>
+<volume>10</volume>
+<pages>289</pages>
+<contexts>
+<context citStr="Ting and Witten, 1999" endWordPosition="2976" position="18377" startWordPosition="2973">cking Stacked generalization, or stacking, (Wolpert, 1992), is an ensemble-based framework in which the goal is learn a meta-classifier from the output of several base-level classifiers. The training set used to train the meta-classifier is generated using a leaveone-out procedure: for each base-level algorithm, a classifier is trained from all but one training example and then used to generate a prediction for the leftout example. The meta-classifier is trained using the predictions of the base-level classifiers as features, and the true label as given by the training data. Previous studies (Ting and Witten, 1999; Zenko and Dzeroski, 2002; Sigletos et al., 2005) have shown that the probabilities of each class value as estimated by each base-level algorithm are effective features when training meta-learners. Stacking was shown to be consistently more effective than voting, another popular ensemble-based method in which the outputs of the base-classifiers are combined either through majority vote or by taking the class value with the highest average probability. 4.2 Stacked Relation Extraction We used the stacking methodology to build an ensemble-based extractor, referred to as H-CRF. Treating the outpu</context>
+</contexts>
+<marker>Ting, Witten, 1999</marker>
+<rawString>K.M. Ting and I. H. Witten. 1999. Issues in stacked generalization. Artificial Intelligence Research, 10:271– 289.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Wolpert</author>
+</authors>
+<title>Stacked generalization.</title>
+<date>1992</date>
+<journal>Neural Networks,</journal>
+<volume>5</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Wolpert, 1992" endWordPosition="2886" position="17814" startWordPosition="2885"> O-CRF and R1-CRF have complementary views of the extraction process, it is natural to wonder whether they can be combined to produce a more powerful extractor. In many machine learning settings, the use of an ensemble of diverse classifiers during prediction has been observed to yield higher levels of performance compared to individual algorithms. We now describe an ensemble-based or hybrid approach to RE that leverages the different views offered by open, self-supervised extraction in O-CRF, and lexicalized, supervised extraction in R1-CRF. 4.1 Stacking Stacked generalization, or stacking, (Wolpert, 1992), is an ensemble-based framework in which the goal is learn a meta-classifier from the output of several base-level classifiers. The training set used to train the meta-classifier is generated using a leaveone-out procedure: for each base-level algorithm, a classifier is trained from all but one training example and then used to generate a prediction for the leftout example. The meta-classifier is trained using the predictions of the base-level classifiers as features, and the true label as given by the training data. Previous studies (Ting and Witten, 1999; Zenko and Dzeroski, 2002; Sigletos </context>
+</contexts>
+<marker>Wolpert, 1992</marker>
+<rawString>D. Wolpert. 1992. Stacked generalization. Neural Networks, 5(2):241–260.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Yates</author>
+<author>O Etzioni</author>
+</authors>
+<title>Unsupervised resolution of objects and relations on the web.</title>
+<date>2007</date>
+<booktitle>In Procs of NAACL/HLT.</booktitle>
+<contexts>
+<context citStr="Yates and Etzioni, 2007" endWordPosition="2611" position="16157" startWordPosition="2608">relations must occur between entity names within the same sentence. O-CRF was built using the CRF implementation provided by MALLET (McCallum, 2002), as well as part-of-speech tagging and phrase-chunking tools available from OPENNLP.2 2http://opennlp.sourceforge.net 31 3.1.2 Extraction Given an input corpus, O-CRF makes a single pass over the data, and performs entity identification using a phrase chunker. The CRF is then used to label instances relations for each possible entity pair, subject to the constraints mentioned previously. Following extraction, O-CRF applies the RESOLVER algorithm (Yates and Etzioni, 2007) to find relation synonyms, the various ways in which a relation is expressed in text. RESOLVER uses a probabilistic model to predict if two strings refer to the same item, based on relational features, in an unsupervised manner. In Section 5.2 we report that RESOLVER boosts the recall of O-CRF by 50%. 3.2 Relation-Specific Extraction To compare the behavior of open, or “unlexicalized,” extraction to relation-specific, or “lexicalized” extraction, we developed a CRF-based extractor under the traditional RE paradigm. We refer to this system as R1-CRF. Although the graphical structure of R1-CRF </context>
+</contexts>
+<marker>Yates, Etzioni, 2007</marker>
+<rawString>A. Yates and O. Etzioni. 2007. Unsupervised resolution of objects and relations on the web. In Procs of NAACL/HLT.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Zelenko</author>
+<author>C Aone</author>
+<author>A Richardella</author>
+</authors>
+<title>Kernel methods for relation extraction.</title>
+<date>2003</date>
+<journal>JMLR,</journal>
+<pages>3--1083</pages>
+<contexts>
+<context citStr="Zelenko et al., 2003" endWordPosition="4740" position="28805" startWordPosition="4737">s a growing interest in avoiding relation-specificity during extraction. Sekine (2006) developed a paradigm for “ondemand information extraction” in order to reduce the amount of effort involved when porting IE systems to new domains. Shinyama and Sekine’s “preemptive” IE system (2006) discovers relationships from sets of related news articles. Until recently, most work in RE has been carried out on a per-relation basis. Typically, RE is framed as a binary classification problem: Given a sentence 5 and a relation R, does 5 assert R between two entities in 5? Representative approaches include (Zelenko et al., 2003) and (Bunescu and Mooney, 2005), which use support-vector machines fitted with language-oriented kernels to classify pairs of entities. Roth and Yih (2004) also described a classification-based framework in which they jointly learn to identify named entities and relations. Culotta et al. (2006) used a CRF for RE, yet their task differs greatly from open extraction. RE was performed from biographical text in which the topic of each document was known. For every entity found in the document, their goal was to predict what relation, if any, it had relative to the page topic, from a set of given r</context>
+</contexts>
+<marker>Zelenko, Aone, Richardella, 2003</marker>
+<rawString>D. Zelenko, C. Aone, and A. Richardella. 2003. Kernel methods for relation extraction. JMLR, 3:1083–1106.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Zenko</author>
+<author>S Dzeroski</author>
+</authors>
+<title>Stacking with an extended set of meta-level attributes and mlr.</title>
+<date>2002</date>
+<booktitle>In Proc. of ECML.</booktitle>
+<contexts>
+<context citStr="Zenko and Dzeroski, 2002" endWordPosition="2980" position="18403" startWordPosition="2977">ation, or stacking, (Wolpert, 1992), is an ensemble-based framework in which the goal is learn a meta-classifier from the output of several base-level classifiers. The training set used to train the meta-classifier is generated using a leaveone-out procedure: for each base-level algorithm, a classifier is trained from all but one training example and then used to generate a prediction for the leftout example. The meta-classifier is trained using the predictions of the base-level classifiers as features, and the true label as given by the training data. Previous studies (Ting and Witten, 1999; Zenko and Dzeroski, 2002; Sigletos et al., 2005) have shown that the probabilities of each class value as estimated by each base-level algorithm are effective features when training meta-learners. Stacking was shown to be consistently more effective than voting, another popular ensemble-based method in which the outputs of the base-classifiers are combined either through majority vote or by taking the class value with the highest average probability. 4.2 Stacked Relation Extraction We used the stacking methodology to build an ensemble-based extractor, referred to as H-CRF. Treating the output of an O-CRF and R1-CRF a</context>
+</contexts>
+<marker>Zenko, Dzeroski, 2002</marker>
+<rawString>B. Zenko and S. Dzeroski. 2002. Stacking with an extended set of meta-level attributes and mlr. In Proc. of ECML.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

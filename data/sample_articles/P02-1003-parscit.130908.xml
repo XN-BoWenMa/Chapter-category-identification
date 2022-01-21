@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.002899" no="0">
+<note confidence="0.9519975">
+Proceedings of the 40th Annual Meeting of the Association for
+Computational Linguistics (ACL), Philadelphia, July 2002, pp. 17-24.
+</note>
+<title confidence="0.998971">
+Generation as Dependency Parsing
+</title>
+<author confidence="0.989439">
+Alexander Koller and Kristina Striegnitz
+</author>
+<affiliation confidence="0.984703">
+Dept. of Computational Linguistics, Saarland University
+</affiliation>
+<email confidence="0.997798">
+{koller|kris}@coli.uni-sb.de
+</email>
+<sectionHeader confidence="0.993863" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999664714285714">Natural-Language Generation from flat semantics is an NP-complete problem. This makes it necessary to develop algorithms that run with reasonable efficiency in practice despite the high worstcase complexity. We show how to convert TAG generation problems into dependency parsing problems, which is useful because optimizations in recent dependency parsers based on constraint programming tackle exactly the combinatorics that make generation hard. Indeed, initial experiments display promising runtimes.</bodyText>
+<sectionHeader confidence="0.998992" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999945426229509">Existing algorithms for realization from a flat input semantics all have runtimes which are exponential in the worst case. Several different approaches to improving the runtime in practice have been suggested in the literature – e.g. heuristics (Brew, 1992) and factorizations into smaller exponential subproblems (Kay, 1996; Carroll et al., 1999). While these solutions achieve some measure of success in making realization efficient, the contrast in efficiency to parsing is striking both in theory and in practice. The problematic runtimes of generation algorithms are explained by the fact that realization is an NP-complete problem even using just context-free grammars, as Brew (1992) showed in the context of shake-and-bake generation. The first contribution of our paper is a proof of a stronger NP-completeness result: If we allow semantic indices in the grammar, realization is NP-complete even if we fix a single grammar. Our alternative proof shows clearly that the combinatorics in generation come from essentially the same sources as in parsing for free word order languages. It has been noted in the literature that this problem, too, becomes NP-complete very easily (Barton et al., 1987). The main point of this paper is to show how to encode generation with a variant of tree-adjoining grammars (TAG) as a parsing problem with dependency grammars (DG). The particular variant of DG we use, Topological Dependency Grammar (TDG) (Duchier, 2002; Duchier and Debusmann, 2001), was developed specifically with efficient parsing for free word order languages in mind. The mere existence of this encoding proves TDG’s parsing problem NP-complete as well, a result which has been conjectured but never formally shown so far. But it turns out that the complexities that arise in generation problems in practice seem to be precisely of the sort that the TDG parser can handle well. Initial experiments with generating from the XTAG grammar (XTAG Research Group, 2001) suggest that our generation system is competitive with state-of-theart chart generators, and indeed seems to run in polynomial time in practice. Next to the attractive runtime behaviour, our approach to realization is interesting because it may provide us with a different angle from which to look for tractable fragments of the general realization problem. As we will show, the computation that takes place in our system is very different from that in a chart generator, and may be more efficient in some cases by taking into account global information to guide local choices. Plan of the Paper. We will define the problem we want to tackle in Section 2, and then show that it is NP-complete (Section 3). In Section 4, we sketch the dependency grammar formalism we use. Section 5 is the heart of the paper: We show how to encode TAG generation as TDG parsing, and discuss some examples and runtimes. We compare our approach to some others in Section 6, and conclude and discuss future research in Section 7.</bodyText>
+<figure confidence="0.9969745">
+Q3 N:i
+n
+sem: {node(i)I
+Q4 B:1
+eat C �
+sem: {start-eating}
+Q5 C
+ate
+sem: {end-eating}
+Q1 B:i
+N:i � E:k B:k �
+e
+sem: {edge(i,k)I
+Q2 C
+eating C �
+sem: {edge(i,k)I
+</figure>
+<sectionHeader confidence="0.85075" genericHeader="method">
+2 The Realization Problem
+</sectionHeader>
+<bodyText confidence="0.999953028571428">In this paper, we deal with the subtask of natural language generation known as surface realization: given a grammar and a semantic representation, the problem is to find a sentence which is grammatical according to the grammar and expresses the content of the semantic representation. We represent the semantic input as a multiset (bag) of ground atoms of predicate logic, such as {buy(e,a,b), name(a,mary) car(b)}. To encode syntactic information, we use a tree-adjoining grammar without feature structures (Joshi and Schabes, 1997). Following Stone and Doran (1997) and Kay (1996), we enhance this TAG grammar with a syntax-semantics interface in which nonterminal nodes of the elementary trees are equipped with index variables, which can be bound to individuals in the semantic input. We assume that the root node, all substitution nodes, and all nodes that admit adjunction carry such index variables. We also assign a semantics to every elementary tree, so that lexical entries are pairs of the form (co, T), where co is a multiset of semantic atoms, and T is an initial or When the lexicon is accessed, x, y, z get bound to terms occurring in the semantic input, e.g. e, a, b in our example. Since we furthermore assume that every index variable that appears in T also appears in co, this means that all indices occurring in T get bound at this stage. The semantics of a complex tree is the multiset union of the semantics of the elementary trees involved. Now we say that the realization problem of a grammar G is to decide for a given input semantics 5 and an index i whether there is a derivation tree which is grammatical according to G, is assigned the semantics 5, and has a root node with index i.</bodyText>
+<sectionHeader confidence="0.844625" genericHeader="method">
+3 NP-Completeness of Realization
+</sectionHeader>
+<bodyText confidence="0.999853">This definition is the simplest conceivable formalization of problems occurring in surface realization as a decision problem: It does not even require us to compute a single actual realization, just to check whether one exists.</bodyText>
+<figureCaption confidence="0.99974">
+Figure 1: The grammar Gham.
+</figureCaption>
+<bodyText confidence="0.999927848484849">Every practical generation system generating from flat semantics will have to address this problem in one form or another. Now we show that this problem is NP-complete. A similar result was proved in the context of shakeand-bake generation by Brew (1992), but he needed to use the grammar in his encoding, which leaves the possibility open that for every single grammar G, there might be a realization algorithm tailored specifically to G which still runs in polynomial time. Our result is stronger in that we define a single grammar Gham whose realization problem is NPcomplete in the above sense. Furthermore, we find that our proof brings out the sources of the complexity more clearly. Gham does not permit adjunction, hence the result also holds for context-free grammars with indices. It is clear that the problem is in NP: We can simply guess the elementary trees we need and how to combine them, and then check in polynomial time whether they verbalize the semantics. The NP-hardness proof is by reducing the wellknown HAMILTONIAN-PATH problem to the realization problem. HAMILTONIAN-PATH is the problem of deciding whether a directed graph has a cycle that visits each node exactly once, e.g.(1,3,2,1) in the graph shown above. We will now construct an LTAG grammar Gham such that every graph G = (V, E) can be encoded as a semantic input 5 for the realization problem of Gham, which can be verbalized if and only if G has a Hamiltonian cycle.5 is defined as follows:</bodyText>
+<equation confidence="0.954345111111111">
+5 = {node(i)  |i E V }
+U {edge(i, k)  |(i, k) E E}
+U {start-eating, end-eating}.
+auxiliary tree, e.g.
+( {buy(x,y,z)},
+S:x
+NP:y � VP:x
+)
+NP:z �
+</equation>
+<figure confidence="0.8809615">
+V:x
+buys
+1. 0 2
+0 3
+B:1
+peter likes mary
+</figure>
+<figureCaption confidence="0.999081">
+Figure 3: TDG parse tree for “Peter likes Mary.”
+of the cycle.</figureCaption>
+<bodyText confidence="0.999153666666667">A third source of combinatorics which does not become so clear in this encoding is the configuration of the elementary trees. Even when we have committed to the lexical entries, it is conceivable that only one particular way of plugging them into each other is grammatical.</bodyText>
+<figure confidence="0.99670304">
+C
+eating C 1
+B:1 1
+B:1
+eat C 1
+N:1 1
+E:3
+N:3 1
+B:2 1
+B:2
+E:2
+e
+N:3
+N:2 1
+E:1
+e
+n
+B:3 1
+e B:3
+N:1
+n
+N:2
+n
+C
+ate
+</figure>
+<figureCaption confidence="0.9870145">
+Figure 2: A derivation with Gham corresponding to
+a Hamiltonian cycle.
+</figureCaption>
+<bodyText confidence="0.999993424242424">The grammar Gham is given in Fig. 1; the start symbol is B, and we want the root to have index 1. The tree α1 models an edge transition from node i to the node k by consuming the semantic encodings of this edge and (by way of a substitution of α3) of the node i. The second substitution node of α1 can be filled either by another α1, in which way a path through the graph is modelled, or by an α4, in which case we switch to an “edge eating mode”. In this mode, we can arbitrarily consume edges using α2, and close the tree with α5 when we’re done. This is illustrated in Fig. 2, the tree corresponding to the cycle in the example graph above. The Hamiltonian cycle of the graph, if one exists, is represented in the indices of the B nodes. The list of these indices is a path in the graph, as the α1 trees model edge transitions; it is a cycle because it starts in 1 and ends in 1; and it visits each node exactly once, for we use exactly one α1 tree for each node literal. The edges which weren’t used in the cycle can be consumed in the edge eating mode. The main source for the combinatorics of the realization problem is thus the interaction of lexical ambiguity and the completely free order in the flat semantics. Once we have chosen between α1 and α2 in the realization of each edge literal, we have determined which edges should be part of the prospective Hamiltonian cycle, and checking whether it really is one can be done in linear time. If, on the other hand, the order of the input placed restrictions on the structure of the derivation tree, we would again have information that told us when to switch into the edge eating mode, i.e. which edges should be part</bodyText>
+<sectionHeader confidence="0.994528" genericHeader="method">
+4 Topological Dependency Grammar
+</sectionHeader>
+<bodyText confidence="0.999983444444444">These factors are exactly the same that make dependency parsing for free word order languages difficult, and it seems worthwhile to see whether optimized parsers for dependency grammars can also contribute to making generation efficient. We now sketch a dependency formalism which has an efficient parser and then discuss some of the important properties of this parser. In the next section, we will see how to employ the parser for generation.</bodyText>
+<subsectionHeader confidence="0.997855">
+4.1 The Grammar Formalism
+</subsectionHeader>
+<bodyText confidence="0.9180544">The parse trees of topological dependency grammar (TDG) (Duchier and Debusmann, 2001; Duchier, 2002) are trees whose nodes correspond one-to-one to the words of the sentence, and whose edges are labelled, e.g. with syntactic relations (see Fig. 3). The trees are unordered, i.e. there is no intrinsic order among the children of a node. Word order in TDG is initially completely free, but there is a separate mechanism to specify constraints on linear precedence. Since completely free order is what we want for the realization problem, we do not need these mechanisms and do not go into them here. The lexicon assigns to each word a set of lexical entries; in a parse tree, one of these lexical entries has to be picked for each node. The lexical entry specifies what labels are allowed on the incoming edge (the node’s labels) and the outgoing edges (the node’s valency). Here are some examples: word labels valency likes ∅ {subj, obj, adv∗} {subj, obj} {subj, obj} Peter Mary ∅ ∅ The lexical entry for “likes” specifies that the corresponding node does not accept any incoming edges (and hence must be the root), must have precisely one subject and one object edge going out, and can have arbitrarily many outgoing edges with label adv (indicated by ∗). The nodes for “Peter” and “Mary” both require their incoming edge to be labelled with either subj or obj and neither require nor allow any outgoing edges. A well-formed dependency tree for an input sentence is simply a tree with the appropriate nodes, whose edges obey the labels and valency restrictions specified by the lexical entries. So, the tree in Fig. 3 is well-formed according to our lexicon.</bodyText>
+<subsectionHeader confidence="0.906735">
+4.2 TDG Parsing
+</subsectionHeader>
+<bodyText confidence="0.999966346938776">The parsing problem of TDG can be seen as a search problem: For each node, we must choose a lexical entry and the correct mother-daughter relations it participates in. One strength of the TDG approach is that it is amenable to strong syntactic inferences that tackle specifically the three sources of complexity mentioned above. The parsing algorithm (Duchier, 2002) is stated in the framework of constraint programming (Koller and Niehren, 2000), a general approach to coping with combinatorial problems. Before it explores all choices that are possible in a certain state of the search tree (distribution), it first tries to eliminate some of the choices which definitely cannot lead to a solution by simple inferences (propagations). “Simple” means that propagations take only polynomial time; the combinatorics is in the distribution steps alone. That is, it can still happen that a search tree of exponential size has to be explored, but the time spent on propagation in each of its node is only polynomial. Strong propagation can reduce the size of the search tree, and it may even make the whole algorithm run in polynomial time in practice. The TDG parser translates the parsing problem into constraints over (variables denoting) finite sets of integers, as implemented efficiently in the Mozart programming system (Oz Development Team, 1999). This translation is complete: Solutions of the set constraint can be translated back to correct dependency trees. But for efficiency, the parser uses additional propagators tailored to the specific inferences of the dependency problem. For instance, in the “Peter likes Mary” example above, one such propagator could contribute the information that neither the “Peter” nor the “Mary” node can be an adv child of “likes”, because neither can accept an adv edge. Once the choice has been made that “Peter” is the subj child of “likes”, a propagator can contribute that “Mary” must be its obj child, as it is the only possible candidate for the (obligatory) obj child. Finally, lexical ambiguity is handled by selection constraints. These constraints restrict which lexical entry should be picked for a node. When all possible lexical entries have some information in common (e.g., that there must be an outgoing subj edge), this information is automatically lifted to the node and can be used by the other propagators. Thus it is sometimes even possible to finish parsing without committing to single lexical entries for some nodes.</bodyText>
+<sectionHeader confidence="0.976107" genericHeader="other">
+5 Generation as Dependency Parsing
+</sectionHeader>
+<bodyText confidence="0.999995571428571">We will now show how TDG parsing can be used to enumerate all sentences expressing a given input semantics, thereby solving the realization problem introduced in Section 2. We first define the encoding. Then we give an example and discuss some runtime results. Finally, we consider a particular restriction of our encoding and ways of overcoming it.</bodyText>
+<subsectionHeader confidence="0.985811">
+5.1 The Encoding
+</subsectionHeader>
+<bodyText confidence="0.944795842105263">Let G be a grammar as described in Section 2; i.e. lexical entries are of the form (cp,T), where cp is a flat semantics and T is a TAG elementary tree whose nodes are decorated with semantic indices. We make the following simplifying assumptions. First, we assume that the nodes of the elementary trees of G are not labelled with feature structures. Next, we assume that whenever we can adjoin an auxiliary tree at a node, we can adjoin arbitrarily many trees at this node. The idea of multiple adjunction is not new (Schabes and Shieber, 1994), but it is simplified here because we disregard complex adjunction constraints. We will discuss these two restrictions in the conclusion. Finally, we assume that every lexical semantics cp has precisely one member; this restriction will be lifted in Section 5.4. Now let’s say we want to find the realizations of the input semantics S = {cpi, ... , cp,,,}, using the grammar G. The input “sentence” of the parsing</bodyText>
+<figureCaption confidence="0.941115">
+Figure 4: Dependency tree for “Mary buys a red
+car.”
+problem we construct is the sequence {start} ∪ S, where start is a special start symbol.</figureCaption>
+<bodyText confidence="0.998937764705882">The parse tree will correspond very closely to a TAG derivation tree, its nodes standing for the instantiated elementary trees that are used in the derivation. To this end, we use two types of edge labels – substitution and adjunction labels. An edge with a substitution label substA,i,p from the node α to the node Q (both of which stand for elementary trees) indicates that Q should be plugged into the p-th substitution node in α that has label A and index i. We write subst(A) for the maximum number of occurrences of A as the label of substitution nodes in any elementary tree of G; this is the maximum value that p can take. An edge with an adjunction label adjA,i from α to Q specifies that Q is adjoined at some node within α carrying label A and index i and admitting adjunction. It does not matter for our purposes to which node in α Q is adjoined exactly; the choice cannot affect grammaticality because there is no feature unification involved. The dependency grammar encodes how an elementary tree can be used in a TAG derivation by restricting the labels of the incoming and outgoing edges via labels and valency requirements in the lexicon. Let’s say that T is an elementary tree of G which has been matched with the input atom cpr, instantiating its index variables. Let A be the label and i the index of the root of T. If T is an auxiliary tree, it accepts incoming adjunction edges for A and i, i.e. it gets the labels value {adjA,i}. If T is an initial tree, it will accept arbitrary incoming substitution edges for A and i, i.e.its labels value is</bodyText>
+<equation confidence="0.614093">
+{substA,i,p  |1 ≤ p ≤ subst(A)}
+</equation>
+<bodyText confidence="0.998648529411765">In either case, T will require precisely one outgoing substitution edge for each of its substitution nodes, and it will allow arbitrary numbers of outgoing adjunction edges for each node where we can adjoin. That is, the valency value is as follows: {substA,i,p  |ex. substitution node N in T s.t. A is label, i is index of N, and N is pth substitution node for A:i in T} ∪ {adjA,i ∗  |ex. node with label A, index i in T which admits adjunction} We obtain the set of all lexicon entries for the atom cpr by encoding all TAG lexicon entries which match cpr as just specified. The start symbol, start, gets a special lexicon entry: Its labels entry is the empty set (i.e. it must be the root of the tree), and its valency entry is the set {substS,k,1}, where k is the semantic index with which generation should start.</bodyText>
+<subsectionHeader confidence="0.999237">
+5.2 An Example
+</subsectionHeader>
+<bodyText confidence="0.998071333333333">Now let us go through an example to make these definitions a bit clearer. Let’s say we want to verbalize the semantics</bodyText>
+<equation confidence="0.8531095">
+{name(m, mary), buy(e, m, c),
+car(c), indef(c), red(c)}
+</equation>
+<bodyText confidence="0.99971825">The LTAG grammar we use contains the elementary trees which are used in the tree in Fig. 5, along with the obvious semantics; we want to generate a sentence starting with the main event e. The encoding produces the following dependency grammar; the entries in the “atom” column are to be read as abbreviations of the actual atoms in the input semantics.</bodyText>
+<equation confidence="0.9669251">
+atom labels
+{substS,e,1}
+{substNP,c,1, substNP,m,1,
+adjV P,e∗, adjV,e∗}
+{adjNP,1∗, adjPN,m∗}
+substNP,m,2}
+{substNP,c,1,
+substNP,c,2}
+{substN,c,1}
+{adjN,c}
+</equation>
+<bodyText confidence="0.99597275">If we parse the “sentence” start mary buy car indef red with this grammar, leaving the word order completely open, we obtain precisely one parse tree, shown in Fig. 4. Reading this parse as a TAG derivation tree, we can reconstruct the derived tree in Fig. 5, which indeed produces the string “Mary buys a red car”.</bodyText>
+<figure confidence="0.932748533333333">
+start mary buy car indef red
+start
+buy
+mary
+indef
+car
+red
+∅
+{substS,e,1}
+{substNP,m,1,
+valency
+{adjNP,c∗}
+{adjN,c∗}
+∅
+S:e
+</figure>
+<subsectionHeader confidence="0.992478">
+5.3 Implementation and Experiments
+</subsectionHeader>
+<bodyText confidence="0.999812272727273">The overall realization algorithm we propose encodes the input problem as a DG parsing problem and then runs the parser described in Section 4.2, which is freely available over the Web, as a black box. Because the information lifted to the nodes by the selection constraints may be strong enough to compute the parse tree without ever committing to unique lexical entries, the complete parse may still contain some lexical ambiguity. This is no problem, however, because the absence of features guarantees that every combination of choices will be grammatical. Similarly, a node can have multiple children over adjunction edges with the same label, and there may be more than one node in the upper elementary tree to which the lower tree could be adjoined. Again, all remaining combinations are guaranteed to be grammatical. In order to get an idea of the performance of our realization algorithm in comparison to the state of the art, we have tried generating the following sentences, which are examples from (Carroll et al., 1999):</bodyText>
+<listItem confidence="0.99945075">(1) The manager in that office interviewed a new consultant from Germany. (2) Our manager organized an unusual additional weekly departmental conference.</listItem>
+<bodyText confidence="0.999989825">We have converted the XTAG grammar (XTAG Research Group, 2001) into our grammar format, automatically adding indices to the nodes of the elementary trees, removing features, simplifying adjunction constraints, and adding artificial lexical semantics that consists of the words at the lexical anchors and the indices used in the respective trees. XTAG typically assigns quite a few elementary trees to one lemma, and the same lexical semantics can often be verbalized by more than hundred elementary trees in the converted grammar. It turns out that the dependency parser scales very nicely to this degree of lexical ambiguity: The sentence (1) is generated in 470 milliseconds (as opposed to Carroll et al.’s 1.8 seconds), whereas we generate (2) in about 170 milliseconds (as opposed to 4.3 seconds).1 Although these numbers are by no means a serious evaluation of our system’s performance, they do present a first proof of concept for our approach. The most encouraging aspect of these results is that despite the increased lexical ambiguity, the parser gets by without ever making any wrong choices, which means that it runs in polynomial time, on all examples we have tried. This is possible because on the one hand, the selection constraint automatically compresses the many different elementary trees that XTAG assigns to one lemma into very few classes. On the other hand, the propagation that rules out impossible edges is so strong that the free input order does not make the configuration problem much harder in practice. Finally, our treatment of modification allows us to multiply out the possible permutations in a postprocessing step, after the parser has done the hard work. A particularly striking example is (2), where the parser gives us a single solution, which multiplies out to 312 = 13 · 4! different realizations. (The 13 basic realizations correspond to different syntactic frames for the main verb in the XTAG grammar, e.g. for topicalized or passive constructions.)</bodyText>
+<subsectionHeader confidence="0.998909">
+5.4 More Complex Semantics
+</subsectionHeader>
+<bodyText confidence="0.9906045">So far, we have only considered TAG grammars in which each elementary tree is assigned a semantics that contains precisely one atom. However, there are cases where an elementary tree either has an empty semantics, or a semantics that contains multiple atoms. The first case can be avoided by exploiting TAG’s extended domain of locality, see e.g. (Gardent and Thater, 2001). The simplest possible way for dealing with the second case is to preprocess the input into several different parsing problems.</bodyText>
+<footnote confidence="0.960710333333333">
+1A newer version of Carroll et al.’s system generates (1) in
+420 milliseconds (Copestake, p.c.). Our times were measured
+on a 700 MHz Pentium-III PC.
+</footnote>
+<figure confidence="0.990380692307692">
+NP:m
+NP:m
+PN:m
+Mary
+VP:e
+V:e NP:c �
+buys NP:c
+Detnoadj
+a
+N:c �
+N:c
+Adjnoadj
+red
+</figure>
+<figureCaption confidence="0.962788">
+Figure 5: Derived tree for “Mary buys a red car.”
+</figureCaption>
+<figure confidence="0.495599">
+N:c*
+N:c
+car
+</figure>
+<bodyText confidence="0.999576722222222">In a first step, we collect all possible instantiations of LTAG lexical entries matching subsets of the semantics. Then we construct all partitions of the input semantics in which each block in the partition is covered by a lexical entry, and build a parsing problem in which each block is one symbol in the input to the parser. This seems to work quite well in practice, as there are usually not many possible partitions. In the worst case, however, this approach produces an exponential number of parsing problems. Indeed, using a variant of the grammar from Section 3, it is easy to show that the problem of deciding whether there is a partition whose parsing problem can be solved is NP-complete as well. An alternative approach is to push the partitioning process into the parser as well. We expect this will not hurt the runtime all that much, but the exact effect remains to be seen.</bodyText>
+<sectionHeader confidence="0.985441" genericHeader="result">
+6 Comparison to Other Approaches
+</sectionHeader>
+<bodyText confidence="0.999968590909091">The perspective on realization that our system takes is quite different from previous approaches. In this section, we relate it to chart generation (Kay, 1996; Carroll et al., 1999) and to another constraint-based approach (Gardent and Thater, 2001). In chart based approaches to realization, the main idea is to minimize the necessary computation by reusing partial results that have been computed before. In the setting of fixed word order parsing, this brings an immense increase in efficiency. In generation, however, the NP-completeness manifests itself in charts of worst-case exponential size. In addition, it can happen that substructures are built which are not used in the final realization, especially when processing modifications. By contrast, our system configures nodes into a dependency tree. It solves a search problem, made up by choices for mother-daughter relations in the tree. Propagation, which runs in polynomial time, has access to global information (illustrated in Section 4.2) and can thus rule out impossible motherdaughter relations efficiently; every propagation step that takes place actually contributes to zooming in on the possible realizations. Our system can show exponential runtimes when the distributions span a search tree of exponential size. Gardent and Thater (2001) also propose a constraint based approach to generation working with a variant of TAG. However, the performance of their system decreases rapidly as the input gets larger even when when working with a toy grammar. The main difference between their approach and ours seems to be that their algorithm tries to construct a derived tree, while ours builds a derivation tree. Our parser only has to deal with information that is essential to solve the combinatorial problem, and not e.g. with the internal structure of the elementary trees. The reconstruction of the derived tree, which is cheap once the derivation tree has been computed, is delegated to a post-processing step. Working with derived trees, Gardent and Thater (2001) cannot ignore any information and have to keep track of the relationships between nodes at points where they are not relevant.</bodyText>
+<sectionHeader confidence="0.998376" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999881432432433">Generation from flat semantics is an NP-complete problem. In this paper, we have first given an alternative proof for this fact, which works even for a fixed grammar and makes the connection to the complexity of free word order parsing clearly visible. Then we have shown how to translate the realization problem of TAG into parsing problems of topological dependency grammar, and argued how the optimizations in the dependency parser – which were originally developed for free word order parsing – help reduce the runtime for the generation system. This reduction shows in passing that the parsing problem for TDG is NP-complete as well, which has been conjectured, but never proved. The NP-completeness result for the realization problem explains immediately why all existing complete generation algorithms have exponential runtimes in the worst case. As our proof shows, the main sources of the combinatorics are the interaction of lexical ambiguity and tree configuration with the completely unordered nature of the input. Modification is important and deserves careful treatment (and indeed, our system deals very gracefully with it), but it is not as intrinsically important as some of the literature suggests; our proof gets by without modification. If we allow the grammar to be part of the input, we can even modify the proof to show NP-hardness of the case where semantic atoms can be verbalized more often than they appear in the input, and of the case where they can be verbalized less often. The case where every atom can be used arbitrarily often remains open. By using techniques from constraint programming, the dependency parser seems to cope rather well with the combinatorics of generation. Propagators can rule out impossible local structures on the grounds of global information, and selection constraints greatly alleviate the proliferation of lexical ambiguity in large TAG grammars by making shared information available without having to commit to specific lexical entries. Initial experiments with the XTAG grammar indicate that we can generate practical examples in polynomial time, and may be competitive with state-of-the-art realization systems in terms of raw runtime. In the future, it will first of all be necessary to lift the restrictions we have placed on the TAG grammar: So far, the nodes of the elementary trees are only equipped with nonterminal labels and indices, not with general feature structures, and we allow only a restricted form of adjunction constraints. It should be possible to either encode these constructions directly in the dependency grammar (which allows user-defined features too), or filter out wrong realizations in a post-processing step. The effect of such extensions on the runtime remains to be seen. Finally, we expect that despite the general NPcompleteness, there are restricted generation problems which can be solved in polynomial time, but still contain all problems that actually arise for natural language. The results of this paper open up a new perspective from which such restrictions can be sought, especially considering that all the naturallanguage examples we tried are indeed processed in polynomial time. Such a polynomial realization algorithm would be the ideal starting point for algorithms that compute not just any, but the best possible realization – a problem which e.g. Bangalore and Rambow (2000) approximate using stochastic methods. Acknowledgments. We are grateful to Tilman Becker, Chris Brew, Ann Copestake, Ralph Debusmann, Gerald Penn, Stefan Thater, and our reviewers for helpful comments and discussions.</bodyText>
+<sectionHeader confidence="0.995925" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.994332586956521">
+Srinivas Bangalore and Owen Rambow. 2000. Using
+tags, a tree model, and a language model for genera-
+tion. In Proc. of the TAG+5 Workshop, Paris.
+G. Edward Barton, Robert C. Berwick, and Eric Sven
+Ristad. 1987. Computational Complexity and Natu-
+ral Language. MIT Press, Cambridge, Mass.
+Chris Brew. 1992. Letting the cat out of the bag: Gen-
+eration for Shake-and-Bake MT. In Proceedings of
+COLING-92, pages 610–616, Nantes.
+John Carroll, Ann Copestake, Dan Flickinger, and Vic-
+tor Poznanski. 1999. An efficient chart generator for
+(semi-)lexicalist grammars. In Proceedings of the 7th
+European Workshop on NLG, pages 86–95, Toulouse.
+Denys Duchier and Ralph Debusmann. 2001. Topolog-
+ical dependency trees: A constraint-based account of
+linear precedence. In Proceedings of the 39th ACL,
+Toulouse, France.
+Denys Duchier. 2002. Configuration of labeled trees un-
+der lexicalized constraints and principles. Journal of
+Language and Computation. To appear.
+Claire Gardent and Stefan Thater. 2001. Generating with
+a grammar based on tree descriptions: A constraint-
+based approach. In Proceedings of the 39th ACL,
+Toulouse.
+Aravind Joshi and Yves Schabes. 1997. Tree-Adjoining
+Grammars. In G. Rozenberg and A. Salomaa, editors,
+Handbook ofFormal Languages, chapter 2, pages 69–
+123. Springer-Verlag, Berlin.
+Martin Kay. 1996. Chart generation. In Proceedings of
+the 34th Annual Meeting of the ACL, pages 200–204,
+Santa Cruz.
+Alexander Koller and Joachim Niehren. 2000. Con-
+straint programming in computational linguistics. To
+appear in Proceedings of LLC8, CSLI Press.
+Oz Development Team. 1999. The Mozart Programming
+System web pages. http://www.mozart-oz.
+org/.
+Yves Schabes and Stuart Shieber. 1994. An alterna-
+tive conception of tree-adjoining derivation. Compu-
+tational Linguistics, 20(1):91–124.
+Matthew Stone and Christy Doran. 1997. Sentence plan-
+ning as description using tree-adjoining grammar. In
+Proceedings of the 35th ACL, pages 198–205.
+XTAG Research Group. 2001. A lexicalized tree adjoin-
+ing grammar for english. Technical Report IRCS-01-
+03, IRCS, University of Pennsylvania.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.925645" no="0">
+<note confidence="0.997668">Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics (ACL), Philadelphia, July 2002, pp. 17-24.</note>
+<title confidence="0.995548">Generation as Dependency Parsing</title>
+<author confidence="0.999706">Alexander Koller</author>
+<author confidence="0.999706">Kristina Striegnitz</author>
+<affiliation confidence="0.99998">Dept. of Computational Linguistics, Saarland University</affiliation>
+<email confidence="0.978328">{koller|kris}@coli.uni-sb.de</email>
+<abstract confidence="0.9968552">Natural-Language Generation from flat semantics is an NP-complete problem. This makes it necessary to develop algorithms that run with reasonable efficiency in practice despite the high worstcase complexity. We show how to convert TAG generation problems into dependency parsing problems, which is useful because optimizations in recent dependency parsers based on constraint programming tackle exactly the combinatorics that make generation hard. Indeed, initial experiments display promising runtimes.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Srinivas Bangalore</author>
+<author>Owen Rambow</author>
+</authors>
+<title>Using tags, a tree model, and a language model for generation.</title>
+<date>2000</date>
+<booktitle>In Proc. of the TAG+5 Workshop,</booktitle>
+<location>Paris.</location>
+<marker>Bangalore, Rambow, 2000</marker>
+<rawString>Srinivas Bangalore and Owen Rambow. 2000. Using tags, a tree model, and a language model for generation. In Proc. of the TAG+5 Workshop, Paris.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Edward Barton</author>
+<author>Robert C Berwick</author>
+<author>Eric Sven Ristad</author>
+</authors>
+<date>1987</date>
+<booktitle>Computational Complexity and Natural Language.</booktitle>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Mass.</location>
+<contexts>
+<context citStr="Barton et al., 1987" endWordPosition="303" position="2021" startWordPosition="300">y the fact that realization is an NP-complete problem even using just context-free grammars, as Brew (1992) showed in the context of shake-and-bake generation. The first contribution of our paper is a proof of a stronger NP-completeness result: If we allow semantic indices in the grammar, realization is NP-complete even if we fix a single grammar. Our alternative proof shows clearly that the combinatorics in generation come from essentially the same sources as in parsing for free word order languages. It has been noted in the literature that this problem, too, becomes NP-complete very easily (Barton et al., 1987). The main point of this paper is to show how to encode generation with a variant of tree-adjoining grammars (TAG) as a parsing problem with dependency grammars (DG). The particular variant of DG we use, Topological Dependency Grammar (TDG) (Duchier, 2002; Duchier and Debusmann, 2001), was developed specifically with efficient parsing for free word order languages in mind. The mere existence of this encoding proves TDG’s parsing problem NP-complete as well, a result which has been conjectured but never formally shown so far. But it turns out that the complexities that arise in generation probl</context>
+</contexts>
+<marker>Barton, Berwick, Ristad, 1987</marker>
+<rawString>G. Edward Barton, Robert C. Berwick, and Eric Sven Ristad. 1987. Computational Complexity and Natural Language. MIT Press, Cambridge, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chris Brew</author>
+</authors>
+<title>Letting the cat out of the bag: Generation for Shake-and-Bake MT.</title>
+<date>1992</date>
+<booktitle>In Proceedings of COLING-92,</booktitle>
+<pages>610--616</pages>
+<location>Nantes.</location>
+<contexts>
+<context citStr="Brew, 1992" endWordPosition="153" position="1075" startWordPosition="152">ice despite the high worstcase complexity. We show how to convert TAG generation problems into dependency parsing problems, which is useful because optimizations in recent dependency parsers based on constraint programming tackle exactly the combinatorics that make generation hard. Indeed, initial experiments display promising runtimes. 1 Introduction Existing algorithms for realization from a flat input semantics all have runtimes which are exponential in the worst case. Several different approaches to improving the runtime in practice have been suggested in the literature – e.g. heuristics (Brew, 1992) and factorizations into smaller exponential subproblems (Kay, 1996; Carroll et al., 1999). While these solutions achieve some measure of success in making realization efficient, the contrast in efficiency to parsing is striking both in theory and in practice. The problematic runtimes of generation algorithms are explained by the fact that realization is an NP-complete problem even using just context-free grammars, as Brew (1992) showed in the context of shake-and-bake generation. The first contribution of our paper is a proof of a stronger NP-completeness result: If we allow semantic indices </context>
+<context citStr="Brew (1992)" endWordPosition="1037" position="6245" startWordPosition="1036">o G, is assigned the semantics 5, and has a root node with index i. 3 NP-Completeness of Realization This definition is the simplest conceivable formalization of problems occurring in surface realization as a decision problem: It does not even require us to compute a single actual realization, just to check Figure 1: The grammar Gham. whether one exists. Every practical generation system generating from flat semantics will have to address this problem in one form or another. Now we show that this problem is NP-complete. A similar result was proved in the context of shakeand-bake generation by Brew (1992), but he needed to use the grammar in his encoding, which leaves the possibility open that for every single grammar G, there might be a realization algorithm tailored specifically to G which still runs in polynomial time. Our result is stronger in that we define a single grammar Gham whose realization problem is NPcomplete in the above sense. Furthermore, we find that our proof brings out the sources of the complexity more clearly. Gham does not permit adjunction, hence the result also holds for context-free grammars with indices. It is clear that the problem is in NP: We can simply guess the </context>
+</contexts>
+<marker>Brew, 1992</marker>
+<rawString>Chris Brew. 1992. Letting the cat out of the bag: Generation for Shake-and-Bake MT. In Proceedings of COLING-92, pages 610–616, Nantes.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John Carroll</author>
+<author>Ann Copestake</author>
+<author>Dan Flickinger</author>
+<author>Victor Poznanski</author>
+</authors>
+<title>An efficient chart generator for (semi-)lexicalist grammars.</title>
+<date>1999</date>
+<booktitle>In Proceedings of the 7th European Workshop on NLG,</booktitle>
+<pages>86--95</pages>
+<location>Toulouse.</location>
+<contexts>
+<context citStr="Carroll et al., 1999" endWordPosition="165" position="1165" startWordPosition="162"> problems into dependency parsing problems, which is useful because optimizations in recent dependency parsers based on constraint programming tackle exactly the combinatorics that make generation hard. Indeed, initial experiments display promising runtimes. 1 Introduction Existing algorithms for realization from a flat input semantics all have runtimes which are exponential in the worst case. Several different approaches to improving the runtime in practice have been suggested in the literature – e.g. heuristics (Brew, 1992) and factorizations into smaller exponential subproblems (Kay, 1996; Carroll et al., 1999). While these solutions achieve some measure of success in making realization efficient, the contrast in efficiency to parsing is striking both in theory and in practice. The problematic runtimes of generation algorithms are explained by the fact that realization is an NP-complete problem even using just context-free grammars, as Brew (1992) showed in the context of shake-and-bake generation. The first contribution of our paper is a proof of a stronger NP-completeness result: If we allow semantic indices in the grammar, realization is NP-complete even if we fix a single grammar. Our alternativ</context>
+<context citStr="Carroll et al., 1999" endWordPosition="3595" position="20633" startWordPosition="3592">ome lexical ambiguity. This is no problem, however, because the absence of features guarantees that every combination of choices will be grammatical. Similarly, a node can have multiple children over adjunction edges with the same label, and there may be more than one node in the upper elementary tree to which the lower tree could be adjoined. Again, all remaining combinations are guaranteed to be grammatical. In order to get an idea of the performance of our realization algorithm in comparison to the state of the art, we have tried generating the following sentences, which are examples from (Carroll et al., 1999): (1) The manager in that office interviewed a new consultant from Germany. (2) Our manager organized an unusual additional weekly departmental conference. We have converted the XTAG grammar (XTAG Research Group, 2001) into our grammar format, automatically adding indices to the nodes of the elementary trees, removing features, simplifying adjunction constraints, and adding artificial lexical semantics that consists of the words at the lexical anchors and the indices used in the respective trees. XTAG typically assigns quite a few elementary trees to one lemma, and the same lexical semantics c</context>
+<context citStr="Carroll et al., 1999" endWordPosition="4285" position="24708" startWordPosition="4282">tial number of parsing problems. Indeed, using a variant of the grammar from Section 3, it is easy to show that the problem of deciding whether there is a partition whose parsing problem can be solved is NP-complete as well. An alternative approach is to push the partitioning process into the parser as well. We expect this will not hurt the runtime all that much, but the exact effect remains to be seen. 6 Comparison to Other Approaches The perspective on realization that our system takes is quite different from previous approaches. In this section, we relate it to chart generation (Kay, 1996; Carroll et al., 1999) and to another constraint-based approach (Gardent and Thater, 2001). In chart based approaches to realization, the main idea is to minimize the necessary computation by reusing partial results that have been computed before. In the setting of fixed word order parsing, this brings an immense increase in efficiency. In generation, however, the NP-completeness manifests itself in charts of worst-case exponential size. In addition, it can happen that substructures are built which are not used in the final realization, especially when processing modifications. By contrast, our system configures no</context>
+</contexts>
+<marker>Carroll, Copestake, Flickinger, Poznanski, 1999</marker>
+<rawString>John Carroll, Ann Copestake, Dan Flickinger, and Victor Poznanski. 1999. An efficient chart generator for (semi-)lexicalist grammars. In Proceedings of the 7th European Workshop on NLG, pages 86–95, Toulouse.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Denys Duchier</author>
+<author>Ralph Debusmann</author>
+</authors>
+<title>Topological dependency trees: A constraint-based account of linear precedence.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 39th ACL,</booktitle>
+<location>Toulouse, France.</location>
+<contexts>
+<context citStr="Duchier and Debusmann, 2001" endWordPosition="349" position="2306" startWordPosition="346">the grammar, realization is NP-complete even if we fix a single grammar. Our alternative proof shows clearly that the combinatorics in generation come from essentially the same sources as in parsing for free word order languages. It has been noted in the literature that this problem, too, becomes NP-complete very easily (Barton et al., 1987). The main point of this paper is to show how to encode generation with a variant of tree-adjoining grammars (TAG) as a parsing problem with dependency grammars (DG). The particular variant of DG we use, Topological Dependency Grammar (TDG) (Duchier, 2002; Duchier and Debusmann, 2001), was developed specifically with efficient parsing for free word order languages in mind. The mere existence of this encoding proves TDG’s parsing problem NP-complete as well, a result which has been conjectured but never formally shown so far. But it turns out that the complexities that arise in generation problems in practice seem to be precisely of the sort that the TDG parser can handle well. Initial experiments with generating from the XTAG grammar (XTAG Research Group, 2001) suggest that our generation system is competitive with state-of-theart chart generators, and indeed seems to run </context>
+<context citStr="Duchier and Debusmann, 2001" endWordPosition="1818" position="10435" startWordPosition="1815"> mode, i.e. which edges should be part 4 Topological Dependency Grammar These factors are exactly the same that make dependency parsing for free word order languages difficult, and it seems worthwhile to see whether optimized parsers for dependency grammars can also contribute to making generation efficient. We now sketch a dependency formalism which has an efficient parser and then discuss some of the important properties of this parser. In the next section, we will see how to employ the parser for generation. 4.1 The Grammar Formalism The parse trees of topological dependency grammar (TDG) (Duchier and Debusmann, 2001; Duchier, 2002) are trees whose nodes correspond one-to-one to the words of the sentence, and whose edges are labelled, e.g. with syntactic relations (see Fig. 3). The trees are unordered, i.e. there is no intrinsic order among the children of a node. Word order in TDG is initially completely free, but there is a separate mechanism to specify constraints on linear precedence. Since completely free order is what we want for the realization problem, we do not need these mechanisms and do not go into them here. The lexicon assigns to each word a set of lexical entries; in a parse tree, one of th</context>
+</contexts>
+<marker>Duchier, Debusmann, 2001</marker>
+<rawString>Denys Duchier and Ralph Debusmann. 2001. Topological dependency trees: A constraint-based account of linear precedence. In Proceedings of the 39th ACL, Toulouse, France.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Denys Duchier</author>
+</authors>
+<title>Configuration of labeled trees under lexicalized constraints and principles.</title>
+<date>2002</date>
+<journal>Journal of Language and Computation.</journal>
+<note>To appear.</note>
+<contexts>
+<context citStr="Duchier, 2002" endWordPosition="345" position="2276" startWordPosition="344">tic indices in the grammar, realization is NP-complete even if we fix a single grammar. Our alternative proof shows clearly that the combinatorics in generation come from essentially the same sources as in parsing for free word order languages. It has been noted in the literature that this problem, too, becomes NP-complete very easily (Barton et al., 1987). The main point of this paper is to show how to encode generation with a variant of tree-adjoining grammars (TAG) as a parsing problem with dependency grammars (DG). The particular variant of DG we use, Topological Dependency Grammar (TDG) (Duchier, 2002; Duchier and Debusmann, 2001), was developed specifically with efficient parsing for free word order languages in mind. The mere existence of this encoding proves TDG’s parsing problem NP-complete as well, a result which has been conjectured but never formally shown so far. But it turns out that the complexities that arise in generation problems in practice seem to be precisely of the sort that the TDG parser can handle well. Initial experiments with generating from the XTAG grammar (XTAG Research Group, 2001) suggest that our generation system is competitive with state-of-theart chart genera</context>
+<context citStr="Duchier, 2002" endWordPosition="1820" position="10451" startWordPosition="1819">d be part 4 Topological Dependency Grammar These factors are exactly the same that make dependency parsing for free word order languages difficult, and it seems worthwhile to see whether optimized parsers for dependency grammars can also contribute to making generation efficient. We now sketch a dependency formalism which has an efficient parser and then discuss some of the important properties of this parser. In the next section, we will see how to employ the parser for generation. 4.1 The Grammar Formalism The parse trees of topological dependency grammar (TDG) (Duchier and Debusmann, 2001; Duchier, 2002) are trees whose nodes correspond one-to-one to the words of the sentence, and whose edges are labelled, e.g. with syntactic relations (see Fig. 3). The trees are unordered, i.e. there is no intrinsic order among the children of a node. Word order in TDG is initially completely free, but there is a separate mechanism to specify constraints on linear precedence. Since completely free order is what we want for the realization problem, we do not need these mechanisms and do not go into them here. The lexicon assigns to each word a set of lexical entries; in a parse tree, one of these lexical entr</context>
+<context citStr="Duchier, 2002" endWordPosition="2156" position="12393" startWordPosition="2155">pendency tree for an input sentence is simply a tree with the appropriate nodes, whose edges obey the labels and valency restrictions specified by the lexical entries. So, the tree in Fig. 3 is well-formed according to our lexicon. 4.2 TDG Parsing The parsing problem of TDG can be seen as a search problem: For each node, we must choose a lexical entry and the correct mother-daughter relations it participates in. One strength of the TDG approach is that it is amenable to strong syntactic inferences that tackle specifically the three sources of complexity mentioned above. The parsing algorithm (Duchier, 2002) is stated in the framework of constraint programming (Koller and Niehren, 2000), a general approach to coping with combinatorial problems. Before it explores all choices that are possible in a certain state of the search tree (distribution), it first tries to eliminate some of the choices which definitely cannot lead to a solution by simple inferences (propagations). “Simple” means that propagations take only polynomial time; the combinatorics is in the distribution steps alone. That is, it can still happen that a search tree of exponential size has to be explored, but the time spent on propa</context>
+</contexts>
+<marker>Duchier, 2002</marker>
+<rawString>Denys Duchier. 2002. Configuration of labeled trees under lexicalized constraints and principles. Journal of Language and Computation. To appear.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Claire Gardent</author>
+<author>Stefan Thater</author>
+</authors>
+<title>Generating with a grammar based on tree descriptions: A constraintbased approach.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 39th ACL,</booktitle>
+<location>Toulouse.</location>
+<contexts>
+<context citStr="Gardent and Thater, 2001" endWordPosition="4017" position="23181" startWordPosition="4014">lution, which multiplies out to 312 = 13 · 4! different realizations. (The 13 basic realizations correspond to different syntactic frames for the main verb in the XTAG grammar, e.g. for topicalized or passive constructions.) 5.4 More Complex Semantics So far, we have only considered TAG grammars in which each elementary tree is assigned a semantics that contains precisely one atom. However, there are cases where an elementary tree either has an empty semantics, or a semantics that contains multiple atoms. The first case can be avoided by exploiting TAG’s extended domain of locality, see e.g. (Gardent and Thater, 2001). The simplest possible way for dealing with the second case is to preprocess the input into several 1A newer version of Carroll et al.’s system generates (1) in 420 milliseconds (Copestake, p.c.). Our times were measured on a 700 MHz Pentium-III PC. NP:m NP:m PN:m Mary VP:e V:e NP:c � buys NP:c Detnoadj a N:c � N:c Adjnoadj red Figure 5: Derived tree for “Mary buys a red car.” N:c* N:c car different parsing problems. In a first step, we collect all possible instantiations of LTAG lexical entries matching subsets of the semantics. Then we construct all partitions of the input semantics in whic</context>
+<context citStr="Gardent and Thater, 2001" endWordPosition="4294" position="24776" startWordPosition="4291">grammar from Section 3, it is easy to show that the problem of deciding whether there is a partition whose parsing problem can be solved is NP-complete as well. An alternative approach is to push the partitioning process into the parser as well. We expect this will not hurt the runtime all that much, but the exact effect remains to be seen. 6 Comparison to Other Approaches The perspective on realization that our system takes is quite different from previous approaches. In this section, we relate it to chart generation (Kay, 1996; Carroll et al., 1999) and to another constraint-based approach (Gardent and Thater, 2001). In chart based approaches to realization, the main idea is to minimize the necessary computation by reusing partial results that have been computed before. In the setting of fixed word order parsing, this brings an immense increase in efficiency. In generation, however, the NP-completeness manifests itself in charts of worst-case exponential size. In addition, it can happen that substructures are built which are not used in the final realization, especially when processing modifications. By contrast, our system configures nodes into a dependency tree. It solves a search problem, made up by c</context>
+<context citStr="Gardent and Thater (2001)" endWordPosition="4575" position="26565" startWordPosition="4572">formance of their system decreases rapidly as the input gets larger even when when working with a toy grammar. The main difference between their approach and ours seems to be that their algorithm tries to construct a derived tree, while ours builds a derivation tree. Our parser only has to deal with information that is essential to solve the combinatorial problem, and not e.g. with the internal structure of the elementary trees. The reconstruction of the derived tree, which is cheap once the derivation tree has been computed, is delegated to a post-processing step. Working with derived trees, Gardent and Thater (2001) cannot ignore any information and have to keep track of the relationships between nodes at points where they are not relevant. 7 Conclusion Generation from flat semantics is an NP-complete problem. In this paper, we have first given an alternative proof for this fact, which works even for a fixed grammar and makes the connection to the complexity of free word order parsing clearly visible. Then we have shown how to translate the realization problem of TAG into parsing problems of topological dependency grammar, and argued how the optimizations in the dependency parser – which were originally </context>
+</contexts>
+<marker>Gardent, Thater, 2001</marker>
+<rawString>Claire Gardent and Stefan Thater. 2001. Generating with a grammar based on tree descriptions: A constraintbased approach. In Proceedings of the 39th ACL, Toulouse.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Aravind Joshi</author>
+<author>Yves Schabes</author>
+</authors>
+<title>Tree-Adjoining Grammars.</title>
+<date>1997</date>
+<booktitle>Handbook ofFormal Languages, chapter 2,</booktitle>
+<pages>69--123</pages>
+<editor>In G. Rozenberg and A. Salomaa, editors,</editor>
+<publisher>Springer-Verlag,</publisher>
+<location>Berlin.</location>
+<contexts>
+<context citStr="Joshi and Schabes, 1997" endWordPosition="731" position="4523" startWordPosition="727">� E:k B:k � e sem: {edge(i,k)I Q2 C eating C � sem: {edge(i,k)I 2 The Realization Problem In this paper, we deal with the subtask of natural language generation known as surface realization: given a grammar and a semantic representation, the problem is to find a sentence which is grammatical according to the grammar and expresses the content of the semantic representation. We represent the semantic input as a multiset (bag) of ground atoms of predicate logic, such as {buy(e,a,b), name(a,mary) car(b)}. To encode syntactic information, we use a tree-adjoining grammar without feature structures (Joshi and Schabes, 1997). Following Stone and Doran (1997) and Kay (1996), we enhance this TAG grammar with a syntax-semantics interface in which nonterminal nodes of the elementary trees are equipped with index variables, which can be bound to individuals in the semantic input. We assume that the root node, all substitution nodes, and all nodes that admit adjunction carry such index variables. We also assign a semantics to every elementary tree, so that lexical entries are pairs of the form (co, T), where co is a multiset of semantic atoms, and T is an initial or When the lexicon is accessed, x, y, z get bound to te</context>
+</contexts>
+<marker>Joshi, Schabes, 1997</marker>
+<rawString>Aravind Joshi and Yves Schabes. 1997. Tree-Adjoining Grammars. In G. Rozenberg and A. Salomaa, editors, Handbook ofFormal Languages, chapter 2, pages 69– 123. Springer-Verlag, Berlin.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Martin Kay</author>
+</authors>
+<title>Chart generation.</title>
+<date>1996</date>
+<booktitle>In Proceedings of the 34th Annual Meeting of the ACL,</booktitle>
+<pages>200--204</pages>
+<location>Santa Cruz.</location>
+<contexts>
+<context citStr="Kay, 1996" endWordPosition="161" position="1142" startWordPosition="160"> generation problems into dependency parsing problems, which is useful because optimizations in recent dependency parsers based on constraint programming tackle exactly the combinatorics that make generation hard. Indeed, initial experiments display promising runtimes. 1 Introduction Existing algorithms for realization from a flat input semantics all have runtimes which are exponential in the worst case. Several different approaches to improving the runtime in practice have been suggested in the literature – e.g. heuristics (Brew, 1992) and factorizations into smaller exponential subproblems (Kay, 1996; Carroll et al., 1999). While these solutions achieve some measure of success in making realization efficient, the contrast in efficiency to parsing is striking both in theory and in practice. The problematic runtimes of generation algorithms are explained by the fact that realization is an NP-complete problem even using just context-free grammars, as Brew (1992) showed in the context of shake-and-bake generation. The first contribution of our paper is a proof of a stronger NP-completeness result: If we allow semantic indices in the grammar, realization is NP-complete even if we fix a single </context>
+<context citStr="Kay (1996)" endWordPosition="739" position="4572" startWordPosition="738"> 2 The Realization Problem In this paper, we deal with the subtask of natural language generation known as surface realization: given a grammar and a semantic representation, the problem is to find a sentence which is grammatical according to the grammar and expresses the content of the semantic representation. We represent the semantic input as a multiset (bag) of ground atoms of predicate logic, such as {buy(e,a,b), name(a,mary) car(b)}. To encode syntactic information, we use a tree-adjoining grammar without feature structures (Joshi and Schabes, 1997). Following Stone and Doran (1997) and Kay (1996), we enhance this TAG grammar with a syntax-semantics interface in which nonterminal nodes of the elementary trees are equipped with index variables, which can be bound to individuals in the semantic input. We assume that the root node, all substitution nodes, and all nodes that admit adjunction carry such index variables. We also assign a semantics to every elementary tree, so that lexical entries are pairs of the form (co, T), where co is a multiset of semantic atoms, and T is an initial or When the lexicon is accessed, x, y, z get bound to terms occurring in the semantic input, e.g. e, a, b</context>
+<context citStr="Kay, 1996" endWordPosition="4281" position="24685" startWordPosition="4280"> an exponential number of parsing problems. Indeed, using a variant of the grammar from Section 3, it is easy to show that the problem of deciding whether there is a partition whose parsing problem can be solved is NP-complete as well. An alternative approach is to push the partitioning process into the parser as well. We expect this will not hurt the runtime all that much, but the exact effect remains to be seen. 6 Comparison to Other Approaches The perspective on realization that our system takes is quite different from previous approaches. In this section, we relate it to chart generation (Kay, 1996; Carroll et al., 1999) and to another constraint-based approach (Gardent and Thater, 2001). In chart based approaches to realization, the main idea is to minimize the necessary computation by reusing partial results that have been computed before. In the setting of fixed word order parsing, this brings an immense increase in efficiency. In generation, however, the NP-completeness manifests itself in charts of worst-case exponential size. In addition, it can happen that substructures are built which are not used in the final realization, especially when processing modifications. By contrast, o</context>
+</contexts>
+<marker>Kay, 1996</marker>
+<rawString>Martin Kay. 1996. Chart generation. In Proceedings of the 34th Annual Meeting of the ACL, pages 200–204, Santa Cruz.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alexander Koller</author>
+<author>Joachim Niehren</author>
+</authors>
+<title>Constraint programming in computational linguistics.</title>
+<date>2000</date>
+<booktitle>Proceedings of LLC8,</booktitle>
+<publisher>CSLI Press.</publisher>
+<note>To appear in</note>
+<contexts>
+<context citStr="Koller and Niehren, 2000" endWordPosition="2168" position="12473" startWordPosition="2165">iate nodes, whose edges obey the labels and valency restrictions specified by the lexical entries. So, the tree in Fig. 3 is well-formed according to our lexicon. 4.2 TDG Parsing The parsing problem of TDG can be seen as a search problem: For each node, we must choose a lexical entry and the correct mother-daughter relations it participates in. One strength of the TDG approach is that it is amenable to strong syntactic inferences that tackle specifically the three sources of complexity mentioned above. The parsing algorithm (Duchier, 2002) is stated in the framework of constraint programming (Koller and Niehren, 2000), a general approach to coping with combinatorial problems. Before it explores all choices that are possible in a certain state of the search tree (distribution), it first tries to eliminate some of the choices which definitely cannot lead to a solution by simple inferences (propagations). “Simple” means that propagations take only polynomial time; the combinatorics is in the distribution steps alone. That is, it can still happen that a search tree of exponential size has to be explored, but the time spent on propagation in each of its node is only polynomial. Strong propagation can reduce the</context>
+</contexts>
+<marker>Koller, Niehren, 2000</marker>
+<rawString>Alexander Koller and Joachim Niehren. 2000. Constraint programming in computational linguistics. To appear in Proceedings of LLC8, CSLI Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Oz Development Team</author>
+</authors>
+<title>The Mozart Programming System web pages.</title>
+<date>1999</date>
+<note>http://www.mozart-oz. org/.</note>
+<contexts>
+<context citStr="Team, 1999" endWordPosition="2317" position="13377" startWordPosition="2316">imple” means that propagations take only polynomial time; the combinatorics is in the distribution steps alone. That is, it can still happen that a search tree of exponential size has to be explored, but the time spent on propagation in each of its node is only polynomial. Strong propagation can reduce the size of the search tree, and it may even make the whole algorithm run in polynomial time in practice. The TDG parser translates the parsing problem into constraints over (variables denoting) finite sets of integers, as implemented efficiently in the Mozart programming system (Oz Development Team, 1999). This translation is complete: Solutions of the set constraint can be translated back to correct dependency trees. But for efficiency, the parser uses additional propagators tailored to the specific inferences of the dependency problem. For instance, in the “Peter likes Mary” example above, one such propagator could contribute the information that neither the “Peter” nor the “Mary” node can be an adv child of “likes”, because neither can accept an adv edge. Once the choice has been made that “Peter” is the subj child of “likes”, a propagator can contribute that “Mary” must be its obj child, a</context>
+</contexts>
+<marker>Team, 1999</marker>
+<rawString>Oz Development Team. 1999. The Mozart Programming System web pages. http://www.mozart-oz. org/.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yves Schabes</author>
+<author>Stuart Shieber</author>
+</authors>
+<title>An alternative conception of tree-adjoining derivation.</title>
+<date>1994</date>
+<journal>Computational Linguistics,</journal>
+<volume>20</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Schabes and Shieber, 1994" endWordPosition="2672" position="15456" startWordPosition="2669">articular restriction of our encoding and ways of overcoming it. 5.1 The Encoding Let G be a grammar as described in Section 2; i.e. lexical entries are of the form (cp,T), where cp is a flat semantics and T is a TAG elementary tree whose nodes are decorated with semantic indices. We make the following simplifying assumptions. First, we assume that the nodes of the elementary trees of G are not labelled with feature structures. Next, we assume that whenever we can adjoin an auxiliary tree at a node, we can adjoin arbitrarily many trees at this node. The idea of multiple adjunction is not new (Schabes and Shieber, 1994), but it is simplified here because we disregard complex adjunction constraints. We will discuss these two restrictions in the conclusion. Finally, we assume that every lexical semantics cp has precisely one member; this restriction will be lifted in Section 5.4. Now let’s say we want to find the realizations of the input semantics S = {cpi, ... , cp,,,}, using the grammar G. The input “sentence” of the parsing Figure 4: Dependency tree for “Mary buys a red car.” problem we construct is the sequence {start} ∪ S, where start is a special start symbol. The parse tree will correspond very closely</context>
+</contexts>
+<marker>Schabes, Shieber, 1994</marker>
+<rawString>Yves Schabes and Stuart Shieber. 1994. An alternative conception of tree-adjoining derivation. Computational Linguistics, 20(1):91–124.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Matthew Stone</author>
+<author>Christy Doran</author>
+</authors>
+<title>Sentence planning as description using tree-adjoining grammar.</title>
+<date>1997</date>
+<booktitle>In Proceedings of the 35th ACL,</booktitle>
+<pages>198--205</pages>
+<contexts>
+<context citStr="Stone and Doran (1997)" endWordPosition="736" position="4557" startWordPosition="733">eating C � sem: {edge(i,k)I 2 The Realization Problem In this paper, we deal with the subtask of natural language generation known as surface realization: given a grammar and a semantic representation, the problem is to find a sentence which is grammatical according to the grammar and expresses the content of the semantic representation. We represent the semantic input as a multiset (bag) of ground atoms of predicate logic, such as {buy(e,a,b), name(a,mary) car(b)}. To encode syntactic information, we use a tree-adjoining grammar without feature structures (Joshi and Schabes, 1997). Following Stone and Doran (1997) and Kay (1996), we enhance this TAG grammar with a syntax-semantics interface in which nonterminal nodes of the elementary trees are equipped with index variables, which can be bound to individuals in the semantic input. We assume that the root node, all substitution nodes, and all nodes that admit adjunction carry such index variables. We also assign a semantics to every elementary tree, so that lexical entries are pairs of the form (co, T), where co is a multiset of semantic atoms, and T is an initial or When the lexicon is accessed, x, y, z get bound to terms occurring in the semantic inpu</context>
+</contexts>
+<marker>Stone, Doran, 1997</marker>
+<rawString>Matthew Stone and Christy Doran. 1997. Sentence planning as description using tree-adjoining grammar. In Proceedings of the 35th ACL, pages 198–205.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>XTAG Research Group</author>
+</authors>
+<title>A lexicalized tree adjoining grammar for english.</title>
+<date>2001</date>
+<tech>Technical Report IRCS-01-03,</tech>
+<institution>IRCS, University of Pennsylvania.</institution>
+<contexts>
+<context citStr="Group, 2001" endWordPosition="431" position="2792" startWordPosition="430">s (DG). The particular variant of DG we use, Topological Dependency Grammar (TDG) (Duchier, 2002; Duchier and Debusmann, 2001), was developed specifically with efficient parsing for free word order languages in mind. The mere existence of this encoding proves TDG’s parsing problem NP-complete as well, a result which has been conjectured but never formally shown so far. But it turns out that the complexities that arise in generation problems in practice seem to be precisely of the sort that the TDG parser can handle well. Initial experiments with generating from the XTAG grammar (XTAG Research Group, 2001) suggest that our generation system is competitive with state-of-theart chart generators, and indeed seems to run in polynomial time in practice. Next to the attractive runtime behaviour, our approach to realization is interesting because it may provide us with a different angle from which to look for tractable fragments of the general realization problem. As we will show, the computation that takes place in our system is very different from that in a chart generator, and may be more efficient in some cases by taking into account global information to guide local choices. Plan of the Paper. We</context>
+<context citStr="Group, 2001" endWordPosition="3627" position="20851" startWordPosition="3626">ame label, and there may be more than one node in the upper elementary tree to which the lower tree could be adjoined. Again, all remaining combinations are guaranteed to be grammatical. In order to get an idea of the performance of our realization algorithm in comparison to the state of the art, we have tried generating the following sentences, which are examples from (Carroll et al., 1999): (1) The manager in that office interviewed a new consultant from Germany. (2) Our manager organized an unusual additional weekly departmental conference. We have converted the XTAG grammar (XTAG Research Group, 2001) into our grammar format, automatically adding indices to the nodes of the elementary trees, removing features, simplifying adjunction constraints, and adding artificial lexical semantics that consists of the words at the lexical anchors and the indices used in the respective trees. XTAG typically assigns quite a few elementary trees to one lemma, and the same lexical semantics can often be verbalized by more than hundred elementary trees in the converted grammar. It turns out that the dependency parser scales very nicely to this degree of lexical ambiguity: The sentence (1) is generated in 47</context>
+</contexts>
+<marker>Group, 2001</marker>
+<rawString>XTAG Research Group. 2001. A lexicalized tree adjoining grammar for english. Technical Report IRCS-01-03, IRCS, University of Pennsylvania.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

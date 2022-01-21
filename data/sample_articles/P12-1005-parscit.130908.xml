@@ -1,0 +1,995 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.998099">
+A Nonparametric Bayesian Approach to Acoustic Model Discovery
+</title>
+<author confidence="0.995461">
+Chia-ying Lee and James Glass
+</author>
+<affiliation confidence="0.9979495">
+Computer Science and Artificial Intelligence Laboratory
+Massachusetts Institute of Technology
+</affiliation>
+<address confidence="0.801739">
+Cambridge, MA 02139, USA
+</address>
+<email confidence="0.999391">
+{chiaying,jrg}@csail.mit.edu
+</email>
+<sectionHeader confidence="0.995648" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999817857142857">We investigate the problem of acoustic modeling in which prior language-specific knowledge and transcribed data are unavailable. We present an unsupervised model that simultaneously segments the speech, discovers a proper set of sub-word units (e.g., phones) and learns a Hidden Markov Model (HMM) for each induced acoustic unit. Our approach is formulated as a Dirichlet process mixture model in which each mixture is an HMM that represents a sub-word unit. We apply our model to the TIMIT corpus, and the results demonstrate that our model discovers sub-word units that are highly correlated with English phones and also produces better segmentation than the state-of-the-art unsupervised baseline. We test the quality of the learned acoustic models on a spoken term detection task. Compared to the baselines, our model improves the relative precision of top hits by at least 22.1% and outperforms a language-mismatched acoustic model.</bodyText>
+<sectionHeader confidence="0.999128" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999949177777778">Acoustic models are an indispensable component of speech recognizers. However, the standard process of training acoustic models is expensive, and requires not only language-specific knowledge, e.g., the phone set of the language, a pronunciation dictionary, but also a large amount of transcribed data. Unfortunately, these necessary data are only available for a very small number of languages in the world. Therefore, a procedure for training acoustic models without annotated data would not only be a breakthrough from the traditional approach, but would also allow us to build speech recognizers for any language efficiently. In this paper, we investigate the problem of unsupervised acoustic modeling with only spoken utterances as training data. As suggested in Garcia and Gish (2006), unsupervised acoustic modeling can be broken down to three sub-tasks: segmentation, clustering segments, and modeling the sound pattern of each cluster. In previous work, the three subproblems were often approached sequentially and independently in which initial steps are not related to later ones (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011). For example, the speech data was usually segmented regardless of the clustering results and the learned acoustic models. In contrast to the previous methods, we approach the problem by modeling the three sub-problems as well as the unknown set of sub-word units as latent variables in one nonparametric Bayesian model. More specifically, we formulate a Dirichlet process mixture model where each mixture is a Hidden Markov Model (HMM) used to model a subword unit and to generate observed segments of that unit. Our model seeks the set of sub-word units, segmentation, clustering and HMMs that best represent the observed data through an iterative inference process. We implement the inference process using Gibbs sampling. We test the effectiveness of our model on the TIMIT database (Garofolo et al., 1993). Our model shows its ability to discover sub-word units that are highly correlated with standard English phones and to capture acoustic context information. For the segmentation task, our model outperforms the state-ofthe-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006).</bodyText>
+<page confidence="0.984224">
+40
+</page>
+<note confidence="0.985716">
+Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 40–49,
+Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999656636363636">Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data.</bodyText>
+<sectionHeader confidence="0.999345" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.997904984615385">Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence among the three aspects of the problem, which allows our model to refine its solution to one sub-problem by exploiting what it has learned about other parts of the problem. Second, unlike (Lee et al., 1988; Garcia and Gish, 2006) in which the number of sub-word units to be learned is assumed to be known, our model learns the proper size from the training data directly. Instead of segmenting utterances, the authors of (Varadarajan et al., 2008) trained a single state HMM using all data at first, and then iteratively split the HMM states based on objective functions. This method achieved high performance in a phone recognition task using a label-to-phone transducer trained from some transcriptions. However, the performance seemed to rely on the quality of the transducer. For our work, we assume no transcriptions are available and measure the quality of the learned acoustic units via a spoken query detection task as in Jansen and Church (2011). Jansen and Church (2011) approached the task of unsupervised acoustic modeling by first discovering repetitive patterns in the data, and then learned a whole-word HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupervised speech segmentation methods rely on acoustic change for hypothesizing phone boundaries (Scharenborg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); particularly, we adapt the inference method used in (Goldwater, 2009) to our segmentation task. Our problem is, in principle, similar to the word segmentation problem discussed in (Goldwater, 2009). The main difference, however, is that our model is under the continuous real value domain, and the problem of (Goldwater, 2009) is under the discrete symbolic domain. For the domain our problem is applied to, our model has to include more latent variables and is more complex.</bodyText>
+<sectionHeader confidence="0.982602" genericHeader="method">
+3 Problem Formulation
+</sectionHeader>
+<bodyText confidence="0.9967135">The goal of our model, given a set of spoken utterances, is to jointly learn the following:</bodyText>
+<listItem confidence="0.987552428571429">• Segmentation: To find the phonetic boundaries within each utterance. • Nonparametric clustering: To find a proper set of clusters and group acoustically similar segments into the same cluster. • Sub-word modeling: To learn a HMM to model each sub-word acoustic unit.</listItem>
+<bodyText confidence="0.997775666666667">We model the three sub-tasks as latent variables in our approach. In this section, we describe the observed data, latent variables, and auxiliary variables of the problem and show an example in Fig.1.</bodyText>
+<page confidence="0.999613">
+41
+</page>
+<figureCaption confidence="0.993836">
+Figure 1: An example of the observed data and hidden
+variables of the problem for the word banana. See Section 3 for a detailed explanation.</figureCaption>
+<bodyText confidence="0.986300571428572">In the next section, we show the generative process our model uses to generate the observed data. Speech Feature (xit) The only observed data for our problem are a set of spoken utterances, which are converted to a series of 25 ms 13-dimensional MelFrequency Cepstral Coefficients (MFCCs) (Davis and Mermelstein, 1980) and their firstand secondorder time derivatives ata 10 ms analysis rate. We use xit E ][839 to denote the tth feature frame of the ith utterance.Fig.1 illustrates how the speech signal of a single word utterance banana is converted to a sequence of feature vectors xi1 to xi11. Boundary (bit) We use a binary variable bit to indicate whether a phone boundary exists between xit and xit+1. If our model hypothesizes xit to be the last frame of a sub-word unit, which is called a boundary frame in this paper, bit is assigned with value 1; or 0 otherwise.Fig.1 shows an example of the boundary variables where the values correspond to the true answers. We use an auxiliary variable giq to denote the index of the qth boundary frame in utterance i. To make the derivation of posterior distributions easier in Section 5, we define gi0 to be the beginning of an utterance, and Li to be the number of boundary frames in an utterance. For the example shown in Fig.1, Li is equal to 6. Segment (pij,k) We define a segment to be composed of feature vectors between two boundary frames. We use pij,k to denote a segment that consists of xij, xij+1 · · · xik and d�,k to denote the length of pij,k.See Fig.1 for more examples. Cluster Label (cij,k) We use cij,k to specify the cluster label of pij,k. We assume segment pij,k is generated by the sub-word HMM with label cij,k. HMM (Bc) In our model, each HMM has three emission states, which correspond to the beginning, middle and end of a sub-word unit (Jelinek, 1976). A traversal of each HMM must start from the first state, and only left-to-right transitions are allowed even though we allow skipping of the middle and the last state for segments shorter than three frames. The emission probability of each state is modeled by a diagonal Gaussian Mixture Model (GMM) with 8 mixtures. We use Bc to represent the set of parameters that define the cth HMM, which includes state transition probability aj,k c , and the GMM parameters of each state emission probability. We use wmc,s E ][8, µmc,s E ][839 and Amc,s E ][839 to denote the weight, mean vector and the diagonal of the inverse covariance matrix of the mth mixture in the GMM for the sth state in the cth HMM. Hidden State (sit) Since we assume the observed data are generated by HMMs, each feature vector, xit, has an associated hidden state index. We denote the hidden state of xit as sit. Mixture ID (mit) Similarly, each feature vector is assumed to be emitted by the state GMM it belongs to. We use mit to identify the Gaussian mixture that generates xit.</bodyText>
+<sectionHeader confidence="0.993111" genericHeader="method">
+4 Model
+</sectionHeader>
+<bodyText confidence="0.999991">We aim to discover and model a set of sub-word units that represent the spoken data. If we think of utterances as sequences of repeated sub-word units, then in order to find the sub-words, we need a model that concentrates probability on highly frequent patterns while still preserving probability for previously unseen ones. Dirichlet processes are particulary suitable for our goal. Therefore, we construct our model as a Dirichlet Process (DP) mixture model, of which the components are HMMs that are used</bodyText>
+<table confidence="0.7485748125">
+Pronunciation b a n a n a
+[b] [ax] [n] [ae] [n] [ax]
+Frame index (t) 1 2 3 4 5 6 7 8 9 10 11
+Speech feature (x;) 4 x2x3x4 X5 X6 x3 x3 X9 x;px;,
+Boundary variable (bti) 1 0 0 1 0 1 0 1 1 0 1
+€Boundary index (g9) go gi g3 g3 g4' g5' g6'
+€ € € € € € P7,8 P9,9 R0,11
+(Pi,k) Pi,1 P2,4 P3,6
+€Segment
+i ) 1 3 2 2 1 2
+Duration (d j,k
+€Cluster c;a c24 C5,6 C7,8 C99 40,11
+label (cijk)
+HMM (θc) θ, θ2 θ3 θ4 θ3 θ2
+Hidden state (s,) 1 1 2 3 1 3 1 3 1 1 3
+Mixture ID 1 1 6 8 3 7 5 2 8 2
+</table>
+<page confidence="0.913435">
+42
+</page>
+<figure confidence="0.999109837837838">
+π
+θ0
+αb
+€θc
+c j,k€
+bt
+dj,k
+T
+∞
+st
+xt
+dj,k
+1,k = &amp; +1,&amp;+1
+0 ≤ q &lt; L
+γ
+concentration parameter of DP
+base distribution of DP
+parameter of Bernoulli distribution
+π prior distribution for cluster labels
+bt boundary variable
+dj,k duration of a segment
+Kik cluster label
+θc IMM parameters
+st hidden state
+M, Gaussian mixture id
+X, observed feature vector
+deterministic relation
+T total number of
+observed features frames
+L total number of segments
+determined by bt
+gq the index of the boundary
+qth
+variable with value 1
+γ
+θ0
+αb
+</figure>
+<figureCaption confidence="0.999664">
+Figure 2: The graphical model for our approach. The shaded circle denotes the observed feature vectors, and the
+</figureCaption>
+<bodyText confidence="0.985751846153846">€ squares denote the hyperparameters of the priors used in our model. The dotted arrows indicate deterministic relations. Note that the Markov chain structure over the st variables is not shown here due to limited space. to model sub-word units. We assume each spoken segment is generated by one of the clusters in this DP mixture model. Here, we describe the generative process our model uses to generate the observed utterances and present the corresponding graphical model. For clarity, we assume that the values of the boundary variables M t are given in the generative process. In the next section, we explain how to infer their values. Let p9` gi for 0 &lt; q &lt; Li − 1 be the segments of the ith utterance.</bodyText>
+<equation confidence="0.930527">
+q+1,q+1 —
+</equation>
+<bodyText confidence="0.984728">Our model assumes each segment is generated as follows:</bodyText>
+<listItem confidence="0.98602">1. Choose a cluster label asz for pi si</listItem>
+<equation confidence="0.941115">
+1 9+1 gqi+1 q+1.
+</equation>
+<bodyText confidence="0.99876275">This cluster label can be either an existing label or a new one. Note that the cluster label determines which HMM is used to generate the segment.</bodyText>
+<listItem confidence="0.703369833333333">2. Given the cluster label, choose a hidden state for each feature vector xit in the segment. 3. For each xit, based on its hidden state, choose a mixture from the GMM of the chosen state. 4. Use the chosen Gaussian mixture to generate the observed feature vector xit.</listItem>
+<bodyText confidence="0.999919105263158">The generative process indicates that our model ignores utterance boundaries and views the entire data as concatenated spoken segments. Given this viewpoint, we discard the utterance index, i, of all variables in the rest of the paper. The graphical model representing this generative process is shown in Fig. 2, where the shaded circle denotes the observed feature vectors, and the squares denote the hyperparameters of the priors used in our model. Specifically, we use a Bernoulli distribution as the prior of the boundary variables and impose a Dirichlet process prior on the cluster labels and the HMM parameters. The dotted arrows represent deterministic relations. For example, the boundary variables deterministically construct the duration of each segment, d, which in turn sets the number of feature vectors that should be generated for a segment. In the next section, we show how to infer the value of each of the latent variables in Fig. 21.</bodyText>
+<sectionHeader confidence="0.999261" genericHeader="method">
+5 Inference
+</sectionHeader>
+<bodyText confidence="0.999988333333333">We employ Gibbs sampling (Gelman et al., 2004) to approximate the posterior distribution of the hidden variables in our model. To apply Gibbs sampling to our problem, we need to derive the conditional posterior distributions of each hidden variable of the model. In the following sections, we first derive the sampling equations for each hidden variable and then describe how we incorporate acoustic cues to reduce the sampling load at the end.</bodyText>
+<footnote confidence="0.744886">
+1Note that the value of 7r is irrelevant to our problem; there-
+fore, it is integrated out in the inference process
+</footnote>
+<page confidence="0.999335">
+43
+</page>
+<subsectionHeader confidence="0.997455">
+5.1 Sampling Equations
+</subsectionHeader>
+<bodyText confidence="0.999930444444444">Here we present the sampling equations for each hidden variable defined in Section 3. We use P(· |· · · ) to denote a conditional posterior probability given observed data, all the other variables, and hyperparameters for the model. Cluster Label (cj,k) Let C be the set of distinctive label values in c_j,k, which represents all the cluster labels except cj,k. The conditional posterior probability of cj,k for c ∈ C is:</bodyText>
+<equation confidence="0.9999755">
+P(cj,k = c |··· ) ∝ P(cj,k = c|c_j,k;γ)P(pj,k|θc)
+P(pj,k|θc) (1)
+</equation>
+<bodyText confidence="0.9999735">where γ is a parameter of the DP prior. The first line of Eq. 1 follows Bayes’ rule. The first term is the conditional prior, which is a result of the DP prior imposed on the cluster labels 2. The second term is the conditional likelihood, which reflects how likely the segment pj,k is generated by HMMc. We use n(c) to represent the number of cluster labels in c_j,k taking the value c and N to represent the total number of segments in current segmentation. In addition to existing cluster labels, cj,k can also take a new cluster label, which corresponds to a new sub-word unit. The corresponding conditional posterior probability is: Hidden State (st) To enforce the assumption that a traversal of an HMM must start from the first state and end at the last state3, we do not sample hidden state indices for the first and the last frame of a segment. For each of the remaining feature vectors in a segment pj,k, we sample a hidden state index according to the conditional posterior probability:</bodyText>
+<footnote confidence="0.795076666666667">
+2See (Neal, 2000) for an overview on Dirichlet process mix-
+ture models and the inference methods.
+3If a segment has only 1 frame, we assign the first state to it.
+</footnote>
+<equation confidence="0.9392475">
+P(st = s|··· ) ∝
+P(st = s|st_1)P(xt|θcj,k, st = s)P(st+1|st = s)
+= x ast-1,sP 0 s 3st+1
+cj,k t C;,k , s t = sa c,,k ( )
+</equation>
+<bodyText confidence="0.9998811">where the first term and the third term are the conditional prior – the transition probability of the HMM that pj,k belongs to. The second term is the likelihood of xt being emitted by state s of HMMcj,k. Note for initialization, st is sampled from the first prior term in Eq. 3. Mixture ID (mt) For each feature vector in a segment, given the cluster label cj,k and the hidden state index st, the derivation of the conditional posterior probability of its mixture ID is straightforward:</bodyText>
+<equation confidence="0.991920666666667">
+P(mt = m |··· )
+∝ P(mt = m|θcj,k, st)P(xt|θcj,k, st, mt = m)
+= wmcj,k,stP(xt|µmcj,k,st, λmcj,k,st) (4)
+</equation>
+<bodyText confidence="0.999149888888889">where 1 ≤ m ≤ 8. The conditional posterior consists of two terms: 1) the mixing weight of the mth Gaussian in the state GMM indexed by cj,k and st and 2) the likelihood of xt given the Gaussian mixture. The sampler draws a value for mt from the normalized distribution of Eq. 4. HMM Parameters (θc) Each θc consists of two sets of variables that define an HMM: the state emission probabilities wmc,s, µmc,s, λmc,s and the state transition probabilities aj,k c . In the following, we derive the conditional posteriors of these variables. Mixture Weight wmc,s: We use wc,s = {wmc,s|1 ≤ m ≤ 8} to denote the mixing weights of the Gaussian mixtures of state s of HMM c. We choose a symmetric Dirichlet distribution with a positive hyperparameter β as its prior. The conditional posterior probability of wc,s is:</bodyText>
+<equation confidence="0.999766333333333">
+P(wc,s |··· ) ∝ P(wc,s; β)P(mc,s|wc,s)
+∝ Dir(wc,s; β)Mul(mc,s; wc,s)
+∝ Dir(wc,s; β') (5)
+</equation>
+<bodyText confidence="0.928163">where mc,s is the set of mixture IDs of feature vectors that belong to state s of HMM c. The mth entry of β' is β + E</bodyText>
+<equation confidence="0.951821333333333">
+n(c)
+=
+N − 1 + γ
+P(cj,k =6 c, c ∈ C |··· ) ∝ γ J P(pj,k|θ) dθ
+N − 1 + γ e
+(2)
+</equation>
+<bodyText confidence="0.998280375">To deal with the integral in Eq. 2, we follow the suggestions in (Rasmussen, 2000; Neal, 2000). We sample an HMM from the prior and compute the likelihood of the segment given the new HMM to approximate the integral. Finally, by normalizing Eq. 1 and Eq. 2, the Gibbs sampler can draw a new value for cj,k by sampling from the normalized distribution.</bodyText>
+<page confidence="0.561208">
+mtEmc,s δ(mt, m), where we use δ(·)
+44
+</page>
+<equation confidence="0.988444826086957">
+P(pl,t, pt+1,r|c−, θ) = P(pl,t|c−, θ)P(pt+1,r|c−, cl,t, θ)
+&amp;quot;X #
+Z
+n(c)
+= P(pl,t|θ) dθ
+N− + γ P(pl,t|θc) + γ
+N− + γ θ
+c∈C
+&amp;quot;X nN− + 1 (c) + δ(cl,t, c) γ
+P(pt+1,r  |θc) + N− + 1 + γ J0
+γ
++
+X
+∈
+c
+C
+P(pt+1,r|θ) dθ
+#
+P(pl,r|c−, θ) = X n(c) Z
+c∈C P(pl,r|θc) + γ P(pl,r|θ) dθ
+N− + γ θ
+N− + γ
+=
+</equation>
+<bodyText confidence="0.730596">By tracking the dth dimension of feature vectors can derive the conditional posterior distribution of and analytically following the procedures</bodyText>
+<equation confidence="0.9592496">
+E
+= m,
+= s,
+= c, xt E
+I we
+</equation>
+<table confidence="0.63721975">
+shown in (Murphy, 2007). Due to limited space,
+we encourage interested readers to find more details
+in (Murphy, 2007).
+Transition Probabilities
+</table>
+<bodyText confidence="0.948754818181818">We represent the transition probabilities at state j in HMM c using If we view as mixing weights for states reachable from state j, we can simply apply the update rule derived for the mixing weights of Gaussian mixtures shown in Eq. 5 to Assume we use a symmetric Dirichlet distribution with a positive hyperparameter as the prior, the conditional posterior for is:</bodyText>
+<equation confidence="0.951229652173913">
+a
+N(µm,d
+c,s |µ0,(κ0λm,d
+c,s )−1)Ga(λm,d
+c,s |α0,β0)
+x
+{xt|mt
+st
+cj,k
+pj,k
+µm,d
+c,s
+λm,d
+c,s
+aj,k
+c :
+ajc.
+ajc
+ajc.
+η
+ajc
+P(ajc|···)
+Dir(ajc;η0)
+</equation>
+<bodyText confidence="0.9303444">where the kth entry of is + the number of occurrences of the state tran segments that belong to HMM c. Boundary Variable (bt) To derive the conditional posterior probability for bt, we introduce two variables:</bodyText>
+<equation confidence="0.8645936">
+η0
+η
+nj,k
+c ,
+sition pair (j, k) in
+</equation>
+<equation confidence="0.959453">
+l = (arg max
+g9
+r =arg min
+g9
+</equation>
+<figureCaption confidence="0.999699">
+Figure 3: The full derivation of the relative conditional posterior probabilities of a boundary variable.
+</figureCaption>
+<bodyText confidence="0.83193875">to denote the discrete Kronecker delta. The last line of Eq. 5 comes from the fact that Dirichlet distributions are a conjugate prior for multinomial distributions. This property allows us to derive the update rule analytically. Gaussian Mixture We assume the dimensions in the feature space are independent. This assumption allows us to derive the conditional posterior probability for asingle-dimensional Gaussian and generalize the results to other dimensions. Let the dth entry of where l is the index of the closest turned-on boundary variable that precedes bt plus 1, while r is the index of the closest turned-on boundary variable that follows bt.</bodyText>
+<figure confidence="0.857866904761905">
+and
+be
+and
+The conjugate prior we use for the two vari-
+ables is a normal-Gamma distribution with hyperpa-
+rameters
+an
+µmc,s,λmc,s:
+µmc,s
+λmc,s
+µm,d
+c,s
+λm,d
+c,s
+µ0,κ0,α0
+d β0 (Murphy, 2007).
+m,d m,d
+P(µc,s
+c,s
+,λ
+|µ0,κ0,α0, β0)
+</figure>
+<bodyText confidence="0.914103666666667">Note that because and gL are defined, l and r always exist for any bt. Note that the value of bt only affects segmentation between and xr. If bt is turned on, the sampler hywhere we assume that the prior probabilities for bt = 1 and bt = 0 are equal; is the set of cluster</bodyText>
+<figure confidence="0.609662631578947">
+pothesizes two segments
+and
+between
+an
+g0
+xl
+pl,t
+pt+1,r
+xl
+d xr. Otherwise, only one segment pl,r is hypoth-
+esized. Since the segmentation on the rest of the data
+remains the same no matter what value bt takes, the
+conditional posterior probability of bt is:
+=
+a
+6) (
+P(bt =
+a
+7) (
+</figure>
+<subsectionHeader confidence="0.627765">
+labels of all segments except those between
+</subsectionHeader>
+<bodyText confidence="0.928858636363636">and xr ;and indicates the set of HMMs that have associated segments. Our Gibbs sampler hypothesizes value by sampling from the normalized distribution of Eq. 6 and Eq. 7. The full derivations of Eq. 6 and Eq. 7 are shown in Fig. 3. Note that in Fig. 3, is the total number of segments in the data except those between an</bodyText>
+<equation confidence="0.990408928571429">
+P(bt
+1|···)
+P(pl,t,pt+1,r|c−,θ)
+0|···)
+P(pl,r|c−,θ)
+c−
+xl
+θ
+bt’s
+N−
+xl
+d xr.
+gq &lt; t) + 1
+t &lt; gq
+</equation>
+<page confidence="0.991207">
+45
+</page>
+<bodyText confidence="0.999491875">For bt = 1, to account the fact that when the model generates pt+1,r, pl,t is already generated and owns a cluster label, we sample a cluster label for pl,t that is reflected in the Kronecker delta function. To handle the integral in Fig. 3, we sample one HMM from the prior and compute the likelihood using the new HMM to approximate the integral as suggested in (Rasmussen, 2000; Neal, 2000).</bodyText>
+<subsectionHeader confidence="0.998974">
+5.2 Heuristic Boundary Elimination
+</subsectionHeader>
+<bodyText confidence="0.999950777777778">To reduce the inference load on the boundary variables bt, we exploit acoustic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above.</bodyText>
+<sectionHeader confidence="0.998564" genericHeader="evaluation">
+6 Experimental Setup
+</sectionHeader>
+<bodyText confidence="0.999960852941177">To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms tolerance window to compute recall, precision rates and F-score of the segmentation our model proposed for TIMIT’s training set. We compare our model against the state-of-the-art unsupervised and semi-supervised segmentation methods that were also evaluated on the TIMIT training set (Dusan and Rabiner, 2006; Qiao et al., 2008). Nonparametric Clustering Our model automatically groups speech segments into different clusters. One question we are interested in answering is whether these learned clusters correlate to English phones. To answer the question, we develop a method to map cluster labels to the phone set in a dataset. We align each cluster label in an utterance to the phone(s) it overlaps with in time by using the boundaries proposed by our model and the manually-labeled ones. When a cluster label overlaps with more than one phone, we align it to the phone with the largest overlap.4 We compile the alignment results for 3696 training utterances5 and present a confusion matrix between the learned cluster labels and the 48 phonetic units used in TIMIT (Lee and Hon, 1989). Sub-word Acoustic Modeling Finally, and most importantly, we need to gauge the quality of the learned sub-word acoustic models. In previous work, Varadarajan et al. (2008) and Garcia and Gish (2006) tested their models on a phone recognition task and a term detection task respectively. These two tasks are fair measuring methods, but performance on these tasks depends not only on the learned acoustic models, but also other components such as the label-to-phone transducer in (Varadarajan et al., 2008) and the graphone model in (Garcia and Gish, 2006). To reduce performance dependencies on components other than the acoustic model, we turn to the task of spoken term detection, which is also the measuring method used in (Jansen and Church, 2011). We compare our unsupervised acoustic model with three supervised ones: 1) an English triphone model, 2) an English monophone model and 3) a Thai monophone model. The first two were trained on TIMIT, while the Thai monophone model was trained with 32 hour clean read Thai speech from the LOTUS corpus (Kasuriya et al., 2003). All of the three models, as well as ours, used threestate HMMs to model phonetic units. To conduct spoken term detection experiments on the TIMIT dataset, we computed a posteriorgram representation for both training and test feature frames over the</bodyText>
+<footnote confidence="0.9367128">
+4Except when a cluster label is mapped to /vcl/ /b/, /vcl/ /g/
+and /vcl/ /d/, where the duration of the release /b/, /g/, /d/ is
+almost always shorter than the closure /vcl/. In this case, we
+align the cluster label to both the closure and the release.
+5The TIMIT training set excluding the sa-type subset.
+</footnote>
+<page confidence="0.996321">
+46
+</page>
+<table confidence="0.965395">
+7 αb 0 n µ0 K0 α0 00
+1 0.5 3 3 µd 5 3 3/λd
+</table>
+<tableCaption confidence="0.999202">
+Table 1: The values of the hyperparameters of our model,
+where µd and λd are the dth entry of the mean and the diagonal of the inverse covariance matrix of training data.</tableCaption>
+<bodyText confidence="0.995144794117647">HMM states for each of the four models. Ten keywords were randomly selected for the task. For every keyword, spoken examples were extracted from the training set and were searched for in the test set using segmental dynamic time warping (Zhang and Glass, 2009). In addition to the supervised acoustic models, we also compare our model against the state-ofthe-art unsupervised methods for this task (Zhang and Glass, 2009; Zhang et al., 2012). Zhang and Glass (2009) trained a GMM with 50 components to decode posteriorgrams for the feature frames, and Zhang et al. (2012) used a deep Boltzmann machine (DBM) trained with pseudo phone labels generated from an unsupervised GMM to produce a posteriorgram representation. The evaluation metrics they used were: 1) P@N, the average precision of the top N hits, where N is the number of occurrences of each keyword in the test set; 2) EER: the average equal error rate at which the false acceptance rate is equal to the false rejection rate. We also report experimental results using the P@N and EER metrics. Hyperparameters and Training Iterations The values of the hyperparameters of our model are shown in Table 1, where µd and λd are the dch entry of the mean and the diagonal of the inverse covariance matrix computed from training data. We pick these values to impose weak priors on our model.6 We run our sampler for 20,000 iterations, after which the evaluation metrics for our model all converged. In Section 7, we report the performance of our model using the sample from the last iteration.</bodyText>
+<sectionHeader confidence="0.999727" genericHeader="result">
+7 Results
+</sectionHeader>
+<bodyText confidence="0.9998932">Fig. 4 shows a confusion matrix of the 48 phones used in TIMIT and the sub-word units learned from 3696 TIMIT utterances. Each circle represents a mapping pair for a cluster label and an English phone. The confusion matrix demonstrates a strong correlation between the cluster labels and individual English phones.</bodyText>
+<footnote confidence="0.9886695">
+6In the future, we plan to extend the model and infer the
+values of these hyperparameters from data directly.
+</footnote>
+<figure confidence="0.98447752">
+120
+115
+110
+105
+100
+95
+90
+85
+80
+75
+70
+65
+60
+55
+50
+45
+40
+35
+30
+25
+20
+15
+10
+5
+0
+</figure>
+<figureCaption confidence="0.674022666666667">
+Figure 4: A confusion matrix of the learned cluster labels
+from the TIMIT training set excluding the sa type utter-
+ances and the 48 phones used in TIMIT. Note that for
+clarity, we show only pairs that occurred more than 200
+times in the alignment results. The average co-occurrence
+frequency of the mapping pairs in this figure is 431.
+</figureCaption>
+<bodyText confidence="0.999948655172414">For example, clusters 19, 20 and 21 are mapped exclusively to the vowel /ae/. A more careful examination on the alignment results shows that the three clusters are mapped to the same vowel in a different acoustic context. For example, cluster 19 is mapped to /ae/ followed by stop consonants, while cluster 20 corresponds to /ae/ followed by nasal consonants. This context-dependent relationship is also observed in other English phones and their corresponding sets of clusters. Fig.4 also shows that a cluster may be mapped to multiple English phones. For instance, clusters 85 and 89 are mapped to more than one phone; nevertheless, a closer look reveals that these clusters are mapped to /n/, /d/ and /b/, which are sounds with a similar place of articulation (i.e.labial and dental). These correlations indicate that our model is able to discover the phonetic composition of a set of speech data without any language-specific knowledge. The performance of the four acoustic models on the spoken term detection task is presented in Table 2. The English triphone model achieves the best P@N and EER results and performs slightly better than the English monophone model, which indicates a correlation between the quality of an acoustic model and its performance on the spoken term detection task. Although our unsupervised model does not perform as well as the supervised English acoustic models, it generates a comparable EER and a more accurate detection performance for top hits than the Thai monophone model.</bodyText>
+<figure confidence="0.986542829787234">
+iy
+ix
+ih
+ey
+eh
+y
+ae
+ay
+aw
+aa
+ao
+ah
+ax
+uh
+uw
+ow
+oy
+wl
+el
+er
+r
+m
+n
+en
+ng
+z
+s
+zh
+sh
+ch
+jh
+hh
+v
+f
+dh
+th
+d
+b
+dx
+g
+vcl
+t
+p
+k
+cl
+epi
+sil
+</figure>
+<page confidence="0.992844">
+47
+</page>
+<table confidence="0.998871">
+unit(%) P@N EER
+English triphone 75.9 11.7
+English monophone 74.0 11.8
+Thai monophone 56.6 14.9
+Our model 63.0 16.9
+</table>
+<tableCaption confidence="0.9959895">
+Table 2: The performance of our model and three super-
+vised acoustic models on the spoken term detection task.
+</tableCaption>
+<bodyText confidence="0.998991307692308">This indicates that even without supervision, our model captures and learns the acoustic characteristics of a language automatically and is able to produce an acoustic model that outperforms a language-mismatched acoustic model trained with high supervision. Table 3 shows that our model improves P@N by a large margin and generates only a slightly worse EER than the GMM baseline on the spoken term detection task. At the end of the training process, our model induced 169 HMMs, which were used to compute posteriorgrams. This seems unfair at first glance because Zhang and Glass (2009) only used 50 Gaussians for decoding, and the better result of our model could be a natural outcome of the higher complexity of our model. However, Zhang and Glass (2009) pointed out that using more Gaussian mixtures for their model did not improve their model performance. This indicates that the key reason for the improvement is our joint modeling method instead of simply the higher complexity of our model. Compared to the DBM baseline, our model produces a higher EER; however, it improves the relative detection precision of top hits by 24.3%. As indicated in (Zhang et al., 2012), the hierarchical structure of DBM allows the model to provide a descent posterior representation of phonetic units. Even though our model only contains simple HMMs and Gaussians, it still achieves a comparable, if not better, performance as the DBM baseline. This demonstrates that even with just a simple model structure, the proposed learning algorithm is able to acquire rich phonetic knowledge from data and generate a fine posterior representation for phonetic units. Table 4 summarizes the segmentation performance of the baselines, our model and the heuristic pre-segmentation (pre-seg) method.</bodyText>
+<table confidence="0.77638475">
+unit(%) P@N EER
+GMM (Zhang and Glass, 2009) 52.5 16.4
+DBM (Zhang et al., 2012) 51.1 14.7
+Our model 63.0 16.9
+</table>
+<tableCaption confidence="0.978047">
+Table 3: The performance of our model and the GMM
+and DBM baselines on the spoken term detection task.
+</tableCaption>
+<table confidence="0.999813">
+unit(%) Recall Precision F-score
+Dusan (2006) 75.2 66.8 70.8
+Qiao et al. (2008)* 77.5 76.3 76.9
+Our model 76.2 76.4 76.3
+Pre-seg 87.0 50.6 64.0
+</table>
+<tableCaption confidence="0.62526325">
+Table 4: The segmentation performance of the baselines,
+our model and the heuristic pre-segmentation on TIMIT
+training set. *The number of phone boundaries in each
+utterance was assumed to be known in this model.
+</tableCaption>
+<bodyText confidence="0.999936851851852">The languageindependent pre-seg method is suitable for seeding our model. It eliminates most unlikely boundaries while retaining about 87% true boundaries. Even though this indicates that at best our model only recalls 87% of the true boundaries, the pre-seg reduces the search space significantly. In addition, it also allows the model to capture proper phone durations, which compensates the fact that we do not include any explicit duration modeling mechanisms in our approach. In the best semi-supervised baseline model (Qiao et al., 2008), the number of phone boundaries in an utterance was assumed to be known. Although our model does not incorporate this information, it still achieves a very close F-score. When compared to the baseline in which the number of phone boundaries in each utterance was also unknown (Dusan and Rabiner, 2006), our model outperforms in both recall and precision, improving the relative F-score by 18.8%. The key difference between the two baselines and our method is that our model does not treat segmentation as a stand-alone problem; instead, it jointly learns segmentation, clustering and acoustic units from data. The improvement on the segmentation task shown by our model further supports the strength of the joint learning scheme proposed in this paper.</bodyText>
+<sectionHeader confidence="0.998743" genericHeader="conclusion">
+8 Conclusion
+</sectionHeader>
+<bodyText confidence="0.9564275">We present a Bayesian unsupervised approach to the problem of acoustic modeling. Without any prior knowledge, this method is able to discover phonetic units that are closely related to English phones, improve upon state-of-the-art unsupervised segmentation method and generate more precise spoken term detection performance on the TIMIT dataset.</bodyText>
+<page confidence="0.996918">
+48
+</page>
+<bodyText confidence="0.999980125">In the future, we plan to explore phonological context and use more flexible topological structures to model acoustic units within our framework.</bodyText>
+<sectionHeader confidence="0.996364" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.999905">The authors would like to thank Hung-an Chang and Ekapol Chuangsuwanich for training the English and Thai acoustic models. Thanks to Matthew Johnson, Ramesh Sridharan, Finale Doshi, S.R.K. Branavan, the MIT Spoken Language Systems group and the anonymous reviewers for helpful comments.</bodyText>
+<sectionHeader confidence="0.999434" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999947275862069">
+Chun-An Chan and Lin-Shan Lee. 2011. Unsupervised
+hidden Markov modeling of spoken queries for spo-
+ken term detection without speech recognition. In Pro-
+ceedings of INTERSPEECH, pages 2141 – 2144.
+Steven B. Davis and Paul Mermelstein. 1980. Com-
+parison of parametric representations for monosyllabic
+word recognition in continuously spoken sentences.
+IEEE Trans. on Acoustics, Speech, and Signal Pro-
+cessing, 28(4):357–366.
+Sorin Dusan and Lawrence Rabiner. 2006. On the re-
+lation between maximum spectral transition positions
+and phone boundaries. In Proceedings of INTER-
+SPEECH, pages 1317 – 1320.
+Yago Pereiro Estevan, Vincent Wan, and Odette Scharen-
+borg. 2007. Finding maximum margin segments in
+speech. In Proceedings of ICASSP, pages 937 – 940.
+Emily Fox, Erik B. Sudderth, Michael I. Jordan, and
+Alan S. Willsky. 2011. A sticky HDP-HMM with
+application to speaker diarization. Annals of Applied
+Statistics.
+Alvin Garcia and Herbert Gish. 2006. Keyword spotting
+of arbitrary words using minimal speech resources. In
+Proceedings of ICASSP, pages 949–952.
+John S. Garofolo, Lori F. Lamel, William M. Fisher,
+Jonathan G. Fiscus, David S. Pallet, Nancy L.
+Dahlgren, and Victor Zue. 1993. Timit acoustic-
+phonetic continuous speech corpus.
+Andrew Gelman, John B. Carlin, Hal S. Stern, and Don-
+ald B. Rubin. 2004. Bayesian Data Analysis. Texts
+in Statistical Science. Chapman &amp; Hall/CRC, second
+edition.
+James Glass. 2003. A probabilistic framework for
+segment-based speech recognition. Computer Speech
+and Language, 17:137 – 152.
+Sharon Goldwater. 2009. A Bayesian framework for
+word segmentation: exploring the effects of context.
+Cognition, 112:21–54.
+Aren Jansen and Kenneth Church. 2011. Towards un-
+supervised training of speaker independent acoustic
+models. In Proceedings of INTERSPEECH, pages
+1693 – 1696.
+Frederick Jelinek. 1976. Continuous speech recogni-
+tion by statistical methods. Proceedings of the IEEE,
+64:532 – 556.
+Sawit Kasuriya, Virach Sornlertlamvanich, Patcharika
+Cotsomrong, Supphanat Kanokphara, and Nattanun
+Thatphithakkul. 2003. Thai speech corpus for Thai
+speech recognition. In Proceedings of Oriental CO-
+COSDA, pages 54–61.
+Kai-Fu Lee and Hsiao-Wuen Hon. 1989. Speaker-
+independent phone recognition using hidden Markov
+models. IEEE Trans. on Acoustics, Speech, and Sig-
+nal Processing, 37:1641 – 1648.
+Chin-Hui Lee, Frank Soong, and Biing-Hwang Juang.
+1988. A segment model based approach to speech
+recognition. In Proceedings of ICASSP, pages 501–
+504.
+Kevin P. Murphy. 2007. Conjugate Bayesian analysis of
+the Gaussian distribution. Technical report, University
+of British Columbia.
+Radford M. Neal. 2000. Markov chain sampling meth-
+ods for Dirichlet process mixture models. Journal
+of Computational and Graphical Statistics, 9(2):249–
+265.
+Yu Qiao, Naoya Shimomura, and Nobuaki Minematsu.
+2008. Unsupervised optimal phoeme segmentation:
+Objectives, algorithms and comparisons. In Proceed-
+ings of ICASSP, pages 3989 – 3992.
+Carl Edward Rasmussen. 2000. The infinite Gaussian
+mixture model. In Advances in Neural Information
+Processing Systems, 12:554–560.
+Odette Scharenborg, Vincent Wan, and Mirjam Ernestus.
+2010. Unsupervised speech segmentation: An analy-
+sis of the hypothesized phone boundaries. Journal of
+the Acoustical Society of America, 127:1084–1095.
+Balakrishnan Varadarajan, Sanjeev Khudanpur, and Em-
+manuel Dupoux. 2008. Unsupervised learning of
+acoustic sub-word units. In Proceedings of ACL-08:
+HLT, Short Papers, pages 165–168.
+Yaodong Zhang and James Glass. 2009. Unsuper-
+vised spoken keyword spotting via segmental DTW
+on Gaussian posteriorgrams. In Proceedings ofASRU,
+pages 398 – 403.
+Yaodong Zhang, Ruslan Salakhutdinov, Hung-An Chang,
+and James Glass. 2012. Resource configurable spoken
+query detection using deep Boltzmann machines. In
+Proceedings of ICASSP, pages 5161–5164.
+</reference>
+<page confidence="0.999545">
+49
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.883446" no="0">
+<title confidence="0.999101">A Nonparametric Bayesian Approach to Acoustic Model Discovery</title>
+<author confidence="0.908245">Chia-ying Lee</author>
+<author confidence="0.908245">James</author>
+<affiliation confidence="0.992352">Computer Science and Artificial Intelligence Massachusetts Institute of</affiliation>
+<address confidence="0.99975">Cambridge, MA 02139,</address>
+<abstract confidence="0.999368318181818">We investigate the problem of acoustic modeling in which prior language-specific knowledge and transcribed data are unavailable. We present an unsupervised model that simultaneously segments the speech, discovers a proper set of sub-word units (e.g., phones) and learns a Hidden Markov Model (HMM) for each induced acoustic unit. Our approach is formulated as a Dirichlet process mixture model in which each mixture is an HMM that represents a sub-word unit. We apply our model to the TIMIT corpus, and the results demonstrate that our model discovers sub-word units that are highly correlated with English phones and also produces better segmentation than the state-of-the-art unsupervised baseline. We test the quality of the learned acoustic models on a spoken term detection task. Compared to the baselines, our model improves the relative precision of top hits by at least 22.1% and outperforms a language-mismatched acoustic model.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Chun-An Chan</author>
+<author>Lin-Shan Lee</author>
+</authors>
+<title>Unsupervised hidden Markov modeling of spoken queries for spoken term detection without speech recognition.</title>
+<date>2011</date>
+<booktitle>In Proceedings of INTERSPEECH,</booktitle>
+<pages>2141--2144</pages>
+<contexts>
+<context citStr="Chan and Lee, 2011" endWordPosition="362" position="2354" startWordPosition="359">onal approach, but would also allow us to build speech recognizers for any language efficiently. In this paper, we investigate the problem of unsupervised acoustic modeling with only spoken utterances as training data. As suggested in Garcia and Gish (2006), unsupervised acoustic modeling can be broken down to three sub-tasks: segmentation, clustering segments, and modeling the sound pattern of each cluster. In previous work, the three subproblems were often approached sequentially and independently in which initial steps are not related to later ones (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011). For example, the speech data was usually segmented regardless of the clustering results and the learned acoustic models. In contrast to the previous methods, we approach the problem by modeling the three sub-problems as well as the unknown set of sub-word units as latent variables in one nonparametric Bayesian model. More specifically, we formulate a Dirichlet process mixture model where each mixture is a Hidden Markov Model (HMM) used to model a subword unit and to generate observed segments of that unit. Our model seeks the set of sub-word units, segmentation, clustering and HMMs that best</context>
+<context citStr="Chan and Lee, 2011" endWordPosition="662" position="4241" startWordPosition="659"> relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence among the three aspects of the problem, which allows our model to refine its solution to one sub-problem by exploiting what it has learned about other parts of the problem. Second, unlike (Lee et al., 1988; Garcia and Gish, 2006) in which the number of sub-word units to be learned is assumed to be known, our model learns the proper size from the training data directl</context>
+</contexts>
+<marker>Chan, Lee, 2011</marker>
+<rawString>Chun-An Chan and Lin-Shan Lee. 2011. Unsupervised hidden Markov modeling of spoken queries for spoken term detection without speech recognition. In Proceedings of INTERSPEECH, pages 2141 – 2144.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven B Davis</author>
+<author>Paul Mermelstein</author>
+</authors>
+<title>Comparison of parametric representations for monosyllabic word recognition in continuously spoken sentences.</title>
+<date>1980</date>
+<journal>IEEE Trans. on Acoustics, Speech, and Signal Processing,</journal>
+<volume>28</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Davis and Mermelstein, 1980" endWordPosition="1322" position="8287" startWordPosition="1319">nt variables in our approach. In this section, we describe the observed data, latent variables, and auxiliary variables 41 Figure 1: An example of the observed data and hidden variables of the problem for the word banana. See Section 3 for a detailed explanation. of the problem and show an example in Fig. 1. In the next section, we show the generative process our model uses to generate the observed data. Speech Feature (xit) The only observed data for our problem are a set of spoken utterances, which are converted to a series of 25 ms 13-dimensional MelFrequency Cepstral Coefficients (MFCCs) (Davis and Mermelstein, 1980) and their first- and secondorder time derivatives ata 10 ms analysis rate. We use xit E ][839 to denote the tth feature frame of the ith utterance. Fig. 1 illustrates how the speech signal of a single word utterance banana is converted to a sequence of feature vectors xi1 to xi11. Boundary (bit) We use a binary variable bit to indicate whether a phone boundary exists between xit and xit+1. If our model hypothesizes xit to be the last frame of a sub-word unit, which is called a boundary frame in this paper, bit is assigned with value 1; or 0 otherwise. Fig. 1 shows an example of the boundary v</context>
+</contexts>
+<marker>Davis, Mermelstein, 1980</marker>
+<rawString>Steven B. Davis and Paul Mermelstein. 1980. Comparison of parametric representations for monosyllabic word recognition in continuously spoken sentences. IEEE Trans. on Acoustics, Speech, and Signal Processing, 28(4):357–366.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sorin Dusan</author>
+<author>Lawrence Rabiner</author>
+</authors>
+<title>On the relation between maximum spectral transition positions and phone boundaries.</title>
+<date>2006</date>
+<booktitle>In Proceedings of INTERSPEECH,</booktitle>
+<pages>1317--1320</pages>
+<contexts>
+<context citStr="Dusan and Rabiner, 2006" endWordPosition="571" position="3680" startWordPosition="568">s using Gibbs sampling. We test the effectiveness of our model on the TIMIT database (Garofolo et al., 1993). Our model shows its ability to discover sub-word units that are highly correlated with standard English phones and to capture acoustic context information. For the segmentation task, our model outperforms the state-of40 Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 40–49, Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics the-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervis</context>
+<context citStr="Dusan and Rabiner, 2006" endWordPosition="980" position="6189" startWordPosition="977">hen learned a whole-word HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupervised speech segmentation methods rely on acoustic change for hypothesizing phone boundaries (Scharenborg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); particularly, we adapt th</context>
+<context citStr="Dusan and Rabiner, 2006" endWordPosition="4159" position="23622" startWordPosition="4156">bles bt, we exploit acoustic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., </context>
+<context citStr="Dusan and Rabiner, 2006" endWordPosition="6056" position="34647" startWordPosition="6053">% of the true boundaries, the pre-seg reduces the search space significantly. In addition, it also allows the model to capture proper phone durations, which compensates the fact that we do not include any explicit duration modeling mechanisms in our approach. In the best semi-supervised baseline model (Qiao et al., 2008), the number of phone boundaries in an utterance was assumed to be known. Although our model does not incorporate this information, it still achieves a very close F-score. When compared to the baseline in which the number of phone boundaries in each utterance was also unknown (Dusan and Rabiner, 2006), our model outperforms in both recall and precision, improving the relative F-score by 18.8%. The key difference between the two baselines and our method is that our model does not treat segmentation as a stand-alone problem; instead, it jointly learns segmentation, clustering and acoustic units from data. The improvement on the segmentation task shown by our model further supports the strength of the joint learning scheme proposed in this paper. 8 Conclusion We present a Bayesian unsupervised approach to the problem of acoustic modeling. Without any prior 48 knowledge, this method is able to</context>
+</contexts>
+<marker>Dusan, Rabiner, 2006</marker>
+<rawString>Sorin Dusan and Lawrence Rabiner. 2006. On the relation between maximum spectral transition positions and phone boundaries. In Proceedings of INTERSPEECH, pages 1317 – 1320.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yago Pereiro Estevan</author>
+<author>Vincent Wan</author>
+<author>Odette Scharenborg</author>
+</authors>
+<title>Finding maximum margin segments in speech.</title>
+<date>2007</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>937--940</pages>
+<contexts>
+<context citStr="Estevan et al., 2007" endWordPosition="984" position="6212" startWordPosition="981">HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupervised speech segmentation methods rely on acoustic change for hypothesizing phone boundaries (Scharenborg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); particularly, we adapt the inference method used</context>
+<context citStr="Estevan et al., 2007" endWordPosition="4163" position="23644" startWordPosition="4160">tic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms </context>
+</contexts>
+<marker>Estevan, Wan, Scharenborg, 2007</marker>
+<rawString>Yago Pereiro Estevan, Vincent Wan, and Odette Scharenborg. 2007. Finding maximum margin segments in speech. In Proceedings of ICASSP, pages 937 – 940.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Emily Fox</author>
+<author>Erik B Sudderth</author>
+<author>Michael I Jordan</author>
+<author>Alan S Willsky</author>
+</authors>
+<title>A sticky HDP-HMM with application to speaker diarization. Annals of Applied Statistics.</title>
+<date>2011</date>
+<contexts>
+<context citStr="Fox et al., 2011" endWordPosition="1065" position="6762" startWordPosition="1062">; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); particularly, we adapt the inference method used in (Goldwater, 2009) to our segmentation task. Our problem is, in principle, similar to the word segmentation problem discussed in (Goldwater, 2009). The main difference, however, is that our model is under the continuous real value domain, and the problem of (Goldwater, 2009) is under the discrete symbolic domain. For the domain our problem is applied to, our model has to include more latent variables and is more complex. 3 Problem Formulation The goal of our model, given a set of spoken utterances, is to jointly learn the following: • Segmen</context>
+</contexts>
+<marker>Fox, Sudderth, Jordan, Willsky, 2011</marker>
+<rawString>Emily Fox, Erik B. Sudderth, Michael I. Jordan, and Alan S. Willsky. 2011. A sticky HDP-HMM with application to speaker diarization. Annals of Applied Statistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alvin Garcia</author>
+<author>Herbert Gish</author>
+</authors>
+<title>Keyword spotting of arbitrary words using minimal speech resources.</title>
+<date>2006</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>949--952</pages>
+<contexts>
+<context citStr="Garcia and Gish (2006)" endWordPosition="306" position="1992" startWordPosition="303">uage-specific knowledge, e.g., the phone set of the language, a pronunciation dictionary, but also a large amount of transcribed data. Unfortunately, these necessary data are only available for a very small number of languages in the world. Therefore, a procedure for training acoustic models without annotated data would not only be a breakthrough from the traditional approach, but would also allow us to build speech recognizers for any language efficiently. In this paper, we investigate the problem of unsupervised acoustic modeling with only spoken utterances as training data. As suggested in Garcia and Gish (2006), unsupervised acoustic modeling can be broken down to three sub-tasks: segmentation, clustering segments, and modeling the sound pattern of each cluster. In previous work, the three subproblems were often approached sequentially and independently in which initial steps are not related to later ones (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011). For example, the speech data was usually segmented regardless of the clustering results and the learned acoustic models. In contrast to the previous methods, we approach the problem by modeling the three sub-problems as well as the unkn</context>
+<context citStr="Garcia and Gish, 2006" endWordPosition="658" position="4220" startWordPosition="654">method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence among the three aspects of the problem, which allows our model to refine its solution to one sub-problem by exploiting what it has learned about other parts of the problem. Second, unlike (Lee et al., 1988; Garcia and Gish, 2006) in which the number of sub-word units to be learned is assumed to be known, our model learns the proper size from the </context>
+<context citStr="Garcia and Gish (2006)" endWordPosition="4474" position="25533" startWordPosition="4471">terance to the phone(s) it overlaps with in time by using the boundaries proposed by our model and the manually-labeled ones. When a cluster label overlaps with more than one phone, we align it to the phone with the largest overlap.4 We compile the alignment results for 3696 training utterances5 and present a confusion matrix between the learned cluster labels and the 48 phonetic units used in TIMIT (Lee and Hon, 1989). Sub-word Acoustic Modeling Finally, and most importantly, we need to gauge the quality of the learned sub-word acoustic models. In previous work, Varadarajan et al. (2008) and Garcia and Gish (2006) tested their models on a phone recognition task and a term detection task respectively. These two tasks are fair measuring methods, but performance on these tasks depends not only on the learned acoustic models, but also other components such as the label-to-phone transducer in (Varadarajan et al., 2008) and the graphone model in (Garcia and Gish, 2006). To reduce performance dependencies on components other than the acoustic model, we turn to the task of spoken term detection, which is also the measuring method used in (Jansen and Church, 2011). We compare our unsupervised acoustic model wit</context>
+</contexts>
+<marker>Garcia, Gish, 2006</marker>
+<rawString>Alvin Garcia and Herbert Gish. 2006. Keyword spotting of arbitrary words using minimal speech resources. In Proceedings of ICASSP, pages 949–952.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John S Garofolo</author>
+<author>Lori F Lamel</author>
+<author>William M Fisher</author>
+<author>Jonathan G Fiscus</author>
+<author>David S Pallet</author>
+<author>Nancy L Dahlgren</author>
+<author>Victor Zue</author>
+</authors>
+<title>Timit acousticphonetic continuous speech corpus.</title>
+<date>1993</date>
+<contexts>
+<context citStr="Garofolo et al., 1993" endWordPosition="495" position="3164" startWordPosition="492">odeling the three sub-problems as well as the unknown set of sub-word units as latent variables in one nonparametric Bayesian model. More specifically, we formulate a Dirichlet process mixture model where each mixture is a Hidden Markov Model (HMM) used to model a subword unit and to generate observed segments of that unit. Our model seeks the set of sub-word units, segmentation, clustering and HMMs that best represent the observed data through an iterative inference process. We implement the inference process using Gibbs sampling. We test the effectiveness of our model on the TIMIT database (Garofolo et al., 1993). Our model shows its ability to discover sub-word units that are highly correlated with standard English phones and to capture acoustic context information. For the segmentation task, our model outperforms the state-of40 Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 40–49, Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics the-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spot</context>
+</contexts>
+<marker>Garofolo, Lamel, Fisher, Fiscus, Pallet, Dahlgren, Zue, 1993</marker>
+<rawString>John S. Garofolo, Lori F. Lamel, William M. Fisher, Jonathan G. Fiscus, David S. Pallet, Nancy L. Dahlgren, and Victor Zue. 1993. Timit acousticphonetic continuous speech corpus.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andrew Gelman</author>
+<author>John B Carlin</author>
+<author>Hal S Stern</author>
+<author>Donald B Rubin</author>
+</authors>
+<title>Bayesian Data Analysis. Texts in Statistical Science. Chapman &amp; Hall/CRC,</title>
+<date>2004</date>
+<note>second edition.</note>
+<contexts>
+<context citStr="Gelman et al., 2004" endWordPosition="2520" position="14746" startWordPosition="2517">enote the hyperparameters of the priors used in our model. Specifically, we use a Bernoulli distribution as the prior of the boundary variables and impose a Dirichlet process prior on the cluster labels and the HMM parameters. The dotted arrows represent deterministic relations. For example, the boundary variables deterministically construct the duration of each segment, d, which in turn sets the number of feature vectors that should be generated for a segment. In the next section, we show how to infer the value of each of the latent variables in Fig. 21. 5 Inference We employ Gibbs sampling (Gelman et al., 2004) to approximate the posterior distribution of the hidden variables in our model. To apply Gibbs sampling to our problem, we need to derive the conditional posterior distributions of each hidden variable of the model. In the following sections, we first derive the sampling equations for each hidden variable and then describe how we incorporate acoustic cues to reduce the sampling load at the end. 1Note that the value of 7r is irrelevant to our problem; therefore, it is integrated out in the inference process 43 5.1 Sampling Equations Here we present the sampling equations for each hidden variab</context>
+</contexts>
+<marker>Gelman, Carlin, Stern, Rubin, 2004</marker>
+<rawString>Andrew Gelman, John B. Carlin, Hal S. Stern, and Donald B. Rubin. 2004. Bayesian Data Analysis. Texts in Statistical Science. Chapman &amp; Hall/CRC, second edition.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>James Glass</author>
+</authors>
+<title>A probabilistic framework for segment-based speech recognition.</title>
+<date>2003</date>
+<journal>Computer Speech and Language,</journal>
+<pages>17--137</pages>
+<contexts>
+<context citStr="Glass (2003)" endWordPosition="4091" position="23180" startWordPosition="4090">el generates pt+1,r, pl,t is already generated and owns a cluster label, we sample a cluster label for pl,t that is reflected in the Kronecker delta function. To handle the integral in Fig. 3, we sample one HMM from the prior and compute the likelihood using the new HMM to approximate the integral as suggested in (Rasmussen, 2000; Neal, 2000). 5.2 Heuristic Boundary Elimination To reduce the inference load on the boundary variables bt, we exploit acoustic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Ther</context>
+</contexts>
+<marker>Glass, 2003</marker>
+<rawString>James Glass. 2003. A probabilistic framework for segment-based speech recognition. Computer Speech and Language, 17:137 – 152.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sharon Goldwater</author>
+</authors>
+<title>A Bayesian framework for word segmentation: exploring the effects of context.</title>
+<date>2009</date>
+<journal>Cognition,</journal>
+<pages>112--21</pages>
+<contexts>
+<context citStr="Goldwater, 2009" endWordPosition="1061" position="6743" startWordPosition="1060">borg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); particularly, we adapt the inference method used in (Goldwater, 2009) to our segmentation task. Our problem is, in principle, similar to the word segmentation problem discussed in (Goldwater, 2009). The main difference, however, is that our model is under the continuous real value domain, and the problem of (Goldwater, 2009) is under the discrete symbolic domain. For the domain our problem is applied to, our model has to include more latent variables and is more complex. 3 Problem Formulation The goal of our model, given a set of spoken utterances, is to jointly learn the </context>
+</contexts>
+<marker>Goldwater, 2009</marker>
+<rawString>Sharon Goldwater. 2009. A Bayesian framework for word segmentation: exploring the effects of context. Cognition, 112:21–54.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Aren Jansen</author>
+<author>Kenneth Church</author>
+</authors>
+<title>Towards unsupervised training of speaker independent acoustic models.</title>
+<date>2011</date>
+<booktitle>In Proceedings of INTERSPEECH,</booktitle>
+<pages>1693--1696</pages>
+<contexts>
+<context citStr="Jansen and Church (2011)" endWordPosition="858" position="5426" startWordPosition="855">per size from the training data directly. Instead of segmenting utterances, the authors of (Varadarajan et al., 2008) trained a single state HMM using all data at first, and then iteratively split the HMM states based on objective functions. This method achieved high performance in a phone recognition task using a label-to-phone transducer trained from some transcriptions. However, the performance seemed to rely on the quality of the transducer. For our work, we assume no transcriptions are available and measure the quality of the learned acoustic units via a spoken query detection task as in Jansen and Church (2011). Jansen and Church (2011) approached the task of unsupervised acoustic modeling by first discovering repetitive patterns in the data, and then learned a whole-word HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupe</context>
+<context citStr="Jansen and Church, 2011" endWordPosition="4567" position="26085" startWordPosition="4564">. In previous work, Varadarajan et al. (2008) and Garcia and Gish (2006) tested their models on a phone recognition task and a term detection task respectively. These two tasks are fair measuring methods, but performance on these tasks depends not only on the learned acoustic models, but also other components such as the label-to-phone transducer in (Varadarajan et al., 2008) and the graphone model in (Garcia and Gish, 2006). To reduce performance dependencies on components other than the acoustic model, we turn to the task of spoken term detection, which is also the measuring method used in (Jansen and Church, 2011). We compare our unsupervised acoustic model with three supervised ones: 1) an English triphone model, 2) an English monophone model and 3) a Thai monophone model. The first two were trained on TIMIT, while the Thai monophone model was trained with 32 hour clean read Thai speech from the LOTUS corpus (Kasuriya et al., 2003). All of the three models, as well as ours, used threestate HMMs to model phonetic units. To conduct spoken term detection experiments on the TIMIT dataset, we computed a posteriorgram representation for both training and test feature frames over the 4Except when a cluster l</context>
+</contexts>
+<marker>Jansen, Church, 2011</marker>
+<rawString>Aren Jansen and Kenneth Church. 2011. Towards unsupervised training of speaker independent acoustic models. In Proceedings of INTERSPEECH, pages 1693 – 1696.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Frederick Jelinek</author>
+</authors>
+<title>Continuous speech recognition by statistical methods.</title>
+<date>1976</date>
+<booktitle>Proceedings of the IEEE, 64:532 –</booktitle>
+<pages>556</pages>
+<contexts>
+<context citStr="Jelinek, 1976" endWordPosition="1607" position="9805" startWordPosition="1606">undary frames in an utterance. For the example shown in Fig. 1, Li is equal to 6. Segment (pij,k) We define a segment to be composed of feature vectors between two boundary frames. We use pij,k to denote a segment that consists of xij, xij+1 · · · xik and d�,k to denote the length of pij,k. See Fig. 1 for more examples. Cluster Label (cij,k) We use cij,k to specify the cluster label of pij,k. We assume segment pij,k is generated by the sub-word HMM with label cij,k. HMM (Bc) In our model, each HMM has three emission states, which correspond to the beginning, middle and end of a sub-word unit (Jelinek, 1976). A traversal of each HMM must start from the first state, and only left-to-right transitions are allowed even though we allow skipping of the middle and the last state for segments shorter than three frames. The emission probability of each state is modeled by a diagonal Gaussian Mixture Model (GMM) with 8 mixtures. We use Bc to represent the set of parameters that define the cth HMM, which includes state transition probability aj,k c , and the GMM parameters of each state emission probability. We use wmc,s E ][8, µmc,s E ][839 and Amc,s E ][839 to denote the weight, mean vector and the diago</context>
+</contexts>
+<marker>Jelinek, 1976</marker>
+<rawString>Frederick Jelinek. 1976. Continuous speech recognition by statistical methods. Proceedings of the IEEE, 64:532 – 556.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sawit Kasuriya</author>
+</authors>
+<title>Virach Sornlertlamvanich, Patcharika Cotsomrong, Supphanat Kanokphara, and Nattanun Thatphithakkul.</title>
+<date>2003</date>
+<booktitle>In Proceedings of Oriental COCOSDA,</booktitle>
+<pages>54--61</pages>
+<marker>Kasuriya, 2003</marker>
+<rawString>Sawit Kasuriya, Virach Sornlertlamvanich, Patcharika Cotsomrong, Supphanat Kanokphara, and Nattanun Thatphithakkul. 2003. Thai speech corpus for Thai speech recognition. In Proceedings of Oriental COCOSDA, pages 54–61.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kai-Fu Lee</author>
+<author>Hsiao-Wuen Hon</author>
+</authors>
+<title>Speakerindependent phone recognition using hidden Markov models.</title>
+<date>1989</date>
+<journal>IEEE Trans. on Acoustics, Speech, and Signal Processing,</journal>
+<pages>37--1641</pages>
+<contexts>
+<context citStr="Lee and Hon, 1989" endWordPosition="4443" position="25333" startWordPosition="4440">is whether these learned clusters correlate to English phones. To answer the question, we develop a method to map cluster labels to the phone set in a dataset. We align each cluster label in an utterance to the phone(s) it overlaps with in time by using the boundaries proposed by our model and the manually-labeled ones. When a cluster label overlaps with more than one phone, we align it to the phone with the largest overlap.4 We compile the alignment results for 3696 training utterances5 and present a confusion matrix between the learned cluster labels and the 48 phonetic units used in TIMIT (Lee and Hon, 1989). Sub-word Acoustic Modeling Finally, and most importantly, we need to gauge the quality of the learned sub-word acoustic models. In previous work, Varadarajan et al. (2008) and Garcia and Gish (2006) tested their models on a phone recognition task and a term detection task respectively. These two tasks are fair measuring methods, but performance on these tasks depends not only on the learned acoustic models, but also other components such as the label-to-phone transducer in (Varadarajan et al., 2008) and the graphone model in (Garcia and Gish, 2006). To reduce performance dependencies on comp</context>
+</contexts>
+<marker>Lee, Hon, 1989</marker>
+<rawString>Kai-Fu Lee and Hsiao-Wuen Hon. 1989. Speakerindependent phone recognition using hidden Markov models. IEEE Trans. on Acoustics, Speech, and Signal Processing, 37:1641 – 1648.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chin-Hui Lee</author>
+<author>Frank Soong</author>
+<author>Biing-Hwang Juang</author>
+</authors>
+<title>A segment model based approach to speech recognition.</title>
+<date>1988</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>501--504</pages>
+<contexts>
+<context citStr="Lee et al., 1988" endWordPosition="354" position="2310" startWordPosition="351">t only be a breakthrough from the traditional approach, but would also allow us to build speech recognizers for any language efficiently. In this paper, we investigate the problem of unsupervised acoustic modeling with only spoken utterances as training data. As suggested in Garcia and Gish (2006), unsupervised acoustic modeling can be broken down to three sub-tasks: segmentation, clustering segments, and modeling the sound pattern of each cluster. In previous work, the three subproblems were often approached sequentially and independently in which initial steps are not related to later ones (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011). For example, the speech data was usually segmented regardless of the clustering results and the learned acoustic models. In contrast to the previous methods, we approach the problem by modeling the three sub-problems as well as the unknown set of sub-word units as latent variables in one nonparametric Bayesian model. More specifically, we formulate a Dirichlet process mixture model where each mixture is a Hidden Markov Model (HMM) used to model a subword unit and to generate observed segments of that unit. Our model seeks the set of sub-word units,</context>
+<context citStr="Lee et al., 1988" endWordPosition="653" position="4197" startWordPosition="650">-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence among the three aspects of the problem, which allows our model to refine its solution to one sub-problem by exploiting what it has learned about other parts of the problem. Second, unlike (Lee et al., 1988; Garcia and Gish, 2006) in which the number of sub-word units to be learned is assumed to be known, our model learns th</context>
+</contexts>
+<marker>Lee, Soong, Juang, 1988</marker>
+<rawString>Chin-Hui Lee, Frank Soong, and Biing-Hwang Juang. 1988. A segment model based approach to speech recognition. In Proceedings of ICASSP, pages 501– 504.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kevin P Murphy</author>
+</authors>
+<title>Conjugate Bayesian analysis of the Gaussian distribution.</title>
+<date>2007</date>
+<tech>Technical report,</tech>
+<institution>University of British Columbia.</institution>
+<contexts>
+<context citStr="Murphy, 2007" endWordPosition="3445" position="19606" startWordPosition="3444"> the Gibbs sampler can draw a new value for cj,k by sampling from the normalized distribution. mtEmc,s δ(mt, m), where we use δ(·) 44 P(pl,t, pt+1,r|c−, θ) = P(pl,t|c−, θ)P(pt+1,r|c−, cl,t, θ) &amp;quot;X # Z n(c) = P(pl,t|θ) dθ N− + γ P(pl,t|θc) + γ N− + γ θ c∈C &amp;quot;X nN− + 1 (c) + δ(cl,t, c) γ P(pt+1,r |θc) + N− + 1 + γ J0 γ + X ∈ c C P(pt+1,r|θ) dθ # P(pl,r|c−, θ) = X n(c) Z c∈C P(pl,r|θc) + γ P(pl,r|θ) dθ N− + γ θ N− + γ = By tracking the dth dimension of feature vectors E = m, = s, = c, xt E I we can derive the conditional posterior distribution of and analytically following the procedures shown in (Murphy, 2007). Due to limited space, we encourage interested readers to find more details in (Murphy, 2007). Transition Probabilities We represent the transition probabilities at state j in HMM c using If we view as mixing weights for states reachable from state j, we can simply apply the update rule derived for the mixing weights of Gaussian mixtures shown in Eq. 5 to Assume we use a symmetric Dirichlet distribution with a positive hyperparameter as the prior, the conditional posterior for is: a N(µm,d c,s |µ0,(κ0λm,d c,s )−1)Ga(λm,d c,s |α0,β0) x {xt|mt st cj,k pj,k µm,d c,s λm,d c,s aj,k c : ajc. ajc aj</context>
+<context citStr="Murphy, 2007" endWordPosition="3733" position="21291" startWordPosition="3732">q. 5 comes from the fact that Dirichlet distributions are a conjugate prior for multinomial distributions. This property allows us to derive the update rule analytically. Gaussian Mixture We assume the dimensions in the feature space are independent. This assumption allows us to derive the conditional posterior probability for asingle-dimensional Gaussian and generalize the results to other dimensions. Let the dth entry of and be and The conjugate prior we use for the two variables is a normal-Gamma distribution with hyperparameters an µmc,s,λmc,s: µmc,s λmc,s µm,d c,s λm,d c,s µ0,κ0,α0 d β0 (Murphy, 2007). m,d m,d P(µc,s c,s ,λ |µ0,κ0,α0, β0) where l is the index of the closest turned-on boundary variable that precedes bt plus 1, while r is the index of the closest turned-on boundary variable that follows bt. Note that because and gL are defined, l and r always exist for any bt. Note that the value of bt only affects segmentation between and xr. If bt is turned on, the sampler hypothesizes two segments and between an g0 xl pl,t pt+1,r xl d xr. Otherwise, only one segment pl,r is hypothesized. Since the segmentation on the rest of the data remains the same no matter what value bt takes, the con</context>
+</contexts>
+<marker>Murphy, 2007</marker>
+<rawString>Kevin P. Murphy. 2007. Conjugate Bayesian analysis of the Gaussian distribution. Technical report, University of British Columbia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Radford M Neal</author>
+</authors>
+<title>Markov chain sampling methods for Dirichlet process mixture models.</title>
+<date>2000</date>
+<journal>Journal of Computational and Graphical Statistics,</journal>
+<volume>9</volume>
+<issue>2</issue>
+<pages>265</pages>
+<contexts>
+<context citStr="Neal, 2000" endWordPosition="2866" position="16688" startWordPosition="2865">We use n(c) to represent the number of cluster labels in c_j,k taking the value c and N to represent the total number of segments in current segmentation. In addition to existing cluster labels, cj,k can also take a new cluster label, which corresponds to a new sub-word unit. The corresponding conditional posterior probability is: Hidden State (st) To enforce the assumption that a traversal of an HMM must start from the first state and end at the last state3, we do not sample hidden state indices for the first and the last frame of a segment. For each of the remaining feature vectors in 2See (Neal, 2000) for an overview on Dirichlet process mixture models and the inference methods. 3If a segment has only 1 frame, we assign the first state to it. a segment pj,k, we sample a hidden state index according to the conditional posterior probability: P(st = s|··· ) ∝ P(st = s|st_1)P(xt|θcj,k, st = s)P(st+1|st = s) = x ast-1,sP 0 s 3st+1 cj,k t C;,k , s t = sa c,,k ( ) where the first term and the third term are the conditional prior – the transition probability of the HMM that pj,k belongs to. The second term is the likelihood of xt being emitted by state s of HMMcj,k. Note for initialization, st is </context>
+<context citStr="Neal, 2000" endWordPosition="3283" position="18830" startWordPosition="3282">c,s|1 ≤ m ≤ 8} to denote the mixing weights of the Gaussian mixtures of state s of HMM c. We choose a symmetric Dirichlet distribution with a positive hyperparameter β as its prior. The conditional posterior probability of wc,s is: P(wc,s |··· ) ∝ P(wc,s; β)P(mc,s|wc,s) ∝ Dir(wc,s; β)Mul(mc,s; wc,s) ∝ Dir(wc,s; β') (5) where mc,s is the set of mixture IDs of feature vectors that belong to state s of HMM c. The mth entry of β' is β + E n(c) = N − 1 + γ P(cj,k =6 c, c ∈ C |··· ) ∝ γ J P(pj,k|θ) dθ N − 1 + γ e (2) To deal with the integral in Eq. 2, we follow the suggestions in (Rasmussen, 2000; Neal, 2000). We sample an HMM from the prior and compute the likelihood of the segment given the new HMM to approximate the integral. Finally, by normalizing Eq. 1 and Eq. 2, the Gibbs sampler can draw a new value for cj,k by sampling from the normalized distribution. mtEmc,s δ(mt, m), where we use δ(·) 44 P(pl,t, pt+1,r|c−, θ) = P(pl,t|c−, θ)P(pt+1,r|c−, cl,t, θ) &amp;quot;X # Z n(c) = P(pl,t|θ) dθ N− + γ P(pl,t|θc) + γ N− + γ θ c∈C &amp;quot;X nN− + 1 (c) + δ(cl,t, c) γ P(pt+1,r |θc) + N− + 1 + γ J0 γ + X ∈ c C P(pt+1,r|θ) dθ # P(pl,r|c−, θ) = X n(c) Z c∈C P(pl,r|θc) + γ P(pl,r|θ) dθ N− + γ θ N− + γ = By tracking the dt</context>
+<context citStr="Neal, 2000" endWordPosition="4049" position="22912" startWordPosition="4048">nd Eq. 7 are shown in Fig. 3. Note that in Fig. 3, is the total number of segments in the data except those between an P(bt 1|···) P(pl,t,pt+1,r|c−,θ) 0|···) P(pl,r|c−,θ) c− xl θ bt’s N− xl d xr. gq &lt; t) + 1 t &lt; gq 45 For bt = 1, to account the fact that when the model generates pt+1,r, pl,t is already generated and owns a cluster label, we sample a cluster label for pl,t that is reflected in the Kronecker delta function. To handle the integral in Fig. 3, we sample one HMM from the prior and compute the likelihood using the new HMM to approximate the integral as suggested in (Rasmussen, 2000; Neal, 2000). 5.2 Heuristic Boundary Elimination To reduce the inference load on the boundary variables bt, we exploit acoustic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic mode</context>
+</contexts>
+<marker>Neal, 2000</marker>
+<rawString>Radford M. Neal. 2000. Markov chain sampling methods for Dirichlet process mixture models. Journal of Computational and Graphical Statistics, 9(2):249– 265.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yu Qiao</author>
+<author>Naoya Shimomura</author>
+<author>Nobuaki Minematsu</author>
+</authors>
+<title>Unsupervised optimal phoeme segmentation: Objectives, algorithms and comparisons.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>3989--3992</pages>
+<contexts>
+<context citStr="Qiao et al., 2008" endWordPosition="976" position="6164" startWordPosition="973"> in the data, and then learned a whole-word HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupervised speech segmentation methods rely on acoustic change for hypothesizing phone boundaries (Scharenborg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; Fox et al., 2011); </context>
+<context citStr="Qiao et al., 2008" endWordPosition="4167" position="23663" startWordPosition="4164">e space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms tolerance window to</context>
+<context citStr="Qiao et al. (2008)" endWordPosition="5870" position="33489" startWordPosition="5867"> the DBM baseline. This demonstrates that even with just a simple model structure, the proposed learning algorithm is able to acquire rich phonetic knowledge from data and generate a fine posterior representation for phonetic units. Table 4 summarizes the segmentation performance of the baselines, our model and the heuristic unit(%) P@N EER GMM (Zhang and Glass, 2009) 52.5 16.4 DBM (Zhang et al., 2012) 51.1 14.7 Our model 63.0 16.9 Table 3: The performance of our model and the GMM and DBM baselines on the spoken term detection task. unit(%) Recall Precision F-score Dusan (2006) 75.2 66.8 70.8 Qiao et al. (2008)* 77.5 76.3 76.9 Our model 76.2 76.4 76.3 Pre-seg 87.0 50.6 64.0 Table 4: The segmentation performance of the baselines, our model and the heuristic pre-segmentation on TIMIT training set. *The number of phone boundaries in each utterance was assumed to be known in this model. pre-segmentation (pre-seg) method. The languageindependent pre-seg method is suitable for seeding our model. It eliminates most unlikely boundaries while retaining about 87% true boundaries. Even though this indicates that at best our model only recalls 87% of the true boundaries, the pre-seg reduces the search space sig</context>
+</contexts>
+<marker>Qiao, Shimomura, Minematsu, 2008</marker>
+<rawString>Yu Qiao, Naoya Shimomura, and Nobuaki Minematsu. 2008. Unsupervised optimal phoeme segmentation: Objectives, algorithms and comparisons. In Proceedings of ICASSP, pages 3989 – 3992.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Carl Edward Rasmussen</author>
+</authors>
+<title>The infinite Gaussian mixture model.</title>
+<date>2000</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>12--554</pages>
+<contexts>
+<context citStr="Rasmussen, 2000" endWordPosition="3281" position="18817" startWordPosition="3280">We use wc,s = {wmc,s|1 ≤ m ≤ 8} to denote the mixing weights of the Gaussian mixtures of state s of HMM c. We choose a symmetric Dirichlet distribution with a positive hyperparameter β as its prior. The conditional posterior probability of wc,s is: P(wc,s |··· ) ∝ P(wc,s; β)P(mc,s|wc,s) ∝ Dir(wc,s; β)Mul(mc,s; wc,s) ∝ Dir(wc,s; β') (5) where mc,s is the set of mixture IDs of feature vectors that belong to state s of HMM c. The mth entry of β' is β + E n(c) = N − 1 + γ P(cj,k =6 c, c ∈ C |··· ) ∝ γ J P(pj,k|θ) dθ N − 1 + γ e (2) To deal with the integral in Eq. 2, we follow the suggestions in (Rasmussen, 2000; Neal, 2000). We sample an HMM from the prior and compute the likelihood of the segment given the new HMM to approximate the integral. Finally, by normalizing Eq. 1 and Eq. 2, the Gibbs sampler can draw a new value for cj,k by sampling from the normalized distribution. mtEmc,s δ(mt, m), where we use δ(·) 44 P(pl,t, pt+1,r|c−, θ) = P(pl,t|c−, θ)P(pt+1,r|c−, cl,t, θ) &amp;quot;X # Z n(c) = P(pl,t|θ) dθ N− + γ P(pl,t|θc) + γ N− + γ θ c∈C &amp;quot;X nN− + 1 (c) + δ(cl,t, c) γ P(pt+1,r |θc) + N− + 1 + γ J0 γ + X ∈ c C P(pt+1,r|θ) dθ # P(pl,r|c−, θ) = X n(c) Z c∈C P(pl,r|θc) + γ P(pl,r|θ) dθ N− + γ θ N− + γ = By tr</context>
+<context citStr="Rasmussen, 2000" endWordPosition="4047" position="22899" startWordPosition="4046">ations of Eq. 6 and Eq. 7 are shown in Fig. 3. Note that in Fig. 3, is the total number of segments in the data except those between an P(bt 1|···) P(pl,t,pt+1,r|c−,θ) 0|···) P(pl,r|c−,θ) c− xl θ bt’s N− xl d xr. gq &lt; t) + 1 t &lt; gq 45 For bt = 1, to account the fact that when the model generates pt+1,r, pl,t is already generated and owns a cluster label, we sample a cluster label for pl,t that is reflected in the Kronecker delta function. To handle the integral in Fig. 3, we sample one HMM from the prior and compute the likelihood using the new HMM to approximate the integral as suggested in (Rasmussen, 2000; Neal, 2000). 5.2 Heuristic Boundary Elimination To reduce the inference load on the boundary variables bt, we exploit acoustic cues in the feature space to eliminate bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for </context>
+</contexts>
+<marker>Rasmussen, 2000</marker>
+<rawString>Carl Edward Rasmussen. 2000. The infinite Gaussian mixture model. In Advances in Neural Information Processing Systems, 12:554–560.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Odette Scharenborg</author>
+<author>Vincent Wan</author>
+<author>Mirjam Ernestus</author>
+</authors>
+<title>Unsupervised speech segmentation: An analysis of the hypothesized phone boundaries.</title>
+<date>2010</date>
+<journal>Journal of the Acoustical Society of America,</journal>
+<pages>127--1084</pages>
+<contexts>
+<context citStr="Scharenborg et al., 2010" endWordPosition="972" position="6145" startWordPosition="969">vering repetitive patterns in the data, and then learned a whole-word HMM for each found pattern, where the state number of each HMM depends on the average length of the pattern. The states of the whole-word HMMs were then collapsed and used to represent acoustic units. Instead of discovering repetitive patterns first, our model is able to learn from any given data. Unsupervised Speech Segmentation One goal of our model is to segment speech data into small sub-word (e.g., phone) segments. Most unsupervised speech segmentation methods rely on acoustic change for hypothesizing phone boundaries (Scharenborg et al., 2010; Qiao et al., 2008; Dusan and Rabiner, 2006; Estevan et al., 2007). Even though the overall approaches differ, these algorithms are all one-stage and bottom-up segmentation methods (Scharenborg et al., 2010). Our model does not make a single one-stage decision; instead, it infers the segmentation through an iterative process and exploits the learned sub-word models to guide its hypotheses on phone boundaries. Bayesian Model for Segmentation Our model is inspired by previous applications of nonparametric Bayesian models to segmentation problems in NLP and speaker diarization (Goldwater, 2009; </context>
+<context citStr="Scharenborg et al., 2010" endWordPosition="4257" position="24227" startWordPosition="4254">an and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms tolerance window to compute recall, precision rates and F-score of the segmentation our model proposed for TIMIT’s training set. We compare our model against the state-of-the-art unsupervised and semi-supervised segmentation methods that were also evaluated on the TIMIT training set (Dusan and Rabiner, 2006; Qiao et al., 2008). Nonparametric Clustering Our model automatically groups speech segments into different clusters. One question we are interested in answering is whether these learned clusters correlate to English phones. To answer the question, we develop a method to ma</context>
+</contexts>
+<marker>Scharenborg, Wan, Ernestus, 2010</marker>
+<rawString>Odette Scharenborg, Vincent Wan, and Mirjam Ernestus. 2010. Unsupervised speech segmentation: An analysis of the hypothesized phone boundaries. Journal of the Acoustical Society of America, 127:1084–1095.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Balakrishnan Varadarajan</author>
+<author>Sanjeev Khudanpur</author>
+<author>Emmanuel Dupoux</author>
+</authors>
+<title>Unsupervised learning of acoustic sub-word units.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-08: HLT, Short Papers,</booktitle>
+<pages>165--168</pages>
+<contexts>
+<context citStr="Varadarajan et al., 2008" endWordPosition="775" position="4919" startWordPosition="772">deling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence among the three aspects of the problem, which allows our model to refine its solution to one sub-problem by exploiting what it has learned about other parts of the problem. Second, unlike (Lee et al., 1988; Garcia and Gish, 2006) in which the number of sub-word units to be learned is assumed to be known, our model learns the proper size from the training data directly. Instead of segmenting utterances, the authors of (Varadarajan et al., 2008) trained a single state HMM using all data at first, and then iteratively split the HMM states based on objective functions. This method achieved high performance in a phone recognition task using a label-to-phone transducer trained from some transcriptions. However, the performance seemed to rely on the quality of the transducer. For our work, we assume no transcriptions are available and measure the quality of the learned acoustic units via a spoken query detection task as in Jansen and Church (2011). Jansen and Church (2011) approached the task of unsupervised acoustic modeling by first dis</context>
+<context citStr="Varadarajan et al. (2008)" endWordPosition="4469" position="25506" startWordPosition="4466">gn each cluster label in an utterance to the phone(s) it overlaps with in time by using the boundaries proposed by our model and the manually-labeled ones. When a cluster label overlaps with more than one phone, we align it to the phone with the largest overlap.4 We compile the alignment results for 3696 training utterances5 and present a confusion matrix between the learned cluster labels and the 48 phonetic units used in TIMIT (Lee and Hon, 1989). Sub-word Acoustic Modeling Finally, and most importantly, we need to gauge the quality of the learned sub-word acoustic models. In previous work, Varadarajan et al. (2008) and Garcia and Gish (2006) tested their models on a phone recognition task and a term detection task respectively. These two tasks are fair measuring methods, but performance on these tasks depends not only on the learned acoustic models, but also other components such as the label-to-phone transducer in (Varadarajan et al., 2008) and the graphone model in (Garcia and Gish, 2006). To reduce performance dependencies on components other than the acoustic model, we turn to the task of spoken term detection, which is also the measuring method used in (Jansen and Church, 2011). We compare our unsu</context>
+</contexts>
+<marker>Varadarajan, Khudanpur, Dupoux, 2008</marker>
+<rawString>Balakrishnan Varadarajan, Sanjeev Khudanpur, and Emmanuel Dupoux. 2008. Unsupervised learning of acoustic sub-word units. In Proceedings of ACL-08: HLT, Short Papers, pages 165–168.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yaodong Zhang</author>
+<author>James Glass</author>
+</authors>
+<title>Unsupervised spoken keyword spotting via segmental DTW on Gaussian posteriorgrams.</title>
+<date>2009</date>
+<booktitle>In Proceedings ofASRU,</booktitle>
+<pages>398--403</pages>
+<contexts>
+<context citStr="Zhang and Glass, 2009" endWordPosition="597" position="3851" startWordPosition="594">highly correlated with standard English phones and to capture acoustic context information. For the segmentation task, our model outperforms the state-of40 Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 40–49, Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics the-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not</context>
+<context citStr="Zhang and Glass, 2009" endWordPosition="4171" position="23686" startWordPosition="4168">e bt’s that are unlikely to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms tolerance window to compute recall, precis</context>
+<context citStr="Zhang and Glass, 2009" endWordPosition="4814" position="27445" startWordPosition="4811">osure /vcl/. In this case, we align the cluster label to both the closure and the release. 5The TIMIT training set excluding the sa-type subset. 46 7 αb 0 n µ0 K0 α0 00 1 0.5 3 3 µd 5 3 3/λd Table 1: The values of the hyperparameters of our model, where µd and λd are the dth entry of the mean and the diagonal of the inverse covariance matrix of training data. HMM states for each of the four models. Ten keywords were randomly selected for the task. For every keyword, spoken examples were extracted from the training set and were searched for in the test set using segmental dynamic time warping (Zhang and Glass, 2009). In addition to the supervised acoustic models, we also compare our model against the state-ofthe-art unsupervised methods for this task (Zhang and Glass, 2009; Zhang et al., 2012). Zhang and Glass (2009) trained a GMM with 50 components to decode posteriorgrams for the feature frames, and Zhang et al. (2012) used a deep Boltzmann machine (DBM) trained with pseudo phone labels generated from an unsupervised GMM to produce a posteriorgram representation. The evaluation metrics they used were: 1) P@N, the average precision of the top N hits, where N is the number of occurrences of each keyword </context>
+<context citStr="Zhang and Glass (2009)" endWordPosition="5628" position="32042" startWordPosition="5625">its than the Thai monophone model. This indicates that even without supervision, our model captures and learns the acoustic characteristics of a language automatically and is able to produce an acoustic model that outperforms a language-mismatched acoustic model trained with high supervision. Table 3 shows that our model improves P@N by a large margin and generates only a slightly worse EER than the GMM baseline on the spoken term detection task. At the end of the training process, our model induced 169 HMMs, which were used to compute posteriorgrams. This seems unfair at first glance because Zhang and Glass (2009) only used 50 Gaussians for decoding, and the better result of our model could be a natural outcome of the higher complexity of our model. However, Zhang and Glass (2009) pointed out that using more Gaussian mixtures for their model did not improve their model performance. This indicates that the key reason for the improvement is our joint modeling method instead of simply the higher complexity of our model. Compared to the DBM baseline, our model produces a higher EER; however, it improves the relative detection precision of top hits by 24.3%. As indicated in (Zhang et al., 2012), the hierarc</context>
+</contexts>
+<marker>Zhang, Glass, 2009</marker>
+<rawString>Yaodong Zhang and James Glass. 2009. Unsupervised spoken keyword spotting via segmental DTW on Gaussian posteriorgrams. In Proceedings ofASRU, pages 398 – 403.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yaodong Zhang</author>
+<author>Ruslan Salakhutdinov</author>
+<author>Hung-An Chang</author>
+<author>James Glass</author>
+</authors>
+<title>Resource configurable spoken query detection using deep Boltzmann machines.</title>
+<date>2012</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>5161--5164</pages>
+<contexts>
+<context citStr="Zhang et al., 2012" endWordPosition="601" position="3872" startWordPosition="598">standard English phones and to capture acoustic context information. For the segmentation task, our model outperforms the state-of40 Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 40–49, Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics the-art unsupervised method and improves the relative F-score by 18.8 points (Dusan and Rabiner, 2006). Finally, we test the quality of the learned acoustic models through a keyword spotting task. Compared to the state-of-the-art unsupervised methods (Zhang and Glass, 2009; Zhang et al., 2012), our model yields a relative improvement in precision of top hits by at least 22.1% with only some degradation in equal error rate (EER), and outperforms a language-mismatched acoustic model trained with supervised data. 2 Related Work Unsupervised Sub-word Modeling We follow the general guideline used in (Lee et al., 1988; Garcia and Gish, 2006; Chan and Lee, 2011) and approach the problem of unsupervised acoustic modeling by solving three sub-problems of the task: segmentation, clustering and modeling each cluster. The key difference, however, is that our model does not assume independence </context>
+<context citStr="Zhang et al., 2012" endWordPosition="4175" position="23707" startWordPosition="4172">y to be phonetic boundaries. We follow the pre-segmentation method described in Glass (2003) to achieve the goal. For the rest of the boundary variables that are proposed by the heuristic algorithm, we randomly initialize their values and proceed with the sampling process described above. 6 Experimental Setup To the best of our knowledge, there are no standard corpora for evaluating unsupervised methods for acoustic modeling. However, numerous related studies have reported performance on the TIMIT corpus (Dusan and Rabiner, 2006; Estevan et al., 2007; Qiao et al., 2008; Zhang and Glass, 2009; Zhang et al., 2012), which creates a set of strong baselines for us to compare against. Therefore, the TIMIT corpus is chosen as the evaluation set for our model. In this section, we describe the methods used to measure the performance of our model on the following three tasks: sub-word acoustic modeling, segmentation and nonparametric clustering. Unsupervised Segmentation We compare the phonetic boundaries proposed by our model to the manual labels provided in the TIMIT dataset. We follow the suggestion of (Scharenborg et al., 2010) and use a 20-ms tolerance window to compute recall, precision rates and F-score</context>
+<context citStr="Zhang et al., 2012" endWordPosition="4843" position="27626" startWordPosition="4840">3 3/λd Table 1: The values of the hyperparameters of our model, where µd and λd are the dth entry of the mean and the diagonal of the inverse covariance matrix of training data. HMM states for each of the four models. Ten keywords were randomly selected for the task. For every keyword, spoken examples were extracted from the training set and were searched for in the test set using segmental dynamic time warping (Zhang and Glass, 2009). In addition to the supervised acoustic models, we also compare our model against the state-ofthe-art unsupervised methods for this task (Zhang and Glass, 2009; Zhang et al., 2012). Zhang and Glass (2009) trained a GMM with 50 components to decode posteriorgrams for the feature frames, and Zhang et al. (2012) used a deep Boltzmann machine (DBM) trained with pseudo phone labels generated from an unsupervised GMM to produce a posteriorgram representation. The evaluation metrics they used were: 1) P@N, the average precision of the top N hits, where N is the number of occurrences of each keyword in the test set; 2) EER: the average equal error rate at which the false acceptance rate is equal to the false rejection rate. We also report experimental results using the P@N and </context>
+<context citStr="Zhang et al., 2012" endWordPosition="5730" position="32629" startWordPosition="5727">e because Zhang and Glass (2009) only used 50 Gaussians for decoding, and the better result of our model could be a natural outcome of the higher complexity of our model. However, Zhang and Glass (2009) pointed out that using more Gaussian mixtures for their model did not improve their model performance. This indicates that the key reason for the improvement is our joint modeling method instead of simply the higher complexity of our model. Compared to the DBM baseline, our model produces a higher EER; however, it improves the relative detection precision of top hits by 24.3%. As indicated in (Zhang et al., 2012), the hierarchical structure of DBM allows the model to provide a descent posterior representation of phonetic units. Even though our model only contains simple HMMs and Gaussians, it still achieves a comparable, if not better, performance as the DBM baseline. This demonstrates that even with just a simple model structure, the proposed learning algorithm is able to acquire rich phonetic knowledge from data and generate a fine posterior representation for phonetic units. Table 4 summarizes the segmentation performance of the baselines, our model and the heuristic unit(%) P@N EER GMM (Zhang and </context>
+</contexts>
+<marker>Zhang, Salakhutdinov, Chang, Glass, 2012</marker>
+<rawString>Yaodong Zhang, Ruslan Salakhutdinov, Hung-An Chang, and James Glass. 2012. Resource configurable spoken query detection using deep Boltzmann machines. In Proceedings of ICASSP, pages 5161–5164.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

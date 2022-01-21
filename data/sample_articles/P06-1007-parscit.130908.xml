@@ -1,0 +1,691 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.003455" no="0">
+<title confidence="0.997391">
+A Finite-State Model of Human Sentence Processing
+</title>
+<author confidence="0.992167">
+Jihyun Park and Chris Brew
+</author>
+<affiliation confidence="0.9936345">
+Department of Linguisitcs
+The Ohio State University
+</affiliation>
+<address confidence="0.938186">
+Columbus, OH, USA
+</address>
+<email confidence="0.999828">
+{park|cbrew}@ling.ohio-state.edu
+</email>
+<sectionHeader confidence="0.994825" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999885571428571">It has previously been assumed in the psycholinguistic literature that finite-state models of language are crucially limited in their explanatory power by the locality of the probability distribution and the narrow scope of information used by the model. We show that a simple computational model (a bigram part-of-speech tagger based on the design used by Corley and Crocker (2000)) makes correct predictions on processing difficulty observed in a wide range of empirical sentence processing data. We use two modes of evaluation: one that relies on comparison with a control sentence, paralleling practice in human studies; another that measures probability drop in the disambiguating region of the sentence. Both are surprisingly good indicators of the processing difficulty of garden-path sentences. The sentences tested are drawn from published sources and systematically explore five different types of ambiguity: previous studies have been narrower in scope and smaller in scale. We do not deny the limitations of finite-state models, but argue that our results show that their usefulness has been underestimated.</bodyText>
+<sectionHeader confidence="0.999165" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999942864864865">The main purpose of the current study is to investigate the extent to which a probabilistic part-ofspeech (POS) tagger can correctly model human sentence processing data. Syntactically ambiguous sentences have been studied in great depth in psycholinguistics because the pattern of ambiguity resolution provides a window onto the human sentence processing mechanism (HSPM). Prima facie it seems unlikely that such a tagger will be adequate, because almost all previous researchers have assumed, following standard linguistic theory, that a formally adequate account of recursive syntactic structure is an essential component of any model of the behaviour. In this study, we tested a bigram POS tagger on different types of structural ambiguities and (as a sanity check) to the well-known asymmetry of subject and object relative clause processing. Theoretically, the garden-path effect is defined as processing difficulty caused by reanalysis. Empirically, it is attested as comparatively slower reading time or longer eye fixation at a disambiguating region in an ambiguous sentence compared to its control sentences (Frazier and Rayner, 1982; Trueswell, 1996). That is, the garden-path effect detected in many human studies, in fact, is measured through a “comparative” method. This characteristic of the sentence processing research design is reconstructed in the current study using a probabilistic POS tagging system. Under the assumption that larger probability decrease indicates slower reading time, the test results suggest that the probabilistic POS tagging system can predict reading time penalties at the disambiguating region of garden-path sentences compared to that of non-garden-path sentences (i.e. control sentences).</bodyText>
+<sectionHeader confidence="0.997564" genericHeader="related work">
+2 Previous Work
+</sectionHeader>
+<bodyText confidence="0.999827333333333">Corley and Crocker (2000) present a probabilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger</bodyText>
+<page confidence="0.993188">
+49
+</page>
+<note confidence="0.5381055">
+Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56,
+Sydney, July 2006. c�2006 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.99879703125">(Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, for example, the Reduced-relative clause ambiguity and the DirectObject/Sentential-Complement ambiguity. The current study is closest in spirit to a previous attempt to use the technology of partof-speech tagging (Corley and Crocker, 2000). Among the computational models of the HSPM mentioned above, theirs is the simplest. They tested a statistical bigram POS tagger on lexically ambiguous sentences to investigate whether the POS tagger correctly predicted reading-time penalty. When a previously preferred POS sequence is less favored later, the tagger makes a repair. They claimed that the tagger’s reanalysis can model the processing difficulty in human’s disambiguating lexical categories when there exists a discrepancy between lexical bias and resolution.</bodyText>
+<sectionHeader confidence="0.999332" genericHeader="evaluation">
+3 Experiments
+</sectionHeader>
+<bodyText confidence="0.999656642857143">In the current study, Corley and Crocker’s model is further tested on a wider range of so-called structural ambiguity types. A Hidden Markov Model POS tagger based on bigrams was used. We made our own implementation to be sure of getting as close as possible to the design of Corley and Crocker (2000). Given a word string, w0, w1, · · · , wn, the tagger calculates the probability of every possible tag path, t0, · · · , tn. Under the Markov assumption, the joint probability of the given word sequence and each possible POS sequence can be approximated as a product of conditional probability and transition probability as shown in (1).</bodyText>
+<equation confidence="0.9823815">
+(1) P(w0, w1, ··· ,wn, t0, t1, ··· , tn)
+≈ 11ni=1P(wi|ti) · P (ti|ti−1),where n ≥ 1.
+</equation>
+<bodyText confidence="0.99553885106383">Using the Viterbi algorithm (Viterbi, 1967), the tagger finds the most likely POS sequence for a given word string as shown in (2). (2) arg max P(t0, t1, ··· , tn|w0, w1, ··· , wn, P). This is known technology, see Manning and Sch¨utze (1999), but the particular use we make of it is unusual. The tagger takes a word string as an input, outputs the most likely POS sequence and the final probability. Additionally, it presents accumulated probability at each word break and probability re-ranking, if any. Note that the running probability at the beginning of a sentence will be 1, and will keep decreasing at each word break since it is a product of conditional probabilities. We tested the predictability of the model on empirical reading data with the probability decrease and the presence or absence of probability reranking. Adopting the standard experimental design used in human sentence processing studies, where word-by-word reading time or eye-fixation time is compared between an experimental sentence and its control sentence, this study compares probability at each word break between a pair of sentences. Comparatively faster or larger drop of probability is expected to be a good indicator of comparative processing difficulty. Probability reranking, which is a simplified model of the reanalysis process assumed in many human studies, is also tested as another indicator of garden-path effect. Given a word string, all the possible POS sequences compete with each other based on their probability. Probability re-ranking occurs when an initially dispreferred POS sub-sequence becomes the preferred candidate later in the parse, because it fits in better with later words. The model parameters, P(wi|ti) and P(ti|ti−1), are estimated from a small section (970,995 tokens,47,831 distinct words) of the British National Corpus (BNC), which is a 100 million-word collection of British English, both written and spoken, developed by Oxford University Press (Burnard, 1995). The BNC was chosen for training the model because it is a POS-annotated corpus, which allows supervised training. In the implementation we use log probabilities to avoid underflow, and we report log probabilities in the sequel.</bodyText>
+<subsectionHeader confidence="0.985413">
+3.1 Hypotheses
+</subsectionHeader>
+<bodyText confidence="0.960956">If the HSPM is affected by frequency information, we can assume that it will be easier to process events with higher frequency or probability compared to those with lower frequency or probability.</bodyText>
+<page confidence="0.992595">
+50
+</page>
+<bodyText confidence="0.999967642857143">Under this general assumption, the overall difficulty of a sentence is expected to be measured or predicted by the mean size of probability decrease. That is, probability will drop faster in garden-path sentences than in control sentences (e.g.unambiguous sentences or ambiguous but non-gardenpath sentences). More importantly, the probability decrease pattern at disambiguating regions will predict the trends in the reading time data. All other things being equal, we might expect a reading time penalty when the size of the probability decrease at the disambiguating region in garden-path sentences is greater compared to the control sentences. This is a simple and intuitive assumption that can be easily tested. We could have formed the sum over all possible POS sequences in association with the word strings, but for the present study we simply used the Viterbi path: justifying this because this is the best single-path approximation to the joint probability. Lastly, re-ranking of POS sequences is expected to predict reanalysis of lexical categories. This is because re-ranking in the tagger is parallel to reanalysis in human subjects, which is known to be cognitively costly.</bodyText>
+<subsectionHeader confidence="0.995014">
+3.2 Materials
+</subsectionHeader>
+<bodyText confidence="0.999469818181818">In this study, five different types of ambiguity were tested including Lexical Category ambiguity, Reduced Relative ambiguity (RR ambiguity), Prepositional Phrase Attachment ambiguity (PP ambiguity), Direct-Object/Sentential-Complement ambiguity (DO/SC ambiguity), and Clausal Boundary ambiguity. The following are example sentences for each ambiguity type, shown with the ambiguous region italicized and the disambiguating region bolded. All of the example sentences are garden-path sentneces.</bodyText>
+<listItem confidence="0.992997">(3) Lexical Category ambiguity</listItem>
+<bodyText confidence="0.9750895">The foreman knows that the warehouse prices the beer very modestly.</bodyText>
+<listItem confidence="0.932367">(4) RR ambiguity</listItem>
+<bodyText confidence="0.775354">The horse raced past the barn fell.</bodyText>
+<listItem confidence="0.944443">(5) PP ambiguity Katie laid the dress on the floor onto the bed. (6) DO/SC ambiguity He forgot Pam needed a ride with him. (7) Clausal Boundary ambiguity</listItem>
+<bodyText confidence="0.969151142857143">Though George kept on reading the story really bothered him. There are two types of control sentences: unambiguous sentences and ambiguous but non-gardenpath sentences as shown in the examples below. Again, the ambiguous region is italicized and the disambiguating region is bolded.</bodyText>
+<listItem confidence="0.879586">(8) Garden-Path Sentence</listItem>
+<bodyText confidence="0.929162">The horse raced past the barn fell.</bodyText>
+<listItem confidence="0.791602333333333">(9) Ambiguous but Non-Garden-Path Control The horse raced past the barn and fell. (10) Unambiguous Control</listItem>
+<bodyText confidence="0.999356269230769">The horse that was raced past the barn fell. Note that the garden-path sentence (8) and its ambiguous control sentence (9) share exactly the same word sequence except for the disambiguating region. This allows direct comparison of probability at the critical region (i.e. disambiguating region) between the two sentences. Test materials used in experimental studies are constructed in this way in order to control extraneous variables such as word frequency. We use these sentences in the same form as the experimentalists so we inherit their careful design. In this study, a total of 76 sentences were tested: 10 for lexical category ambiguity, 12 for RR ambiguity, 20 for PP ambiguity, 16 for DO/SC ambiguity, and 18 for clausal boundary ambiguity. This set of materials is, to our knowledge, the most comprehensive yet subjected to this type of study. The sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subjectand object-relative clauses was tested as shown in (11).</bodyText>
+<listItem confidence="0.9470605">(11) a. The editor who kicked the writer fired the entire staff. (Subject-relative)</listItem>
+<bodyText confidence="0.904808375">b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this test, materials from Traxler et al. (2002) (96 sentences) are used.</bodyText>
+<page confidence="0.997158">
+51
+</page>
+<sectionHeader confidence="0.999915" genericHeader="result">
+4 Results
+</sectionHeader>
+<subsectionHeader confidence="0.999086">
+4.1 The Probability Decrease per Word
+</subsectionHeader>
+<bodyText confidence="0.999978153846154">Unambiguous sentences are usually longer than garden-path sentences. To compare sentences of different lengths, the joint probability of the whole sentence and tags was divided by the number of words in the sentence. The result showed that the average probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are more difficult than unambiguous sentences, which is consistent with empirical findings. Probability decreased faster in object-relative sentences than in subject relatives as predicted. In the psycholinguistics literature, the comparative difficulty of object-relative clauses has been explained in terms of verbal working memory (King and Just, 1991), distance between the gap and the filler (Bever and McElree, 1988), or perspective shifting (MacWhinney, 1982). However, the test results in this study provide a simpler account for the effect. That is, the comparative difficulty of an object-relative clause might be attributed to its less frequent POS sequence. This account is particularly convincing since each pair of sentences in the experiment share the exactly same set of words except their order.</bodyText>
+<subsectionHeader confidence="0.926432">
+4.2 Probability Decrease at the
+Disambiguating Region
+</subsectionHeader>
+<bodyText confidence="0.999900181818182">A total of 30 pairs of a garden-path sentence and its ambiguous, non-garden-path control were tested for a comparison of the probability decrease at the disambiguating region. In 80% of the cases, the probability drops more sharply in garden-path sentences than in control sentences at the critical word. The test results are presented in (12) with the number of test sets for each ambiguous type and the number of cases where the model correctly predicted reading-time penalty of garden-path sentences.</bodyText>
+<listItem confidence="0.995824714285714">(12) Ambiguity Type (Correct Predictions/Test Sets) a. Lexical Category Ambiguity (4/4) b. PP Ambiguity (10/10) c. RR Ambiguity (3/4) d. DO/SC Ambiguity (4/6) e. Clausal Boundary Ambiguity (3/6)</listItem>
+<figure confidence="0.6117285">
+(a) PP Attachment Ambiguity
+Katie put the dress on the floor and / onto the ...
+</figure>
+<figureCaption confidence="0.7616505">
+Figure 1: Probability Transition (Garden-Path vs.
+Non Garden-Path)
+</figureCaption>
+<figure confidence="0.89560025">
+(a) − o − : Non-Garden-Path (Adjunct PP), − * − : Garden
+-Path (Complement PP)
+(b) − o − : Non-Garden-Path (DO-Biased, DO-Resolved),
+− * − : Garden-Path (DO-Biased, SC-Resolved)
+</figure>
+<bodyText confidence="0.999796814814815">The two graphs in Figure 1 illustrate the comparison of probability decrease between a pair of sentence. The y-axis of both graphs in Figure 1 is log probability. The first graph compares the probability drop for the prepositional phrase (PP) attachment ambiguity (Katie put the dress on the floor and/onto the bed....) The empirical result for this type of ambiguity shows that reading time penalty is observed when the second PP, onto the bed, is introduced, and there is no such effect for the other sentence. Indeed, the sharper probability drop indicates that the additional PP is less likely, which makes a prediction of a comparative processing difficulty. The second graph exhibits the probability comparison for the DO/SC ambiguity. The verb forget is a DO-biased verb and thus processing difficulty is observed when it has a sentential complement. Again, this effect was replicated here. The results showed that the disambiguating word given the previous context is more difficult in garden-path sentences compared to control sentences. There are two possible explanations for the processing difficulty. One is that the POS sequence of a garden-path sentence is less probable than that of its control sentence. The other account is that the disambiguating word in a garden-path sentence is a lower frequency word compared to that of its control sentence.</bodyText>
+<figure confidence="0.99170384">
+(c) DO / SC Ambiguity (DO Bias)
+He forgot Susan but / remembered ...
+forgot
+Susan
+but
+remembered
+Log Probability
+−3
+−40
+−45
+−50
+−55
+−60
+the
+floor
+onto
+and
+the
+the
+−1
+20
+−25
+−30
+Log Probability
+−35
+</figure>
+<page confidence="0.987101">
+52
+</page>
+<bodyText confidence="0.997058">For example, slower reading time was observed in (13a) and (14a) compared to (13b) and (14b) at the disambiguating region that is bolded.</bodyText>
+<listItem confidence="0.9708016">(13) Different POS at the Disambiguating Region a. Katie laid the dress on the floor onto (−57.80) the bed. b. Katie laid the dress on the floor after (−55.77) her mother yelled at her. (14) Same POS at the Disambiguating Region a. The umpire helped the child on (−42.77) third base. b. The umpire helped the child to (−42.23) third base.</listItem>
+<bodyText confidence="0.999874833333333">The log probability for each disambiguating word is given at the end of each sentence. As expected, the probability at the disambiguating region in (13a) and (14a) is lower than in (13b) and (14b) respectively. The disambiguating words in (13) have different POS’s; Preposition in (13a) and Conjunction (13b). This suggests that the probabilities of different POS sequences can account for different reading time at the region. In (14), however, both disambiguating words are the same POS (i.e. Preposition) and the POS sequences for both sentences are identical. Instead, “on” and “to”, have different frequencies and this information is reflected in the conditional probability P(wordi|state). Therefore, the slower reading time in (14b) might be attributable to the lower frequency of the disambiguating word, “to” compared to “on”.</bodyText>
+<subsectionHeader confidence="0.998505">
+4.3 Probability Re-ranking
+</subsectionHeader>
+<bodyText confidence="0.999961076923077">The probability re-ranking reported in Corley and Crocker (2000) was replicated. The tagger successfully resolved the ambiguity by reanalysis when the ambiguous word was immediately followed by the disambiguating word (e.g. Without her he was lost.). If the disambiguating word did not immediately follow the ambiguous region, (e.g. Without her contributions would be very inadequate.) the ambiguity is sometimes incorrectly resolved. When revision occurred, probability dropped more sharply at the revision point and at the disambiguation region compared to the control sentences.</bodyText>
+<figure confidence="0.998974625">
+(a) &amp;quot; The woman chased by ... &amp;quot;
+the
+woman
+chased (MV)
+the
+chased (PP)
+by
+(b) &amp;quot; The woman told the joke did not ... &amp;quot;
+</figure>
+<figureCaption confidence="0.878893">
+Figure 2: Probability Transition in the RR Ambi-
+guity
+</figureCaption>
+<figure confidence="0.957955">
+(a) − o − : Non-Garden-Path (Past Tense Verb), − * − :
+Garden-Path (Past Participle)
+(b) − o − : Non-Garden-Path (Past Tense Verb), − * − :
+Garden-Path, (Past Participle)
+</figure>
+<bodyText confidence="0.996512103448276">When the ambiguity was not correctly resolved, the probability comparison correctly modeled the comparative difficulty of the garden-path sentences Of particular interest in this study is RR ambiguity resolution. The tagger predicted the processing difficulty of the RR ambiguity with probability re-ranking. That is, the tagger initially favors the main-verb interpretation for the ambiguous -ed form, and later it makes a repair when the ambiguity is resolved as a past-participle. In the first graph of Figure 2, “chased” is resolved as a past participle also with a revision since the disambiguating word “by” is immediately following. When revision occurred, probability dropped more sharply at the revision point and at the disambiguation region compared to the control sentences. When the disambiguating word is not immediately followed by the ambiguous word as in the second graph of Figure 2, the ambiguity was not resolved correctly, but the probababiltiy decrease at the disambiguating regions correctly predict that the garden-path sentence would be harder. The RR ambiguity is often categorized as a syntactic ambiguity, but the results suggest that the ambiguity can be resolved locally and its processing difficulty can be detected by a finite state model. This suggests that we should be cautious in assuming that a structural explanation is needed for the RR ambiguity resolution, and it could be that similar cautions are in order for other ambiguities usually seen as syntactic.</bodyText>
+<figure confidence="0.987238875">
+−21
+−26
+−31
+−36
+−41
+told
+the
+joke
+but
+did
+−5
+−10
+−15
+−20
+−25
+−30
+</figure>
+<page confidence="0.997476">
+53
+</page>
+<bodyText confidence="0.999929428571429">Although the probability re-ranking reported in the previous studies (Corley and Crocker, 2000; Frazier, 1978) is correctly replicated, the tagger sometimes made undesired revisions. For example, the tagger did not make a repair for the sentence The friend accepted by the man was very impressed (Trueswell, 1996) because accepted is biased as a past participle. This result is compatible with the findings of Trueswell (1996). However, the bias towards past-participle produces a repair in the control sentence, which is unexpected. For the sentence, The friend accepted the man who was very impressed, the tagger showed a repair since it initially preferred a past-participle analysis for accepted and later it had to reanalyze. This is a limitation of our model, and does not match any previous empirical finding.</bodyText>
+<sectionHeader confidence="0.997705" genericHeader="result">
+5 Discussion
+</sectionHeader>
+<bodyText confidence="0.999991015873016">The current study explores Corley and Crocker’s model(2000) further on the model’s account of human sentence processing data seen in empirical studies. Although there have been studies on a POS tagger evaluating it as a potential cognitive module of lexical category disambiguation, there has been little work that tests it as a modeling tool of syntactically ambiguous sentence processing. The findings here suggest that a statistical POS tagging system is more informative than Crocker and Corley demonstrated. It has a predictive power of processing delay not only for lexically ambiguous sentences but also for structurally garden-pathed sentences. This model is attractive since it is computationally simpler and requires few statistical parameters. More importantly, it is clearly defined what predictions can be and cannot be made by this model. This allows systematic testability and refutability of the model unlike some other probabilistic frameworks. Also, the model training and testing is transparent and observable, and true probability rather than transformed weights are used, all of which makes it easy to understand the mechanism of the proposed model. Although the model we used in the current study is not a novelty, the current work largely differs from the previous study in its scope of data used and the interpretation of the model for human sentence processing. Corley and Crocker clearly state that their model is strictly limited to lexical ambiguity resolution, and their test of the model was bounded to the noun-verb ambiguity. However, the findings in the current study play out differently. The experiments conducted in this study are parallel to empirical studies with regard to the design of experimental method and the test material. The garden-path sentences used in this study are authentic, most of them are selected from the cited literature, not conveniently coined by the authors. The word-by-word probability comparison between garden-path sentences and their controls is parallel to the experimental design widely adopted in empirical studies in the form of regionby-region reading or eye-gaze time comparison. In the word-by-word probability comparison, the model is tested whether or not it correctly predicts the comparative processing difficulty at the garden-path region. Contrary to the major claim made in previous empirical studies, which is that the garden-path phenomena are either modeled by syntactic principles or by structural frequency, the findings here show that the same phenomena can be predicted without such structural information. Therefore, the work is neither a mere extended application of Corley and Crocker’s work to a broader range of data, nor does it simply confirm earlier observations that finite state machines might accurately account for psycholinguistic results to some degree. The current study provides more concrete answers to what finite state machine is relevant to what kinds of processing difficulty and to what extent.</bodyText>
+<sectionHeader confidence="0.998" genericHeader="conclusion">
+6 Future Work
+</sectionHeader>
+<bodyText confidence="0.999846928571428">Even though comparative analysis is a widely adopted research design in experimental studies, a sound scientific model should be independent of this comparative nature and should be able to make systematic predictions. Currently, probability re-ranking is one way to make systematic module-internal predictions about the garden-path effect. This brings up the issue of encoding more information in lexical entries and increasing ambiguity so that other ambiguity types also can be disambiguated in a similar way via lexical category disambiguation. This idea has been explored as one of the lexicalist approaches to sentence processing (Kim et al., 2002; Bangalore and Joshi,</bodyText>
+<page confidence="0.995498">
+54
+</page>
+<bodyText confidence="0.998685071428572">1999). Kim et al. (2002) suggest the feasibility of modeling structural analysis as lexical ambiguity resolution. They developed a connectionist neural network model of word recognition, which takes orthographic information, semantic information, and the previous two words as its input and outputs a SuperTag for the current word. A SuperTag is an elementary syntactic tree, or simply a structural description composed of features like POS, the number of complements, category of each complement, and the position of complements. In their view, structural disambiguation is simply another type of lexical category disambiguation, i.e. SuperTag disambiguation. When applied to DO/SC ambiguous fragments, such as “The economist decided ...”, their model showed a general bias toward the NP-complement structure. This NP-complement bias was overcome by lexical information from high-frequency S-biased verbs, meaning that if the S-biased verb was a high frequency word, it was correctly tagged, but if the verb had low frequency, then it was more likely to be tagged as NP-complement verb. This result is also reported in other constraint-based model studies (e.g. Juliano and Tanenhaus (1994)), but the difference between the previous constraint-based studies and Kim et. al is that the result of the latter is based on training of the model on noisier data (sentences that were not tailored to the specific research purpose). The implementation of SuperTag advances the formal specification of the constraint-based lexicalist theory. However, the scope of their sentence processing model is limited to the DO/SC ambiguity, and the description of their model is not clear. In addition, their model is far beyond a simple statistical model: the interaction of different sources of information is not transparent. Nevertheless, Kim et al. (2002) provides a future direction for the current study and a starting point for considering what information should be included in the lexicon. The fundamental goal of the current research is to explore a model that takes the most restrictive position on the size of parameters until additional parameters are demanded by data. Equally important, the quality of architectural simplicity should be maintained. Among the different sources of information manipulated by Kim et. al., the socalled elementary structural information is considered as a reasonable and ideal parameter for addition to the current model. The implementation and the evaluation of the model will be exactly the same as a statistical POS tagger provided with a large parsed corpus from which elementary trees can be extracted.</bodyText>
+<sectionHeader confidence="0.996434" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999970363636364">Our studies show that, at least for the sample of test materials that we culled from the standard literature, a statistical POS tagging system can predict processing difficulty in structurally ambiguous garden-path sentences. The statistical POS tagger was surprisingly effective in modeling sentence processing data, given the locality of the probability distribution. The findings in this study provide an alternative account for the garden-path effect observed in empirical studies, specifically, that the slower processing times associated with garden-path sentences are due in part to their relatively unlikely POS sequences in comparison with those of non-garden-path sentences and in part to differences in the emission probabilities that the tagger learns. One attractive future direction is to carry out simulations that compare the evolution of probabilities in the tagger with that in a theoretically more powerful model trained on the same data, such as an incremental statistical parser (Kim et al., 2002; Roark, 2001). In so doing we can find the places where the prediction problem faced both by the HSPM and the machines that aspire to emulate it actually warrants the greater power of structurally sensitive models, using this knowledge to mine large corpora for future experiments with human subjects. We have not necessarily cast doubt on the hypothesis that the HSPM makes crucial use of structural information, but we have demonstrated that much of the relevant behavior can be captured in a simple model. The ’structural’ regularities that we observe are reasonably well encoded into this model. For purposes of initial real-time processing it could be that the HSPM is using a similar encoding of structural regularities into convenient probabilistic or neural form. It is as yet unclear what the final form of a cognitively accurate model along these lines would be, but it is clear from our study that it is worthwhile, for the sake of clarity and explicit testability, to consider models that are simpler and more precisely specified than those assumed by dominant theories of human sentence processing.</bodyText>
+<page confidence="0.998154">
+55
+</page>
+<sectionHeader confidence="0.998183" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.99863625">This project was supported by the Cognitive Science Summer 2004 Research Award at the Ohio State University. We acknowledge support from NSF grant IIS 0347799.</bodyText>
+<sectionHeader confidence="0.99407" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999138957446808">
+S. Bangalore and A. K. Joshi. Supertagging: an
+approach to almost parsing. Computational Lin-
+guistics, 25(2):237–266, 1999.
+T. G. Bever and B. McElree. Empty categories
+access their antecedents during comprehension.
+Linguistic Inquiry, 19:35–43, 1988.
+L Burnard. Users Guide for the British National
+Corpus. British National Corpus Consortium,
+Oxford University Computing Service, 1995.
+S. Corley and M. W Crocker. The Modular Sta-
+tistical Hypothesis: Exploring Lexical Category
+Ambiguity. Architectures and Mechanisms for
+Language Processing, M. Crocker, M. Picker-
+ing. and C. Charles (Eds.) Cambridge Univer-
+sity Press, 2000.
+W. C. Crocker and T. Brants. Wide-coverage prob-
+abilistic sentence processing, 2000.
+F. Ferreira and C. Clifton. The independence of
+syntactic processing. Journal of Memory and
+Language, 25:348–368, 1986.
+F. Ferreira and J. Henderson. Use of verb infor-
+mation in syntactic parsing: Evidence from eye
+movements and word-by-word self-paced read-
+ing. Journal of Experimental Psychology, 16:
+555–568, 1986.
+L. Frazier. On comprehending sentences: Syntac-
+tic parsing strategies. Ph.D. dissertation, Uni-
+versity ofMassachusetts, Amherst, MA, 1978.
+L. Frazier and C. Clifton. Construal. Cambridge,
+MA: MIT Press, 1996.
+L. Frazier and K. Rayner. Making and correct-
+ing errors during sentence comprehension: Eye
+movements in the analysis of structurally am-
+biguous sentences. Cognitive Psychology, 14:
+178–210, 1982.
+J. Hale. A probabilistic earley parser as a psy-
+cholinguistic model. Proceedings of NAACL-
+2001, 2001.
+V. M. Homes, J. O’Regan, and K.G. Evensen. Eye
+fixation patterns during the reading of relative
+clause sentences. Journal of Verbal Learning
+and Verbal Behavior, 20:417–430, 1981.
+A. K. Joshi and B. Srinivas. Disambiguation of
+super parts of speech (or supertags): almost
+parsing. The Proceedings of the 15th Inter-
+national Confer-ence on Computational Lin-
+gusitics (COLING ′94), pages 154–160, 1994.
+C. Juliano and M.K. Tanenhaus. A constraint-
+based lexicalist account of the subject-object at-
+tachment preference. Journal ofPsycholinguis-
+tic Research, 23:459–471, 1994.
+D Jurafsky. A probabilistic model of lexical and
+syntactic access and disambiguation. Cognitive
+Science, 20:137–194, 1996.
+A. E. Kim, Bangalore S., and J. Trueswell. A com-
+putational model of the grammatical aspects of
+word recognition as supertagging. paola merlo
+and suzanne stevenson (eds.). The Lexical Basis
+of Sentence Processing: Formal, computational
+and experimental issues, University of Geneva
+University of Toronto:109–135, 2002.
+J. King and M. A. Just. Individual differences in
+syntactic processing: The role of working mem-
+ory. Journal ofMemory and Language, 30:580–
+602, 1991.
+B. MacWhinney. Basic syntactic processes. Lan-
+guage acquisition; Syntax and semantics, S.
+Kuczaj (Ed.), 1:73–136, 1982.
+W. M. Mak, Vonk W., and H. Schriefers. The influ-
+ence of animacy on relative clause processing.
+Journal of Memory and Language,, 47:50–68,
+2002.
+C.D. Manning and H. Sch¨utze. Foundations of
+Statistical Natural Language Processing. The
+MIT Press, Cambridge, Massachusetts, 1999.
+S. Narayanan and D Jurafsky. A bayesian model
+predicts human parse preference and reading
+times in sentence processing. Proceedings
+of Advances in Neural Information Processing
+Systems, 2002.
+B. Roark. Probabilistic top-down parsing and lan-
+guage modeling. Computational Linguistics, 27
+(2):249–276, 2001.
+M. J. Traxler, R. K. Morris, and R. E. Seely. Pro-
+cessing subject and object relative clauses: evi-
+dence from eye movements. Journal ofMemory
+and Language, 47:69–90, 2002.
+J. C. Trueswell. The role of lexical frequency
+in syntactic ambiguity resolution. Journal of
+Memory and Language, 35:556–585, 1996.
+A. Viterbi. Error bounds for convolution codes and
+an asymptotically optimal decoding algorithm.
+IEEE Transactions of Information Theory, 13:
+260–269, 1967.
+</reference>
+<page confidence="0.998411">
+56
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.934836" no="0">
+<title confidence="0.999892">A Finite-State Model of Human Sentence Processing</title>
+<author confidence="0.999238">Jihyun Park</author>
+<author confidence="0.999238">Chris Brew</author>
+<affiliation confidence="0.999792">Department of Linguisitcs The Ohio State University</affiliation>
+<address confidence="0.999989">Columbus, OH, USA</address>
+<abstract confidence="0.997709586206896">It has previously been assumed in the psycholinguistic literature that finite-state models of language are crucially limited in their explanatory power by the locality of the probability distribution and the narrow scope of information used by the model. We show that a simple computational model (a bigram part-of-speech tagger based on the design used by Corley and Crocker (2000)) makes correct predictions on processing difficulty observed in a wide range of empirical sentence processing data. We use two modes of evaluation: one that relies on comparison with a control sentence, paralleling practice in human studies; another that measures probability drop in the disambiguating region of the sentence. Both are surprisingly good indicators of the processing difficulty of garden-path sentences. The sentences tested are drawn from published sources and systematically explore five different types of ambiguity: previous studies have been narrower in scope and smaller in scale. We do not deny the limitations of finite-state models, but argue that our results show that their usefulness has been underestimated.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>S Bangalore</author>
+<author>A K Joshi</author>
+</authors>
+<title>Supertagging: an approach to almost parsing.</title>
+<date>1999</date>
+<journal>Computational Linguistics,</journal>
+<volume>25</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Bangalore and Joshi, 1999" endWordPosition="544" position="3626" startWordPosition="541">that of non-garden-path sentences (i.e. control sentences). 2 Previous Work Corley and Crocker (2000) present a probabilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and </context>
+</contexts>
+<marker>Bangalore, Joshi, 1999</marker>
+<rawString>S. Bangalore and A. K. Joshi. Supertagging: an approach to almost parsing. Computational Linguistics, 25(2):237–266, 1999.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T G Bever</author>
+<author>B McElree</author>
+</authors>
+<title>Empty categories access their antecedents during comprehension. Linguistic Inquiry,</title>
+<date>1988</date>
+<contexts>
+<context citStr="Bever and McElree, 1988" endWordPosition="2058" position="13213" startWordPosition="2055"> in the sentence. The result showed that the average probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are more difficult than unambiguous sentences, which is consistent with empirical findings. Probability decreased faster in object-relative sentences than in subject relatives as predicted. In the psycholinguistics literature, the comparative difficulty of object-relative clauses has been explained in terms of verbal working memory (King and Just, 1991), distance between the gap and the filler (Bever and McElree, 1988), or perspective shifting (MacWhinney, 1982). However, the test results in this study provide a simpler account for the effect. That is, the comparative difficulty of an object-relative clause might be attributed to its less frequent POS sequence. This account is particularly convincing since each pair of sentences in the experiment share the exactly same set of words except their order. 4.2 Probability Decrease at the Disambiguating Region A total of 30 pairs of a garden-path sentence and its ambiguous, non-garden-path control were tested for a comparison of the probability decrease at the di</context>
+</contexts>
+<marker>Bever, McElree, 1988</marker>
+<rawString>T. G. Bever and B. McElree. Empty categories access their antecedents during comprehension. Linguistic Inquiry, 19:35–43, 1988.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L Burnard</author>
+</authors>
+<title>Users Guide for the British National Corpus.</title>
+<date>1995</date>
+<institution>British National Corpus Consortium, Oxford University Computing Service,</institution>
+<contexts>
+<context citStr="Burnard, 1995" endWordPosition="1212" position="7814" startWordPosition="1211">another indicator of garden-path effect. Given a word string, all the possible POS sequences compete with each other based on their probability. Probability re-ranking occurs when an initially dispreferred POS sub-sequence becomes the preferred candidate later in the parse, because it fits in better with later words. The model parameters, P(wi|ti) and P(ti|ti−1), are estimated from a small section (970,995 tokens,47,831 distinct words) of the British National Corpus (BNC), which is a 100 million-word collection of British English, both written and spoken, developed by Oxford University Press (Burnard, 1995). The BNC was chosen for training the model because it is a POS-annotated corpus, which allows supervised training. In the implementation we use log probabilities to avoid underflow, and we report log probabilities in the sequel. 3.1 Hypotheses If the HSPM is affected by frequency information, we can assume that it will be easier to process 50 events with higher frequency or probability compared to those with lower frequency or probability. Under this general assumption, the overall difficulty of a sentence is expected to be measured or predicted by the mean size of probability decrease. That </context>
+</contexts>
+<marker>Burnard, 1995</marker>
+<rawString>L Burnard. Users Guide for the British National Corpus. British National Corpus Consortium, Oxford University Computing Service, 1995.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Corley</author>
+<author>M W Crocker</author>
+</authors>
+<title>The Modular Statistical Hypothesis: Exploring Lexical Category Ambiguity. Architectures and Mechanisms for Language Processing,</title>
+<date>2000</date>
+<publisher>Cambridge University Press,</publisher>
+<contexts>
+<context citStr="Corley and Crocker (2000)" endWordPosition="469" position="3101" startWordPosition="466">ll, 1996). That is, the garden-path effect detected in many human studies, in fact, is measured through a “comparative” method. This characteristic of the sentence processing research design is reconstructed in the current study using a probabilistic POS tagging system. Under the assumption that larger probability decrease indicates slower reading time, the test results suggest that the probabilistic POS tagging system can predict reading time penalties at the disambiguating region of garden-path sentences compared to that of non-garden-path sentences (i.e. control sentences). 2 Previous Work Corley and Crocker (2000) present a probabilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence process</context>
+<context citStr="Corley and Crocker, 2000" endWordPosition="678" position="4567" startWordPosition="675">mmar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, for example, the Reduced-relative clause ambiguity and the DirectObject/Sentential-Complement ambiguity. The current study is closest in spirit to a previous attempt to use the technology of partof-speech tagging (Corley and Crocker, 2000). Among the computational models of the HSPM mentioned above, theirs is the simplest. They tested a statistical bigram POS tagger on lexically ambiguous sentences to investigate whether the POS tagger correctly predicted reading-time penalty. When a previously preferred POS sequence is less favored later, the tagger makes a repair. They claimed that the tagger’s reanalysis can model the processing difficulty in human’s disambiguating lexical categories when there exists a discrepancy between lexical bias and resolution. 3 Experiments In the current study, Corley and Crocker’s model is further </context>
+<context citStr="Corley and Crocker (2000)" endWordPosition="2783" position="17651" startWordPosition="2780"> (13b). This suggests that the probabilities of different POS sequences can account for different reading time at the region. In (14), however, both disambiguating words are the same POS (i.e. Preposition) and the POS sequences for both sentences are identical. Instead, “on” and “to”, have different frequencies and this information is reflected in the conditional probability P(wordi|state). Therefore, the slower reading time in (14b) might be attributable to the lower frequency of the disambiguating word, “to” compared to “on”. 4.3 Probability Re-ranking The probability re-ranking reported in Corley and Crocker (2000) was replicated. The tagger successfully resolved the ambiguity by reanalysis when the ambiguous word was immediately followed by the disambiguating word (e.g. Without her he was lost.). If the disambiguating word did not immediately follow the ambiguous region, (e.g. Without her contributions would be very inadequate.) the ambiguity is sometimes incorrectly resolved. When revision occurred, probability dropped more sharply at the revision point and at the disambiguation region compared to the control sen(a) &amp;quot; The woman chased by ... &amp;quot; the woman chased (MV) the chased (PP) by (b) &amp;quot; The woman t</context>
+<context citStr="Corley and Crocker, 2000" endWordPosition="3205" position="20170" startWordPosition="3202">en-path sentence would be harder. The RR ambiguity is often categorized as a syntactic ambiguity, but the results suggest that the ambiguity can be resolved locally and its processing difficulty can be detected by a finite state model. This suggests that we should be cautious −21 −26 −31 −36 −41 told the joke but did −5 −10 −15 −20 −25 −30 53 in assuming that a structural explanation is needed for the RR ambiguity resolution, and it could be that similar cautions are in order for other ambiguities usually seen as syntactic. Although the probability re-ranking reported in the previous studies (Corley and Crocker, 2000; Frazier, 1978) is correctly replicated, the tagger sometimes made undesired revisions. For example, the tagger did not make a repair for the sentence The friend accepted by the man was very impressed (Trueswell, 1996) because accepted is biased as a past participle. This result is compatible with the findings of Trueswell (1996). However, the bias towards past-participle produces a repair in the control sentence, which is unexpected. For the sentence, The friend accepted the man who was very impressed, the tagger showed a repair since it initially preferred a past-participle analysis for acc</context>
+</contexts>
+<marker>Corley, Crocker, 2000</marker>
+<rawString>S. Corley and M. W Crocker. The Modular Statistical Hypothesis: Exploring Lexical Category Ambiguity. Architectures and Mechanisms for Language Processing, M. Crocker, M. Pickering. and C. Charles (Eds.) Cambridge University Press, 2000.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>W C Crocker</author>
+<author>T Brants</author>
+</authors>
+<title>Wide-coverage probabilistic sentence processing,</title>
+<date>2000</date>
+<contexts>
+<context citStr="Crocker and Brants, 2000" endWordPosition="568" position="3798" startWordPosition="565">on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, for example, the Reduced-relative clause ambiguity and the DirectObjec</context>
+</contexts>
+<marker>Crocker, Brants, 2000</marker>
+<rawString>W. C. Crocker and T. Brants. Wide-coverage probabilistic sentence processing, 2000.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Ferreira</author>
+<author>C Clifton</author>
+</authors>
+<title>The independence of syntactic processing.</title>
+<date>1986</date>
+<journal>Journal of Memory and Language,</journal>
+<volume>25</volume>
+<contexts>
+<context citStr="Ferreira and Clifton, 1986" endWordPosition="1834" position="11728" startWordPosition="1830">s way in order to control extraneous variables such as word frequency. We use these sentences in the same form as the experimentalists so we inherit their careful design. In this study, a total of 76 sentences were tested: 10 for lexical category ambiguity, 12 for RR ambiguity, 20 for PP ambiguity, 16 for DO/SC ambiguity, and 18 for clausal boundary ambiguity. This set of materials is, to our knowledge, the most comprehensive yet subjected to this type of study. The sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this test, materials from Traxler et al. (2002) (96 sentences)</context>
+</contexts>
+<marker>Ferreira, Clifton, 1986</marker>
+<rawString>F. Ferreira and C. Clifton. The independence of syntactic processing. Journal of Memory and Language, 25:348–368, 1986.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Ferreira</author>
+<author>J Henderson</author>
+</authors>
+<title>Use of verb information in syntactic parsing: Evidence from eye movements and word-by-word self-paced reading.</title>
+<date>1986</date>
+<journal>Journal of Experimental Psychology,</journal>
+<volume>16</volume>
+<pages>555--568</pages>
+<contexts>
+<context citStr="Ferreira and Henderson, 1986" endWordPosition="1838" position="11759" startWordPosition="1835">traneous variables such as word frequency. We use these sentences in the same form as the experimentalists so we inherit their careful design. In this study, a total of 76 sentences were tested: 10 for lexical category ambiguity, 12 for RR ambiguity, 20 for PP ambiguity, 16 for DO/SC ambiguity, and 18 for clausal boundary ambiguity. This set of materials is, to our knowledge, the most comprehensive yet subjected to this type of study. The sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this test, materials from Traxler et al. (2002) (96 sentences) are used. 51 4 Results 4.1 The</context>
+</contexts>
+<marker>Ferreira, Henderson, 1986</marker>
+<rawString>F. Ferreira and J. Henderson. Use of verb information in syntactic parsing: Evidence from eye movements and word-by-word self-paced reading. Journal of Experimental Psychology, 16: 555–568, 1986.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L Frazier</author>
+</authors>
+<title>On comprehending sentences: Syntactic parsing strategies.</title>
+<date>1978</date>
+<institution>University ofMassachusetts,</institution>
+<location>Amherst, MA,</location>
+<note>Ph.D. dissertation,</note>
+<contexts>
+<context citStr="Frazier, 1978" endWordPosition="1823" position="11656" startWordPosition="1822">terials used in experimental studies are constructed in this way in order to control extraneous variables such as word frequency. We use these sentences in the same form as the experimentalists so we inherit their careful design. In this study, a total of 76 sentences were tested: 10 for lexical category ambiguity, 12 for RR ambiguity, 20 for PP ambiguity, 16 for DO/SC ambiguity, and 18 for clausal boundary ambiguity. This set of materials is, to our knowledge, the most comprehensive yet subjected to this type of study. The sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1</context>
+<context citStr="Frazier, 1978" endWordPosition="3207" position="20186" startWordPosition="3206">harder. The RR ambiguity is often categorized as a syntactic ambiguity, but the results suggest that the ambiguity can be resolved locally and its processing difficulty can be detected by a finite state model. This suggests that we should be cautious −21 −26 −31 −36 −41 told the joke but did −5 −10 −15 −20 −25 −30 53 in assuming that a structural explanation is needed for the RR ambiguity resolution, and it could be that similar cautions are in order for other ambiguities usually seen as syntactic. Although the probability re-ranking reported in the previous studies (Corley and Crocker, 2000; Frazier, 1978) is correctly replicated, the tagger sometimes made undesired revisions. For example, the tagger did not make a repair for the sentence The friend accepted by the man was very impressed (Trueswell, 1996) because accepted is biased as a past participle. This result is compatible with the findings of Trueswell (1996). However, the bias towards past-participle produces a repair in the control sentence, which is unexpected. For the sentence, The friend accepted the man who was very impressed, the tagger showed a repair since it initially preferred a past-participle analysis for accepted and later </context>
+</contexts>
+<marker>Frazier, 1978</marker>
+<rawString>L. Frazier. On comprehending sentences: Syntactic parsing strategies. Ph.D. dissertation, University ofMassachusetts, Amherst, MA, 1978.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Construal</author>
+</authors>
+<date>1996</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, MA:</location>
+<marker>Construal, 1996</marker>
+<rawString>L. Frazier and C. Clifton. Construal. Cambridge, MA: MIT Press, 1996.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>L Frazier</author>
+<author>K Rayner</author>
+</authors>
+<title>Making and correcting errors during sentence comprehension: Eye movements in the analysis of structurally ambiguous sentences.</title>
+<journal>Cognitive Psychology,</journal>
+<volume>14</volume>
+<pages>178--210</pages>
+<marker>Frazier, Rayner, </marker>
+<rawString>L. Frazier and K. Rayner. Making and correcting errors during sentence comprehension: Eye movements in the analysis of structurally ambiguous sentences. Cognitive Psychology, 14: 178–210, 1982.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Hale</author>
+</authors>
+<title>A probabilistic earley parser as a psycholinguistic model.</title>
+<date>2001</date>
+<booktitle>Proceedings of NAACL2001,</booktitle>
+<contexts>
+<context citStr="Hale, 2001" endWordPosition="564" position="3771" startWordPosition="563">ation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, for example, the Reduced-relative clause am</context>
+</contexts>
+<marker>Hale, 2001</marker>
+<rawString>J. Hale. A probabilistic earley parser as a psycholinguistic model. Proceedings of NAACL2001, 2001.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>V M Homes</author>
+<author>J O’Regan</author>
+<author>K G Evensen</author>
+</authors>
+<title>Eye fixation patterns during the reading of relative clause sentences.</title>
+<date>1981</date>
+<journal>Journal of Verbal Learning and Verbal Behavior,</journal>
+<volume>20</volume>
+<marker>Homes, O’Regan, Evensen, 1981</marker>
+<rawString>V. M. Homes, J. O’Regan, and K.G. Evensen. Eye fixation patterns during the reading of relative clause sentences. Journal of Verbal Learning and Verbal Behavior, 20:417–430, 1981.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A K Joshi</author>
+<author>B Srinivas</author>
+</authors>
+<title>Disambiguation of super parts of speech (or supertags): almost parsing.</title>
+<date>1994</date>
+<booktitle>The Proceedings of the 15th International Confer-ence on Computational Lingusitics (COLING ′94),</booktitle>
+<pages>154--160</pages>
+<contexts>
+<context citStr="Joshi and Srinivas, 1994" endWordPosition="540" position="3598" startWordPosition="537">ath sentences compared to that of non-garden-path sentences (i.e. control sentences). 2 Previous Work Corley and Crocker (2000) present a probabilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions</context>
+</contexts>
+<marker>Joshi, Srinivas, 1994</marker>
+<rawString>A. K. Joshi and B. Srinivas. Disambiguation of super parts of speech (or supertags): almost parsing. The Proceedings of the 15th International Confer-ence on Computational Lingusitics (COLING ′94), pages 154–160, 1994.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Juliano</author>
+<author>M K Tanenhaus</author>
+</authors>
+<title>A constraintbased lexicalist account of the subject-object attachment preference.</title>
+<date>1994</date>
+<journal>Journal ofPsycholinguistic Research,</journal>
+<volume>23</volume>
+<contexts>
+<context citStr="Juliano and Tanenhaus (1994)" endWordPosition="4091" position="25796" startWordPosition="4088">iguation is simply another type of lexical category disambiguation, i.e. SuperTag disambiguation. When applied to DO/SC ambiguous fragments, such as “The economist decided ...”, their model showed a general bias toward the NP-complement structure. This NP-complement bias was overcome by lexical information from high-frequency S-biased verbs, meaning that if the S-biased verb was a high frequency word, it was correctly tagged, but if the verb had low frequency, then it was more likely to be tagged as NP-complement verb. This result is also reported in other constraint-based model studies (e.g. Juliano and Tanenhaus (1994)), but the difference between the previous constraint-based studies and Kim et. al is that the result of the latter is based on training of the model on noisier data (sentences that were not tailored to the specific research purpose). The implementation of SuperTag advances the formal specification of the constraint-based lexicalist theory. However, the scope of their sentence processing model is limited to the DO/SC ambiguity, and the description of their model is not clear. In addition, their model is far beyond a simple statistical model: the interaction of different sources of information </context>
+</contexts>
+<marker>Juliano, Tanenhaus, 1994</marker>
+<rawString>C. Juliano and M.K. Tanenhaus. A constraintbased lexicalist account of the subject-object attachment preference. Journal ofPsycholinguistic Research, 23:459–471, 1994.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Jurafsky</author>
+</authors>
+<title>A probabilistic model of lexical and syntactic access and disambiguation.</title>
+<date>1996</date>
+<journal>Cognitive Science,</journal>
+<volume>20</volume>
+<contexts>
+<context citStr="Jurafsky, 1996" endWordPosition="558" position="3729" startWordPosition="556">babilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, f</context>
+</contexts>
+<marker>Jurafsky, 1996</marker>
+<rawString>D Jurafsky. A probabilistic model of lexical and syntactic access and disambiguation. Cognitive Science, 20:137–194, 1996.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A E Kim</author>
+<author>S Bangalore</author>
+<author>J Trueswell</author>
+</authors>
+<title>A computational model of the grammatical aspects of word recognition as supertagging. paola merlo and suzanne</title>
+<date>2002</date>
+<booktitle>The Lexical Basis of Sentence Processing: Formal, computational and experimental issues,</booktitle>
+<editor>stevenson (eds.).</editor>
+<institution>University of Geneva University of Toronto:109–135,</institution>
+<contexts>
+<context citStr="Kim et al. (2002)" endWordPosition="488" position="3226" startWordPosition="485">characteristic of the sentence processing research design is reconstructed in the current study using a probabilistic POS tagging system. Under the assumption that larger probability decrease indicates slower reading time, the test results suggest that the probabilistic POS tagging system can predict reading time penalties at the disambiguating region of garden-path sentences compared to that of non-garden-path sentences (i.e. control sentences). 2 Previous Work Corley and Crocker (2000) present a probabilistic model of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a</context>
+<context citStr="Kim et al., 2002" endWordPosition="3902" position="24579" startWordPosition="3899"> widely adopted research design in experimental studies, a sound scientific model should be independent of this comparative nature and should be able to make systematic predictions. Currently, probability re-ranking is one way to make systematic module-internal predictions about the garden-path effect. This brings up the issue of encoding more information in lexical entries and increasing ambiguity so that other ambiguity types also can be disambiguated in a similar way via lexical category disambiguation. This idea has been explored as one of the lexicalist approaches to sentence processing (Kim et al., 2002; Bangalore and Joshi, 54 1999). Kim et al. (2002) suggest the feasibility of modeling structural analysis as lexical ambiguity resolution. They developed a connectionist neural network model of word recognition, which takes orthographic information, semantic information, and the previous two words as its input and outputs a SuperTag for the current word. A SuperTag is an elementary syntactic tree, or simply a structural description composed of features like POS, the number of complements, category of each complement, and the position of complements. In their view, structural disambiguation is</context>
+<context citStr="Kim et al. (2002)" endWordPosition="4195" position="26447" startWordPosition="4192">previous constraint-based studies and Kim et. al is that the result of the latter is based on training of the model on noisier data (sentences that were not tailored to the specific research purpose). The implementation of SuperTag advances the formal specification of the constraint-based lexicalist theory. However, the scope of their sentence processing model is limited to the DO/SC ambiguity, and the description of their model is not clear. In addition, their model is far beyond a simple statistical model: the interaction of different sources of information is not transparent. Nevertheless, Kim et al. (2002) provides a future direction for the current study and a starting point for considering what information should be included in the lexicon. The fundamental goal of the current research is to explore a model that takes the most restrictive position on the size of parameters until additional parameters are demanded by data. Equally important, the quality of architectural simplicity should be maintained. Among the different sources of information manipulated by Kim et. al., the socalled elementary structural information is considered as a reasonable and ideal parameter for addition to the current</context>
+<context citStr="Kim et al., 2002" endWordPosition="4481" position="28271" startWordPosition="4478">ide an alternative account for the garden-path effect observed in empirical studies, specifically, that the slower processing times associated with garden-path sentences are due in part to their relatively unlikely POS sequences in comparison with those of non-garden-path sentences and in part to differences in the emission probabilities that the tagger learns. One attractive future direction is to carry out simulations that compare the evolution of probabilities in the tagger with that in a theoretically more powerful model trained on the same data, such as an incremental statistical parser (Kim et al., 2002; Roark, 2001). In so doing we can find the places where the prediction problem faced both by the HSPM and the machines that aspire to emulate it actually warrants the greater power of structurally sensitive models, using this knowledge to mine large corpora for future experiments with human subjects. We have not necessarily cast doubt on the hypothesis that the HSPM makes crucial use of structural information, but we have demonstrated that much of the relevant behavior can be captured in a simple model. The ’structural’ regularities that we observe are reasonably well encoded into this model.</context>
+</contexts>
+<marker>Kim, Bangalore, Trueswell, 2002</marker>
+<rawString>A. E. Kim, Bangalore S., and J. Trueswell. A computational model of the grammatical aspects of word recognition as supertagging. paola merlo and suzanne stevenson (eds.). The Lexical Basis of Sentence Processing: Formal, computational and experimental issues, University of Geneva University of Toronto:109–135, 2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J King</author>
+<author>M A Just</author>
+</authors>
+<title>Individual differences in syntactic processing: The role of working memory.</title>
+<date>1991</date>
+<journal>Journal ofMemory and Language,</journal>
+<volume>30</volume>
+<pages>602</pages>
+<contexts>
+<context citStr="King and Just, 1991" endWordPosition="2047" position="13146" startWordPosition="2044"> the whole sentence and tags was divided by the number of words in the sentence. The result showed that the average probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are more difficult than unambiguous sentences, which is consistent with empirical findings. Probability decreased faster in object-relative sentences than in subject relatives as predicted. In the psycholinguistics literature, the comparative difficulty of object-relative clauses has been explained in terms of verbal working memory (King and Just, 1991), distance between the gap and the filler (Bever and McElree, 1988), or perspective shifting (MacWhinney, 1982). However, the test results in this study provide a simpler account for the effect. That is, the comparative difficulty of an object-relative clause might be attributed to its less frequent POS sequence. This account is particularly convincing since each pair of sentences in the experiment share the exactly same set of words except their order. 4.2 Probability Decrease at the Disambiguating Region A total of 30 pairs of a garden-path sentence and its ambiguous, non-garden-path control</context>
+</contexts>
+<marker>King, Just, 1991</marker>
+<rawString>J. King and M. A. Just. Individual differences in syntactic processing: The role of working memory. Journal ofMemory and Language, 30:580– 602, 1991.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B MacWhinney</author>
+</authors>
+<title>Basic syntactic processes. Language acquisition; Syntax and semantics,</title>
+<date>1982</date>
+<journal>S. Kuczaj (Ed.),</journal>
+<volume>1</volume>
+<contexts>
+<context citStr="MacWhinney, 1982" endWordPosition="2063" position="13257" startWordPosition="2062">e probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are more difficult than unambiguous sentences, which is consistent with empirical findings. Probability decreased faster in object-relative sentences than in subject relatives as predicted. In the psycholinguistics literature, the comparative difficulty of object-relative clauses has been explained in terms of verbal working memory (King and Just, 1991), distance between the gap and the filler (Bever and McElree, 1988), or perspective shifting (MacWhinney, 1982). However, the test results in this study provide a simpler account for the effect. That is, the comparative difficulty of an object-relative clause might be attributed to its less frequent POS sequence. This account is particularly convincing since each pair of sentences in the experiment share the exactly same set of words except their order. 4.2 Probability Decrease at the Disambiguating Region A total of 30 pairs of a garden-path sentence and its ambiguous, non-garden-path control were tested for a comparison of the probability decrease at the disambiguating region. In 80% of the cases, th</context>
+</contexts>
+<marker>MacWhinney, 1982</marker>
+<rawString>B. MacWhinney. Basic syntactic processes. Language acquisition; Syntax and semantics, S. Kuczaj (Ed.), 1:73–136, 1982.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>W M Mak</author>
+<author>W Vonk</author>
+<author>H Schriefers</author>
+</authors>
+<title>The influence of animacy on relative clause processing.</title>
+<date>2002</date>
+<journal>Journal of Memory and Language,,</journal>
+<volume>47</volume>
+<contexts>
+<context citStr="Mak et al., 2002" endWordPosition="1914" position="12239" startWordPosition="1911">linguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this test, materials from Traxler et al. (2002) (96 sentences) are used. 51 4 Results 4.1 The Probability Decrease per Word Unambiguous sentences are usually longer than garden-path sentences. To compare sentences of different lengths, the joint probability of the whole sentence and tags was divided by the number of words in the sentence. The result showed that the average probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are more difficult than unambiguous sentences, w</context>
+</contexts>
+<marker>Mak, Vonk, Schriefers, 2002</marker>
+<rawString>W. M. Mak, Vonk W., and H. Schriefers. The influence of animacy on relative clause processing. Journal of Memory and Language,, 47:50–68, 2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C D Manning</author>
+<author>H Sch¨utze</author>
+</authors>
+<title>Foundations of Statistical Natural Language Processing.</title>
+<date>1999</date>
+<publisher>The MIT Press,</publisher>
+<location>Cambridge, Massachusetts,</location>
+<marker>Manning, Sch¨utze, 1999</marker>
+<rawString>C.D. Manning and H. Sch¨utze. Foundations of Statistical Natural Language Processing. The MIT Press, Cambridge, Massachusetts, 1999.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Narayanan</author>
+<author>D Jurafsky</author>
+</authors>
+<title>A bayesian model predicts human parse preference and reading times in sentence processing.</title>
+<date>2002</date>
+<booktitle>Proceedings of Advances in Neural Information Processing Systems,</booktitle>
+<contexts>
+<context citStr="Narayanan and Jurafsky, 2002" endWordPosition="562" position="3759" startWordPosition="559"> of lexical category disambiguation based on a bigram statistical POS tagger. Kim et al. (2002) suggest the feasibility of modeling human syntactic processing as lexical ambiguity resolution using a syntactic tagging system called Super-Tagger 49 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 49–56, Sydney, July 2006. c�2006 Association for Computational Linguistics (Joshi and Srinivas, 1994; Bangalore and Joshi, 1999). Probabilistic parsing techniques also have been used for sentence processing modeling (Jurafsky, 1996; Narayanan and Jurafsky, 2002; Hale, 2001; Crocker and Brants, 2000). Jurafsky (1996) proposed a probabilistic model of HSPM using a parallel beam-search parsing technique based on the stochastic context-free grammar (SCFG) and subcategorization probabilities. Crocker and Brants (2000) used broad coverage statistical parsing techniques in their modeling of human syntactic parsing. Hale (2001) reported that a probabilistic Earley parser can make correct predictions of garden-path effects and the subject/object relative asymmetry. These previous studies have used small numbers of examples of, for example, the Reduced-relati</context>
+</contexts>
+<marker>Narayanan, Jurafsky, 2002</marker>
+<rawString>S. Narayanan and D Jurafsky. A bayesian model predicts human parse preference and reading times in sentence processing. Proceedings of Advances in Neural Information Processing Systems, 2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Roark</author>
+</authors>
+<title>Probabilistic top-down parsing and language modeling.</title>
+<date>2001</date>
+<journal>Computational Linguistics,</journal>
+<volume>27</volume>
+<pages>2--249</pages>
+<contexts>
+<context citStr="Roark, 2001" endWordPosition="4483" position="28285" startWordPosition="4482"> account for the garden-path effect observed in empirical studies, specifically, that the slower processing times associated with garden-path sentences are due in part to their relatively unlikely POS sequences in comparison with those of non-garden-path sentences and in part to differences in the emission probabilities that the tagger learns. One attractive future direction is to carry out simulations that compare the evolution of probabilities in the tagger with that in a theoretically more powerful model trained on the same data, such as an incremental statistical parser (Kim et al., 2002; Roark, 2001). In so doing we can find the places where the prediction problem faced both by the HSPM and the machines that aspire to emulate it actually warrants the greater power of structurally sensitive models, using this knowledge to mine large corpora for future experiments with human subjects. We have not necessarily cast doubt on the hypothesis that the HSPM makes crucial use of structural information, but we have demonstrated that much of the relevant behavior can be captured in a simple model. The ’structural’ regularities that we observe are reasonably well encoded into this model. For purposes </context>
+</contexts>
+<marker>Roark, 2001</marker>
+<rawString>B. Roark. Probabilistic top-down parsing and language modeling. Computational Linguistics, 27 (2):249–276, 2001.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M J Traxler</author>
+<author>R K Morris</author>
+<author>R E Seely</author>
+</authors>
+<title>Processing subject and object relative clauses: evidence from eye movements.</title>
+<date>2002</date>
+<journal>Journal ofMemory and Language,</journal>
+<volume>47</volume>
+<contexts>
+<context citStr="Traxler et al., 2002" endWordPosition="1904" position="12194" startWordPosition="1901">sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this test, materials from Traxler et al. (2002) (96 sentences) are used. 51 4 Results 4.1 The Probability Decrease per Word Unambiguous sentences are usually longer than garden-path sentences. To compare sentences of different lengths, the joint probability of the whole sentence and tags was divided by the number of words in the sentence. The result showed that the average probability decrease was greater in garden-path sentences compared to their unambiguous control sentences. This indicates that garden-path sentences are</context>
+</contexts>
+<marker>Traxler, Morris, Seely, 2002</marker>
+<rawString>M. J. Traxler, R. K. Morris, and R. E. Seely. Processing subject and object relative clauses: evidence from eye movements. Journal ofMemory and Language, 47:69–90, 2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J C Trueswell</author>
+</authors>
+<title>The role of lexical frequency in syntactic ambiguity resolution.</title>
+<date>1996</date>
+<journal>Journal of Memory and Language,</journal>
+<volume>35</volume>
+<contexts>
+<context citStr="Trueswell, 1996" endWordPosition="380" position="2485" startWordPosition="379">lly adequate account of recursive syntactic structure is an essential component of any model of the behaviour. In this study, we tested a bigram POS tagger on different types of structural ambiguities and (as a sanity check) to the well-known asymmetry of subject and object relative clause processing. Theoretically, the garden-path effect is defined as processing difficulty caused by reanalysis. Empirically, it is attested as comparatively slower reading time or longer eye fixation at a disambiguating region in an ambiguous sentence compared to its control sentences (Frazier and Rayner, 1982; Trueswell, 1996). That is, the garden-path effect detected in many human studies, in fact, is measured through a “comparative” method. This characteristic of the sentence processing research design is reconstructed in the current study using a probabilistic POS tagging system. Under the assumption that larger probability decrease indicates slower reading time, the test results suggest that the probabilistic POS tagging system can predict reading time penalties at the disambiguating region of garden-path sentences compared to that of non-garden-path sentences (i.e. control sentences). 2 Previous Work Corley an</context>
+<context citStr="Trueswell, 1996" endWordPosition="1825" position="11673" startWordPosition="1824"> experimental studies are constructed in this way in order to control extraneous variables such as word frequency. We use these sentences in the same form as the experimentalists so we inherit their careful design. In this study, a total of 76 sentences were tested: 10 for lexical category ambiguity, 12 for RR ambiguity, 20 for PP ambiguity, 16 for DO/SC ambiguity, and 18 for clausal boundary ambiguity. This set of materials is, to our knowledge, the most comprehensive yet subjected to this type of study. The sentences are directly adopted from various psycholinguistic studies (Frazier, 1978; Trueswell, 1996; Frazier and Clifton, 1996; Ferreira and Clifton, 1986; Ferreira and Henderson, 1986). As a baseline test case of the tagger, the well-established asymmetry between subject- and object-relative clauses was tested as shown in (11). (11) a. The editor who kicked the writer fired the entire staff. (Subject-relative) b. The editor who the writer kicked fired the entire staff. (Object-relative) The reading time advantage of subject-relative clauses over object-relative clauses is robust in English (Traxler et al., 2002) as well as other languages (Mak et al., 2002; Homes et al., 1981). For this te</context>
+<context citStr="Trueswell, 1996" endWordPosition="3242" position="20389" startWordPosition="3241">e model. This suggests that we should be cautious −21 −26 −31 −36 −41 told the joke but did −5 −10 −15 −20 −25 −30 53 in assuming that a structural explanation is needed for the RR ambiguity resolution, and it could be that similar cautions are in order for other ambiguities usually seen as syntactic. Although the probability re-ranking reported in the previous studies (Corley and Crocker, 2000; Frazier, 1978) is correctly replicated, the tagger sometimes made undesired revisions. For example, the tagger did not make a repair for the sentence The friend accepted by the man was very impressed (Trueswell, 1996) because accepted is biased as a past participle. This result is compatible with the findings of Trueswell (1996). However, the bias towards past-participle produces a repair in the control sentence, which is unexpected. For the sentence, The friend accepted the man who was very impressed, the tagger showed a repair since it initially preferred a past-participle analysis for accepted and later it had to reanalyze. This is a limitation of our model, and does not match any previous empirical finding. 5 Discussion The current study explores Corley and Crocker’s model(2000) further on the model’s </context>
+</contexts>
+<marker>Trueswell, 1996</marker>
+<rawString>J. C. Trueswell. The role of lexical frequency in syntactic ambiguity resolution. Journal of Memory and Language, 35:556–585, 1996.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Viterbi</author>
+</authors>
+<title>Error bounds for convolution codes and an asymptotically optimal decoding algorithm.</title>
+<date>1967</date>
+<journal>IEEE Transactions of Information Theory,</journal>
+<volume>13</volume>
+<pages>260--269</pages>
+<contexts>
+<context citStr="Viterbi, 1967" endWordPosition="900" position="5874" startWordPosition="899">gger based on bigrams was used. We made our own implementation to be sure of getting as close as possible to the design of Corley and Crocker (2000). Given a word string, w0, w1, · · · , wn, the tagger calculates the probability of every possible tag path, t0, · · · , tn. Under the Markov assumption, the joint probability of the given word sequence and each possible POS sequence can be approximated as a product of conditional probability and transition probability as shown in (1). (1) P(w0, w1, ··· ,wn, t0, t1, ··· , tn) ≈ 11ni=1P(wi|ti) · P (ti|ti−1),where n ≥ 1. Using the Viterbi algorithm (Viterbi, 1967), the tagger finds the most likely POS sequence for a given word string as shown in (2). (2) arg max P(t0, t1, ··· , tn|w0, w1, ··· , wn, P). This is known technology, see Manning and Sch¨utze (1999), but the particular use we make of it is unusual. The tagger takes a word string as an input, outputs the most likely POS sequence and the final probability. Additionally, it presents accumulated probability at each word break and probability re-ranking, if any. Note that the running probability at the beginning of a sentence will be 1, and will keep decreasing at each word break since it is a pro</context>
+</contexts>
+<marker>Viterbi, 1967</marker>
+<rawString>A. Viterbi. Error bounds for convolution codes and an asymptotically optimal decoding algorithm. IEEE Transactions of Information Theory, 13: 260–269, 1967.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

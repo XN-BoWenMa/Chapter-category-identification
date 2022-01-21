@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000104" no="0">
+<note confidence="0.951376">
+Proceedings of the 40th Annual Meeting of the Association for
+Computational Linguistics (ACL), Philadelphia, July 2002, pp. 56-63.
+</note>
+<title confidence="0.981729">
+Comprehension and Compilation in Optimality Theory∗
+</title>
+<author confidence="0.998947">
+Jason Eisner
+</author>
+<affiliation confidence="0.9311995">
+Department of Computer Science
+Johns Hopkins University
+</affiliation>
+<address confidence="0.980785">
+Baltimore, MD, USA 21218-2691
+</address>
+<email confidence="0.999276">
+jason@cs.jhu.edu
+</email>
+<sectionHeader confidence="0.997392" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.997910071428571">This paper ties up some loose ends in finite-state Optimality Theory. First, it discusses how to perform comprehension under Optimality Theory grammars consisting of finite-state constraints. Comprehension has not been much studied in OT; we show that unlike production, it does not always yield a regular set, making finite-state methods inapplicable. However, after giving a suitably flexible presentation of OT, we show carefully how to treat comprehension under recent variants of OT in which grammars can be compiled into finite-state transducers. We then unify these variants, showing that compilation is possible if all components of the grammar are regular relations, including the harmony ordering on scored candidates. A side benefit of our construction is a far simpler implementation of directional OT (Eisner, 2000).</bodyText>
+<sectionHeader confidence="0.999382" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.947567103448276">To produce language is to convert utterances from their underlying (“deep”) form to a surface form. Optimality Theory or OT (Prince and Smolensky, 1993) proposes to describe phonological production as an optimization process. For an underlying x, a speaker purportedly chooses the surface form z so as to maximize the harmony of the pair (x, z). Broadly speaking, (x, z) is harmonic if z is “easy” to pronounce and “similar” to x. But the precise harmony measure depends on the language; according to OT, it can be specified by a grammar of ranked desiderata known as constraints. According to OT, then, production maps each underlying form to its best possible surface pronunciation. It is akin to the function that maps each child x to his or her most flattering outfit z. Different children look best in different clothes, and for an oddly shaped child x, even the best conceivable outfit z may be an awkward compromise between style and fit—that is, between ease of pronunciation and similarity to x. Language comprehension is production in reverse. In OT, it maps each outfit z to the set of chil∗Thanks to Kie Zuraw for asking about comprehension; to Ron Kaplan for demanding an algebraic construction before he believed directional OT was finite-state; and to others whose questions convinced me that this paper deserved to be written. dren x for whom that outfit is optimal, i.e., is at least as flattering as any other outfit z0:</bodyText>
+<equation confidence="0.997098333333333">
+PRODUCE(x) = {z : (�z0) (x, z0) &gt; (x, z)}
+COMPREHEND(z) = {x : z E PRODUCE(x)}
+= {x : (�z0) (x, z0) &gt; (x, z)}
+</equation>
+<bodyText confidence="0.999130777777778">In general z and z0 may range over infinitely many possible pronunciations. While the formulas above are almost identical, comprehension is in a sense more complex because it varies both the underlying and surface forms. While PRODUCE(x) considers all pairs (x, z0), COMPREHEND(z) must for each x consider all pairs (x, z0). Of course, this nested definition does not preclude computational shortcuts. This paper has three modest goals:</bodyText>
+<listItem confidence="0.85716444">1. To show that OT comprehension does in fact present a computational problem that production does not. Even when the OT grammar is required to be finite-state, so that production can be performed with finite-state techniques, comprehension cannot in general be performed with finite-state techniques. 2. To consider recent constructions that cut through this problem (Frank and Satta, 1998; Karttunen, 1998; Eisner, 2000; Gerdemann and van Noord, 2000). By altering or approximating the OT formalism—that is, by hook or by crook—these constructions manage to compile OT grammars into finite-state transducers. Transducers may readily be inverted to do comprehension as easily as production. We carefully lay out how to use them for comprehension in realistic circumstances (in the presence of correspondence theory, lexical constraints, hearer uncertainty, and phonetic postprocessing). 3. To give a unified treatment in the extended finitestate calculus of the constructions referenced above. This clarifies their meaning and makes them easy to implement. For example, we obtain a transparent algebraic version of Eisner’s (2000) unbearably technical automaton construction for his proposed formalism of “directional OT.”</listItem>
+<bodyText confidence="0.9997195">The treatment shows that all the constructions emerge directly from a generalized presentation of OT, in which the crucial fact is that the harmony ordering on scored candidates is a regular relation.</bodyText>
+<sectionHeader confidence="0.994413" genericHeader="related work">
+2 Previous Work on Comprehension
+</sectionHeader>
+<bodyText confidence="0.999735272727273">Work focusing on OT comprehension—or even mentioning it—has been surprisingly sparse. While the recent constructions mentioned in §1 can easily be applied to the comprehension problem, as we will explain, they were motivated primarily by a desire to pare back OT’s generative power to that of previous rewrite-rule formalisms (Johnson, 1972). Fosler (1996) noted the existence of the OT comprehension task and speculated that it might succumb to heuristic search. Smolensky (1996) proposed to solve it by optimizing the underlying form,</bodyText>
+<equation confidence="0.991337">
+COMPREHEND(z) ?= {x : (�xy) (x�, z) &gt; (x, z)}
+</equation>
+<bodyText confidence="0.999075227272727">Hale and Reiss (1998) pointed out in response that any comprehension-by-optimization strategy would have to arrange for multiple optima: after all, phonological comprehension is a one-to-many mapping (since phonological production is many-to-one).1 The correctness of Smolensky’s proposal (i.e., whether it really computes COMPREHEND) depends on the particular harmony measure. It can be made to work, multiple optima and all, if the harmony measure is constructed with both production and comprehension in mind. Indeed, for any phonology, it is trivial to design a harmony measure that both production and comprehension optimize. (Just define the harmony of (x, z) to be 1 or 0 according to whether the mapping x 7→ z is in the language!) But we are really only interested in harmony measures that are defined by OT-style grammars (rankings of “simple” constraints). In this case Smolensky’s proposal can be unworkable. In particular, §4 will show that a finite-state production grammar in classical OT need not be invertible by any finite-state comprehension grammar.</bodyText>
+<footnote confidence="0.987492428571429">
+1Hale &amp; Reiss’s criticism may be specific to phonology
+and syntax. For some phenomena in semantics, pragmatics,
+and even morphology, Blutner (1999) argues for a one-to-one
+form-meaning mapping in which marked forms express marked
+meanings. He deliberately uses bidirectional optimization to
+rule out many-to-one cases: roughly speaking, an (x, z) pair is
+grammatical for him only if z is optimal given x and vice-versa.
+</footnote>
+<sectionHeader confidence="0.919398" genericHeader="method">
+3 A General Presentation of OT
+</sectionHeader>
+<bodyText confidence="0.999435789473684">This section (graphically summarized in Fig. 1) lays out a generalized version of OT’s theory of production, introducing some notational and representational conventions that may be useful to others and will be important below. In particular, all objects are represented as strings, or as functions that map strings to strings. This will enable us to use finitestate techniques later. The underlying form x and surface form z are represented as strings. We often refer to these strings as input and output. Following Eisner (1997), each candidate (x, z) is also represented as a string y. The notation (x, z) that we have been using so far for candidates is actually misleading, since in fact the candidates y that are compared encode more than just x and z. They also encode a particular alignment or correspondence between x and z. For example, if x = abdip and z = a[di][bu], then a typical candidate would be encoded which specifies that a corresponds to a, b was deleted (has no surface correspondent), voiceless p surfaces as voiced b, etc.</bodyText>
+<equation confidence="0.9579">
+y = aab0[ddii][pb0u]
+</equation>
+<bodyText confidence="0.999657833333333">The harmony of y might depend on this alignment as well as on x and z (just as an outfit might fit worse when worn backwards). Because we are distinguishing underlying and surface material by using disjoint alphabets E = {a, b,...} and A = {[, ], a, b,...},2 it is easy to extract the underlying and surface forms (x and z) from y. Although the above example assumes that x and z are simple strings of phonemes and brackets, nothing herein depends on that assumption. Autosegmental representations too can be encoded as strings (Eisner, 1997). In general, an OT grammar consists of 4 components: a constraint ranking, a harmony ordering, and generating and pronouncing functions. The constraint ranking is the language-specific part of the grammar; the other components are often supposed to be universal across languages. The generating function GEN maps any x ∈ E∗ to the (nonempty) set of candidates y whose underlying form is x. In other words, GEN just inserts arbitrary substrings from Δ* amongst the characters of x, subject to any restrictions on what constitutes a legitimate candidate y.3 (Legitimacy might for instance demand that y’s surface material z have matched, non-nested left and right brackets, or even that z be similar to x in terms of edit distance.)</bodyText>
+<footnote confidence="0.913444">
+2An alternative would be to distinguish them by odd and
+even positions in the string.
+</footnote>
+<equation confidence="0.9157418">
+�) Y0(x) C1
+GEN �) Y1(x) C2
+�) Y2(x)··· Cn
+�) Yn(x)
+ |{z }
+</equation>
+<figure confidence="0.793131727272727">
+underlying form xEE* sets of candidates yE(EUO)*
+PRON
+�) Z(x)
+ |{z }
+set of surface forms zEO*
+|{z}
+x
+where Yi−1(x) Ci ) Yi(x) really means Yi−1(x) �) Ci ¯Yi(x) prune �)optimal subset of ¯Yi(x) delete ?
+ |{z }  |{z } �) Yi(x)
+yE(EUO)* ¯yE(EUOU{?})*  |{z }
+yE(EUO)*
+</figure>
+<figureCaption confidence="0.9994905">
+Figure 1: This paper’s view of OT production. In the second line, Ci inserts *’s into candidates; then the candidates with suboptimal
+starrings are pruned away, and finally the *’s are removed from the survivors.
+</figureCaption>
+<bodyText confidence="0.999893083333333">A constraint ranking is simply a sequence C1, C2,... Cn of constraints. Let us take each Ci to be a function that scores candidates y by annotating them with violation marks ?. For example, a NODELETE constraint would map y = aab0c0[ddii][pb0u] to y¯=NODELETE(y) = aab?0c?0[ddii][pb0u], inserting a ?after each underlying phoneme that does not correspond to any surface phoneme. This unconventional formulation is needed for new approaches that care about the exact location of the ?’s. In traditional OT only the number of ?’s is important, although the locations are sometimes shown for readability. Finally, OT requires a harmony ordering &gt;on scored candidates y¯ E (Σ U Δ U {?})*. In traditional OT, y¯ is most harmonic when it contains the fewest ?’s. For example, among candidates scored by NODELETE, the most harmonic ones are the ones with the fewest deletions; many candidates may tie for this honor.§6 considers other harmony orderings, a possibility recognized by Prince and Smolensky (1993) (&gt;corresponds to their x-EVAL). In general &gt;may be a partial order: two competing candidates may be equally harmonic or incomparable (in which case both can survive), and candidates with different underlying forms never compete at all. Production under such a grammar is a matter of successive filtering by the constraints C1,... Cn. Given an underlying form x, let</bodyText>
+<equation confidence="0.997831">
+Y0(x) = GEN(x) (1)
+</equation>
+<footnote confidence="0.800056333333333">
+3It is never really necessary for GEN to enforce such restric-
+tions, since they can equally well be enforced by the top-ranked
+constraint Cl (see below).
+</footnote>
+<equation confidence="0.9993835">
+Yi(x) = {y E Yi−1(x) : (2)
+(�y� E Yi−1(x)) Ci(y�) &gt;- Ci(y)}
+</equation>
+<bodyText confidence="0.998156">The set of optimal candidates is now Yn(x). Extracting z from each y E Yn(x) gives the set Z(x) or PRODUCE(x) of acceptable surface forms:</bodyText>
+<equation confidence="0.999168">
+Z(x) = {PRON(y) : y E Yn(x)} C_ Δ* (3)
+</equation>
+<bodyText confidence="0.999531761904762">PRON denotes the simple pronunciation function that extracts z from y. It is the counterpart to GEN: just as GEN fleshes out x E Σ* into y by inserting symbols of Δ, PRON slims y down to z E Δ* by removing symbols of Σ. Notice that Yn C_ Yn−1 C_ ... C_ Y0. The only candidates y E Yi−1 that survive filtering by Ci are the ones that Ci considers most harmonic. The above notation is general enough to handle some of the important variations of OT, such as Paradigm Uniformity and Sympathy Theory. In particular, one can define GEN so that each candidate y encodes not just an alignment between x and z, but an alignment among x, z, and some other strings that are neither underlying nor surface. These other strings may represent the surface forms for other members of the same morphological paradigm, or intermediate throwaway candidates to which z is sympathetic. Production still optimizes y, which means that it simultaneously optimizes z and the other strings.</bodyText>
+<sectionHeader confidence="0.992573" genericHeader="method">
+4 Comprehension in Finite-State OT
+</sectionHeader>
+<bodyText confidence="0.999833142857143">This section assumes OT’s traditional harmony ordering, in which the candidates that survive filtering by Ci are the ones into which Ci inserts fewest ?’s. Much computational work on OT has been conducted within a finite-state framework (Ellison, 1994), in keeping with a tradition of finite-state phonology (Johnson, 1972; Kaplan and Kay, 1994).4</bodyText>
+<footnote confidence="0.526517">
+4The tradition already included (inviolable) phonological
+</footnote>
+<bodyText confidence="0.978425866666667">Finite-state OT is a restriction of the formalism discussed above. It specifically assumes that GEN, C1,... C,, and PRON are all regular relations, meaning that they can be described by finite-state transducers. GEN is a nondeterministic transducer that maps each x to multiple candidates y. The other transducers map each y to a single y¯ or z. These finite-state assumptions were proposed (in a different and slightly weaker form) by Ellison (1994). Their empirical adequacy has been defended by Eisner (1997). In addition to having the right kind of power linguistically, regular relations are closed under various relevant operations and allow (efficient) parallel processing of regular sets of strings. Ellison (1994) exploited such properties to give a production algorithm for finite-state OT. Given x and a finite-state OT grammar, he used finite-state operations to construct the set Y,,,(x) of optimal candidates, represented as a finite-state automaton. Ellison’s construction demonstrates that Y,,, is always a regular set. Since PRON is regular, it follows that PRODUCE(x) = Z(x) is also a regular set. We now show that COMPREHEND(z), in constrast, need not be a regular set. Let E = {a, b}, A = {[, ], a, b, ...} and suppose that GEN allows candidates like the ones in §3, in which parts of the string may be bracketed between [ and ]. The crucial grammar consists of two finite-state constraints. C2 penalizes a’s that fall between brackets (by inserting * next to each one) and also penalizes b’s that fall outside of brackets. It is dominated by C1, which penalizes brackets that do not fall at either edge of the string. Note that this grammar is completely permissive as to the number and location of surface characters other than brackets. If x contains more a’s than b’s, then PRODUCE(x) is the set ˆA* of all unbracketed surface forms, where Aˆ is A minus the bracket symbols. If x contains fewer a’s than b’s, then PRODUCE(x) = [ ˆA*]. And if a’s and b’s appear equally often in x, then PRODUCE(x) is the union of the two sets. Thus, while the x-to-z mapping is not a regular relation under this grammar, at least PRODUCE(x) is a regular set for each x—just as finite-state OT constraints, notably Koskenniemi’s (1983) two-level model, which like OT used finite-state constraints on candidates y that encoded an alignment between underlying x and surface z. guarantees. But for any unbracketed z E ˆA*, such as z = abc, COMPREHEND(z) is not regular: it is the set of underlying strings with # of a’s &gt; # of b’s. This result seems to eliminate any hope of handling OT comprehension in a finite-state framework. It is interesting to note that both OT and current speech recognition systems construct finitestate models of production and define comprehension as the inverse of production. Speech recognizers do correctly implement comprehension via finite-state optimization (Pereira and Riley, 1997). But this is impossible in OT because OT has a more complicated production model. (In speech recognizers, the most probable phonetic or phonological surface form is not presumed to have suppressed its competitors.) One might try to salvage the situation by barring constraints like C1 or C2 from the theory as linguistically implausible. Unfortunately this is unlikely to succeed. Primitive OT (Eisner, 1997) already restricts OT to something like a bare minimum of constraints, allowing just two simple constraint families that are widely used by practitioners of OT. Yet even these primitive constraints retain enough power to simulate any finite-state constraint. In any case, C1 and C2 themselves are fairly similar to “domain” constraints used to describe tone systems (Cole and Kisseberth, 1994). While C2 is somewhat odd in that it penalizes two distinct configurations at once, one would obtain the same effect by combining three separately plausible constraints: C2 requires a’s between brackets (i.e., in a tone domain) to receive surface high tones, C3 requires b’s outside brackets to receive surface high tones, and C4 penalizes all surface high tones.5 Another obvious if unsatisfying hack would impose heuristic limits on the length of x, for example by allowing the comprehension system to return the approximation COMPREHEND(z) n {x : Ixl G 2 · IzI}. This set is finite and hence regular, so per5Since the surface tones indicate the total number of a’s and b’s in the underlying form, COMPREHEND(z) is actually a finite set in this version, hence regular. But the non-regularity argument does go through if the tonal information in z is not available to the comprehension system (as when reading text without diacritics); we cover this case in §5. (One can assume that some lower-ranked constraints require a special suffix before ], so that the bracket information need not be directly available to the comprehension system either.) haps it can be produced by some finite-state method, although the automaton to describe the set might be large in some cases. Recent efforts to force OT into a fully finite-state mold are more promising. As we will see, they identify the problem as the harmony ordering &gt;-, rather than the space of constraints or the potential infinitude of the answer set.</bodyText>
+<sectionHeader confidence="0.998996" genericHeader="method">
+5 Regular-Relation Comprehension
+</sectionHeader>
+<bodyText confidence="0.999845105263158">Since COMPREHEND(z) need not be a regular set in traditional OT, a corollary is that COMPREHEND and its inverse PRODUCE are not regular relations. That much was previously shown by Markus Hiller and Paul Smolensky (Frank and Satta, 1998), using similar examples. However, at least some OT grammars ought to describe regular relations. It has long been hypothesized that all human phonologies are regular relations, at least if one omits reduplication, and this is necessarily true of phonologies that were successfully described with pre-OT formalisms (Johnson, 1972; Koskenniemi, 1983). Regular relations are important for us because they are computationally tractable. Any regular relation can be implemented as a finite-state transducer T, which can be inverted and used for comprehension as well as production. PRODUCE(x) = T (x) = range(x o T), and COMPREHEND(z) = T−'(z) = domain(T o z). We are therefore interested in compiling OT grammars into finite-state transducers—by hook or by crook. §6 discusses how; but first let us see how such compilation is useful in realistic situations. Any practical comprehension strategy must recognize that the hearer does not really perceive the entire surface form. After all, the surface form contains phonetically invisible material (e.g., syllable and foot boundaries) and makes phonetically imperceptible distinctions (e.g., two copies of a tone versus one doubly linked copy). How to comprehend in this case? The solution is to modify PRON to “go all the way”—to delete not only underlying material but also phonetically invisible material. Indeed, PRON can also be made to perform any purely phonetic processing. Each output z of PRODUCE is now not a phonological surface form but a string of phonemes or spectrogram segments. So long as PRON is a regular relation (perhaps a nondeterministic or probabilistic one that takes phonetic variation into account), we will still be able to construct T and use it for production and comprehension as above.6 How about the lexicon? When the phonology can be represented as a transducer, COMPREHEND(z) is a regular set. It contains all inputs x that could have produced output z. In practice, many of these inputs are not in the lexicon, nor are they possible novel words. One should restrict to inputs that appear in the lexicon (also a regular set) by intersecting COMPREHEND(z) with the lexicon. For novel words this intersection will be empty; but one can find the possible underlying forms of the novel word, for learning’s sake, by intersecting COMPREHEND(z) with a larger (infinite) regular set representing all forms satisfying the language’s lexical constraints. There is an alternative treatment of the lexicon. GEN can be extended “backwards” to incorporate morphology just as PRON was extended “forwards” to incorporate phonetics. On this view, the input x is a sequence of abstract morphemes, and GEN performs morphological preprocessing to turn x into possible candidates y. GEN looks up each abstract morpheme’s phonological string E E* from the lexicon,7 then combines these phonological strings by concatenation or template merger, then nondeterministically inserts surface material from A*. Such a GEN can plausibly be built up (by composition) as a regular relation from abstract morpheme sequences to phonological candidates. This regularity, as for PRON, is all that is required. Representing a phonology as a transducer T has additional virtues. T can be applied efficiently to any input string x, whereas Ellison (1994) or Eisner (1997) requires a fresh automaton construction for each x. A nice trick is to build T without</bodyText>
+<footnote confidence="0.9612178">
+6Pereira and Riley (1997) build a speech recognizer by com-
+posing a probabilistic finite-state language model, a finite-state
+pronouncing dictionary, and a probabilistic finite-state acoustic
+model. These three components correspond precisely to the in-
+put to GEN, the traditional OT grammar, and PRON, so we are
+simply suggesting the same thing in different terminology.
+7Nondeterministically in the case of phonologically condi-
+tioned allomorphs: INDEFINITE APPLE ra fΛWpl, WnWpl} C
+Σ∗. This yields competing candidates that differ even in their
+underlying phonological material.
+</footnote>
+<bodyText confidence="0.997424">PRON and apply it to all conceivable x’s in parallel, yielding the complete set of all optimal candidates Yr,,(E*) = UxCE∗ Yr,,(x). If Y and Y ' denote the sets of optimal candidates under two grammars, then (Y n -,Y ') U (Y ' n -,Y ) yields the candidates that are optimal under only one grammar. Applying GEN_1 or PRON to this set finds the regular set of underlying or surface forms that the two grammars would treat differently; one can then look for empirical cases in this set, in order to distinguish between the two grammars.</bodyText>
+<sectionHeader confidence="0.99255" genericHeader="evaluation">
+6 Theorem on Compiling OT
+</sectionHeader>
+<bodyText confidence="0.993259344827586">Why are OT phonologies not always regular relations? The trouble is that inputs may be arbitrarily long, and so may accrue arbitrarily large numbers of violations. Traditional OT (§4) is supposed to distinguish all such numbers. Consider syllabification in English, which prefers to syllabify the long input bi bambam ... bam � k copies as [bi][bam][bam] ... [bam] (with k codas) rather than [bib][am][bam] ... [bam] (with k + 1 codas). NOCODA must therefore distinguish annotated candidates y¯ with k *’s (which are optimal) from those with k + 1 *’s (which are not). It requires a (&gt; k + 2)-state automaton to make this distinction by looking only at the *’s in ¯y. And if k can be arbitrarily large, then no finite-state automaton will handle all cases. Thus, constraints like NOCODA do not allow an upper bound on k for all x E E*. Of course, the minimal number of violations k of a constraint is fixed given the underlying form x, which is useful in production.8 But comprehension is less fortunate: we cannot bound k given only the surface form z. In the grammar of §4, COMPREHEND(abc) included underlying forms whose optimal candidates had arbitrarily large numbers of violations k. Now, in most cases, the effect of an OT grammar can be achieved without actually counting anything. (This is to be expected since rewrite-rule grammars were previously written for the same phonologies, and they did not use counting!)</bodyText>
+<footnote confidence="0.903990285714286">
+8Ellison (1994) was able to construct PRODUCE(x) from x.
+One can even build a transducer for PRODUCE that is correct on
+all inputs that can achieve &lt; K violations and returns ∅ on other
+inputs (signalling that the transducer needs to be recompiled
+with increased K). Simply use the construction of (Frank and
+Satta, 1998; Karttunen, 1998), composed with a hard constraint
+that the answer must have &lt; K violations.
+</footnote>
+<bodyText confidence="0.999884055555556">This is possible despite the above arguments because for some grammars, the distinction between optimal and suboptimal y¯ can be made by looking at the non-* symbols in y¯ rather than trying to count the *’s. In our NOCODA example, a surface substring such as ... ib*][a... might signal that y¯ is suboptimal because it contains an “unnecessary” coda. Of course, the validity of this conclusion depends on the grammar and specifically the constraints C1,... Ci_1 ranked above NOCODA, since whether that coda is really unnecessary depends on whether Yi_1 also contains the competing candidate ... i][ba ... with fewer codas. But as we have seen, some OT grammars do have effects that overstep the finite-state boundary (§4). Recent efforts to treat OT with transducers have therefore tried to remove counting from the formalism. We now unify such efforts by showing that they all modify the harmony ordering &gt;-.§4 described finite-state OT grammars as ones where GEN, PRON, and the constraints are regular relations. We claim that if the harmony ordering &gt;is also a regular relation on strings of (EUAU{*})*, then the entire grammar (PRODUCE) is also regular. We require harmony orderings to be compatible with GEN: an ordering must treat ¯y', y¯ as incomparable (neither is &gt;the other) if they were produced from different underlying forms.9 To make the notation readable let us denote the &gt;relation by the letter H. Thus, a transducer for H accepts the pair (¯y', ¯y) if ¯y' &gt;¯y.The construction is inductive. Y0 = GEN is regular by assumption. If Yi_1 is regular, then so is Yi since (as we will show)</bodyText>
+<equation confidence="0.828874">
+Yi = (¯Yi o-,range(¯Yi o H)) o D (4)
+def
+</equation>
+<bodyText confidence="0.9996048">where ¯Yi = Yi_1 o Ci and maps x to the set of starred candidates that Ci will prune; -, denotes the complement of a regular language; and D is a transducer that removes all *’s. Therefore PRODUCE = Yr,, o PRON is regular as claimed.</bodyText>
+<footnote confidence="0.866452">
+9For example, the harmony ordering of traditional OT is
+{(¯y�, ¯y) : ¯y� has the same underlying form as, but contains
+fewer *’s than, ¯y}. If we were allowed to drop the same-
+</footnote>
+<bodyText confidence="0.67770475">underlying-form condition then the ordering would become regular, and then our claim would falsely imply that all traditional finite-state OT grammars were regular relations. It remains to derive (4). Equation (2) implies</bodyText>
+<equation confidence="0.891528333333333">
+Ci(Yi(x)) = {¯y ∈ ¯Yi(x) : (�¯y' ∈ ¯Yi(x)) ¯y' &gt;- ¯y} (5)
+¯Yi(x) − {¯y : (∃¯y' ∈ ¯Yi(x)) ¯y' &gt;- ¯y} (6)
+= Yi(x) − H( Yi(x)) (7)
+</equation>
+<bodyText confidence="0.9922915">One can read H( Yi(x)) as “starred candidates that are worse than other starred candidates,” i.e., suboptimal. The set difference (7) leaves only the optimal candidates. We now see and composing both sides with D yields (4).</bodyText>
+<equation confidence="0.987468333333334">
+(x, ¯y) ∈ Yi ◦ Ci ⇔ y¯ ∈ Ci(Yi(x)) (8)
+⇔ y¯ ∈ Yi(x), y¯ ∈6 H( Yi(x)) [by (7)] (9)
+⇔ y¯∈ ¯Yi(x), (�z)¯y ∈ H(¯Yi(z)) [see below](10)
+⇔ (x, ¯y) ∈ ¯Yi, y¯ ∈6 range(¯Yi ◦ H) (11)
+⇔ (x, ¯y) ∈ ¯Yi ◦ ¬range(¯Yi ◦ H) (12)
+therefore Yi ◦ Ci = ¯Yi ◦ ¬range(¯Yi ◦ H) (13)
+</equation>
+<bodyText confidence="0.995102379310345">To justify (9) ⇔ (10) we must show when y¯ ∈ ¯Yi(x) that y¯∈ H( Yi(x)) ⇔ (∃z)¯y ∈ H( Yi(z)). For the ⇒ direction, just take z = x. For ⇐, y¯ ∈ H( Yi(z)) means that (∃¯y' ∈ Yi(z))¯y' &gt;¯y; but then x = z (giving y¯ ∈ H(¯Yi(x))), since if not, our compatibility requirement on H would have made ¯y' ∈ ¯Yi(z) incomparable with y¯ ∈ ¯Yi(x). Extending the pretty notation of (Karttunen, 1998), we may use (4) to define a left-associative generalized optimality operator ooH : Y ooH C def = (Y ◦C◦¬range(Y ◦C◦H))◦D (14) Then for any regular OT grammar, PRODUCE = GEN ooH C1 ooH C2 · · · ooH Cn ◦ PRON and can be inverted to get COMPREHEND. More generally, different constraints can usefully be applied with different H’s (Eisner, 2000). The algebraic construction above is inspired by a version that Gerdemann and van Noord (2000) give for a particular variant of OT. Their regular expressions can be used to implement it, simply replacing their add_violation by our H. Typically, H ignores surface characters when comparing starred candidates. So H can be written as elim(A)◦G◦elim(A)−1 where elim(A) is a transducer that removes all characters of A. To satisfy the compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10</bodyText>
+<footnote confidence="0.5773405">
+10This transducer regexp says to map any symbol in Σ ∪ {*}
+to itself, or insert or delete *—and then repeat.
+</footnote>
+<bodyText confidence="0.999864666666667">We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework.</bodyText>
+<listItem confidence="0.982549730769231">• Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described with a transducer that keeps count of the input and output *’s so far, on a scale of 0, 1, 2, ≥ 3. Final states are those whose output count exceeds their input count on this scale. • Y o⊂ C: Matching or subset approximation (Gerdemann and van Noord, 2000). A candidate is more disharmonic than another if it has stars in all the same locations and some more besides.&amp;quot; Here G = ((E|*)*(E : *)(E|*)*)+. • Y o&gt; C: Left-to-right directional evaluation (Eisner, 2000). A candidate is more disharmonic than another if in the leftmost position where they differ</listItem>
+<bodyText confidence="0.899233235294118">(ignoring surface characters), it has a *. This revises OT’s “do only when necessary” mantra to “do only when necessary and then as late as possible” (even if delaying *’s means suffering more of them later). Here G = (E|*)*((E : *)|((E : *)(E|*)*)). Unlike the other proposals, here two forms can both be optimal only if they have exactly the same pattern of violations with respect to their underlying material. • Y &lt;o C: Right-to-left directional evaluation. “Do only when necessary and then as early as possible.” Here G is the reverse of the G used in o&gt; . The novelty of the matching and directional proposals is their attention to where the violations fall. Eisner’s directional proposal (o&gt;, &lt;o) is the only 11Many candidates are incomparable under this ordering, so Gerdemann and van Noord also showed how to weaken the notation of “same location” in order to approximate o+ better.</bodyText>
+<figure confidence="0.999919925925926">
+(a) x =bantodibo (b) NOCODA (c) C1 NOCODA (d) C1 Q1 Q2 Q3 Q4
+[ban][to][di][bo]
+[ban][ton][di][bo]
+[ban][to][dim][bon]
+[ban][ton][dim][bon]
+ban*todibo
+ban*to*dibo
+ban*todi*bo*
+ban*to*di*bo*
+*
+**
+***!
+***!*
+*
+*
+*
+☞
+*
+*
+*
+*
+*
+*!
+☞
+*!
+*!
+*!
+</figure>
+<figureCaption confidence="0.9722702">
+Figure 2: Counting vs. directionality. [Adapted from (Eisner, 2000).] Cl is some high-ranked constraint that kills the most faithful
+candidate; NOCODA dislikes syllable codas. (a) Surface material of the candidates. (b) Scored candidates for G to compare.
+Surface characters but not *’s have been removed by elim(Δ). (c) In traditional evaluation o+ , G counts the *’s. (d) Directional
+evaluation o&gt; gets a different result, as if NOCODA were split into 4 constraints evaluating the syllables separately. More
+accurately, it is as if NOCODA were split into one constraint per underlying letter, counting the number of *’s right after that letter.
+</figureCaption>
+<bodyText confidence="0.999917444444445">one defended on linguistic as well as computational grounds. He argues that violation counting (o+) is a bug in OT rather than a feature worth approximating, since it predicts unattested phenomena such as “majority assimilation” (Bakovi´c, 1999; Lombardi, 1999). Conversely, he argues that comparing violations directionally is not a hack but a desirable feature, since it naturally predicts “iterative phenomena” whose description in traditional OT (via Generalized Alignment) is awkward from both a linguistic and a computational point of view. Fig. 2 contrasts the traditional and directional harmony orderings. Eisner (2000) proved that o&gt; was a regular operator for directional H, by making use of a rather different insight, but that machine-level construction was highly technical. The new algebraic construction is simple and can be implemented with a few regular expressions, as for any other H.</bodyText>
+<sectionHeader confidence="0.999386" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999965909090909">See the itemized points in §1 for a detailed summary. In general, this paper has laid out a clear, general framework for finite-state OT systems, and used it to obtain positive and negative results about the understudied problem of comprehension. Perhaps these results will have some bearing on the development of realistic learning algorithms. The paper has also established sufficient conditions for a finite-state OT grammar to compile into a finite-state transducer. It should be easy to imagine new variants of OT that meet these conditions.</bodyText>
+<sectionHeader confidence="0.999621" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.9998923">
+Eric Bakovi´c. 1999. Assimilation to the unmarked. Rut-
+gers Optimality Archive ROA-340., August.
+Steven Bird. 1995. Computational Phonology: A
+Constraint-Based Approach. Cambridge.
+Reinhard Blutner. 1999. Some aspects of optimality in
+natural language interpretation. In Papers on Optimal-
+ity Theoretic Semantics. Utrecht.
+J. Cole and C. Kisseberth. 1994. An optimal domains
+theory of harmony. Studies in the Linguistic Sciences,
+24(2).
+Jason Eisner. 1997. Efficient generation in primitive Op-
+timality Theory. In Proc. ofACL/EACL.
+Jason Eisner. 2000. Directional constraint evaluation in
+Optimality Theory. In Proc. of COLING.
+T. Mark Ellison. 1994. Phonological derivation in Opti-
+mality Theory. In Proc. of COLING
+J. Eric Fosler. 1996. On reversing the generation process
+in Optimality Theory. Proc. ofACL Student Session.
+R. Frank and G. Satta. 1998. Optimality Theory and the
+generative complexity of constraint violability. Com-
+putational Linguistics, 24(2):307–315.
+D. Gerdemann and G. van Noord. 2000. Approxima-
+tion and exactness in finite-state Optimality Theory. In
+Proc. ofACL SIGPHON Workshop.
+Mark Hale and Charles Reiss. 1998. Formal and empir-
+ical arguments concerning phonological acquisition.
+Linguistic Inquiry, 29:656–683.
+C. Douglas Johnson. 1972. Formal Aspects ofPhonolog-
+ical Description. Mouton.
+R. Kaplan and M. Kay. 1994. Regular models of phono-
+logical rule systems. Comp. Ling., 20(3).
+L. Karttunen. 1998. The proper treatment of optimality
+in computational phonology. In Proc. ofFSMNLP.
+Kimmo Koskenniemi. 1983. Two-level morphology: A
+general computational model for word-form recogni-
+tion and production. Publication 11, Dept. of General
+Linguistics, University of Helsinki.
+Linda Lombardi. 1999. Positional faithfulness and voic-
+ing assimilation in Optimality Theory. Natural Lan-
+guage and Linguistic Theory, 17:267–302.
+Fernando C. N. Pereira and Michael Riley. 1997. Speech
+recognition by composition of weighted finite au-
+tomata. In E. Roche and Y. Schabes, eds., Finite-State
+Language Processing. MIT Press.
+A. Prince and P. Smolensky. 1993. Optimality Theory:
+Constraint interaction in generative grammar. Ms.,
+Rutgers and U. of Colorado (Boulder).
+Paul Smolensky. 1996. On the comprehen-
+sion/production dilemma in child language. Linguistic
+Inquiry, 27:720–731.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.708508" no="0">
+<note confidence="0.996893">Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics (ACL), Philadelphia, July 2002, pp. 56-63.</note>
+<title confidence="0.998333">and Compilation in Optimality</title>
+<author confidence="0.999997">Jason Eisner</author>
+<affiliation confidence="0.999611">Department of Computer Science Johns Hopkins University</affiliation>
+<address confidence="0.999456">Baltimore, MD, USA 21218-2691</address>
+<email confidence="0.999883">jason@cs.jhu.edu</email>
+<abstract confidence="0.999001071428572">This paper ties up some loose ends in finite-state Optimality Theory. First, it discusses how to perform comprehension under Optimality Theory grammars consisting of finite-state constraints. Comprehension has not been much studied in OT; we show that unlike production, it does not always yield a regular set, making finite-state methods inapplicable. However, after giving a suitably flexible presentation of OT, we show carefully how to treat comprehension under recent variants of OT in which grammars can be compiled into finite-state transducers. We then unify these variants, showing that compilation is possible if all components of the grammar are regular relations, the harmony ordering on scored A side benefit of our construction is a far simpler implementation of</abstract>
+<note confidence="0.726823">directional OT (Eisner, 2000).</note>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Eric Bakovi´c</author>
+</authors>
+<title>Assimilation to the unmarked. Rutgers Optimality Archive ROA-340.,</title>
+<date>1999</date>
+<marker>Bakovi´c, 1999</marker>
+<rawString>Eric Bakovi´c. 1999. Assimilation to the unmarked. Rutgers Optimality Archive ROA-340., August.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven Bird</author>
+</authors>
+<title>Computational Phonology: A Constraint-Based Approach.</title>
+<date>1995</date>
+<location>Cambridge.</location>
+<contexts>
+<context citStr="Bird, 1995" endWordPosition="4931" position="29193" startWordPosition="4930">ation by our H. Typically, H ignores surface characters when comparing starred candidates. So H can be written as elim(A)◦G◦elim(A)−1 where elim(A) is a transducer that removes all characters of A. To satisfy the compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, or insert or delete *—and then repeat. We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework. • Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described w</context>
+</contexts>
+<marker>Bird, 1995</marker>
+<rawString>Steven Bird. 1995. Computational Phonology: A Constraint-Based Approach. Cambridge.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Reinhard Blutner</author>
+</authors>
+<title>Some aspects of optimality in natural language interpretation.</title>
+<date>1999</date>
+<booktitle>In Papers on Optimality Theoretic Semantics.</booktitle>
+<location>Utrecht.</location>
+<contexts>
+<context citStr="Blutner (1999)" endWordPosition="1017" position="6397" startWordPosition="1016">and comprehension optimize. (Just define the harmony of (x, z) to be 1 or 0 according to whether the mapping x 7→ z is in the language!) But we are really only interested in harmony measures that are defined by OT-style grammars (rankings of “simple” constraints). In this case Smolensky’s proposal can be unworkable. In particular, §4 will show that a finite-state production grammar in classical OT need not be invertible by any finite-state comprehension grammar. 1Hale &amp; Reiss’s criticism may be specific to phonology and syntax. For some phenomena in semantics, pragmatics, and even morphology, Blutner (1999) argues for a one-to-one form-meaning mapping in which marked forms express marked meanings. He deliberately uses bidirectional optimization to rule out many-to-one cases: roughly speaking, an (x, z) pair is grammatical for him only if z is optimal given x and vice-versa. 3 A General Presentation of OT This section (graphically summarized in Fig. 1) lays out a generalized version of OT’s theory of production, introducing some notational and representational conventions that may be useful to others and will be important below. In particular, all objects are represented as strings, or as functio</context>
+</contexts>
+<marker>Blutner, 1999</marker>
+<rawString>Reinhard Blutner. 1999. Some aspects of optimality in natural language interpretation. In Papers on Optimality Theoretic Semantics. Utrecht.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Cole</author>
+<author>C Kisseberth</author>
+</authors>
+<title>An optimal domains theory of harmony.</title>
+<date>1994</date>
+<booktitle>Studies in the Linguistic Sciences,</booktitle>
+<volume>24</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Cole and Kisseberth, 1994" endWordPosition="2753" position="16577" startWordPosition="2750">ed to have suppressed its competitors.) One might try to salvage the situation by barring constraints like C1 or C2 from the theory as linguistically implausible. Unfortunately this is unlikely to succeed. Primitive OT (Eisner, 1997) already restricts OT to something like a bare minimum of constraints, allowing just two simple constraint families that are widely used by practitioners of OT. Yet even these primitive constraints retain enough power to simulate any finite-state constraint. In any case, C1 and C2 themselves are fairly similar to “domain” constraints used to describe tone systems (Cole and Kisseberth, 1994). While C2 is somewhat odd in that it penalizes two distinct configurations at once, one would obtain the same effect by combining three separately plausible constraints: C2 requires a’s between brackets (i.e., in a tone domain) to receive surface high tones, C3 requires b’s outside brackets to receive surface high tones, and C4 penalizes all surface high tones.5 Another obvious if unsatisfying hack would impose heuristic limits on the length of x, for example by allowing the comprehension system to return the approximation COMPREHEND(z) n {x : Ixl G 2 · IzI}. This set is finite and hence regu</context>
+</contexts>
+<marker>Cole, Kisseberth, 1994</marker>
+<rawString>J. Cole and C. Kisseberth. 1994. An optimal domains theory of harmony. Studies in the Linguistic Sciences, 24(2).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jason Eisner</author>
+</authors>
+<title>Efficient generation in primitive Optimality Theory. In</title>
+<date>1997</date>
+<booktitle>Proc. ofACL/EACL.</booktitle>
+<contexts>
+<context citStr="Eisner (1997)" endWordPosition="1152" position="7231" startWordPosition="1151">or him only if z is optimal given x and vice-versa. 3 A General Presentation of OT This section (graphically summarized in Fig. 1) lays out a generalized version of OT’s theory of production, introducing some notational and representational conventions that may be useful to others and will be important below. In particular, all objects are represented as strings, or as functions that map strings to strings. This will enable us to use finitestate techniques later. The underlying form x and surface form z are represented as strings. We often refer to these strings as input and output. Following Eisner (1997), each candidate (x, z) is also represented as a string y. The notation (x, z) that we have been using so far for candidates is actually misleading, since in fact the candidates y that are compared encode more than just x and z. They also encode a particular alignment or correspondence between x and z. For example, if x = abdip and z = a[di][bu], then a typical candidate would be encoded y = aab0[ddii][pb0u] which specifies that a corresponds to a, b was deleted (has no surface correspondent), voiceless p surfaces as voiced b, etc. The harmony of y might depend on this alignment as well as on </context>
+<context citStr="Eisner (1997)" endWordPosition="2210" position="13366" startWordPosition="2209">ogy (Johnson, 1972; Kaplan and Kay, 1994).4 4The tradition already included (inviolable) phonological Finite-state OT is a restriction of the formalism discussed above. It specifically assumes that GEN, C1,... C,, and PRON are all regular relations, meaning that they can be described by finite-state transducers. GEN is a nondeterministic transducer that maps each x to multiple candidates y. The other transducers map each y to a single y¯ or z. These finite-state assumptions were proposed (in a different and slightly weaker form) by Ellison (1994). Their empirical adequacy has been defended by Eisner (1997). In addition to having the right kind of power linguistically, regular relations are closed under various relevant operations and allow (efficient) parallel processing of regular sets of strings. Ellison (1994) exploited such properties to give a production algorithm for finite-state OT. Given x and a finite-state OT grammar, he used finite-state operations to construct the set Y,,,(x) of optimal candidates, represented as a finite-state automaton. Ellison’s construction demonstrates that Y,,, is always a regular set. Since PRON is regular, it follows that PRODUCE(x) = Z(x) is also a regular </context>
+<context citStr="Eisner, 1997" endWordPosition="2691" position="16184" startWordPosition="2690">ruct finitestate models of production and define comprehension as the inverse of production. Speech recognizers do correctly implement comprehension via finite-state optimization (Pereira and Riley, 1997). But this is impossible in OT because OT has a more complicated production model. (In speech recognizers, the most probable phonetic or phonological surface form is not presumed to have suppressed its competitors.) One might try to salvage the situation by barring constraints like C1 or C2 from the theory as linguistically implausible. Unfortunately this is unlikely to succeed. Primitive OT (Eisner, 1997) already restricts OT to something like a bare minimum of constraints, allowing just two simple constraint families that are widely used by practitioners of OT. Yet even these primitive constraints retain enough power to simulate any finite-state constraint. In any case, C1 and C2 themselves are fairly similar to “domain” constraints used to describe tone systems (Cole and Kisseberth, 1994). While C2 is somewhat odd in that it penalizes two distinct configurations at once, one would obtain the same effect by combining three separately plausible constraints: C2 requires a’s between brackets (i.</context>
+<context citStr="Eisner (1997)" endWordPosition="3589" position="21669" startWordPosition="3588">sing to turn x into possible candidates y. GEN looks up each abstract morpheme’s phonological string E E* from the lexicon,7 then combines these phonological strings by concatenation or template merger, then nondeterministically inserts surface material from A*. Such a GEN can plausibly be built up (by composition) as a regular relation from abstract morpheme sequences to phonological candidates. This regularity, as for PRON, is all that is required. Representing a phonology as a transducer T has additional virtues. T can be applied efficiently to any input string x, whereas Ellison (1994) or Eisner (1997) requires a fresh automaton construction for each x. A nice trick is to build T without 6Pereira and Riley (1997) build a speech recognizer by composing a probabilistic finite-state language model, a finite-state pronouncing dictionary, and a probabilistic finite-state acoustic model. These three components correspond precisely to the input to GEN, the traditional OT grammar, and PRON, so we are simply suggesting the same thing in different terminology. 7Nondeterministically in the case of phonologically conditioned allomorphs: INDEFINITE APPLE ra fΛWpl, WnWpl} C Σ∗. This yields competing cand</context>
+</contexts>
+<marker>Eisner, 1997</marker>
+<rawString>Jason Eisner. 1997. Efficient generation in primitive Optimality Theory. In Proc. ofACL/EACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jason Eisner</author>
+</authors>
+<title>Directional constraint evaluation in Optimality Theory.</title>
+<date>2000</date>
+<booktitle>In Proc. of COLING.</booktitle>
+<contexts>
+<context citStr="Eisner, 2000" endWordPosition="165" position="1136" startWordPosition="164">een much studied in OT; we show that unlike production, it does not always yield a regular set, making finite-state methods inapplicable. However, after giving a suitably flexible presentation of OT, we show carefully how to treat comprehension under recent variants of OT in which grammars can be compiled into finite-state transducers. We then unify these variants, showing that compilation is possible if all components of the grammar are regular relations, including the harmony ordering on scored candidates. A side benefit of our construction is a far simpler implementation of directional OT (Eisner, 2000). 1 Introduction To produce language is to convert utterances from their underlying (“deep”) form to a surface form. Optimality Theory or OT (Prince and Smolensky, 1993) proposes to describe phonological production as an optimization process. For an underlying x, a speaker purportedly chooses the surface form z so as to maximize the harmony of the pair (x, z). Broadly speaking, (x, z) is harmonic if z is “easy” to pronounce and “similar” to x. But the precise harmony measure depends on the language; according to OT, it can be specified by a grammar of ranked desiderata known as constraints. Ac</context>
+<context citStr="Eisner, 2000" endWordPosition="574" position="3560" startWordPosition="573">s all pairs (x, z0), COMPREHEND(z) must for each x consider all pairs (x, z0). Of course, this nested definition does not preclude computational shortcuts. This paper has three modest goals: 1. To show that OT comprehension does in fact present a computational problem that production does not. Even when the OT grammar is required to be finite-state, so that production can be performed with finite-state techniques, comprehension cannot in general be performed with finite-state techniques. 2. To consider recent constructions that cut through this problem (Frank and Satta, 1998; Karttunen, 1998; Eisner, 2000; Gerdemann and van Noord, 2000). By altering or approximating the OT formalism—that is, by hook or by crook—these constructions manage to compile OT grammars into finite-state transducers. Transducers may readily be inverted to do comprehension as easily as production. We carefully lay out how to use them for comprehension in realistic circumstances (in the presence of correspondence theory, lexical constraints, hearer uncertainty, and phonetic postprocessing). 3. To give a unified treatment in the extended finitestate calculus of the constructions referenced above. This clarifies their meani</context>
+<context citStr="Eisner, 2000" endWordPosition="4790" position="28363" startWordPosition="4789">t take z = x. For ⇐, y¯ ∈ H( Yi(z)) means that (∃¯y' ∈ Yi(z))¯y' &gt;- ¯y; but then x = z (giving y¯ ∈ H(¯Yi(x))), since if not, our compatibility requirement on H would have made ¯y' ∈ ¯Yi(z) incomparable with y¯ ∈ ¯Yi(x). Extending the pretty notation of (Karttunen, 1998), we may use (4) to define a left-associative generalized optimality operator ooH : Y ooH C def = (Y ◦C◦¬range(Y ◦C◦H))◦D (14) Then for any regular OT grammar, PRODUCE = GEN ooH C1 ooH C2 · · · ooH Cn ◦ PRON and can be inverted to get COMPREHEND. More generally, different constraints can usefully be applied with different H’s (Eisner, 2000). The algebraic construction above is inspired by a version that Gerdemann and van Noord (2000) give for a particular variant of OT. Their regular expressions can be used to implement it, simply replacing their add_violation by our H. Typically, H ignores surface characters when comparing starred candidates. So H can be written as elim(A)◦G◦elim(A)−1 where elim(A) is a transducer that removes all characters of A. To satisfy the compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, o</context>
+<context citStr="Eisner, 2000" endWordPosition="5112" position="30255" startWordPosition="5110">mation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described with a transducer that keeps count of the input and output *’s so far, on a scale of 0, 1, 2, ≥ 3. Final states are those whose output count exceeds their input count on this scale. • Y o⊂ C: Matching or subset approximation (Gerdemann and van Noord, 2000). A candidate is more disharmonic than another if it has stars in all the same locations and some more besides.&amp;quot; Here G = ((E|*)*(E : *)(E|*)*)+. • Y o&gt; C: Left-to-right directional evaluation (Eisner, 2000). A candidate is more disharmonic than another if in the leftmost position where they differ (ignoring surface characters), it has a *. This revises OT’s “do only when necessary” mantra to “do only when necessary and then as late as possible” (even if delaying *’s means suffering more of them later). Here G = (E|*)*((E : *)|((E : *)(E|*)*)). Unlike the other proposals, here two forms can both be optimal only if they have exactly the same pattern of violations with respect to their underlying material. • Y &lt;o C: Right-to-left directional evaluation. “Do only when necessary and then as early as </context>
+<context citStr="Eisner, 2000" endWordPosition="5332" position="31544" startWordPosition="5331">tching and directional proposals is their attention to where the violations fall. Eisner’s directional proposal (o&gt;, &lt;o) is the only 11Many candidates are incomparable under this ordering, so Gerdemann and van Noord also showed how to weaken the notation of “same location” in order to approximate o+ better. (a) x =bantodibo (b) NOCODA (c) C1 NOCODA (d) C1 Q1 Q2 Q3 Q4 [ban][to][di][bo] [ban][ton][di][bo] [ban][to][dim][bon] [ban][ton][dim][bon] ban*todibo ban*to*dibo ban*todi*bo* ban*to*di*bo* * ** ***! ***!* * * * ☞ * * * * * *! ☞ *! *! *! Figure 2: Counting vs. directionality. [Adapted from (Eisner, 2000).] Cl is some high-ranked constraint that kills the most faithful candidate; NOCODA dislikes syllable codas. (a) Surface material of the candidates. (b) Scored candidates for G to compare. Surface characters but not *’s have been removed by elim(Δ). (c) In traditional evaluation o+ , G counts the *’s. (d) Directional evaluation o&gt; gets a different result, as if NOCODA were split into 4 constraints evaluating the syllables separately. More accurately, it is as if NOCODA were split into one constraint per underlying letter, counting the number of *’s right after that letter. one defended on ling</context>
+</contexts>
+<marker>Eisner, 2000</marker>
+<rawString>Jason Eisner. 2000. Directional constraint evaluation in Optimality Theory. In Proc. of COLING.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Mark Ellison</author>
+</authors>
+<title>Phonological derivation in Optimality Theory.</title>
+<date>1994</date>
+<booktitle>In Proc. of COLING</booktitle>
+<contexts>
+<context citStr="Ellison, 1994" endWordPosition="2108" position="12701" startWordPosition="2107">e other strings that are neither underlying nor surface. These other strings may represent the surface forms for other members of the same morphological paradigm, or intermediate throwaway candidates to which z is sympathetic. Production still optimizes y, which means that it simultaneously optimizes z and the other strings. 4 Comprehension in Finite-State OT This section assumes OT’s traditional harmony ordering, in which the candidates that survive filtering by Ci are the ones into which Ci inserts fewest ?’s. Much computational work on OT has been conducted within a finite-state framework (Ellison, 1994), in keeping with a tradition of finite-state phonology (Johnson, 1972; Kaplan and Kay, 1994).4 4The tradition already included (inviolable) phonological Finite-state OT is a restriction of the formalism discussed above. It specifically assumes that GEN, C1,... C,, and PRON are all regular relations, meaning that they can be described by finite-state transducers. GEN is a nondeterministic transducer that maps each x to multiple candidates y. The other transducers map each y to a single y¯ or z. These finite-state assumptions were proposed (in a different and slightly weaker form) by Ellison (1</context>
+<context citStr="Ellison (1994)" endWordPosition="3586" position="21652" startWordPosition="3585">ological preprocessing to turn x into possible candidates y. GEN looks up each abstract morpheme’s phonological string E E* from the lexicon,7 then combines these phonological strings by concatenation or template merger, then nondeterministically inserts surface material from A*. Such a GEN can plausibly be built up (by composition) as a regular relation from abstract morpheme sequences to phonological candidates. This regularity, as for PRON, is all that is required. Representing a phonology as a transducer T has additional virtues. T can be applied efficiently to any input string x, whereas Ellison (1994) or Eisner (1997) requires a fresh automaton construction for each x. A nice trick is to build T without 6Pereira and Riley (1997) build a speech recognizer by composing a probabilistic finite-state language model, a finite-state pronouncing dictionary, and a probabilistic finite-state acoustic model. These three components correspond precisely to the input to GEN, the traditional OT grammar, and PRON, so we are simply suggesting the same thing in different terminology. 7Nondeterministically in the case of phonologically conditioned allomorphs: INDEFINITE APPLE ra fΛWpl, WnWpl} C Σ∗. This yiel</context>
+<context citStr="Ellison (1994)" endWordPosition="4033" position="24244" startWordPosition="4032">will handle all cases. Thus, constraints like NOCODA do not allow an upper bound on k for all x E E*. Of course, the minimal number of violations k of a constraint is fixed given the underlying form x, which is useful in production.8 But comprehension is less fortunate: we cannot bound k given only the surface form z. In the grammar of §4, COMPREHEND(abc) included underlying forms whose optimal candidates had arbitrarily large numbers of violations k. Now, in most cases, the effect of an OT grammar can be achieved without actually counting anything. (This is to be expected since rewrite-rule 8Ellison (1994) was able to construct PRODUCE(x) from x. One can even build a transducer for PRODUCE that is correct on all inputs that can achieve &lt; K violations and returns ∅ on other inputs (signalling that the transducer needs to be recompiled with increased K). Simply use the construction of (Frank and Satta, 1998; Karttunen, 1998), composed with a hard constraint that the answer must have &lt; K violations. grammars were previously written for the same phonologies, and they did not use counting!) This is possible despite the above arguments because for some grammars, the distinction between optimal and su</context>
+</contexts>
+<marker>Ellison, 1994</marker>
+<rawString>T. Mark Ellison. 1994. Phonological derivation in Optimality Theory. In Proc. of COLING</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Eric Fosler</author>
+</authors>
+<title>On reversing the generation process in Optimality Theory.</title>
+<date>1996</date>
+<booktitle>Proc. ofACL Student Session.</booktitle>
+<contexts>
+<context citStr="Fosler (1996)" endWordPosition="786" position="4953" startWordPosition="785">m of “directional OT.” The treatment shows that all the constructions emerge directly from a generalized presentation of OT, in which the crucial fact is that the harmony ordering on scored candidates is a regular relation. 2 Previous Work on Comprehension Work focusing on OT comprehension—or even mentioning it—has been surprisingly sparse. While the recent constructions mentioned in §1 can easily be applied to the comprehension problem, as we will explain, they were motivated primarily by a desire to pare back OT’s generative power to that of previous rewrite-rule formalisms (Johnson, 1972). Fosler (1996) noted the existence of the OT comprehension task and speculated that it might succumb to heuristic search. Smolensky (1996) proposed to solve it by optimizing the underlying form, COMPREHEND(z) ?= {x : (�xy) (x�, z) &gt; (x, z)} Hale and Reiss (1998) pointed out in response that any comprehension-by-optimization strategy would have to arrange for multiple optima: after all, phonological comprehension is a one-to-many mapping (since phonological production is many-to-one).1 The correctness of Smolensky’s proposal (i.e., whether it really computes COMPREHEND) depends on the particular harmony meas</context>
+</contexts>
+<marker>Fosler, 1996</marker>
+<rawString>J. Eric Fosler. 1996. On reversing the generation process in Optimality Theory. Proc. ofACL Student Session.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Frank</author>
+<author>G Satta</author>
+</authors>
+<title>Optimality Theory and the generative complexity of constraint violability.</title>
+<date>1998</date>
+<journal>Computational Linguistics,</journal>
+<volume>24</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Frank and Satta, 1998" endWordPosition="570" position="3529" startWordPosition="567">surface forms. While PRODUCE(x) considers all pairs (x, z0), COMPREHEND(z) must for each x consider all pairs (x, z0). Of course, this nested definition does not preclude computational shortcuts. This paper has three modest goals: 1. To show that OT comprehension does in fact present a computational problem that production does not. Even when the OT grammar is required to be finite-state, so that production can be performed with finite-state techniques, comprehension cannot in general be performed with finite-state techniques. 2. To consider recent constructions that cut through this problem (Frank and Satta, 1998; Karttunen, 1998; Eisner, 2000; Gerdemann and van Noord, 2000). By altering or approximating the OT formalism—that is, by hook or by crook—these constructions manage to compile OT grammars into finite-state transducers. Transducers may readily be inverted to do comprehension as easily as production. We carefully lay out how to use them for comprehension in realistic circumstances (in the presence of correspondence theory, lexical constraints, hearer uncertainty, and phonetic postprocessing). 3. To give a unified treatment in the extended finitestate calculus of the constructions referenced ab</context>
+<context citStr="Frank and Satta, 1998" endWordPosition="3055" position="18355" startWordPosition="3052">t can be produced by some finite-state method, although the automaton to describe the set might be large in some cases. Recent efforts to force OT into a fully finite-state mold are more promising. As we will see, they identify the problem as the harmony ordering &gt;-, rather than the space of constraints or the potential infinitude of the answer set. 5 Regular-Relation Comprehension Since COMPREHEND(z) need not be a regular set in traditional OT, a corollary is that COMPREHEND and its inverse PRODUCE are not regular relations. That much was previously shown by Markus Hiller and Paul Smolensky (Frank and Satta, 1998), using similar examples. However, at least some OT grammars ought to describe regular relations. It has long been hypothesized that all human phonologies are regular relations, at least if one omits reduplication, and this is necessarily true of phonologies that were successfully described with pre-OT formalisms (Johnson, 1972; Koskenniemi, 1983). Regular relations are important for us because they are computationally tractable. Any regular relation can be implemented as a finite-state transducer T, which can be inverted and used for comprehension as well as production. PRODUCE(x) = T (x) = r</context>
+<context citStr="Frank and Satta, 1998" endWordPosition="4086" position="24549" startWordPosition="4083">y the surface form z. In the grammar of §4, COMPREHEND(abc) included underlying forms whose optimal candidates had arbitrarily large numbers of violations k. Now, in most cases, the effect of an OT grammar can be achieved without actually counting anything. (This is to be expected since rewrite-rule 8Ellison (1994) was able to construct PRODUCE(x) from x. One can even build a transducer for PRODUCE that is correct on all inputs that can achieve &lt; K violations and returns ∅ on other inputs (signalling that the transducer needs to be recompiled with increased K). Simply use the construction of (Frank and Satta, 1998; Karttunen, 1998), composed with a hard constraint that the answer must have &lt; K violations. grammars were previously written for the same phonologies, and they did not use counting!) This is possible despite the above arguments because for some grammars, the distinction between optimal and suboptimal y¯ can be made by looking at the non-* symbols in y¯ rather than trying to count the *’s. In our NOCODA example, a surface substring such as ... ib*][a... might signal that y¯ is suboptimal because it contains an “unnecessary” coda. Of course, the validity of this conclusion depends on the gramm</context>
+<context citStr="Frank and Satta, 1998" endWordPosition="4966" position="29432" startWordPosition="4963">equirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, or insert or delete *—and then repeat. We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework. • Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described with a transducer that keeps count of the input and output *’s so far, on a scale of 0, 1, 2, ≥ 3. Final states are those whose output count exceeds their input count on this scale. • Y o⊂ C: Matching or subset approximation (Gerdemann and </context>
+</contexts>
+<marker>Frank, Satta, 1998</marker>
+<rawString>R. Frank and G. Satta. 1998. Optimality Theory and the generative complexity of constraint violability. Computational Linguistics, 24(2):307–315.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Gerdemann</author>
+<author>G van Noord</author>
+</authors>
+<title>Approximation and exactness in finite-state Optimality Theory.</title>
+<date>2000</date>
+<booktitle>In Proc. ofACL SIGPHON Workshop.</booktitle>
+<marker>Gerdemann, van Noord, 2000</marker>
+<rawString>D. Gerdemann and G. van Noord. 2000. Approximation and exactness in finite-state Optimality Theory. In Proc. ofACL SIGPHON Workshop.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mark Hale</author>
+<author>Charles Reiss</author>
+</authors>
+<title>Formal and empirical arguments concerning phonological acquisition. Linguistic Inquiry,</title>
+<date>1998</date>
+<pages>29--656</pages>
+<contexts>
+<context citStr="Hale and Reiss (1998)" endWordPosition="831" position="5201" startWordPosition="828">on Comprehension Work focusing on OT comprehension—or even mentioning it—has been surprisingly sparse. While the recent constructions mentioned in §1 can easily be applied to the comprehension problem, as we will explain, they were motivated primarily by a desire to pare back OT’s generative power to that of previous rewrite-rule formalisms (Johnson, 1972). Fosler (1996) noted the existence of the OT comprehension task and speculated that it might succumb to heuristic search. Smolensky (1996) proposed to solve it by optimizing the underlying form, COMPREHEND(z) ?= {x : (�xy) (x�, z) &gt; (x, z)} Hale and Reiss (1998) pointed out in response that any comprehension-by-optimization strategy would have to arrange for multiple optima: after all, phonological comprehension is a one-to-many mapping (since phonological production is many-to-one).1 The correctness of Smolensky’s proposal (i.e., whether it really computes COMPREHEND) depends on the particular harmony measure. It can be made to work, multiple optima and all, if the harmony measure is constructed with both production and comprehension in mind. Indeed, for any phonology, it is trivial to design a harmony measure that both production and comprehension </context>
+</contexts>
+<marker>Hale, Reiss, 1998</marker>
+<rawString>Mark Hale and Charles Reiss. 1998. Formal and empirical arguments concerning phonological acquisition. Linguistic Inquiry, 29:656–683.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Douglas Johnson</author>
+</authors>
+<title>Formal Aspects ofPhonological Description.</title>
+<date>1972</date>
+<publisher>Mouton.</publisher>
+<contexts>
+<context citStr="Johnson, 1972" endWordPosition="784" position="4938" startWordPosition="783">roposed formalism of “directional OT.” The treatment shows that all the constructions emerge directly from a generalized presentation of OT, in which the crucial fact is that the harmony ordering on scored candidates is a regular relation. 2 Previous Work on Comprehension Work focusing on OT comprehension—or even mentioning it—has been surprisingly sparse. While the recent constructions mentioned in §1 can easily be applied to the comprehension problem, as we will explain, they were motivated primarily by a desire to pare back OT’s generative power to that of previous rewrite-rule formalisms (Johnson, 1972). Fosler (1996) noted the existence of the OT comprehension task and speculated that it might succumb to heuristic search. Smolensky (1996) proposed to solve it by optimizing the underlying form, COMPREHEND(z) ?= {x : (�xy) (x�, z) &gt; (x, z)} Hale and Reiss (1998) pointed out in response that any comprehension-by-optimization strategy would have to arrange for multiple optima: after all, phonological comprehension is a one-to-many mapping (since phonological production is many-to-one).1 The correctness of Smolensky’s proposal (i.e., whether it really computes COMPREHEND) depends on the particul</context>
+<context citStr="Johnson, 1972" endWordPosition="2118" position="12771" startWordPosition="2117">rings may represent the surface forms for other members of the same morphological paradigm, or intermediate throwaway candidates to which z is sympathetic. Production still optimizes y, which means that it simultaneously optimizes z and the other strings. 4 Comprehension in Finite-State OT This section assumes OT’s traditional harmony ordering, in which the candidates that survive filtering by Ci are the ones into which Ci inserts fewest ?’s. Much computational work on OT has been conducted within a finite-state framework (Ellison, 1994), in keeping with a tradition of finite-state phonology (Johnson, 1972; Kaplan and Kay, 1994).4 4The tradition already included (inviolable) phonological Finite-state OT is a restriction of the formalism discussed above. It specifically assumes that GEN, C1,... C,, and PRON are all regular relations, meaning that they can be described by finite-state transducers. GEN is a nondeterministic transducer that maps each x to multiple candidates y. The other transducers map each y to a single y¯ or z. These finite-state assumptions were proposed (in a different and slightly weaker form) by Ellison (1994). Their empirical adequacy has been defended by Eisner (1997). In </context>
+<context citStr="Johnson, 1972" endWordPosition="3107" position="18684" startWordPosition="3106">e answer set. 5 Regular-Relation Comprehension Since COMPREHEND(z) need not be a regular set in traditional OT, a corollary is that COMPREHEND and its inverse PRODUCE are not regular relations. That much was previously shown by Markus Hiller and Paul Smolensky (Frank and Satta, 1998), using similar examples. However, at least some OT grammars ought to describe regular relations. It has long been hypothesized that all human phonologies are regular relations, at least if one omits reduplication, and this is necessarily true of phonologies that were successfully described with pre-OT formalisms (Johnson, 1972; Koskenniemi, 1983). Regular relations are important for us because they are computationally tractable. Any regular relation can be implemented as a finite-state transducer T, which can be inverted and used for comprehension as well as production. PRODUCE(x) = T (x) = range(x o T), and COMPREHEND(z) = T−'(z) = domain(T o z). We are therefore interested in compiling OT grammars into finite-state transducers—by hook or by crook. §6 discusses how; but first let us see how such compilation is useful in realistic situations. Any practical comprehension strategy must recognize that the hearer does </context>
+</contexts>
+<marker>Johnson, 1972</marker>
+<rawString>C. Douglas Johnson. 1972. Formal Aspects ofPhonological Description. Mouton.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Kaplan</author>
+<author>M Kay</author>
+</authors>
+<title>Regular models of phonological rule systems.</title>
+<date>1994</date>
+<journal>Comp. Ling.,</journal>
+<volume>20</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Kaplan and Kay, 1994" endWordPosition="2122" position="12794" startWordPosition="2119">sent the surface forms for other members of the same morphological paradigm, or intermediate throwaway candidates to which z is sympathetic. Production still optimizes y, which means that it simultaneously optimizes z and the other strings. 4 Comprehension in Finite-State OT This section assumes OT’s traditional harmony ordering, in which the candidates that survive filtering by Ci are the ones into which Ci inserts fewest ?’s. Much computational work on OT has been conducted within a finite-state framework (Ellison, 1994), in keeping with a tradition of finite-state phonology (Johnson, 1972; Kaplan and Kay, 1994).4 4The tradition already included (inviolable) phonological Finite-state OT is a restriction of the formalism discussed above. It specifically assumes that GEN, C1,... C,, and PRON are all regular relations, meaning that they can be described by finite-state transducers. GEN is a nondeterministic transducer that maps each x to multiple candidates y. The other transducers map each y to a single y¯ or z. These finite-state assumptions were proposed (in a different and slightly weaker form) by Ellison (1994). Their empirical adequacy has been defended by Eisner (1997). In addition to having the </context>
+</contexts>
+<marker>Kaplan, Kay, 1994</marker>
+<rawString>R. Kaplan and M. Kay. 1994. Regular models of phonological rule systems. Comp. Ling., 20(3).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L Karttunen</author>
+</authors>
+<title>The proper treatment of optimality in computational phonology.</title>
+<date>1998</date>
+<booktitle>In Proc. ofFSMNLP.</booktitle>
+<contexts>
+<context citStr="Karttunen, 1998" endWordPosition="572" position="3546" startWordPosition="571">ODUCE(x) considers all pairs (x, z0), COMPREHEND(z) must for each x consider all pairs (x, z0). Of course, this nested definition does not preclude computational shortcuts. This paper has three modest goals: 1. To show that OT comprehension does in fact present a computational problem that production does not. Even when the OT grammar is required to be finite-state, so that production can be performed with finite-state techniques, comprehension cannot in general be performed with finite-state techniques. 2. To consider recent constructions that cut through this problem (Frank and Satta, 1998; Karttunen, 1998; Eisner, 2000; Gerdemann and van Noord, 2000). By altering or approximating the OT formalism—that is, by hook or by crook—these constructions manage to compile OT grammars into finite-state transducers. Transducers may readily be inverted to do comprehension as easily as production. We carefully lay out how to use them for comprehension in realistic circumstances (in the presence of correspondence theory, lexical constraints, hearer uncertainty, and phonetic postprocessing). 3. To give a unified treatment in the extended finitestate calculus of the constructions referenced above. This clarifi</context>
+<context citStr="Karttunen, 1998" endWordPosition="4088" position="24567" startWordPosition="4087">n the grammar of §4, COMPREHEND(abc) included underlying forms whose optimal candidates had arbitrarily large numbers of violations k. Now, in most cases, the effect of an OT grammar can be achieved without actually counting anything. (This is to be expected since rewrite-rule 8Ellison (1994) was able to construct PRODUCE(x) from x. One can even build a transducer for PRODUCE that is correct on all inputs that can achieve &lt; K violations and returns ∅ on other inputs (signalling that the transducer needs to be recompiled with increased K). Simply use the construction of (Frank and Satta, 1998; Karttunen, 1998), composed with a hard constraint that the answer must have &lt; K violations. grammars were previously written for the same phonologies, and they did not use counting!) This is possible despite the above arguments because for some grammars, the distinction between optimal and suboptimal y¯ can be made by looking at the non-* symbols in y¯ rather than trying to count the *’s. In our NOCODA example, a surface substring such as ... ib*][a... might signal that y¯ is suboptimal because it contains an “unnecessary” coda. Of course, the validity of this conclusion depends on the grammar and specificall</context>
+<context citStr="Karttunen, 1998" endWordPosition="4727" position="28021" startWordPosition="4726">] (9) ⇔ y¯∈ ¯Yi(x), (�z)¯y ∈ H(¯Yi(z)) [see below](10) ⇔ (x, ¯y) ∈ ¯Yi, y¯ ∈6 range(¯Yi ◦ H) (11) ⇔ (x, ¯y) ∈ ¯Yi ◦ ¬range(¯Yi ◦ H) (12) therefore Yi ◦ Ci = ¯Yi ◦ ¬range(¯Yi ◦ H) (13) and composing both sides with D yields (4). To justify (9) ⇔ (10) we must show when y¯ ∈ ¯Yi(x) that y¯∈ H( Yi(x)) ⇔ (∃z)¯y ∈ H( Yi(z)). For the ⇒ direction, just take z = x. For ⇐, y¯ ∈ H( Yi(z)) means that (∃¯y' ∈ Yi(z))¯y' &gt;- ¯y; but then x = z (giving y¯ ∈ H(¯Yi(x))), since if not, our compatibility requirement on H would have made ¯y' ∈ ¯Yi(z) incomparable with y¯ ∈ ¯Yi(x). Extending the pretty notation of (Karttunen, 1998), we may use (4) to define a left-associative generalized optimality operator ooH : Y ooH C def = (Y ◦C◦¬range(Y ◦C◦H))◦D (14) Then for any regular OT grammar, PRODUCE = GEN ooH C1 ooH C2 · · · ooH Cn ◦ PRON and can be inverted to get COMPREHEND. More generally, different constraints can usefully be applied with different H’s (Eisner, 2000). The algebraic construction above is inspired by a version that Gerdemann and van Noord (2000) give for a particular variant of OT. Their regular expressions can be used to implement it, simply replacing their add_violation by our H. Typically, H ignores su</context>
+<context citStr="Karttunen, 1998" endWordPosition="4962" position="29408" startWordPosition="4961">e compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, or insert or delete *—and then repeat. We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework. • Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described with a transducer that keeps count of the input and output *’s so far, on a scale of 0, 1, 2, ≥ 3. Final states are those whose output count exceeds their input count on this scale. • Y o⊂ C: Matching or subset appro</context>
+</contexts>
+<marker>Karttunen, 1998</marker>
+<rawString>L. Karttunen. 1998. The proper treatment of optimality in computational phonology. In Proc. ofFSMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kimmo Koskenniemi</author>
+</authors>
+<title>Two-level morphology: A general computational model for word-form recognition and production.</title>
+<date>1983</date>
+<journal>Publication</journal>
+<volume>11</volume>
+<institution>Dept. of General Linguistics, University of Helsinki.</institution>
+<contexts>
+<context citStr="Koskenniemi, 1983" endWordPosition="3109" position="18704" startWordPosition="3108"> Regular-Relation Comprehension Since COMPREHEND(z) need not be a regular set in traditional OT, a corollary is that COMPREHEND and its inverse PRODUCE are not regular relations. That much was previously shown by Markus Hiller and Paul Smolensky (Frank and Satta, 1998), using similar examples. However, at least some OT grammars ought to describe regular relations. It has long been hypothesized that all human phonologies are regular relations, at least if one omits reduplication, and this is necessarily true of phonologies that were successfully described with pre-OT formalisms (Johnson, 1972; Koskenniemi, 1983). Regular relations are important for us because they are computationally tractable. Any regular relation can be implemented as a finite-state transducer T, which can be inverted and used for comprehension as well as production. PRODUCE(x) = T (x) = range(x o T), and COMPREHEND(z) = T−'(z) = domain(T o z). We are therefore interested in compiling OT grammars into finite-state transducers—by hook or by crook. §6 discusses how; but first let us see how such compilation is useful in realistic situations. Any practical comprehension strategy must recognize that the hearer does not really perceive </context>
+<context citStr="Koskenniemi, 1983" endWordPosition="4929" position="29180" startWordPosition="4928">cing their add_violation by our H. Typically, H ignores surface characters when comparing starred candidates. So H can be written as elim(A)◦G◦elim(A)−1 where elim(A) is a transducer that removes all characters of A. To satisfy the compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, or insert or delete *—and then repeat. We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework. • Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easil</context>
+</contexts>
+<marker>Koskenniemi, 1983</marker>
+<rawString>Kimmo Koskenniemi. 1983. Two-level morphology: A general computational model for word-form recognition and production. Publication 11, Dept. of General Linguistics, University of Helsinki.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Linda Lombardi</author>
+</authors>
+<title>Positional faithfulness and voicing assimilation in Optimality Theory. Natural Language and Linguistic Theory,</title>
+<date>1999</date>
+<pages>17--267</pages>
+<contexts>
+<context citStr="Lombardi, 1999" endWordPosition="5464" position="32385" startWordPosition="5463">een removed by elim(Δ). (c) In traditional evaluation o+ , G counts the *’s. (d) Directional evaluation o&gt; gets a different result, as if NOCODA were split into 4 constraints evaluating the syllables separately. More accurately, it is as if NOCODA were split into one constraint per underlying letter, counting the number of *’s right after that letter. one defended on linguistic as well as computational grounds. He argues that violation counting (o+) is a bug in OT rather than a feature worth approximating, since it predicts unattested phenomena such as “majority assimilation” (Bakovi´c, 1999; Lombardi, 1999). Conversely, he argues that comparing violations directionally is not a hack but a desirable feature, since it naturally predicts “iterative phenomena” whose description in traditional OT (via Generalized Alignment) is awkward from both a linguistic and a computational point of view. Fig. 2 contrasts the traditional and directional harmony orderings. Eisner (2000) proved that o&gt; was a regular operator for directional H, by making use of a rather different insight, but that machine-level construction was highly technical. The new algebraic construction is simple and can be implemented with a f</context>
+</contexts>
+<marker>Lombardi, 1999</marker>
+<rawString>Linda Lombardi. 1999. Positional faithfulness and voicing assimilation in Optimality Theory. Natural Language and Linguistic Theory, 17:267–302.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Fernando C N Pereira</author>
+<author>Michael Riley</author>
+</authors>
+<title>Speech recognition by composition of weighted finite automata.</title>
+<date>1997</date>
+<booktitle>Finite-State Language Processing.</booktitle>
+<editor>In E. Roche and Y. Schabes, eds.,</editor>
+<publisher>MIT Press.</publisher>
+<contexts>
+<context citStr="Pereira and Riley, 1997" endWordPosition="2626" position="15775" startWordPosition="2623">raints on candidates y that encoded an alignment between underlying x and surface z. guarantees. But for any unbracketed z E ˆA*, such as z = abc, COMPREHEND(z) is not regular: it is the set of underlying strings with # of a’s &gt; # of b’s. This result seems to eliminate any hope of handling OT comprehension in a finite-state framework. It is interesting to note that both OT and current speech recognition systems construct finitestate models of production and define comprehension as the inverse of production. Speech recognizers do correctly implement comprehension via finite-state optimization (Pereira and Riley, 1997). But this is impossible in OT because OT has a more complicated production model. (In speech recognizers, the most probable phonetic or phonological surface form is not presumed to have suppressed its competitors.) One might try to salvage the situation by barring constraints like C1 or C2 from the theory as linguistically implausible. Unfortunately this is unlikely to succeed. Primitive OT (Eisner, 1997) already restricts OT to something like a bare minimum of constraints, allowing just two simple constraint families that are widely used by practitioners of OT. Yet even these primitive const</context>
+<context citStr="Pereira and Riley (1997)" endWordPosition="3610" position="21782" startWordPosition="3607"> E* from the lexicon,7 then combines these phonological strings by concatenation or template merger, then nondeterministically inserts surface material from A*. Such a GEN can plausibly be built up (by composition) as a regular relation from abstract morpheme sequences to phonological candidates. This regularity, as for PRON, is all that is required. Representing a phonology as a transducer T has additional virtues. T can be applied efficiently to any input string x, whereas Ellison (1994) or Eisner (1997) requires a fresh automaton construction for each x. A nice trick is to build T without 6Pereira and Riley (1997) build a speech recognizer by composing a probabilistic finite-state language model, a finite-state pronouncing dictionary, and a probabilistic finite-state acoustic model. These three components correspond precisely to the input to GEN, the traditional OT grammar, and PRON, so we are simply suggesting the same thing in different terminology. 7Nondeterministically in the case of phonologically conditioned allomorphs: INDEFINITE APPLE ra fΛWpl, WnWpl} C Σ∗. This yields competing candidates that differ even in their underlying phonological material. PRON and apply it to all conceivable x’s in pa</context>
+</contexts>
+<marker>Pereira, Riley, 1997</marker>
+<rawString>Fernando C. N. Pereira and Michael Riley. 1997. Speech recognition by composition of weighted finite automata. In E. Roche and Y. Schabes, eds., Finite-State Language Processing. MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Prince</author>
+<author>P Smolensky</author>
+</authors>
+<title>Optimality Theory: Constraint interaction in generative grammar. Ms., Rutgers and U. of</title>
+<date>1993</date>
+<location>Colorado (Boulder).</location>
+<contexts>
+<context citStr="Prince and Smolensky, 1993" endWordPosition="191" position="1305" startWordPosition="188">ving a suitably flexible presentation of OT, we show carefully how to treat comprehension under recent variants of OT in which grammars can be compiled into finite-state transducers. We then unify these variants, showing that compilation is possible if all components of the grammar are regular relations, including the harmony ordering on scored candidates. A side benefit of our construction is a far simpler implementation of directional OT (Eisner, 2000). 1 Introduction To produce language is to convert utterances from their underlying (“deep”) form to a surface form. Optimality Theory or OT (Prince and Smolensky, 1993) proposes to describe phonological production as an optimization process. For an underlying x, a speaker purportedly chooses the surface form z so as to maximize the harmony of the pair (x, z). Broadly speaking, (x, z) is harmonic if z is “easy” to pronounce and “similar” to x. But the precise harmony measure depends on the language; according to OT, it can be specified by a grammar of ranked desiderata known as constraints. According to OT, then, production maps each underlying form to its best possible surface pronunciation. It is akin to the function that maps each child x to his or her mos</context>
+<context citStr="Prince and Smolensky (1993)" endWordPosition="1749" position="10667" startWordPosition="1746"> This unconventional formulation is needed for new approaches that care about the exact location of the ?’s. In traditional OT only the number of ?’s is important, although the locations are sometimes shown for readability. Finally, OT requires a harmony ordering &gt;- on scored candidates y¯ E (Σ U Δ U {?})*. In traditional OT, y¯ is most harmonic when it contains the fewest ?’s. For example, among candidates scored by NODELETE, the most harmonic ones are the ones with the fewest deletions; many candidates may tie for this honor. §6 considers other harmony orderings, a possibility recognized by Prince and Smolensky (1993) (&gt;- corresponds to their x-EVAL). In general &gt;- may be a partial order: two competing candidates may be equally harmonic or incomparable (in which case both can survive), and candidates with different underlying forms never compete at all. Production under such a grammar is a matter of successive filtering by the constraints C1,... Cn. Given an underlying form x, let Y0(x) = GEN(x) (1) 3It is never really necessary for GEN to enforce such restrictions, since they can equally well be enforced by the top-ranked constraint Cl (see below). Yi(x) = {y E Yi−1(x) : (2) (�y� E Yi−1(x)) Ci(y�) &gt;- Ci(y</context>
+<context citStr="Prince and Smolensky, 1993" endWordPosition="4944" position="29281" startWordPosition="4941">tarred candidates. So H can be written as elim(A)◦G◦elim(A)−1 where elim(A) is a transducer that removes all characters of A. To satisfy the compatibility requirement on H, G should be a subset of the relation (E |* |(E : *)|(* : E))*.10 10This transducer regexp says to map any symbol in Σ ∪ {*} to itself, or insert or delete *—and then repeat. We now summarize the main proposals from the literature (see §1), propose operator names, and cast them in the general framework. • Y o C: Inviolable constraint (Koskenniemi, 1983; Bird, 1995), implemented by composition. • Y o+ C: Counting constraint (Prince and Smolensky, 1993): more violations is more disharmonic. No finite-state implementation possible. • Y oo C: Binary approximation (Karttunen, 1998; Frank and Satta, 1998). All candidates with any violations are equally disharmonic. Implemented by G = (E*(E : *)E*)+, which relates underlying forms without violations to the same forms with violations. • Y oo3 C: 3-bounded approximation (Karttunen, 1998; Frank and Satta, 1998). Like o+ , but all candidates with ≥ 3 violations are equally disharmonic. G is most easily described with a transducer that keeps count of the input and output *’s so far, on a scale of 0, 1</context>
+</contexts>
+<marker>Prince, Smolensky, 1993</marker>
+<rawString>A. Prince and P. Smolensky. 1993. Optimality Theory: Constraint interaction in generative grammar. Ms., Rutgers and U. of Colorado (Boulder).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Paul Smolensky</author>
+</authors>
+<title>On the comprehension/production dilemma in child language. Linguistic Inquiry,</title>
+<date>1996</date>
+<pages>27--720</pages>
+<contexts>
+<context citStr="Smolensky (1996)" endWordPosition="807" position="5077" startWordPosition="806">OT, in which the crucial fact is that the harmony ordering on scored candidates is a regular relation. 2 Previous Work on Comprehension Work focusing on OT comprehension—or even mentioning it—has been surprisingly sparse. While the recent constructions mentioned in §1 can easily be applied to the comprehension problem, as we will explain, they were motivated primarily by a desire to pare back OT’s generative power to that of previous rewrite-rule formalisms (Johnson, 1972). Fosler (1996) noted the existence of the OT comprehension task and speculated that it might succumb to heuristic search. Smolensky (1996) proposed to solve it by optimizing the underlying form, COMPREHEND(z) ?= {x : (�xy) (x�, z) &gt; (x, z)} Hale and Reiss (1998) pointed out in response that any comprehension-by-optimization strategy would have to arrange for multiple optima: after all, phonological comprehension is a one-to-many mapping (since phonological production is many-to-one).1 The correctness of Smolensky’s proposal (i.e., whether it really computes COMPREHEND) depends on the particular harmony measure. It can be made to work, multiple optima and all, if the harmony measure is constructed with both production and compreh</context>
+</contexts>
+<marker>Smolensky, 1996</marker>
+<rawString>Paul Smolensky. 1996. On the comprehension/production dilemma in child language. Linguistic Inquiry, 27:720–731.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,961 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.090290" no="0">
+<title confidence="0.987975">
+Cross Language Dependency Parsing using a Bilingual Lexicon*
+</title>
+<author confidence="0.975757">
+Hai Zhao(赵海)†‡, Yan Song(宋彦)†, Chunyu Kit†, Guodong Zhou‡†Department of Chinese, Translation and Linguistics
+</author>
+<affiliation confidence="0.987837">
+City University of Hong Kong
+</affiliation>
+<address confidence="0.927619">
+83 Tat Chee Avenue, Kowloon, Hong Kong, China
+</address>
+<affiliation confidence="0.967407">
+‡School of Computer Science and Technology
+</affiliation>
+<address confidence="0.866327">
+Soochow University, Suzhou, China 215006
+</address>
+<email confidence="0.997782">
+{haizhao,yansong,ctckit}@cityu.edu.hk, gdzhou@suda.edu.cn
+</email>
+<sectionHeader confidence="0.997365" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999909647058824">This paper proposes an approach to enhance dependency parsing in a language by using a translated treebank from another language. A simple statistical machine translation method, word-by-word decoding, where not a parallel corpus but a bilingual lexicon is necessary, is adopted for the treebank translation. Using an ensemble method, the key information extracted from word pairs with dependency relations in the translated text is effectively integrated into the parser for the target language. The proposed method is evaluated in English and Chinese treebanks. It is shown that a translated English treebank helps a Chinese parser obtain a state-ofthe-art result.</bodyText>
+<sectionHeader confidence="0.999517" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.9996936875">Although supervised learning methods bring stateof-the-art outcome for dependency parser inferring (McDonald et al., 2005; Hall et al., 2007), a large enough data set is often required for specific parsing accuracy according to this type of methods. However, to annotate syntactic structure, either phraseor dependency-based, is a costly job. Until now, the largest treebanks1 in various languages for syntax learning are with around one million words (or some other similar units). Limited data stand in the way of further performance enhancement. This is the case for each individual language at least. But, this is not the case as we observe all treebanks in different languages as a whole. For example, of ten treebanks for CoNLL2007 shared task, none includes more than 500K tokens, while the sum of tokens from all treebanks is about two million (Nivre et al., 2007).</bodyText>
+<footnote confidence="0.979391833333333">
+The study is partially supported by City University of
+Hong Kong through the Strategic Research Grant 7002037
+and 7002388. The first author is sponsored by a research fel-
+lowship from CTL, City University of Hong Kong.
+1It is a tradition to call an annotated syntactic corpus as
+treebank in parsing community.
+</footnote>
+<bodyText confidence="0.999881780487805">As different human languages or treebanks should share something common, this makes it possible to let dependency parsing in multiple languages be beneficial with each other. In this paper, we study how to improve dependency parsing by using (automatically) translated texts attached with transformed dependency information. As a case study, we consider how to enhance a Chinese dependency parser by using a translated English treebank. What our method relies on is not the close relation of the chosen language pair but the similarity of two treebanks, this is the most different from the previous work. Two main obstacles are supposed to confront in a cross-language dependency parsing task. The first is the cost of translation. Machine translation has been shown one of the most expensive language processing tasks, as a great deal of time and space is required to perform this task. In addition, a standard statistical machine translation method based on a parallel corpus will not work effectively if it is not able to find a parallel corpus that right covers source and target treebanks. However, dependency parsing focuses on the relations of word pairs, this allows us to use a dictionarybased translation without assuming a parallel corpus available, and the training stage of translation may be ignored and the decoding will be quite fast in this case. The second difficulty is that the outputs of translation are hardly qualified for the parsing purpose. The most challenge in this aspect is morphological preprocessing. We regard that the morphological issue should be handled aiming at the specific language, our solution here is to use character-level features for a target language like Chinese. The rest of the paper is organized as follows. The next section presents some related existing work. Section 3 describes the procedure on treebank translation and dependency transformation.</bodyText>
+<page confidence="0.987122">
+55
+</page>
+<note confidence="0.99961">
+Proceedings of the 47th Annual Meeting of the ACL and the 4th IJCNLP of the AFNLP, pages 55–63,
+Suntec, Singapore, 2-7 August 2009. c�2009 ACL and AFNLP
+</note>
+<bodyText confidence="0.999733">Section 4 describes a dependency parser for Chinese as a baseline. Section 5 describes how a parser can be strengthened from the translated treebank. The experimental results are reported in Section 6. Section 7 looks into a few issues concerning the conditions that the proposed approach is suitable for. Section 8 concludes the paper.</bodyText>
+<sectionHeader confidence="0.990305" genericHeader="related work">
+2 The Related Work
+</sectionHeader>
+<bodyText confidence="0.99999445882353">As this work is about exploiting extra resources to enhance an existing parser, it is related to domain adaption for parsing that has been draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle golden-standard treebank, while all the previous works focus on the unlabeled data. Although cross-language technique has been used in other natural language processing tasks, it is basically new for syntactic parsing as few works were concerned with this issue. The reason is straightforward, syntactic structure is too complicated to be properly translated and the cost of translation cannot be afforded in many cases. However, we empirically find this difficulty may be dramatically alleviated as dependencies rather than phrases are used for syntactic structure representation. Even the translation outputs are not so good as the expected, a dependency parser for the target language can effectively make use of them by only considering the most related information extracted from the translated text. The basic idea to support this work is to make use of the semantic connection between different languages. In this sense, it is related to the work of (Merlo et al., 2002) and (Burkett and Klein, 2008). The former showed that complementary information about English verbs can be extracted from their translations in a second language (Chinese) and the use of multilingual features improves classification performance of the English verbs. The latter iteratively trained a model to maximize the marginal likelihood of tree pairs, with alignments treated as latent variables, and then jointly parsing bilingual sentences in a translation pair. The proposed parser using features from monolingual and mutual constraints helped its log-linear model to achieve better performance for both monolingual parsers and machine translation system. In this work, cross-language features will be also adopted as the latter work. However, although it is not essentially different, we only focus on dependency parsing itself, while the parsing scheme in (Burkett and Klein, 2008) based on a constituent representation. Among of existing works that we are aware of, we regard that the most similar one to ours is (Zeman and Resnik, 2008), who adapted a parser to a new language that is much poorer in linguistic resources than the source language. However, there are two main differences between their work and ours. The first is that they considered a pair of sufficiently related languages, Danish and Swedish, and made full use of the similar characteristics of two languages. Here we consider two quite different languages, English and Chinese. As fewer language properties are concerned, our approach holds the more possibility to be extended to other language pairs than theirs. The second is that a parallel corpus is required for their work and a strict statistical machine translation procedure was performed, while our approach holds a merit of simplicity as only a bilingual lexicon is required.</bodyText>
+<sectionHeader confidence="0.997257" genericHeader="method">
+3 Treebank Translation and Dependency
+Transformation
+</sectionHeader>
+<subsectionHeader confidence="0.999685">
+3.1 Data
+</subsectionHeader>
+<bodyText confidence="0.998194333333333">As a case study, this work will be conducted between the source language, English, and the target language, Chinese, namely, we will investigate how a translated English treebank enhances a Chinese dependency parser.</bodyText>
+<page confidence="0.994363">
+56
+</page>
+<bodyText confidence="0.99964852">For English data, the Penn Treebank (PTB) 3 is used. The constituency structures is converted to dependency trees by using the same rules as (Yamada and Matsumoto, 2003) and the standard training/development/test split is used. However, only training corpus (sections 2-21) is used for this study. For Chinese data, the Chinese Treebank (CTB) version 4.0 is used in our experiments. The same rules for conversion and the same data split is adopted as (Wang et al., 2007): files 1-270 and 400-931 as training, 271-300 as testing and files 301-325 as development. We use the gold standard segmentation and part-of-speech (POS) tags in both treebanks. As a bilingual lexicon is required for our task and none of existing lexicons are suitable for translating PTB, two lexicons, LDC Chinese-English Translation Lexicon Version 2.0 (LDC2002L27), and an English to Chinese lexicon in StarDict2, are conflated, with some necessary manual extensions, to cover 99% words appearing in the PTB (the most part of the untranslated words are named entities.). This lexicon includes 123K entries.</bodyText>
+<subsectionHeader confidence="0.999039">
+3.2 Translation
+</subsectionHeader>
+<bodyText confidence="0.999898125">A word-by-word statistical machine translation strategy is adopted to translate words attached with the respective dependency information from the source language to the target one. In detail, a word-based decoding is used, which adopts a loglinear framework as in (Och and Ney, 2002) with only two features, translation model and language model, is the translation model, which is converted from the bilingual lexicon, and</bodyText>
+<equation confidence="0.9777865">
+exp[E2i=1 Aihi(c, e)]
+Ec exp[E2i=1 Aihi(c, e)]
+Where
+h1(c, e) = log(pγ(c|e))
+</equation>
+<equation confidence="0.959255">
+h2(c, e) = log(pθ(c))
+</equation>
+<bodyText confidence="0.999941666666667">is the language model, a word trigram model trained from the CTB. In our experiment, we set two weights A1 = A2 = 1.</bodyText>
+<footnote confidence="0.9960275">
+2StarDict is an open source dictionary software, available
+at http://stardict.sourceforge.net/.
+</footnote>
+<bodyText confidence="0.99753">The conversion process of the source treebank is completed by three steps as the following:</bodyText>
+<listItem confidence="0.983947">1. Bind POS tag and dependency relation of a word with itself; 2. Translate the PTB text into Chinese word by word.</listItem>
+<bodyText confidence="0.995097909090909">Since we use a lexicon rather than a parallel corpus to estimate the translation probabilities, we simply assign uniform probabilities to all translation options. Thus the decoding process is actually only determined by the language model. Similar to the “bag translation” experiment in (Brown et al., 1990), the candidate target sentences made up by a sequence of the optional target words are ranked by the trigram language model. The output sentence will be generated only if it is with maximum probability as follows,</bodyText>
+<equation confidence="0.999016666666667">
+c = argmax{pθ(c)pγ(c|e)}
+= argmax pθ(c)
+n= argmax pθ(wc)
+</equation>
+<bodyText confidence="0.999442285714286">A beam search algorithm is used for this process to find the best path from all the translation options; As the training stage, especially, the most time-consuming alignment sub-stage, is skipped, the translation only includes a decoding procedure that takes about 4.5 hours for about one million words of the PTB in a 2.8GHz PC.</bodyText>
+<listItem confidence="0.973469">3. After the target sentence is generated, the attached POS tags and dependency information of each English word will also be transferred to each corresponding Chinese word.</listItem>
+<bodyText confidence="0.9697504">As word order is often changed after translation, the pointer of each dependency relationship, represented by a serial number, should be re-calculated. Although we try to perform an exact word-byword translation, this aim cannot be fully reached in fact, as the following case is frequently encountered, multiple English words have to be translated into one Chinese word. To solve this problem, we use a policy that lets the output Chinese word only inherits the attached information of the highest syntactic head in the original multiple English words.</bodyText>
+<sectionHeader confidence="0.993922" genericHeader="method">
+4 Dependency Parsing: Baseline
+</sectionHeader>
+<subsectionHeader confidence="0.998708">
+4.1 Learning Model and Features
+</subsectionHeader>
+<bodyText confidence="0.999772">According to (McDonald and Nivre, 2007), all data-driven models for dependency parsing that have been proposed in recent years can be described as either graph-based or transition-based.</bodyText>
+<equation confidence="0.994544">
+P(c|e) =
+</equation>
+<page confidence="0.996869">
+57
+</page>
+<tableCaption confidence="0.998482">
+Table 1: Feature Notations
+</tableCaption>
+<bodyText confidence="0.999982935483871">Although the former will be also used as comparison, the latter is chosen as the main parsing framework by this study for the sake of efficiency. In detail, a shift-reduce method is adopted as in (Nivre, 2003), where a classifier is used to make a parsing decision step by step. In each step, the classifier checks a word pair, namely, s, the top of a stack that consists of the processed words, and, i, the first word in the (input) unprocessed sequence, to determine if a dependent relation should be established between them. Besides two dependency arc building actions, a shift action and a reduce action are also defined to maintain the stack and the unprocessed sequence. In this work, we adopt a left-to-right arc-eager parsing model, that means that the parser scans the input sequence from left to right and right dependents are attached to their heads as soon as possible (Hall et al., 2007). While memory-based and margin-based learning approaches such as support vector machines are popularly applied to shift-reduce parsing, we apply maximum entropy model as the learning model for efficient training and adopting overlapped features as our work in (Zhao and Kit, 2008), especially, those character-level ones for Chinese parsing. Our implementation of maximum entropy adopts L-BFGS algorithm for parameter optimization as usual. With notations defined in Table 1, a feature set as shown in Table 2 is adopted. Here, we explain some terms in Tables 1 and 2. We used a large scale feature selection approach as in (Zhao et al., 2009) to obtain the feature set in Table 2. Some feature notations in this paper are also borrowed from that work. The feature curroot returns the root of a partial parsing tree that includes a specified node. The feature charseq returns a character sequence whose members are collected from all identified children for a specified word. In Table 2, as for concatenating multiple substrings into a feature string, there are two ways, seq and bag. The former is to concatenate all substrings without do something special. The latter will remove all duplicated substrings, sort the rest and concatenate all at last. Note that we systemically use a group of character-level features. Surprisingly, as to our best knowledge, this is the first report on using this type of features in Chinese dependency parsing. Although (McDonald et al., 2005) used the prefix of each word form instead of word form itself as features, character-level features here for Chinese is essentially different from that. As Chinese is basically a character-based written language. Character plays an important role in many means, most characters can be formed as single-character words, and Chinese itself is character-order free rather than word-order free to some extent. In addition, there is often a close connection between the meaning of a Chinese word and its first or last character.</bodyText>
+<subsectionHeader confidence="0.998944">
+4.2 Parsing using a Beam Search Algorithm
+</subsectionHeader>
+<bodyText confidence="0.9999831">In Table 2, the feature preactn returns the previous parsing action type, and the subscript n stands for the action order before the current action. These are a group of Markovian features. Without this type of features, a shift-reduce parser may directly scan through an input sequence in linear time. Otherwise, following the work of (Duan et al., 2007) and (Zhao, 2009), the parsing algorithm is to search a parsing action sequence with the maximal probability.</bodyText>
+<equation confidence="0.987041">
+�5di = argmax p(di|di−1di−2...)�
+i
+</equation>
+<bodyText confidence="0.9427785">where 5di is the object parsing action sequence, p(di|di−1...) is the conditional probability, and di</bodyText>
+<table confidence="0.999645872340425">
+Notation
+Meaning
+The word in the top of stack
+The first word below the top of stack.
+The first word before(after) the word
+in the top of stack.
+The first (second) word in the
+unprocessed sequence, etc.
+Dependent direction
+Head
+Leftmost child
+Rightmost child
+Right nearest child
+word form
+POS tag of word
+coarse POS: the first letter of POS tag of word
+coarse POS: the first two POS tags of word
+the left nearest verb
+The first character of a word
+The first two characters of a word
+The last character of a word
+The last two characters of a word
+’s, i.e., ‘s.dprel’ means dependent label
+of character in the top of stack
+Feature combination, i.e., ‘s.char+i.char’
+means both s.char and i.char work as a
+feature function.
+s
+s'
+s−1,s1...
+i, i+1,...
+dir
+h
+lm
+rm
+rn
+form
+pos
+cpos1
+cpos2
+lnverb
+char1
+char2
+char−1
+char−2
+.
++
+</table>
+<page confidence="0.993445">
+58
+</page>
+<figureCaption confidence="0.987333">
+Figure 1: A comparison before and after translation
+is i-th parsing action. We use a beam search algo-
+rithm to find the object parsing action sequence.
+</figureCaption>
+<table confidence="0.9972973">
+Table 2: Features for Parsing
+in.form, n = 0, 1
+i.form + i1.form
+in.char2 + in+1.char2, n = −1, 0
+i.char−1 + i1.char−1
+in.char−2 n = 0, 3
+i1.char−2 + i2.char−2 +i3.char−2
+i.lnverb.char−2
+i3.pos
+in.pos + in+1.pos, n = 0, 1
+i−2.cpos1 + i−1.cpos1
+i1.cpos1 + i2.cpos1 + i3.cpos1
+s02.char1
+s0.char−2 + s01.char−2
+s0−2.cpos2
+s0−1.cpos2 + s01.cpos2
+s0.cpos2 + s01.cpos2
+s’.children.cpos2.seq
+s’.children.dprel.seq
+s’.subtree.depth
+s0.h.form + s0.rm.cpos1
+s0.lm.char2 + s0.char2
+s.h.children.dprel.seq
+s.lm.dprel
+s.char−2 + i1.char−2
+s.charn + i.charn, n = −1, 1
+s−1.pos + i1.pos
+s.pos + in.pos, n = −1, 0, 1
+s : i|linePath.form.bag
+s0.form + i.form
+s0.char2 + in.char2, n = −1, 0, 1
+s.curroot.pos + i.pos
+s.curroot.char2 + i.char2
+s.children.cpos2.seq + i.children.cpos2.seq
+s.children.cpos2.seq + i.children.cpos2.seq
++ s.cpos2 + i.cpos2
+s0.children.dprel.seq + i.children.dprel.seq
+preact−1
+preact−2
+preact−2+preact−1
+</table>
+<sectionHeader confidence="0.99718" genericHeader="method">
+5 Exploiting the Translated Treebank
+</sectionHeader>
+<bodyText confidence="0.999968357142857">As we cannot expect too much for a word-by-word translation, only word pairs with dependency relation in translated text are extracted as useful and reliable information. Then some features based on a query in these word pairs according to the current parsing state (namely, words in the current stack and input) will be derived to enhance the Chinese parser. A translation sample can be seen in Figure 1. Although most words are satisfactorily translated, to generate effective features, what we still have to consider at first is the inconsistence between the translated text and the target text. In Chinese, word lemma is always its word form itself, this is a convenient characteristic in computational linguistics and makes lemma features unnecessary for Chinese parsing at all. However, Chinese has a special primary processing task, i.e., word segmentation. Unfortunately, word definitions for Chinese are not consistent in various linguistical views, for example, seven segmentation conventions for computational purpose are formally proposed since the first Bakeoff3. Note that CTB or any other Chinese treebank has its own word segmentation guideline. Chinese word should be strictly segmented according to the guideline before POS tags and dependency relations are annotated. However, as we say the</bodyText>
+<footnote confidence="0.993375">
+3Bakeoff is a Chinese processing share task held by
+SIGHAN.
+</footnote>
+<page confidence="0.99936">
+59
+</page>
+<bodyText confidence="0.999951098039216">English treebank is translated into Chinese word by word, Chinese words in the translated text are exactly some entries from the bilingual lexicon, they are actually irregular phrases, short sentences or something else rather than words that follows any existing word segmentation convention. If the bilingual lexicon is not carefully selected or refined according to the treebank where the Chinese parser is trained from, then there will be a serious inconsistence on word segmentation conventions between the translated and the target treebanks. As all concerned feature values here are calculated from the searching result in the translated word pair list according to the current parsing state, and a complete and exact match cannot be always expected, our solution to the above segmentation issue is using a partial matching strategy based on characters that the words include. Above all, a translated word pair list, L, is extracted from the translated treebank. Each item in the list consists of three elements, dependant word (dp), head word (hd) and the frequency of this pair in the translated treebank, f. There are two basic strategies to organize the features derived from the translated word pair list. The first is to find the most matching word pair in the list and extract some properties from it, such as the matched length, part-of-speech tags and so on, to generate features. Note that a matching priority serial should be defined aforehand in this case. The second is to check every matching models between the current parsing state and the partially matched word pair. In an early version of our approach, the former was implemented. However, It is proven to be quite inefficient in computation. Thus we adopt the second strategy at last. Two matching model feature functions, 0(·) and 0(·), are correspondingly defined as follows. The return value of 0(·) or 0(·) is the logarithmic frequency of the matched item. There are four input parameters required by the function 0(·). Two parameters of them are about which part of the stack(input) words is chosen, and other two are about which part of each item in the translated word pair is chosen. These parameters could be set to full or charn as shown in Table 1, where n = ..., −2, −1, 1, 2, .... For example, a possible feature could be 0(s.full, i.chari, dp.full, hd.char1), it tries to find a match in L by comparing stack word and dp word, and the first character of input word</bodyText>
+<tableCaption confidence="0.997788">
+Table 3: Features based on the translated treebank
+and the first character of hd word.</tableCaption>
+<bodyText confidence="0.999995">If such a match item in L is found, then 0(·) returns log(f). There are three input parameters required by the function 0(·). One parameter is about which part of the stack(input) words is chosen, and the other is about which part of each item in the translated word pair is chosen. The third is about the matching type that may be set to dependant, head, or root. For example, the function 0(i.chari, hd.full, root) tries to find a match in L by comparing the first character of input word and the whole dp word. If such a match item in L is found, then 0(·) returns log(f) as hd occurs as ROOT f times. As having observed that CTB and PTB share a similar POS guideline. A POS pair list from PTB is also extract. Two types of features, rootscore and pairscore are used to make use of such information. Both of them returns the logarithmic value of the frequency for a given dependent event. The difference is, rootscore counts for the given POS tag occurring as ROOT, and pairscore counts for two POS tag combination occurring for a dependent relationship. A full adapted feature list that is derived from the translated word pairs is in Table 3.</bodyText>
+<sectionHeader confidence="0.974629" genericHeader="result">
+6 Evaluation Results
+</sectionHeader>
+<bodyText confidence="0.999591333333333">The quality of the parser is measured by the parsing accuracy or the unlabeled attachment score (UAS), i.e., the percentage of tokens with correct head. Two types of scores are reported for comparison: “UAS without p” is the UAS score without all punctuation tokens and “UAS with p” is the one with all punctuation tokens. The results with different feature sets are in Table 4. As the features preactn are involved, a beam search algorithm with width 5 is used for parsing, otherwise, a simple shift-reduce decoding is used.</bodyText>
+<table confidence="0.836035846153846">
+φ(i.char3, s0.full, dp.char3, hd.full)+i.char3
++s0.form
+φ(i.char3, s.char2, dp.char3, hd.char2)+s.char2
+φ(i.char3, s.full, dp.char3, hd.char2)+s.form
+ψ(s0.char−2, hd.char−2, head)+i.pos+s0.pos
+φ(i.char3, s.full, dp.char3, hd.char2)+s.full
+φ(s0.full, i.char4, dp.full, hd.char4)+s0.pos+i.pos
+ψ(i.full, hd.char2, root)+i.pos+s.pos
+ψ(i.full, hd.char2, root)+i.pos+s0.pos
+ψ(s.full, dp.full, dependant)+i.pos
+pairscore(s0.pos, i.pos)+s0.form+i.form
+rootscore(s0.pos)+s0.form+i.form
+rootscore(s0.pos)+i.pos
+</table>
+<page confidence="0.997886">
+60
+</page>
+<bodyText confidence="0.9986144">It is observed that the features derived from the translated text bring a significant performance improvement as high as 1.3%.</bodyText>
+<tableCaption confidence="0.856322">
+Table 4: The results with different feature sets
+features with p without p
+baseline -d 0.846 0.858
++d° 0.848 0.860
++Tb -d 0.859 0.869
++d 0.861 0.870
+°+d: using three Markovian features preact and
+beam search decoding.</tableCaption>
+<table confidence="0.966533111111111">b+T: using features derived from the translated text
+as in Table 3.Dependency Length</table>
+<figureCaption confidence="0.994773">
+Figure 2: Performance vs. dependency length
+</figureCaption>
+<figure confidence="0.996049">
+1
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+1 4 7 10 13 16 19
+basline: +d
++T: +d
+</figure>
+<bodyText confidence="0.99985975">To compare our parser to the state-of-the-art counterparts, we use the same testing data as (Wang et al., 2005) did, selecting the sentences length up to 40. Table 5 shows the results achieved by other researchers and ours (UAS with p), which indicates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences.</bodyText>
+<tableCaption confidence="0.9748445">
+Table 5: Comparison against the state-of-the-art
+full up to 40
+</tableCaption>
+<table confidence="0.9850824">
+(McDonald and Pereira, 2006)° - 0.825
+(Wang et al., 2007) - 0.866
+(Chen et al., 2008) 0.852 0.884
+Ours 0.861 0.889
+°This results was reported in (Wang et al., 2007).
+</table>
+<bodyText confidence="0.999488727272727">The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed method, the improvement relative to dependency length is shown in Figure 2. From the figure, it is seen that our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treebank still help those long distance dependencies.</bodyText>
+<footnote confidence="0.994297666666667">
+4There is a slight exception: using the same data splitting,
+(Yu et al., 2008) reported UAS without p as 0.873 versus ours,
+0.870.
+</footnote>
+<sectionHeader confidence="0.995164" genericHeader="result">
+7 Discussion
+</sectionHeader>
+<bodyText confidence="0.999974117647059">If a treebank in the source language can help improve parsing in the target language, then there must be something common between these two languages, or more precisely, these two corresponding treebanks. (Zeman and Resnik, 2008) assumed that the morphology and syntax in the language pair should be very similar, and that is so for the language pair that they considered, Danish and Swedish, two very close north European languages. Thus it is somewhat surprising that we show a translated English treebank may help Chinese parsing, as English and Chinese even belong to two different language systems. However, it will not be so strange if we recognize that PTB and CTB share very similar guidelines on POS and syntactics annotation. Since it will be too abstract in discussing the details of the annotation guidelines, we look into the similarities of two treebanks from the matching degree of two word pair lists. The reason is that the effectiveness of the proposed method actually relies on how many word pairs at every parsing states can find their full or partial matched partners in the translated word pair list. Table 6 shows such a statistics on the matching degree distribution from all training samples for Chinese parsing. The statistics in the table suggest that most to-be-check word pairs during parsing have a full or partial hitting in the translated word pair list. The latter then obtains an opportunity to provide a great deal of useful guideline information to help determine how the former should be tackled. Therefore we have cause for attributing the effectiveness of the proposed method to the similarity of these two treebanks. From Table 6, we also find that the partial matching strategy defined in Section 5 plays a very important role in improving the whole matching degree.</bodyText>
+<page confidence="0.99754">
+61
+</page>
+<bodyText confidence="0.9997879">Note that our approach is not too related to the characteristics of two languages. Our discussion here brings an interesting issue, which difference is more important in cross language processing, between two languages themselves or the corresponding annotated corpora? This may be extensively discussed in the future work.</bodyText>
+<tableCaption confidence="0.997624">
+Table 6: Matching degree distribution
+dependant-match head-match Percent (%)
+None None 9.6
+None Partial 16.2
+None Full 9.9
+Partial None 12.4
+Partial Partial 42.6
+Partial Full 7.3
+Full None 3.7
+Full Partial 7.0
+Full Full 0.2</tableCaption>
+<bodyText confidence="0.999877631578947">Note that only a bilingual lexicon is adopted in our approach. We regard it one of the most merits for our approach. A lexicon is much easier to be obtained than an annotated corpus. One of the remained question about this work is if the bilingual lexicon should be very specific for this kind of tasks. According to our experiences, actually, it is not so sensitive to choose a highly refined lexicon or not. We once found many words, mostly named entities, were outside the lexicon. Thus we managed to collect a named entity translation dictionary to enhance the original one. However, this extra effort did not receive an observable performance improvement in return. Finally we realize that a lexicon that can guarantee two word pair lists highly matched is sufficient for this work, and this requirement may be conveniently satisfied only if the lexicon consists of adequate highfrequent words from the source treebank.</bodyText>
+<sectionHeader confidence="0.994841" genericHeader="conclusion">
+8 Conclusion and Future Work
+</sectionHeader>
+<bodyText confidence="0.999993148148148">We propose a method to enhance dependency parsing in one language by using a translated treebank from another language. A simple statistical machine translation technique, word-by-word decoding, where only a bilingual lexicon is necessary, is used to translate the source treebank. As dependency parsing is concerned with the relations of word pairs, only those word pairs with dependency relations in the translated treebank are chosen to generate some additional features to enhance the parser for the target language. The experimental results in English and Chinese treebanks show the proposed method is effective and helps the Chinese parser in this work achieve a state-of-the-art result. Note that our method is evaluated in two treebanks with a similar annotation style and it avoids using too many linguistic properties. Thus the method is in the hope of being used in other similarly annotated treebanks 5. For an immediate example, we may adopt a translated Chinese treebank to improve English parsing. Although there are still something to do, the remained key work has been as simple as considering how to determine the matching strategy for searching the translated word pair list in English according to the framework of our method. .</bodyText>
+<sectionHeader confidence="0.998379" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.9999078">We’d like to give our thanks to three anonymous reviewers for their insightful comments, Dr. Chen Wenliang for for helpful discussions and Mr. Liu Jun for helping us fix a bug in our scoring program.</bodyText>
+<sectionHeader confidence="0.998937" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999753045454545">
+Peter F. Brown, John Cocke, Stephen A. Della Pietra,
+Vincent J. Della Pietra, Fredrick Jelinek, John D.
+Lafferty, Robert L. Mercer, and Paul S. Roossin.
+1990. A statistical approach to machine translation.
+Computational Linguistics, 16(2):79–85.
+David Burkett and Dan Klein. 2008. Two lan-
+guages are better than one (for syntactic parsing). In
+EMNLP-2008, pages 877–886, Honolulu, Hawaii,
+USA.
+Wenliang Chen, Daisuke Kawahara, Kiyotaka Uchi-
+moto, Yujie Zhang, and Hitoshi Isahara. 2008. De-
+pendency parsing with short dependency relations
+in unlabeled data. In Proceedings of IJCNLP-2008,
+Hyderabad, India, January 8-10.
+Xiangyu Duan, Jun Zhao, and Bo Xu. 2007. Proba-
+bilistic parsing action models for multi-lingual de-
+pendency parsing. In Proceedings of the CoNLL
+Shared Task Session of EMNLP-CoNLL 2007, pages
+940–946, Prague, Czech, June 28-30.
+Johan Hall, Jens Nilsson, Joakim Nivre,
+G¨ulsen Eryiˇgit, Be´ata Megyesi, Mattias Nils-
+son, and Markus Saers. 2007. Single malt or
+</reference>
+<footnote confidence="0.99075575">
+5For example, Catalan and Spanish treebanks from the
+AnCora(-Es/Ca) Multilevel Annotated Corpus that are an-
+notated by the Universitat de Barcelona (CLiC-UB) and the
+Universitat Politècnica de Catalunya (UPC).
+</footnote>
+<page confidence="0.998279">
+62
+</page>
+<reference confidence="0.999909029126213">
+blended? a study in multilingual parser optimiza-
+tion. In Proceedings of the CoNLL Shared Task
+Session of EMNLP-CoNLL 2007, pages 933–939,
+Prague, Czech, June.
+Terry Koo, Xavier Carreras, and Michael Collins.
+2008. Simple semi-supervised dependency parsing.
+In Proceedings of ACL-08: HLT, pages 595–603,
+Columbus, Ohio, USA, June.
+David McClosky, Eugene Charniak, and Mark John-
+son. 2006. Reranking and self-training for parser
+adaptation. In Proceedings of ACL-COLING 2006,
+pages 337–344, Sydney, Australia, July.
+Ryan McDonald and Joakim Nivre. 2007. Charac-
+terizing the errors of data-driven dependency pars-
+ing models. In Proceedings of the 2007 Joint Con-
+ference on Empirical Methods in Natural Language
+Processing and Computational Natural Language
+Learning (EMNLP-CoNLL 2007), pages 122–131,
+Prague, Czech, June 28-30.
+Ryan McDonald and Fernando Pereira. 2006. Online
+learning of approximate dependency parsing algo-
+rithms. In Proceedings of EACL-2006, pages 81–88,
+Trento, Italy, April.
+Ryan McDonald, Koby Crammer, and Fernando
+Pereira. 2005. Online large-margin training of de-
+pendency parsers. In Proceedings of ACL-2005,
+pages 91–98, Ann Arbor, Michigan, USA, June 25-
+30.
+Paola Merlo, Suzanne Stevenson, Vivian Tsang, and
+Gianluca Allaria. 2002. A multilingual paradigm
+for automatic verb classification. In ACL-2002,
+pages 207–214, Philadelphia, Pennsylvania, USA.
+Joakim Nivre, Johan Hall, Sandra K¨ubler, Ryan Mc-
+Donald, Jens Nilsson, Sebastian Riedel, and Deniz
+Yuret. 2007. The conll 2007 shared task on de-
+pendency parsing. In Proceedings of the CoNLL
+Shared Task Session of EMNLP-CoNLL 2007, page
+915–932, Prague, Czech, June.
+Joakim Nivre. 2003. An efficient algorithm for projec-
+tive dependency parsing. In Proceedings of IWPT-
+2003), pages 149–160, Nancy, France, April 23-25.
+Franz Josef Och and Hermann Ney. 2002. Discrimina-
+tive training and maximum entropy models for sta-
+tistical machine translation. In Proceedings of ACL-
+2002, pages 295–302, Philadelphia, USA, July.
+Roi Reichart and Ari Rappoport. 2007. Self-training
+for enhancement and domain adaptation of statistical
+parsers trained on small datasets. In Proceedings of
+ACL-2007, pages 616–623, Prague, Czech Republic,
+June.
+Kenji Sagae and Jun’ichi Tsujii. 2007. Dependency
+parsing and domain adaptation with lr models and
+parser ensembles. In Proceedings of the CoNLL
+Shared Task Session of EMNLP-CoNLL 2007, page
+1044–1050, Prague, Czech, June 28-30.
+Noah A. Smith and Jason Eisner. 2006. Annealing
+structural bias in multilingual weighted grammar in-
+duction. In Proceedings of ACL-COLING 2006,
+page 569–576, Sydney, Australia, July.
+Mark Steedman, Miles Osborne, Anoop Sarkar,
+Stephen Clark, Rebecca Hwa, Julia Hockenmaier,
+Paul Ruhlen, Steven Baker, and Jeremiah Crim.
+2003. Bootstrapping statistical parsers from small
+datasets. In Proceedings of EACL-2003, page
+331–338, Budapest, Hungary, April.
+Qin Iris Wang and Dale Schuurmans. 2008. Semi-
+supervised convex training for dependency parsing.
+In Proceedings of ACL-08: HLT, pages 532–540,
+Columbus, Ohio, USA, June.
+Qin Iris Wang, Dale Schuurmans, and Dekang Lin.
+2005. Strictly lexical dependency parsing. In Pro-
+ceedings of IWPT-2005, pages 152–159, Vancouver,
+BC, Canada, October.
+Qin Iris Wang, Dekang Lin, and Dale Schuurmans.
+2007. Simple training of dependency parsers via
+structured boosting. In Proceedings of IJCAI 2007,
+pages 1756–1762, Hyderabad, India, January.
+Hiroyasu Yamada and Yuji Matsumoto. 2003. Sta-
+tistical dependency analysis with support vector
+machines. In Proceedings of IWPT-2003), page
+195–206, Nancy, France, April.
+Kun Yu, Daisuke Kawahara, and Sadao Kurohashi.
+2008. Chinese dependency parsing with large
+scale automatically constructed case structures. In
+Proceedings of COLING-2008, pages 1049–1056,
+Manchester, UK, August.
+Daniel Zeman and Philip Resnik. 2008. Cross-
+language parser adaptation between related lan-
+guages. In Proceedings of IJCNLP 2008 Workshop
+on NLP for Less Privileged Languages, pages 35–
+42, Hyderabad, India, January.
+Hai Zhao and Chunyu Kit. 2008. Parsing syntactic and
+semantic dependencies with two single-stage max-
+imum entropy models. In Proceeding of CoNLL-
+2008, pages 203–207, Manchester, UK.
+Hai Zhao, Wenliang Chen, Chunyu Kit, and Guodong
+Zhou. 2009. Multilingual dependency learning:
+A huge feature engineering method to semantic de-
+pendency parsing. In Proceedings of CoNLL-2009,
+Boulder, Colorado, USA.
+Hai Zhao. 2009. Character-level dependencies in
+chinese: Usefulness and learning. In EACL-2009,
+pages 879–887, Athens, Greece.
+</reference>
+<page confidence="0.999465">
+63
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.551624" no="0">
+<title confidence="0.977092">Language Dependency Parsing using a Bilingual</title>
+<author confidence="0.758643">Yan Chunyu Guodong of Chinese</author>
+<author confidence="0.758643">Translation</author>
+<author confidence="0.758643">Linguistics</author>
+<affiliation confidence="0.827233">City University of Hong Kong</affiliation>
+<address confidence="0.996244">83 Tat Chee Avenue, Kowloon, Hong Kong, China</address>
+<affiliation confidence="0.902253">of Computer Science and Technology</affiliation>
+<address confidence="0.959009">Soochow University, Suzhou, China 215006</address>
+<email confidence="0.945996">gdzhou@suda.edu.cn</email>
+<abstract confidence="0.997570388888889">This paper proposes an approach to enhance dependency parsing in a language by using a translated treebank from another language. A simple statistical machine translation method, word-by-word decoding, where not a parallel corpus but a bilingual lexicon is necessary, is adopted for the treebank translation. Using an ensemble method, the key information extracted from word pairs with dependency relations in the translated text is effectively integrated into the parser for the target language. The proposed method is evaluated in English and Chinese treebanks. It is shown that a translated English treebank helps a Chinese parser obtain a state-ofthe-art result.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Peter F Brown</author>
+<author>John Cocke</author>
+<author>Stephen A Della Pietra</author>
+<author>Vincent J Della Pietra</author>
+<author>Fredrick Jelinek</author>
+<author>John D Lafferty</author>
+<author>Robert L Mercer</author>
+<author>Paul S Roossin</author>
+</authors>
+<title>A statistical approach to machine translation.</title>
+<date>1990</date>
+<journal>Computational Linguistics,</journal>
+<volume>16</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Brown et al., 1990" endWordPosition="1833" position="11438" startWordPosition="1830">A2 = 1. 2StarDict is an open source dictionary software, available at http://stardict.sourceforge.net/. The conversion process of the source treebank is completed by three steps as the following: 1. Bind POS tag and dependency relation of a word with itself; 2. Translate the PTB text into Chinese word by word. Since we use a lexicon rather than a parallel corpus to estimate the translation probabilities, we simply assign uniform probabilities to all translation options. Thus the decoding process is actually only determined by the language model. Similar to the “bag translation” experiment in (Brown et al., 1990), the candidate target sentences made up by a sequence of the optional target words are ranked by the trigram language model. The output sentence will be generated only if it is with maximum probability as follows, c = argmax{pθ(c)pγ(c|e)} = argmax pθ(c) n= argmax pθ(wc) A beam search algorithm is used for this process to find the best path from all the translation options; As the training stage, especially, the most time-consuming alignment sub-stage, is skipped, the translation only includes a decoding procedure that takes about 4.5 hours for about one million words of the PTB in a 2.8GHz PC</context>
+</contexts>
+<marker>Brown, Cocke, Pietra, Pietra, Jelinek, Lafferty, Mercer, Roossin, 1990</marker>
+<rawString>Peter F. Brown, John Cocke, Stephen A. Della Pietra, Vincent J. Della Pietra, Fredrick Jelinek, John D. Lafferty, Robert L. Mercer, and Paul S. Roossin. 1990. A statistical approach to machine translation. Computational Linguistics, 16(2):79–85.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Burkett</author>
+<author>Dan Klein</author>
+</authors>
+<title>Two languages are better than one (for syntactic parsing).</title>
+<date>2008</date>
+<booktitle>In EMNLP-2008,</booktitle>
+<pages>877--886</pages>
+<location>Honolulu, Hawaii, USA.</location>
+<contexts>
+<context citStr="Burkett and Klein, 2008" endWordPosition="1125" position="7018" startWordPosition="1122">ion cannot be afforded in many cases. However, we empirically find this difficulty may be dramatically alleviated as dependencies rather than phrases are used for syntactic structure representation. Even the translation outputs are not so good as the expected, a dependency parser for the target language can effectively make use of them by only considering the most related information extracted from the translated text. The basic idea to support this work is to make use of the semantic connection between different languages. In this sense, it is related to the work of (Merlo et al., 2002) and (Burkett and Klein, 2008). The former showed that complementary information about English verbs can be extracted from their translations in a second language (Chinese) and the use of multilingual features improves classification performance of the English verbs. The latter iteratively trained a model to maximize the marginal likelihood of tree pairs, with alignments treated as latent variables, and then jointly parsing bilingual sentences in a translation pair. The proposed parser using features from monolingual and mutual constraints helped its log-linear model to achieve better performance for both monolingual parse</context>
+</contexts>
+<marker>Burkett, Klein, 2008</marker>
+<rawString>David Burkett and Dan Klein. 2008. Two languages are better than one (for syntactic parsing). In EMNLP-2008, pages 877–886, Honolulu, Hawaii, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wenliang Chen</author>
+<author>Daisuke Kawahara</author>
+<author>Kiyotaka Uchimoto</author>
+<author>Yujie Zhang</author>
+<author>Hitoshi Isahara</author>
+</authors>
+<title>Dependency parsing with short dependency relations in unlabeled data.</title>
+<date>2008</date>
+<booktitle>In Proceedings of IJCNLP-2008,</booktitle>
+<location>Hyderabad, India,</location>
+<contexts>
+<context citStr="Chen et al., 2008" endWordPosition="871" position="5432" startWordPosition="868">n draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle golden-standard treeb</context>
+<context citStr="Chen et al., 2008" endWordPosition="4161" position="25557" startWordPosition="4158">kovian features preact and beam search decoding. b+T: using features derived from the translated text as in Table 3. Dependency Length Figure 2: Performance vs. dependency length 1 0.9 0.8 0.7 0.6 0.5 0.4 1 4 7 10 13 16 19 basline: +d +T: +d To compare our parser to the state-of-the-art counterparts, we use the same testing data as (Wang et al., 2005) did, selecting the sentences length up to 40. Table 5 shows the results achieved by other researchers and ours (UAS with p), which indicates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences. Table 5: Comparison against the state-of-the-art full up to 40 (McDonald and Pereira, 2006)° - 0.825 (Wang et al., 2007) - 0.866 (Chen et al., 2008) 0.852 0.884 Ours 0.861 0.889 °This results was reported in (Wang et al., 2007). The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed met</context>
+</contexts>
+<marker>Chen, Kawahara, Uchimoto, Zhang, Isahara, 2008</marker>
+<rawString>Wenliang Chen, Daisuke Kawahara, Kiyotaka Uchimoto, Yujie Zhang, and Hitoshi Isahara. 2008. Dependency parsing with short dependency relations in unlabeled data. In Proceedings of IJCNLP-2008, Hyderabad, India, January 8-10.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiangyu Duan</author>
+<author>Jun Zhao</author>
+<author>Bo Xu</author>
+</authors>
+<title>Probabilistic parsing action models for multi-lingual dependency parsing.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007,</booktitle>
+<pages>940--946</pages>
+<location>Prague, Czech,</location>
+<contexts>
+<context citStr="Duan et al., 2007" endWordPosition="2654" position="16359" startWordPosition="2651">haracter words, and Chinese itself is character-order free rather than word-order free to some extent. In addition, there is often a close connection between the meaning of a Chinese word and its first or last character. 4.2 Parsing using a Beam Search Algorithm In Table 2, the feature preactn returns the previous parsing action type, and the subscript n stands for the action order before the current action. These are a group of Markovian features. Without this type of features, a shift-reduce parser may directly scan through an input sequence in linear time. Otherwise, following the work of (Duan et al., 2007) and (Zhao, 2009), the parsing algorithm is to search a parsing action sequence with the maximal probability. �5di = argmax p(di|di−1di−2...)� i where 5di is the object parsing action sequence, p(di|di−1...) is the conditional probability, and di Notation Meaning The word in the top of stack The first word below the top of stack. The first word before(after) the word in the top of stack. The first (second) word in the unprocessed sequence, etc. Dependent direction Head Leftmost child Rightmost child Right nearest child word form POS tag of word coarse POS: the first letter of POS tag of word c</context>
+</contexts>
+<marker>Duan, Zhao, Xu, 2007</marker>
+<rawString>Xiangyu Duan, Jun Zhao, and Bo Xu. 2007. Probabilistic parsing action models for multi-lingual dependency parsing. In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007, pages 940–946, Prague, Czech, June 28-30.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Johan Hall</author>
+<author>Jens Nilsson</author>
+<author>Joakim Nivre</author>
+<author>G¨ulsen Eryiˇgit</author>
+<author>Be´ata Megyesi</author>
+<author>Mattias Nilsson</author>
+<author>Markus Saers</author>
+</authors>
+<title>Single malt or blended? a study in multilingual parser optimization.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007,</booktitle>
+<pages>933--939</pages>
+<location>Prague, Czech,</location>
+<marker>Hall, Nilsson, Nivre, Eryiˇgit, Megyesi, Nilsson, Saers, 2007</marker>
+<rawString>Johan Hall, Jens Nilsson, Joakim Nivre, G¨ulsen Eryiˇgit, Be´ata Megyesi, Mattias Nilsson, and Markus Saers. 2007. Single malt or blended? a study in multilingual parser optimization. In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007, pages 933–939, Prague, Czech, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Terry Koo</author>
+<author>Xavier Carreras</author>
+<author>Michael Collins</author>
+</authors>
+<title>Simple semi-supervised dependency parsing.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-08: HLT,</booktitle>
+<pages>595--603</pages>
+<location>Columbus, Ohio, USA,</location>
+<contexts>
+<context citStr="Koo et al., 2008" endWordPosition="900" position="5606" startWordPosition="897">ble. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle golden-standard treebank, while all the previous works focus on the unlabeled data. Although cross-language technique has been used in other natural language processing tasks, it is basically new</context>
+</contexts>
+<marker>Koo, Carreras, Collins, 2008</marker>
+<rawString>Terry Koo, Xavier Carreras, and Michael Collins. 2008. Simple semi-supervised dependency parsing. In Proceedings of ACL-08: HLT, pages 595–603, Columbus, Ohio, USA, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David McClosky</author>
+<author>Eugene Charniak</author>
+<author>Mark Johnson</author>
+</authors>
+<title>Reranking and self-training for parser adaptation.</title>
+<date>2006</date>
+<booktitle>In Proceedings of ACL-COLING 2006,</booktitle>
+<pages>337--344</pages>
+<location>Sydney, Australia,</location>
+<contexts>
+<context citStr="McClosky et al., 2006" endWordPosition="859" position="5358" startWordPosition="856">an existing parser, it is related to domain adaption for parsing that has been draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our metho</context>
+</contexts>
+<marker>McClosky, Charniak, Johnson, 2006</marker>
+<rawString>David McClosky, Eugene Charniak, and Mark Johnson. 2006. Reranking and self-training for parser adaptation. In Proceedings of ACL-COLING 2006, pages 337–344, Sydney, Australia, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ryan McDonald</author>
+<author>Joakim Nivre</author>
+</authors>
+<title>Characterizing the errors of data-driven dependency parsing models.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning</booktitle>
+<pages>122--131</pages>
+<location>Prague, Czech,</location>
+<contexts>
+<context citStr="McDonald and Nivre, 2007" endWordPosition="2069" position="12870" startWordPosition="2066">after translation, the pointer of each dependency relationship, represented by a serial number, should be re-calculated. Although we try to perform an exact word-byword translation, this aim cannot be fully reached in fact, as the following case is frequently encountered, multiple English words have to be translated into one Chinese word. To solve this problem, we use a policy that lets the output Chinese word only inherits the attached information of the highest syntactic head in the original multiple English words. 4 Dependency Parsing: Baseline 4.1 Learning Model and Features According to (McDonald and Nivre, 2007), all data-driven models for dependency parsing that have been proposed in recent years can be described as either graph-based or transition-based. P(c|e) = 57 Table 1: Feature Notations Although the former will be also used as comparison, the latter is chosen as the main parsing framework by this study for the sake of efficiency. In detail, a shift-reduce method is adopted as in (Nivre, 2003), where a classifier is used to make a parsing decision step by step. In each step, the classifier checks a word pair, namely, s, the top of a stack that consists of the processed words, and, i, the first</context>
+<context citStr="McDonald and Nivre, 2007" endWordPosition="4243" position="26054" startWordPosition="4240">ates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences. Table 5: Comparison against the state-of-the-art full up to 40 (McDonald and Pereira, 2006)° - 0.825 (Wang et al., 2007) - 0.866 (Chen et al., 2008) 0.852 0.884 Ours 0.861 0.889 °This results was reported in (Wang et al., 2007). The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed method, the improvement relative to dependency length is shown in Figure 2. From the figure, it is seen that our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treebank still help those long distance dependencies. 4There is a slight exception: using the same data splitting, (Yu et al., 2008) reported UAS without p as 0.873 versus ours, 0.870. 7 Discussion I</context>
+</contexts>
+<marker>McDonald, Nivre, 2007</marker>
+<rawString>Ryan McDonald and Joakim Nivre. 2007. Characterizing the errors of data-driven dependency parsing models. In Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning (EMNLP-CoNLL 2007), pages 122–131, Prague, Czech, June 28-30.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ryan McDonald</author>
+<author>Fernando Pereira</author>
+</authors>
+<title>Online learning of approximate dependency parsing algorithms.</title>
+<date>2006</date>
+<booktitle>In Proceedings of EACL-2006,</booktitle>
+<pages>81--88</pages>
+<location>Trento, Italy,</location>
+<contexts>
+<context citStr="McDonald and Pereira, 2006" endWordPosition="4209" position="25862" startWordPosition="4206">arts, we use the same testing data as (Wang et al., 2005) did, selecting the sentences length up to 40. Table 5 shows the results achieved by other researchers and ours (UAS with p), which indicates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences. Table 5: Comparison against the state-of-the-art full up to 40 (McDonald and Pereira, 2006)° - 0.825 (Wang et al., 2007) - 0.866 (Chen et al., 2008) 0.852 0.884 Ours 0.861 0.889 °This results was reported in (Wang et al., 2007). The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed method, the improvement relative to dependency length is shown in Figure 2. From the figure, it is seen that our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treeban</context>
+</contexts>
+<marker>McDonald, Pereira, 2006</marker>
+<rawString>Ryan McDonald and Fernando Pereira. 2006. Online learning of approximate dependency parsing algorithms. In Proceedings of EACL-2006, pages 81–88, Trento, Italy, April.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ryan McDonald</author>
+<author>Koby Crammer</author>
+<author>Fernando Pereira</author>
+</authors>
+<title>Online large-margin training of dependency parsers.</title>
+<date>2005</date>
+<booktitle>In Proceedings of ACL-2005,</booktitle>
+<pages>91--98</pages>
+<location>Ann Arbor, Michigan, USA,</location>
+<contexts>
+<context citStr="McDonald et al., 2005" endWordPosition="172" position="1199" startWordPosition="169">d-by-word decoding, where not a parallel corpus but a bilingual lexicon is necessary, is adopted for the treebank translation. Using an ensemble method, the key information extracted from word pairs with dependency relations in the translated text is effectively integrated into the parser for the target language. The proposed method is evaluated in English and Chinese treebanks. It is shown that a translated English treebank helps a Chinese parser obtain a state-ofthe-art result. 1 Introduction Although supervised learning methods bring stateof-the-art outcome for dependency parser inferring (McDonald et al., 2005; Hall et al., 2007), a large enough data set is often required for specific parsing accuracy according to this type of methods. However, to annotate syntactic structure, either phrase- or dependency-based, is a costly job. Until now, the largest treebanks1 in various languages for syntax learning are with around one million words (or some other similar units). Limited data stand in the way of further performance enhancement. This is the case for each individual language at least. But, this is not the case as we observe all treebanks in different languages as a whole. For example, of ten treeb</context>
+<context citStr="McDonald et al., 2005" endWordPosition="2503" position="15437" startWordPosition="2500">ure charseq returns a character sequence whose members are collected from all identified children for a specified word. In Table 2, as for concatenating multiple substrings into a feature string, there are two ways, seq and bag. The former is to concatenate all substrings without do something special. The latter will remove all duplicated substrings, sort the rest and concatenate all at last. Note that we systemically use a group of character-level features. Surprisingly, as to our best knowledge, this is the first report on using this type of features in Chinese dependency parsing. Although (McDonald et al., 2005) used the prefix of each word form instead of word form itself as features, character-level features here for Chinese is essentially different from that. As Chinese is basically a character-based written language. Character plays an important role in many means, most characters can be formed as single-character words, and Chinese itself is character-order free rather than word-order free to some extent. In addition, there is often a close connection between the meaning of a Chinese word and its first or last character. 4.2 Parsing using a Beam Search Algorithm In Table 2, the feature preactn r</context>
+</contexts>
+<marker>McDonald, Crammer, Pereira, 2005</marker>
+<rawString>Ryan McDonald, Koby Crammer, and Fernando Pereira. 2005. Online large-margin training of dependency parsers. In Proceedings of ACL-2005, pages 91–98, Ann Arbor, Michigan, USA, June 25-30.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Paola Merlo</author>
+<author>Suzanne Stevenson</author>
+<author>Vivian Tsang</author>
+<author>Gianluca Allaria</author>
+</authors>
+<title>A multilingual paradigm for automatic verb classification.</title>
+<date>2002</date>
+<booktitle>In ACL-2002,</booktitle>
+<pages>207--214</pages>
+<location>Philadelphia, Pennsylvania, USA.</location>
+<contexts>
+<context citStr="Merlo et al., 2002" endWordPosition="1120" position="6988" startWordPosition="1117"> and the cost of translation cannot be afforded in many cases. However, we empirically find this difficulty may be dramatically alleviated as dependencies rather than phrases are used for syntactic structure representation. Even the translation outputs are not so good as the expected, a dependency parser for the target language can effectively make use of them by only considering the most related information extracted from the translated text. The basic idea to support this work is to make use of the semantic connection between different languages. In this sense, it is related to the work of (Merlo et al., 2002) and (Burkett and Klein, 2008). The former showed that complementary information about English verbs can be extracted from their translations in a second language (Chinese) and the use of multilingual features improves classification performance of the English verbs. The latter iteratively trained a model to maximize the marginal likelihood of tree pairs, with alignments treated as latent variables, and then jointly parsing bilingual sentences in a translation pair. The proposed parser using features from monolingual and mutual constraints helped its log-linear model to achieve better performa</context>
+</contexts>
+<marker>Merlo, Stevenson, Tsang, Allaria, 2002</marker>
+<rawString>Paola Merlo, Suzanne Stevenson, Vivian Tsang, and Gianluca Allaria. 2002. A multilingual paradigm for automatic verb classification. In ACL-2002, pages 207–214, Philadelphia, Pennsylvania, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joakim Nivre</author>
+<author>Johan Hall</author>
+<author>Sandra K¨ubler</author>
+<author>Ryan McDonald</author>
+<author>Jens Nilsson</author>
+<author>Sebastian Riedel</author>
+<author>Deniz Yuret</author>
+</authors>
+<title>The conll</title>
+<date>2007</date>
+<booktitle>In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007,</booktitle>
+<pages>915--932</pages>
+<location>Prague, Czech,</location>
+<marker>Nivre, Hall, K¨ubler, McDonald, Nilsson, Riedel, Yuret, 2007</marker>
+<rawString>Joakim Nivre, Johan Hall, Sandra K¨ubler, Ryan McDonald, Jens Nilsson, Sebastian Riedel, and Deniz Yuret. 2007. The conll 2007 shared task on dependency parsing. In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007, page 915–932, Prague, Czech, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joakim Nivre</author>
+</authors>
+<title>An efficient algorithm for projective dependency parsing.</title>
+<date>2003</date>
+<booktitle>In Proceedings of IWPT2003),</booktitle>
+<pages>149--160</pages>
+<location>Nancy, France,</location>
+<contexts>
+<context citStr="Nivre, 2003" endWordPosition="2138" position="13266" startWordPosition="2137">word only inherits the attached information of the highest syntactic head in the original multiple English words. 4 Dependency Parsing: Baseline 4.1 Learning Model and Features According to (McDonald and Nivre, 2007), all data-driven models for dependency parsing that have been proposed in recent years can be described as either graph-based or transition-based. P(c|e) = 57 Table 1: Feature Notations Although the former will be also used as comparison, the latter is chosen as the main parsing framework by this study for the sake of efficiency. In detail, a shift-reduce method is adopted as in (Nivre, 2003), where a classifier is used to make a parsing decision step by step. In each step, the classifier checks a word pair, namely, s, the top of a stack that consists of the processed words, and, i, the first word in the (input) unprocessed sequence, to determine if a dependent relation should be established between them. Besides two dependency arc building actions, a shift action and a reduce action are also defined to maintain the stack and the unprocessed sequence. In this work, we adopt a left-to-right arc-eager parsing model, that means that the parser scans the input sequence from left to ri</context>
+</contexts>
+<marker>Nivre, 2003</marker>
+<rawString>Joakim Nivre. 2003. An efficient algorithm for projective dependency parsing. In Proceedings of IWPT2003), pages 149–160, Nancy, France, April 23-25.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Franz Josef Och</author>
+<author>Hermann Ney</author>
+</authors>
+<title>Discriminative training and maximum entropy models for statistical machine translation.</title>
+<date>2002</date>
+<booktitle>In Proceedings of ACL2002,</booktitle>
+<pages>295--302</pages>
+<location>Philadelphia, USA,</location>
+<contexts>
+<context citStr="Och and Ney, 2002" endWordPosition="1675" position="10471" startWordPosition="1672"> lexicons, LDC Chinese-English Translation Lexicon Version 2.0 (LDC2002L27), and an English to Chinese lexicon in StarDict2, are conflated, with some necessary manual extensions, to cover 99% words appearing in the PTB (the most part of the untranslated words are named entities.). This lexicon includes 123K entries. 3.2 Translation A word-by-word statistical machine translation strategy is adopted to translate words attached with the respective dependency information from the source language to the target one. In detail, a word-based decoding is used, which adopts a loglinear framework as in (Och and Ney, 2002) with only two features, translation model and language model, exp[E2i=1 Aihi(c, e)] Ec exp[E2i=1 Aihi(c, e)] Where h1(c, e) = log(pγ(c|e)) is the translation model, which is converted from the bilingual lexicon, and h2(c, e) = log(pθ(c)) is the language model, a word trigram model trained from the CTB. In our experiment, we set two weights A1 = A2 = 1. 2StarDict is an open source dictionary software, available at http://stardict.sourceforge.net/. The conversion process of the source treebank is completed by three steps as the following: 1. Bind POS tag and dependency relation of a word with i</context>
+</contexts>
+<marker>Och, Ney, 2002</marker>
+<rawString>Franz Josef Och and Hermann Ney. 2002. Discriminative training and maximum entropy models for statistical machine translation. In Proceedings of ACL2002, pages 295–302, Philadelphia, USA, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roi Reichart</author>
+<author>Ari Rappoport</author>
+</authors>
+<title>Self-training for enhancement and domain adaptation of statistical parsers trained on small datasets.</title>
+<date>2007</date>
+<booktitle>In Proceedings of ACL-2007,</booktitle>
+<pages>616--623</pages>
+<location>Prague, Czech Republic,</location>
+<contexts>
+<context citStr="Reichart and Rappoport, 2007" endWordPosition="863" position="5388" startWordPosition="860">is related to domain adaption for parsing that has been draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation metho</context>
+</contexts>
+<marker>Reichart, Rappoport, 2007</marker>
+<rawString>Roi Reichart and Ari Rappoport. 2007. Self-training for enhancement and domain adaptation of statistical parsers trained on small datasets. In Proceedings of ACL-2007, pages 616–623, Prague, Czech Republic, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kenji Sagae</author>
+<author>Jun’ichi Tsujii</author>
+</authors>
+<title>Dependency parsing and domain adaptation with lr models and parser ensembles.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007,</booktitle>
+<pages>1044--1050</pages>
+<location>Prague, Czech,</location>
+<contexts>
+<context citStr="Sagae and Tsujii, 2007" endWordPosition="867" position="5412" startWordPosition="864">for parsing that has been draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle g</context>
+</contexts>
+<marker>Sagae, Tsujii, 2007</marker>
+<rawString>Kenji Sagae and Jun’ichi Tsujii. 2007. Dependency parsing and domain adaptation with lr models and parser ensembles. In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007, page 1044–1050, Prague, Czech, June 28-30.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Noah A Smith</author>
+<author>Jason Eisner</author>
+</authors>
+<title>Annealing structural bias in multilingual weighted grammar induction.</title>
+<date>2006</date>
+<booktitle>In Proceedings of ACL-COLING 2006,</booktitle>
+<pages>569--576</pages>
+<location>Sydney, Australia,</location>
+<contexts>
+<context citStr="Smith and Eisner, 2006" endWordPosition="892" position="5560" startWordPosition="889">nsufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle golden-standard treebank, while all the previous works focus on the unlabeled data. Although cross-language technique has been used in other natural </context>
+</contexts>
+<marker>Smith, Eisner, 2006</marker>
+<rawString>Noah A. Smith and Jason Eisner. 2006. Annealing structural bias in multilingual weighted grammar induction. In Proceedings of ACL-COLING 2006, page 569–576, Sydney, Australia, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mark Steedman</author>
+<author>Miles Osborne</author>
+<author>Anoop Sarkar</author>
+<author>Stephen Clark</author>
+<author>Rebecca Hwa</author>
+<author>Julia Hockenmaier</author>
+<author>Paul Ruhlen</author>
+<author>Steven Baker</author>
+<author>Jeremiah Crim</author>
+</authors>
+<title>Bootstrapping statistical parsers from small datasets.</title>
+<date>2003</date>
+<booktitle>In Proceedings of EACL-2003,</booktitle>
+<pages>331--338</pages>
+<location>Budapest, Hungary,</location>
+<contexts>
+<context citStr="Steedman et al., 2003" endWordPosition="855" position="5335" startWordPosition="852">a resources to enhance an existing parser, it is related to domain adaption for parsing that has been draw some interests in recent years. Typical domain adaptation tasks often assume annotated data in new domain absent or insufficient and a large scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are</context>
+</contexts>
+<marker>Steedman, Osborne, Sarkar, Clark, Hwa, Hockenmaier, Ruhlen, Baker, Crim, 2003</marker>
+<rawString>Mark Steedman, Miles Osborne, Anoop Sarkar, Stephen Clark, Rebecca Hwa, Julia Hockenmaier, Paul Ruhlen, Steven Baker, and Jeremiah Crim. 2003. Bootstrapping statistical parsers from small datasets. In Proceedings of EACL-2003, page 331–338, Budapest, Hungary, April.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Qin Iris Wang</author>
+<author>Dale Schuurmans</author>
+</authors>
+<title>Semisupervised convex training for dependency parsing.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-08: HLT,</booktitle>
+<pages>532--540</pages>
+<location>Columbus, Ohio, USA,</location>
+<contexts>
+<context citStr="Wang and Schuurmans, 2008" endWordPosition="896" position="5587" startWordPosition="893">scale unlabeled data available. As unlabeled data are concerned, semi-supervised or unsupervised methods will be naturally adopted. In previous works, two basic types of methods can be identified to enhance an existing parser from additional resources. The first is usually focus on exploiting automatic generated labeled data from the unlabeled data (Steedman et al., 2003; McClosky et al., 2006; Reichart and Rappoport, 2007; Sagae and Tsujii, 2007; Chen et al., 2008), the second is on combining supervised and unsupervised methods, and only unlabeled data are considered (Smith and Eisner, 2006; Wang and Schuurmans, 2008; Koo et al., 2008). Our purpose in this study is to obtain a further performance enhancement by exploiting treebanks in other languages. This is similar to the above first type of methods, some assistant data should be automatically generated for the subsequent processing. The differences are what type of data are concerned with and how they are produced. In our method, a machine translation method is applied to tackle golden-standard treebank, while all the previous works focus on the unlabeled data. Although cross-language technique has been used in other natural language processing tasks, </context>
+</contexts>
+<marker>Wang, Schuurmans, 2008</marker>
+<rawString>Qin Iris Wang and Dale Schuurmans. 2008. Semisupervised convex training for dependency parsing. In Proceedings of ACL-08: HLT, pages 532–540, Columbus, Ohio, USA, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Qin Iris Wang</author>
+<author>Dale Schuurmans</author>
+<author>Dekang Lin</author>
+</authors>
+<title>Strictly lexical dependency parsing.</title>
+<date>2005</date>
+<booktitle>In Proceedings of IWPT-2005,</booktitle>
+<pages>152--159</pages>
+<location>Vancouver, BC, Canada,</location>
+<contexts>
+<context citStr="Wang et al., 2005" endWordPosition="4115" position="25292" startWordPosition="4112">s derived from the translated text bring a significant performance improvement as high as 1.3%. Table 4: The results with different feature sets features with p without p baseline -d 0.846 0.858 +d° 0.848 0.860 +Tb -d 0.859 0.869 +d 0.861 0.870 °+d: using three Markovian features preact and beam search decoding. b+T: using features derived from the translated text as in Table 3. Dependency Length Figure 2: Performance vs. dependency length 1 0.9 0.8 0.7 0.6 0.5 0.4 1 4 7 10 13 16 19 basline: +d +T: +d To compare our parser to the state-of-the-art counterparts, we use the same testing data as (Wang et al., 2005) did, selecting the sentences length up to 40. Table 5 shows the results achieved by other researchers and ours (UAS with p), which indicates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences. Table 5: Comparison against the state-of-the-art full up to 40 (McDonald and Pereira, 2006)° - 0.825 (Wang et al., 2007) </context>
+</contexts>
+<marker>Wang, Schuurmans, Lin, 2005</marker>
+<rawString>Qin Iris Wang, Dale Schuurmans, and Dekang Lin. 2005. Strictly lexical dependency parsing. In Proceedings of IWPT-2005, pages 152–159, Vancouver, BC, Canada, October.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Qin Iris Wang</author>
+<author>Dekang Lin</author>
+<author>Dale Schuurmans</author>
+</authors>
+<title>Simple training of dependency parsers via structured boosting.</title>
+<date>2007</date>
+<booktitle>In Proceedings of IJCAI</booktitle>
+<pages>1756--1762</pages>
+<location>Hyderabad, India,</location>
+<contexts>
+<context citStr="Wang et al., 2007" endWordPosition="1533" position="9559" startWordPosition="1530">, English, and the target language, Chinese, namely, we will investigate 56 how a translated English treebank enhances a Chinese dependency parser. For English data, the Penn Treebank (PTB) 3 is used. The constituency structures is converted to dependency trees by using the same rules as (Yamada and Matsumoto, 2003) and the standard training/development/test split is used. However, only training corpus (sections 2-21) is used for this study. For Chinese data, the Chinese Treebank (CTB) version 4.0 is used in our experiments. The same rules for conversion and the same data split is adopted as (Wang et al., 2007): files 1-270 and 400-931 as training, 271-300 as testing and files 301-325 as development. We use the gold standard segmentation and part-of-speech (POS) tags in both treebanks. As a bilingual lexicon is required for our task and none of existing lexicons are suitable for translating PTB, two lexicons, LDC Chinese-English Translation Lexicon Version 2.0 (LDC2002L27), and an English to Chinese lexicon in StarDict2, are conflated, with some necessary manual extensions, to cover 99% words appearing in the PTB (the most part of the untranslated words are named entities.). This lexicon includes 12</context>
+<context citStr="Wang et al., 2007" endWordPosition="4215" position="25891" startWordPosition="4212">(Wang et al., 2005) did, selecting the sentences length up to 40. Table 5 shows the results achieved by other researchers and ours (UAS with p), which indicates that our parser outperforms any other ones 4. However, our results is only slightly better than that of (Chen et al., 2008) as only sentences whose lengths are less than 40 are considered. As our full result is much better than the latter, this comparison indicates that our approach improves the performance for those longer sentences. Table 5: Comparison against the state-of-the-art full up to 40 (McDonald and Pereira, 2006)° - 0.825 (Wang et al., 2007) - 0.866 (Chen et al., 2008) 0.852 0.884 Ours 0.861 0.889 °This results was reported in (Wang et al., 2007). The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed method, the improvement relative to dependency length is shown in Figure 2. From the figure, it is seen that our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treebank still help those long dista</context>
+</contexts>
+<marker>Wang, Lin, Schuurmans, 2007</marker>
+<rawString>Qin Iris Wang, Dekang Lin, and Dale Schuurmans. 2007. Simple training of dependency parsers via structured boosting. In Proceedings of IJCAI 2007, pages 1756–1762, Hyderabad, India, January.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hiroyasu Yamada</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>Statistical dependency analysis with support vector machines.</title>
+<date>2003</date>
+<booktitle>In Proceedings of IWPT-2003),</booktitle>
+<pages>195--206</pages>
+<location>Nancy, France,</location>
+<contexts>
+<context citStr="Yamada and Matsumoto, 2003" endWordPosition="1484" position="9258" startWordPosition="1481">ed for their work and a strict statistical machine translation procedure was performed, while our approach holds a merit of simplicity as only a bilingual lexicon is required. 3 Treebank Translation and Dependency Transformation 3.1 Data As a case study, this work will be conducted between the source language, English, and the target language, Chinese, namely, we will investigate 56 how a translated English treebank enhances a Chinese dependency parser. For English data, the Penn Treebank (PTB) 3 is used. The constituency structures is converted to dependency trees by using the same rules as (Yamada and Matsumoto, 2003) and the standard training/development/test split is used. However, only training corpus (sections 2-21) is used for this study. For Chinese data, the Chinese Treebank (CTB) version 4.0 is used in our experiments. The same rules for conversion and the same data split is adopted as (Wang et al., 2007): files 1-270 and 400-931 as training, 271-300 as testing and files 301-325 as development. We use the gold standard segmentation and part-of-speech (POS) tags in both treebanks. As a bilingual lexicon is required for our task and none of existing lexicons are suitable for translating PTB, two lexi</context>
+</contexts>
+<marker>Yamada, Matsumoto, 2003</marker>
+<rawString>Hiroyasu Yamada and Yuji Matsumoto. 2003. Statistical dependency analysis with support vector machines. In Proceedings of IWPT-2003), page 195–206, Nancy, France, April.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kun Yu</author>
+<author>Daisuke Kawahara</author>
+<author>Sadao Kurohashi</author>
+</authors>
+<title>Chinese dependency parsing with large scale automatically constructed case structures.</title>
+<date>2008</date>
+<booktitle>In Proceedings of COLING-2008,</booktitle>
+<pages>1049--1056</pages>
+<location>Manchester, UK,</location>
+<contexts>
+<context citStr="Yu et al., 2008" endWordPosition="4331" position="26587" startWordPosition="4328">rted in (Wang et al., 2007). The experimental results in (McDonald and Nivre, 2007) show a negative impact on the parsing accuracy from too long dependency relation. For the proposed method, the improvement relative to dependency length is shown in Figure 2. From the figure, it is seen that our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treebank still help those long distance dependencies. 4There is a slight exception: using the same data splitting, (Yu et al., 2008) reported UAS without p as 0.873 versus ours, 0.870. 7 Discussion If a treebank in the source language can help improve parsing in the target language, then there must be something common between these two languages, or more precisely, these two corresponding treebanks. (Zeman and Resnik, 2008) assumed that the morphology and syntax in the language pair should be very similar, and that is so for the language pair that they considered, Danish and Swedish, two very close north European languages. Thus it is somewhat surprising that we show a translated English treebank may help Chinese parsing, </context>
+</contexts>
+<marker>Yu, Kawahara, Kurohashi, 2008</marker>
+<rawString>Kun Yu, Daisuke Kawahara, and Sadao Kurohashi. 2008. Chinese dependency parsing with large scale automatically constructed case structures. In Proceedings of COLING-2008, pages 1049–1056, Manchester, UK, August.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Zeman</author>
+<author>Philip Resnik</author>
+</authors>
+<title>Crosslanguage parser adaptation between related languages.</title>
+<date>2008</date>
+<booktitle>In Proceedings of IJCNLP 2008 Workshop on NLP for Less Privileged Languages,</booktitle>
+<pages>35--42</pages>
+<location>Hyderabad, India,</location>
+<contexts>
+<context citStr="Zeman and Resnik, 2008" endWordPosition="1285" position="8037" startWordPosition="1281">g bilingual sentences in a translation pair. The proposed parser using features from monolingual and mutual constraints helped its log-linear model to achieve better performance for both monolingual parsers and machine translation system. In this work, cross-language features will be also adopted as the latter work. However, although it is not essentially different, we only focus on dependency parsing itself, while the parsing scheme in (Burkett and Klein, 2008) based on a constituent representation. Among of existing works that we are aware of, we regard that the most similar one to ours is (Zeman and Resnik, 2008), who adapted a parser to a new language that is much poorer in linguistic resources than the source language. However, there are two main differences between their work and ours. The first is that they considered a pair of sufficiently related languages, Danish and Swedish, and made full use of the similar characteristics of two languages. Here we consider two quite different languages, English and Chinese. As fewer language properties are concerned, our approach holds the more possibility to be extended to other language pairs than theirs. The second is that a parallel corpus is required for</context>
+<context citStr="Zeman and Resnik, 2008" endWordPosition="4380" position="26882" startWordPosition="4377">hat our method gives observable better performance when dependency lengths are larger than 4. Although word order is changed, the results here show that the useful information from the translated treebank still help those long distance dependencies. 4There is a slight exception: using the same data splitting, (Yu et al., 2008) reported UAS without p as 0.873 versus ours, 0.870. 7 Discussion If a treebank in the source language can help improve parsing in the target language, then there must be something common between these two languages, or more precisely, these two corresponding treebanks. (Zeman and Resnik, 2008) assumed that the morphology and syntax in the language pair should be very similar, and that is so for the language pair that they considered, Danish and Swedish, two very close north European languages. Thus it is somewhat surprising that we show a translated English treebank may help Chinese parsing, as English and Chinese even belong to two different language systems. However, it will not be so strange if we recognize that PTB and CTB share very similar guidelines on POS and syntactics annotation. Since it will be too abstract in discussing the details of the annotation guidelines, we look</context>
+</contexts>
+<marker>Zeman, Resnik, 2008</marker>
+<rawString>Daniel Zeman and Philip Resnik. 2008. Crosslanguage parser adaptation between related languages. In Proceedings of IJCNLP 2008 Workshop on NLP for Less Privileged Languages, pages 35– 42, Hyderabad, India, January.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hai Zhao</author>
+<author>Chunyu Kit</author>
+</authors>
+<title>Parsing syntactic and semantic dependencies with two single-stage maximum entropy models.</title>
+<date>2008</date>
+<booktitle>In Proceeding of CoNLL2008,</booktitle>
+<pages>203--207</pages>
+<location>Manchester, UK.</location>
+<contexts>
+<context citStr="Zhao and Kit, 2008" endWordPosition="2302" position="14239" startWordPosition="2299">g actions, a shift action and a reduce action are also defined to maintain the stack and the unprocessed sequence. In this work, we adopt a left-to-right arc-eager parsing model, that means that the parser scans the input sequence from left to right and right dependents are attached to their heads as soon as possible (Hall et al., 2007). While memory-based and margin-based learning approaches such as support vector machines are popularly applied to shift-reduce parsing, we apply maximum entropy model as the learning model for efficient training and adopting overlapped features as our work in (Zhao and Kit, 2008), especially, those character-level ones for Chinese parsing. Our implementation of maximum entropy adopts L-BFGS algorithm for parameter optimization as usual. With notations defined in Table 1, a feature set as shown in Table 2 is adopted. Here, we explain some terms in Tables 1 and 2. We used a large scale feature selection approach as in (Zhao et al., 2009) to obtain the feature set in Table 2. Some feature notations in this paper are also borrowed from that work. The feature curroot returns the root of a partial parsing tree that includes a specified node. The feature charseq returns a ch</context>
+</contexts>
+<marker>Zhao, Kit, 2008</marker>
+<rawString>Hai Zhao and Chunyu Kit. 2008. Parsing syntactic and semantic dependencies with two single-stage maximum entropy models. In Proceeding of CoNLL2008, pages 203–207, Manchester, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hai Zhao</author>
+<author>Wenliang Chen</author>
+<author>Chunyu Kit</author>
+<author>Guodong Zhou</author>
+</authors>
+<title>Multilingual dependency learning: A huge feature engineering method to semantic dependency parsing.</title>
+<date>2009</date>
+<booktitle>In Proceedings of CoNLL-2009,</booktitle>
+<location>Boulder, Colorado, USA.</location>
+<contexts>
+<context citStr="Zhao et al., 2009" endWordPosition="2364" position="14602" startWordPosition="2361">argin-based learning approaches such as support vector machines are popularly applied to shift-reduce parsing, we apply maximum entropy model as the learning model for efficient training and adopting overlapped features as our work in (Zhao and Kit, 2008), especially, those character-level ones for Chinese parsing. Our implementation of maximum entropy adopts L-BFGS algorithm for parameter optimization as usual. With notations defined in Table 1, a feature set as shown in Table 2 is adopted. Here, we explain some terms in Tables 1 and 2. We used a large scale feature selection approach as in (Zhao et al., 2009) to obtain the feature set in Table 2. Some feature notations in this paper are also borrowed from that work. The feature curroot returns the root of a partial parsing tree that includes a specified node. The feature charseq returns a character sequence whose members are collected from all identified children for a specified word. In Table 2, as for concatenating multiple substrings into a feature string, there are two ways, seq and bag. The former is to concatenate all substrings without do something special. The latter will remove all duplicated substrings, sort the rest and concatenate all </context>
+</contexts>
+<marker>Zhao, Chen, Kit, Zhou, 2009</marker>
+<rawString>Hai Zhao, Wenliang Chen, Chunyu Kit, and Guodong Zhou. 2009. Multilingual dependency learning: A huge feature engineering method to semantic dependency parsing. In Proceedings of CoNLL-2009, Boulder, Colorado, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hai Zhao</author>
+</authors>
+<title>Character-level dependencies in chinese: Usefulness and learning.</title>
+<date>2009</date>
+<booktitle>In EACL-2009,</booktitle>
+<pages>879--887</pages>
+<location>Athens, Greece.</location>
+<contexts>
+<context citStr="Zhao, 2009" endWordPosition="2657" position="16376" startWordPosition="2656">ese itself is character-order free rather than word-order free to some extent. In addition, there is often a close connection between the meaning of a Chinese word and its first or last character. 4.2 Parsing using a Beam Search Algorithm In Table 2, the feature preactn returns the previous parsing action type, and the subscript n stands for the action order before the current action. These are a group of Markovian features. Without this type of features, a shift-reduce parser may directly scan through an input sequence in linear time. Otherwise, following the work of (Duan et al., 2007) and (Zhao, 2009), the parsing algorithm is to search a parsing action sequence with the maximal probability. �5di = argmax p(di|di−1di−2...)� i where 5di is the object parsing action sequence, p(di|di−1...) is the conditional probability, and di Notation Meaning The word in the top of stack The first word below the top of stack. The first word before(after) the word in the top of stack. The first (second) word in the unprocessed sequence, etc. Dependent direction Head Leftmost child Rightmost child Right nearest child word form POS tag of word coarse POS: the first letter of POS tag of word coarse POS: the fi</context>
+</contexts>
+<marker>Zhao, 2009</marker>
+<rawString>Hai Zhao. 2009. Character-level dependencies in chinese: Usefulness and learning. In EACL-2009, pages 879–887, Athens, Greece.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

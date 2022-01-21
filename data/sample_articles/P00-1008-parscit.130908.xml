@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000001" no="0">
+<title confidence="0.606757">
+Tree-gram Parsing
+Lexical Dependencies and Structural Relations
+</title>
+<author confidence="0.772655">
+K. Sima'an
+</author>
+<affiliation confidence="0.9890495">
+Induction of Linguistic Knowledge, Tilburg University &amp;
+Computational Linguistics, University of Amsterdam,
+</affiliation>
+<address confidence="0.86664">
+Spuistraat 134, 1012 VB Amsterdam, The Netherlands.
+</address>
+<email confidence="0.749448">
+Email: khalil. simaanAhum. uva. n1
+</email>
+<sectionHeader confidence="0.947834" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999869153846154">This paper explores the kinds of probabilistic relations that are important in syntactic disambiguation. It proposes that two widely used kinds of relations, lexical dependencies and structural relations, have complementary disambiguation capabilities. It presents a new model based on structural relations, the Tree-gram model, and reports experiments showing that structural relations should benefit from enrichment by lexical dependencies.</bodyText>
+<sectionHeader confidence="0.995594" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999453488888889">Head-lexicalization currently pervades in the parsing literature e.g. (Eisner, 1996; Collins, 1997; Charniak, 1999). This method extends every treebank nonterminal with its headword: the model is trained on this head lexicalized tree bank. Head lexicalized models extract probabilistic relations between pairs of lexicalized nonterminals ( &amp;quot;bilexical dependencies&amp;quot;): every relation is between a parent node and one of its children in a parse-tree. Bilexical dependencies generate parse-trees for input sentences via Markov processes that generate Context-Free Grammar (CFG) rules (hence Markov Grammar (Charniak, 1999)). Relative to Stochastic CFCs (SCFGs), bilexical dependency models exhibit good performance. However, bilexical dependencies capture many but not all relations between words that are crucial for syntactic disambiguation.We give three examples of kinds of relations not captured by bilexicaldependencies. Firstly, relations between nonhead words of phrases, e.g. the relation between &amp;quot;more&amp;quot; and &amp;quot;than&amp;quot; in &amp;quot;more apples than oranges&amp;quot; or problems of PP attachments as in &amp;quot;he ate pizza (with mushrooms)/(with a fork)&amp;quot;. Secondly, relations between three or more words are, by definition, beyond bilexical dependencies (e.g. between &amp;quot;much more&amp;quot; and &amp;quot;than&amp;quot; in &amp;quot;much more apples than oranges&amp;quot;). Finally, it is unclear how bilexical dependencies help resolve the ambiguity of idioms, e.g. &amp;quot;Time flies like an arrow&amp;quot; (neither &amp;quot;time&amp;quot; prefers to &amp;quot;fly&amp;quot;, nor the fictitios beasts &amp;quot;Time flies&amp;quot; have taste for an &amp;quot;arrow&amp;quot;). The question that imposes itself is, indeed, what relations might complement bilexical dependencies ? We propose that bilexical dependencies can be complemented by structural relations (Scha, 1990), i.e. cooccurrences of syntactic structures, including actual words. An example model that employs one version of structural relations is Data Oriented Parsing (DOP) (Bod, 1995). DOP's parameters are &amp;quot;subtrees&amp;quot;, i.e. connected subgraphs of parsetrees that constitute combinations of CFG rules, including terminal rules. Formally speaking, &amp;quot;bilexical dependencies&amp;quot; and &amp;quot;structural relations&amp;quot; define two disjoint sets of probabilistic relations. Bilexical dependencies are relations defined over direct dominance head lexicalized nonterminals (see (Satta, 2000)); in contrast, structural relations are defined over words and arbitrary size syntactic structures (with nonlexicalized nonterminals). Apart from formal differences, they also have complementary advantages. Bilexical-dependencies capture influential lexical relations between heads and dependents. Hence, all bilexical dependency probabilities are conditioned on lexical information and lexical information is available at every point in the parse-tree. Structural relations, in contrast, capture many relations not captured by bilexical-dependencies (e.g. the examples above). However, structural relations do not always percolate lexical information up the parse-tree since their probabilities are not always lexicalized. This is a serious disadvantage when parse-trees are generated for novel input sentences since e.g. subcat frames are hypothesized for nodes high in the parsetree without reference to their head words. So, theoretically speaking, bilexical dependencies and structural relations have complementary aspects. But, what are the empirical merits and limitations of structural relations ? This paper presents a new model based on structural relations, the Tree-gram model, which allows head-driven parsing. It studies the effect of percolating head categories on performance and compares the performance of structural relations to bilexical dependencies. The comparison is conducted on the Wall Street Journal (WSJ) corpus (Marcus et al., 1993). In the remainder, we introduce the Tree-gram model in section 2, discuss practical issues in section 3, exhibit and discuss the results in section 4, and in section 5 we give our conclusions.</bodyText>
+<sectionHeader confidence="0.959358" genericHeader="method">
+2 The Tree-gram model
+</sectionHeader>
+<bodyText confidence="0.99920712">For observing the effect of percolating information up the parse-tree on model behavior, we introduce pre-head enrichment, a structural variant of head-lexicalization. Given a training treebank TB, for every non-leaf node /2 we mark one of its children as the headchild, i.e. the child that dominates the headword' of the constituent under [2. We then enrich this treebank by attaching to the label of every phrasal node (i.e. nonterminal that is not a POS-tag) a pre-head representing its head-word. The pre-head of node /2 is extracted from the constituent parse-tree under node [2. In this paper, the pre-head of /2 consists of 1) the POS-tag of the head-word of /2 (called 1st order pre-heads or 1PH), and 'Head-identification procedure by (Collins, 1997). possibly 2) the label of the mother node of that POS-tag (called 2'd order or 2PH). Preheads here also include other information defined in the sequel, e.g. subcat frames. The complex categories that result from the enrichment serve as the nonterminals of our training treebank; we refer to the original treebank symbols as &amp;quot;WSJ labels&amp;quot;.</bodyText>
+<subsectionHeader confidence="0.843999">
+2.1 Generative models
+</subsectionHeader>
+<bodyText confidence="0.991494090909091">A probabilistic model assigns a probability to every parse-tree given an input sentence S, thereby distinguishing one parse T* = argmaxT P(TIS) = argmaxT P(T, 8). The probability P(T, 8) is usually estimated from cooccurrence statistics extracted from a treebank. In generative models, the tree T is generated in top down derivations that rewrite the start symbol TOP into the sentence S. Each rewrite-step involves a &amp;quot;rewrite-rule&amp;quot; together with its estimated probability. In the present model, the &amp;quot;rewrite-rules&amp;quot; differ from the CFG rules and combinations thereof that can be extracted from the treebank. We refer to them as Tree-grams (abbreviated Tgrams). T-grams provide a more general-form for Markov Grammar rules (Collins, 1997; Charniak, 1999) as well as DOP subtrees. In comparison with DOP subtrees, T-grams capture more structural relations, allow head-driven parsing and are easier to combine with bilexical-dependencies.</bodyText>
+<subsectionHeader confidence="0.979171">
+2.2 T-gram extraction
+</subsectionHeader>
+<bodyText confidence="0.9999635">Given a parse T from the training treebank, we extract three disjoint T-gram sets, called roles, from every one of its non-leaf nodes2 the head-role 1-1(12), the left-dependent role G(p) and the right-dependent role R (p). The role of a T-gram signifies the T-gram's contribution to stochastic derivations: t E I-1 carries a head-child of its root node label, t E (t E 7?,) carries left (resp. right) dependents for other head T-grams that have roots labeled the same as the root of t. Like in Markov Grammars, a head-driven derivation generates first a head-role T-gram and attaches to it leftand right-dependent role T-grams. We discuss these derivations right after we specify the Tgram extraction procedure.</bodyText>
+<footnote confidence="0.409735">
+2Assuming that every node has a unique address.
+</footnote>
+<equation confidence="0.490935666666667">
+A Z—d&amp;quot;
+AL,. • • Li.
+t H tri
+</equation>
+<figureCaption confidence="0.99891">
+Figure 1: Constituent under node [I: d&gt; 1.
+</figureCaption>
+<bodyText confidence="0.999423214285714">Let d represent the depth3 of the constituent tree-structure that is rooted at [2, H represent the label of the head-child of [2, and A represent the special stop symbol that encloses the children of every node (see figure 1). Also, for convenience, let (517,1 be equal to A if k n and NILL (i.e.the empty tree-structure) otherwise. We specify the extraction for d= 1 and for d&gt; 1. When d = 1, the label of /2 is a POS-tag and the subtree under /2 is of the form pt AIDA, where w is a word.In this case</bodyText>
+<equation confidence="0.9835055">
+1-1(p) = {pt AIDA} and L(I.2) = TZ(/.2) = 0.
+When d&gt; 1: the subtree under /2 has the form
+</equation>
+<bodyText confidence="0.966013">A A.Ln (tin) . (el) H(tH) Ri (tI) . . . Rm (figure 1), where every t, t73: and tH is the subtree dominated by the child node of /2 (labeled respectively Li, Ri or H) whose address we denote respectively with chi/dL(P, i), childR(p, j) and childH(p). We extract three sets of T-grams from [I:</bodyText>
+<equation confidence="0.958857">
+1-1(.2) : contains V1&lt;i&lt;nand1&lt; j&lt;m,
+</equation>
+<bodyText confidence="0.9553925">A —&gt; (XI) H(Xh ) Ri (X37: grin , where Xh is either in 1-1(chi/dH(P)) or NILL, and every Xiz (resp. X;) is either a T-gram from 1-1(childi(p, z)) (resp.</bodyText>
+<construct confidence="0.9268704">
+1-1(childR(p, z)) ) or NILL.
+G(1.2): contains A —&gt; SII:Lk(Xk) ... Li (Xi), for
+all 1 &lt;i &lt;k &lt;n, where every Xz,
+i &lt;z &lt;k, is either a T-gram from
+1-1(childL(p, z)) or NILL,
+</construct>
+<bodyText confidence="0.57495675">contains A —&gt; R( X) . . . Rk (Xk)(7, for all 1 &lt;i &lt; k &lt;m, where every Xz, i &lt;z &lt;k, is either a T-gram from 1-1(childR(p, z)) or NILL, last week a deal was VBN</bodyText>
+<footnote confidence="0.6605025">
+3The depth of a (sub)tree is the number of edges in
+the longest path from its root to a leaf node.
+</footnote>
+<equation confidence="0.9595298">
+S(3)
+NP(2) NP(2) VP(l)
+„„...-----\ __...------\ __...-----------,
+JJ NN DET NN VBD VP(l)
+I I I I I I
+</equation>
+<figure confidence="0.564028">
+I
+sealed
+</figure>
+<figureCaption confidence="0.994623">
+Figure 2: An example parse-tree.
+</figureCaption>
+<bodyText confidence="0.98925625">Note that every T-gram's non-root and nonleaf node dominates a head-role T-gram (specified by 1-1(child • • •)). A non-leaf node /2 labeled by nonterminal A is called complete, denoted &amp;quot;[A]&amp;quot;, if A delimits its sequence of children from both sides; when A is to the left (right) of the children of the node, the node is called left (resp. right) complete, denoted &amp;quot;[A&amp;quot; (resp. &amp;quot;A]&amp;quot;). When /2 is not left (right) complete it is open from the left (resp. right); when /2 is left and right open, it is called open. Figure 2 exhibits a parse-tree4: the number of the head-child of a node is specified between brackets. Figure 3 shows some of the T-grams that can be extracted from this tree. Having extracted T-grams from all non-leaf nodes of the treebank, we obtain 71 UpETBR(P), L=UpETBL(P) and = the subsets of resp.</bodyText>
+<subsectionHeader confidence="0.286372">
+R=LigETBR(11)• WA, LA and RA represent
+</subsectionHeader>
+<bodyText confidence="0.8003638">G and 1?, that contain those T-grams that have roots labeled A. XA(B) E IGA(B),RA(B),RA(B)} specifies that the extraction took place on some treebank B other than the training treebank.</bodyText>
+<subsectionHeader confidence="0.937769">
+2.3 T-gram generative processes
+</subsectionHeader>
+<bodyText confidence="0.999918">Now we specify T-gram derivations assuming that we have an estimate of the probability of a T-gram. We return to this issue right after this. A stochastic derivation starts from the start nonterminal TOP. TOP is a single node partial parse-tree which is simultaneously the root and the only leaf node. A derivation terminates when two conditions are met (1) every non-leaf node in the generated parse-tree is complete (i.e. A delimits its children from both sides) and (2) all leaf nodes are labeled with terminal symbols.</bodyText>
+<footnote confidence="0.300606">
+4Pre-heads are omitted for readability.
+</footnote>
+<figure confidence="0.998422958333333">
+(c)
+VP] (')
+[VP]
+[VN]
+sealed
+(d)
+[NP](7.0
+[DET] [NN]
+a deal
+(e)
+S](1)
+[VP]
+[VBD] [VP]
+was [VN]
+sealed
+(f)
+S](1)
+NP] VP]
+[NN] [VN]
+deal sealed
+(a) (b)
+[S('c) [S('c)
+NP NP] [NP]
+NN DET NN
+</figure>
+<figureCaption confidence="0.998489">
+Figure 3: Some T-grams extracted from the tree in figure 2: the superscript on the root label specifies the
+T-gram role,. e.g. the left-most T-gram is in the left-dependent role. Non-leaf nodes are marked with &amp;quot;[&amp;quot; and
+&amp;quot;]&amp;quot; to specify whether they are complete from the left/right or both (leaving open nodes unmarked).
+</figureCaption>
+<bodyText confidence="0.999569867924529">Let II represent the current partial parse-tree, i.e.the result of the preceding generation steps, and let Cil represent that part of II that influences the choice of the next step, i.e.the conditioning history. The generation process repeats the following steps in some order, e.g.head-left-right: Head-generation: Select a leaf node /2 labeled by a nonterminal A, and let A generate a head T-gram t E WA with probability PH (tIA, C11). This results in a partial parse-tree that extends II at /2 with a copy of t (as in CFCs and in DOP). Modification: Select from II a non-leaf node /2 that is not complete. Let A be the label of /2 and T = A —&gt; Xi(xi) • • • Xb(xb) be the tree dominated by /2 (see figure 4): Left: if /2 is not left-complete, let /2 generate to the left of T a left-dependent T-gram t = A(r) # Li(ii) • • • La(la) from LA with probability POO, C11) (see figure 4 (L)); this results in a partial parse-tree that is obtained by replacing T in II with A —&gt; L1(11) • • • La(/a)-Ki(xi) • • • Xb(xb), Right: this is the mirror case (see figure 4 (R)). The generation probability is PR(tIA,C11). Figure 5 shows a derivation using T-grams (e), (a) and (d) from figure 3 applied to Tgram TOP —&gt; S. Note that each derivationstep probability is conditioned on A, the label of node /2 in II where the current rewriting is taking place, on the role (II, G or 7Z) of the T-gram involved, and on the relevant history C1-1. Assuming beyond this that stochastic independence between the various derivation steps holds, the probability of a derivation is equal to the multiplication of the conditional probabilities of the individual rewrite steps. Unlike SCFCs and Markov grammars but like DOP, a parse-tree may be generated via different derivations. The probability of a parse-tree T is equal to the sum of the probabilities of the derivations that generate it (denoted der T), i.e. P(T , — EderT P (der, 8). However, because computing argmaxT P(T, 8) can not be achieved in deterministic polynomial time (Sima'an, 1996), we apply estimation methods that allow tractable parsing.</bodyText>
+<subsectionHeader confidence="0.999673">
+2.4 Estimating T-gram probabilities
+</subsectionHeader>
+<bodyText confidence="0.93235575">Let count(Yi, • • • Ym) represent the occurrence count for joint event (Y1 • • • Ym) in the training treebank. Consider a T-gram t E X A E {GA,7ZA, WA}, and a conditioning hisassumes no hidden elements (different derivations per parse-tree), i.e.it estimates the probability Px (tIA, CH) directly from the treebank trees (henceforth direct-estimate).</bodyText>
+<equation confidence="0.516047">
+count(t,XA ,CH)
+tory C1-1. The estimate
+exA count(x,XA,cll)
+</equation>
+<bodyText confidence="0.998731">This estimate is employed in DOP and is not Maximum-Likelihood (Bonnema et al., 1999). We argue that the bias of the direct estimate allows approximating the preferred parse by the one generated by the Most Probable Derivation (MPD). This is beyond the scope of this paper and will be discussed elsewhere.2.5 WSJ model instance</bodyText>
+<figure confidence="0.998015555555555">
+• A(R')
+A Z±
+(R) Ri Ra
+Xi • • • Xb R1 • • • Ra
+(L)
+Avznode p. after
+A('6) •
+A Zn'd&amp;quot;
+L1 ... La
+</figure>
+<figureCaption confidence="0.990963">
+Figure 4: T-gram t is generated at itt: (L) t
+</figureCaption>
+<figure confidence="0.999796625">
+[S] [NP]()
+±7t
+P] [DET] [NN]
+[V
+a deal
+[VBD] [VP]
+was [VBN]
+sealed
+[S('6)
+r NP
+S]
+[VP]
+[VBD] [VP]
+was [VBN]
+sealed
+(R) t E
+[NP]
+[DET] [NN]
+a deal
+[ S]
+[VP]
+[VBD] [VP]
+was [VBN]
+sealed
+</figure>
+<figureCaption confidence="0.992212666666667">
+Figure 5: A T-gram derivation: the rewriting of TOP is not shown. An arrow marks the node where rewriting
+takes place. Following the arrows: 1. A left T-gram with root [S is generated at node S]: S is complete. 2. A
+head-role T-gram is generated at node NP: all nodes are either complete or labeled with terminals.
+</figureCaption>
+<bodyText confidence="0.999066146341464">Up till now Cil represented conditioning information anonymously in our model. For the WSJ corpus, we instantiate Cil as follows: 1. Adjacency: The flag FL (t) (FR(t)) tells whether a left-dependent (rightdependent) T-gram t extracted from some node itc dominates a surface string that is adjacent to the head-word of itc (detail in (Collins, 1997)). 2. Subcat-frames: (Collins, 1997) subcat frames are adapted: with every node itc that dominates a rule A —&gt; ALTh ... L1 H R1 RTh A in the treebank (figure 1), we associate two (possibly empty) multisets of complements: sq and SC. Every complement in sq (sq) represents some left (right) complement-child of /2. This changes T-gram extraction as follows: with every non-leaf node in a T-gram that is extracted from a tree in this enriched treebank we have now a left and a right subcat frame associated. Consider the root node x in a T-gram extracted from node itc and let the children of x be Yi • • • Yf (a subsequence of AL • • • , H, • • • RTh A). The left (right) subcat frame of x is subsumed by sq (resp. sq) and contains those complements that correspond to the left-dependent (resp. right-dependent) children of itc that are not among Y1 • • • Yf. Tree-gram derivations are modified accordingly: whenever a T-gram is generated (together with the subcat frames of its nodes) from some node /2 in a partialtree, the complements that its root dominates are removed from the subcat frames of [2. Figure 6 shows a small example of a derivation. 3. Markovian generation: When node /2 has empty subcat frames, we assume 1storder Markov processes in generating both G and 1? T-grams around its I-1 T-gram: LMIL and RMIL denote resp. the leftand rightmost children of node ji. Let XRMIL and</bodyText>
+<figure confidence="0.999454052631579">
+[TOP] [NP]()
+[S]{}L +71 [DET] [NN]
+a deal
+NP [VP]
+[VBD] [VP]
+was [VN]
+sealed
+[TOP]
+VNP}L ,7±,C NP
+[VP]
+[VBD] [VP]
+was [VN]
+sealed
+[TOP]
+[SI]
+[NP] [VP]
+[DET] [NN] [VBD] [VP]
+a deal was [VN]
+sealed
+</figure>
+<figureCaption confidence="0.937364333333333">
+Figure 6: 51{NP}E is a (left-open right-complete) node labeled S with a left subcat frame containing an NP.
+After the first rewriting, the subcat frame becomes empty since the NP complement was generated resulting in
+[S]{}L. The Other subcat frames are empty and are not shown here.
+</figureCaption>
+<bodyText confidence="0.944676625">XLMIL be equal to resp. RMIL and LMP if the name of the T-gram system contains the word +Markov (otherwise they are empty). Let [2, labeled A, be the node where the current rewrite-step takes place, P be the WSJ-label of the parent of [2, and H the WSJ-label of the head-child of [2. Our probabilities are: PH (t IA, C11) PH (t I A, P),</bodyText>
+<construct confidence="0.68512">
+POO, C11) POO, H, sciLL,FL(t),xmuP),
+poo, c11) poo, H, sq,F0),xLmiL).
+</construct>
+<sectionHeader confidence="0.969128" genericHeader="evaluation">
+3 Implementation issues
+</sectionHeader>
+<bodyText confidence="0.999743625">Sections 02-21 WSJ Penn Treebank (Marcus et al., 1993) (release 2) are used for training and section 23 is held-out for testing (we tune on section 24). The parseroutput is evaluated by &amp;quot;evalb&amp;quot;5, on the PARSEVAL measures (Black et al., 1991) comparing a proposed parse P with the corresponding treebank parse T on Labeled Recall (LR = number of constituents in P ) and Crossing Brackets (CB = number of constituents in P that violate constituent boundaries in T).</bodyText>
+<figure confidence="0.479641833333333">
+number of correct constituentsL
+in P\,
+),abeled Pre-
+number of constituents in T
+number of correct constituents in P),
+cision (LP =
+</figure>
+<bodyText confidence="0.960656666666667">T-gram extraction: The number of T-grams is limited by setting constraints on their form much like n-grams. One upperbound is set on the depth6 (d), a second on the number of children of every node (b), a third on the sum of the number of nonterminal leafs with the number of (left/right) open-nodes (n), and a fourth (w) on the number of words in a T-gram.</bodyText>
+<footnote confidence="0.991787">
+5http://www.research.att.com/ mcollins/.
+6T-gram depth is the length of the longest path in
+the tree obtained by right/left-linearization of the T-
+gram around the T-gram nodes' head-children.
+</footnote>
+<bodyText confidence="0.999939727272728">Also, a threshold is set on the frequency (f) of the T-gram. In the experiments n &lt; 4, w &lt; 3 and f &gt; 5 are fixed while d changes. Unknown words and smoothing: We did not smooth the relative frequencies. Similar to (Collins, 1997), every word occurring less than 5 times in the training-set was renamed to CAP+UNKNOWN+SUFF, where CAP is 1 if its first-letter is capitalized and 0 otherwise, and SUFF is its suffix. Unknown words in the input are renamed this way before parsing starts. Tagging and parsing: An input word is tagged with all POS-tags with which it cooccurred in the training treebank. The parser is a two-pass CKY parser: the first pass employs T-grams that fulfill d = 1 in order to keep the parse-space under control before the second-pass employs the full Treegram model for selecting the MPD.</bodyText>
+<sectionHeader confidence="0.998925" genericHeader="result">
+4 Empirical results
+</sectionHeader>
+<bodyText confidence="0.998981181818182">First we review the lexical-conditionings in previous work (other important conditionings are not discussed for space reasons). Magerman95 (Magerman, 1995; Jelinek et al., 1994) grows a decision-tree to estimate P(TIS) through a history-based approach which conditions on actual-words. Charniak (Charniak, 1997) presents lexicalizations of SCFCs: the Minimal model conditions SCFG rule generation on the head-word of its left-hand side, while Charniak97 further conditions the generation of every constituent's head-word on the head-word of its parentconstituent, effectively using bilexical dependencies.</bodyText>
+<table confidence="0.99860475">
+System LR% LP% CB OCB% 2CB%
+Minimal (Charniak, 1997) 83.4 84.1 1.40 53.2 79.0
+Magerman95 (Magerman, 1995) 84.6 84.9 1.26 56.6 81.4
+Charniak97 (Charniak, 1997) 87.5 87.4 1.00 62.1 86.1
+Collins97 (Collins, 1997) 88.1 88.6 0.91 66.4 86.9
+Charniak99 (Charniak, 1999) 90.1 90.1 0.74 70.1 89.6
+SCFG (Charniak, 1997) 71.7 75.8 2.03 39.5 68.1
+T-gram (d &lt; 5 (2P11)) 82.9 85.1 1.30 58.0 82.1
+</table>
+<tableCaption confidence="0.999877">
+Table 1: Various results on WSJ section 23 sentences &lt; 40 words (2245 sentences).
+</tableCaption>
+<bodyText confidence="0.999725032258065">Collins97 (Collins, 1997) uses a bilexicalized Oth-order Markov Grammar: a lexicalized CFG rule is generated by projecting the head-child first followed by every left and right dependent, conditioning these steps on the head-word of the constituent. Collins97 extends this scheme to deal with subcat frames, adjacency, traces and wh-movement. Charniak99 conditions lexically as Collins does but also exploits up to 37d-order Markov processes for generating dependents. Except for Tgrams and SCFGs, all systems smooth the relative frequencies with much care. Sentences &lt; 40 words (including punctuation) in section 23 were parsed by various Tgram systems. Table 1 shows the results of some systems including ours. Systems conditioning mostly on lexical information are contrasted to SCFGs and T-grams. Our result shows that T-grams improve on SCFGs but fall short of the best lexical-dependency systems. Being 10-12% better than SCFGs, comparable with the Minimal model and Magerman95 and about 7.0% worse than the best system, it is fair to say that (depth 5) Tgrams perform more like bilexicalized dependency systems than bare SCFGs. Table 2 exhibits results of various T-gram systems. Columns 1-2 exhibit the traditional DOP observation about the effect of the size of subtrees/T-grams on performance. Columns 3-5 are more interesting: they show that even when T-gram size is kept fixed, systems that are pre-head enriched improve on systems that are not pre-head enriched (OPH). This is supported by the result of column 1 in contrast to SCFG and Collins97 (table 1): the D1 T-gram system differs from Collins97 almost only in pre-head vs. head enrichment and indeed performs midway between SCFG and Collins97. This all suggests that allowing bilexical dependencies in T-gram models should improve performance. It is noteworthy that pre-head enriched systems are also more efficient in time and space. Column 6 shows that adding Markovian conditioning to subcat frames further improves performance suggesting that further study of the conditional probabilities of dependent Tgrams is necessary. Now for any node in a gold / proposed parse, let node-height be the average path-length to a word dominated by that node. We set a threshold on nodeheight in the gold and proposed parses and observe performance. Figure 7 plots the F-score = (2*LP*LR)/(LP±LR) against node-height threshold. Clearly, performance degrades as the nodes get further from the words while pre-heads improve performance.</bodyText>
+<sectionHeader confidence="0.999484" genericHeader="conclusion">
+5 Conclusions
+</sectionHeader>
+<bodyText confidence="0.999233833333333">We started this paper wondering about the merits of structural-relations. We presented the T-gram model and exhibited empirical evidence for the usefulness as well as the shortcomings of structural relations. We also provided evidence for the gains from enrichment of structural relations with semi-lexical information. In our quest for better modeling, we still need to explore how structural-relations and bilexical dependencies can be combined. Probability estimation, smoothing and efficient implementations need special attention.</bodyText>
+<figure confidence="0.998904235294118">
+D5 0-PH
+D5 1-PH
+D5 2-PH
+1 2 3 4 5 6 7 8 9 10 11 12 13
+Height threshold
+85
+80
+70
+♥
+75
+65
+60
+55
+50
+F-score
+c
+♥
+</figure>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.763807" no="0">
+<title confidence="0.999569">Tree-gram Parsing Lexical Dependencies and Structural Relations</title>
+<author confidence="0.999892">K Sima'an</author>
+<affiliation confidence="0.9950405">of Linguistic Knowledge, Tilburg University &amp; Computational Linguistics, University of Amsterdam,</affiliation>
+<address confidence="0.999642">Spuistraat 134, 1012 VB Amsterdam, The Netherlands.</address>
+<email confidence="0.78021">khalil.simaanAhum.uva.n1</email>
+<abstract confidence="0.999245357142857">This paper explores the kinds of probabilistic relations that are important in syntactic disambiguation. It proposes that two widely used of relations, dependenrelations, complementary disambiguation capabilities. It presents a new model based on structural relations, the model, reports experiments showing that structural relations should benefit from enrichment by lexical dependencies.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,806 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000385" no="0">
+<title confidence="0.9989975">
+Weakly Supervised Models of Aspect-Sentiment
+for Online Course Discussion Forums
+</title>
+<author confidence="0.996304">
+Arti Ramesh,' Shachi H. Kumar,2 James Foulds,2 Lise Getoor2
+</author>
+<affiliation confidence="0.999693">
+'University of Maryland, College Park 2University of California, Santa Cruz
+</affiliation>
+<email confidence="0.995391">
+artir@cs.umd.edu, {shulluma, jfoulds, getoor}@ucsc.edu
+</email>
+<sectionHeader confidence="0.993846" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999935466666667">Massive open online courses (MOOCs) are redefining the education system and transcending boundaries posed by traditional courses. With the increase in popularity of online courses, there is a corresponding increase in the need to understand and interpret the communications of the course participants. Identifying topics or aspects of conversation and inferring sentiment in online course forum posts can enable instructor interventions to meet the needs of the students, rapidly address course-related issues, and increase student retention. Labeled aspect-sentiment data for MOOCs are expensive to obtain and may not be transferable between courses, suggesting the need for approaches that do not require labeled data. We develop a weakly supervised joint model for aspectsentiment in online courses, modeling the dependencies between various aspects and sentiment using a recently developed scalable class of statistical relational models called hinge-loss Markov random fields. We validate our models on posts sampled from twelve online courses, each containing an average of 10,000 posts, and demonstrate that jointly modeling aspect with sentiment improves the prediction accuracy for both aspect and sentiment.</bodyText>
+<sectionHeader confidence="0.999308" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999399558139535">Massive Open Online Courses (MOOCs) have emerged as a powerful medium for imparting education to a wide geographical population. Discussion forums are the primary means of communication between MOOC participants (students, TAs, and instructors). Due to the open nature of these courses, they attract people from all over the world leading to large numbers of participants and hence, large numbers of posts in the discussion forums. In the courses we worked with, we found that over the course of the class there were typically over 10,000 posts. Within this slew of posts, there are valuable problem-reporting posts that identify issues such as broken links, audio-visual glitches, and inaccuracies in the course materials. Automatically identifying these reported problems is important for several reasons: i) it is time-consuming for instructors to manually screen through all of the posts due to the highly skewed instructor-tostudent ratio in MOOCs, ii) promptly addressing issues could help improve student retention, and iii) future iterations of the course could benefit from identifying technical and logistical issues currently faced by students. In this paper, we investigate the problem of determining the fine-grained topics of posts (which we refer to as “MOOC aspects”) and the sentiment toward them, which can potentially be used to improve the course. While aspect-sentiment has been widely studied, the MOOC discussion forum scenario presents a unique set of challenges. Labeled data are expensive to obtain, and posts containing finegrained aspects occur infrequently in courses and differ across courses, thereby making it expensive to get sufficient coverage of all labels. Few distinct aspects occur per course, and only 5-10% of posts in a course are relevant. Hence, getting labels for fine-grained labels involves mining and annotating posts from a large number of courses. Further, creating and sharing labeled data is difficult as data from online courses is governed by IRB regulations.</bodyText>
+<page confidence="0.98593">
+74
+</page>
+<note confidence="0.978316333333333">
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics
+and the 7th International Joint Conference on Natural Language Processing, pages 74–83,
+Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.9889255">Privacy restrictions are another reason why unsupervised/weakly-supervised methods can be helpful. Lastly, to design a system capable of identifying all possible MOOC aspects across courses, we need to develop a system that is not fine-tuned to any particular course, but can adapt seamlessly across courses. To this end, we develop a weakly supervised system for detecting aspect and sentiment in MOOC forum posts and validate its effectiveness on posts sampled from twelve MOOC courses. Our system can be applied to any MOOC discussion forum with no or minimal modifications. Our contributions in this paper are as follows:</bodyText>
+<listItem confidence="0.998829071428571">• We show how to encode weak supervision in the form of seed words to extract extract course-specific features in MOOCs using SeededLDA, a seeded variation of topic modeling (Jagarlamudi et al., 2012). • Building upon our SeededLDA approach, we develop a joint model for aspects and sentiment using the hinge-loss Markov random field (HL-MRF) probabilistic modeling framework. This framework is especially well-suited for this problem because of its ability to combine information from multiple features and jointly reason about aspect and sentiment. • To validate the effectiveness of our system, we construct a labeled evaluation dataset by sampling posts from twelve MOOC courses, and annotating these posts with fine-grained MOOC aspects and sentiment via crowdsourcing. The annotation captures finegrained aspects of the course such as content, grading, deadlines, audio and video of lectures and sentiment (i.e., positive, negative, and neutral) toward the aspect in the post. • We demonstrate that the proposed HL-MRF model can predict fine-grained aspects and sentiment and outperforms the model based only on SeededLDA.</listItem>
+<sectionHeader confidence="0.99935" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.999941690909091">To the best of our knowledge, the problem of predicting aspect and sentiment in MOOC forums has not yet been addressed in the literature. We review prior work in related areas here. Aspect-Sentiment in Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that around 90% of MOOC posts have only one aspect, which makes sentence-level aspect modeling inappropriate for our domain. Most previous approaches for sentiment rely on manually constructed lexicons of strongly positive and negative words (Fahrni and Klenner, 2008; Brody and Elhadad, 2010). These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat aspect-sentiment relationships.</bodyText>
+<page confidence="0.998936">
+75
+</page>
+<table confidence="0.756601333333333">
+Post 1: I have not received the midterm.
+Post 2: No lecture subtitles week, will they be uploaded?
+Post 3: I am ... and I am looking forward to learn more ...
+</table>
+<tableCaption confidence="0.9032515">
+Table 1: Example posts from MOOC forums. As-
+pect words are highlighted in bold.
+</tableCaption>
+<bodyText confidence="0.999620038461539">It is important to note that a broad majority of the previous work on aspect sentiment focuses on the specific challenges of online review data. As discussed in detail above, MOOC forum data have substantially different properties, and our approach is the first to be designed particularly for this domain. Learning Analytics In another line of research, there is a growing body of work on the analysis of online courses. Regarding MOOC forum data, Stump et al.(2013) propose a framework for taxonomically categorizing forum posts, leveraging manual annotations. We differ from their approach in that we develop an automatic system to predict MOOC forum categories without using labeled training data. Ramesh et al.(2014b) categorize forum posts into three broad categories in order to predict student engagement. Unlike this method, our system is capable of fine-grained categorization and of identifying aspects in MOOCS. Chaturvedi et al.(2014) focus on predicting instructor intervention using lexicon features and thread features. In contrast, our system is capable of predicting fine MOOC aspects and sentiment of discussion forum posts and thus provides a more informed analysis of MOOC posts.</bodyText>
+<sectionHeader confidence="0.807523" genericHeader="method">
+3 Problem Setting and Data
+</sectionHeader>
+<bodyText confidence="0.999699944444445">MOOC participants primarily communicate through discussion forums, consisting of posts, which are short pieces of text. Table 1 provides examples of posts in MOOC forums. Posts 1 and 2 report issues and feedback for the course, while post 3 is a social interaction message. Our goal is to distinguish problem-reporting posts such as 1 and 2 from social posts such as 3, and to identify the issues that are being discussed. We formalize this task as an aspect-sentiment prediction problem (Liu and Zhang, 2012). The issues reported in MOOC forums can be related to the different elements of the course such as lectures and quizzes, which are referred to as aspects. The aspects are selected based on MOOC domain expertise and inspiration from Stump et al. (2013), aiming to cover common concerns that could benefit from intervention. The task is to predict these aspects for each post, along with the sentiment polarity toward the aspect, which we code as positive, negative, or neutral.</bodyText>
+<table confidence="0.990588666666667">
+COARSE-ASPECT FINE-ASPECT Description # of posts
+LECTURE-CONTENT Content of lectures. 559
+LECTURE-VIDEO Video of lectures. 215
+LECTURE LECTURE-SUBTITLES Subtitles of lecture. 149
+LECTURE-AUDIO Audio of lecture. 136
+LECTURE-LECTURER Delivery of instructor. 69
+QUIZ-CONTENT Content in quizzes. 439
+QUIZ QUIZ-GRADING Grading of quizzes. 360
+QUIZ-SUBMISSION Quiz submission. 329
+QUIZ-DEADLINE Deadline of quizzes. 142
+CERTIFICATE Course certificates. 194
+SOCIAL Social interaction posts. 1187
+</table>
+<tableCaption confidence="0.999362">
+Table 2: Descriptions of coarse and fine aspects.
+</tableCaption>
+<bodyText confidence="0.999948071428571">The negative-sentiment posts, along with their aspects, allow us to identify potentially correctable issues in the course. As labels are expensive in this scenario, we formulate the task as a weakly supervised prediction problem. In our work, we assume that a post has at most one fine-grained aspect, as we found that this was true for 90% of the posts in our data. This property is due in part to the brevity of forum posts, which are much shorter documents than those considered in other aspect-sentiment scenarios such as product reviews.</bodyText>
+<subsectionHeader confidence="0.999751">
+3.1 Aspect Hierarchy
+</subsectionHeader>
+<bodyText confidence="0.999989434782609">While we do not require labeled data, our approaches allow the analyst to instead relatively easily encode a small amount of domain knowledge by seeding the models with a few words relating to each aspect of interest. Hence, we refer to our approach as weakly supervised. Our models can further make use of hierarchical structure between the aspects. The proposed approach is flexible, allowing the aspect seeds and hierarchy to be selected for a given MOOC domain. For the purposes of this study, we represent the MOOC aspects with a two-level hierarchy. We identify a list of nine fine-grained aspects, which are grouped into four coarse topics. The coarse aspects consist of LECTURE, QUIZ, CERTIFICATE, and SOCIAL topics. Table 2 provides a description of each of the aspects and also gives the number of posts in each aspect category after annotation. As both LECTURE and QUIZ are key coarselevel aspects in online courses, and more nuanced aspect information for these is important to facilitate instructor interventions, we identify fine-grained aspects for these coarse aspects.</bodyText>
+<page confidence="0.907187">
+76
+</page>
+<bodyText confidence="0.994454125">For LECTURE we identify LECTURE-CONTENT, LECTURE-VIDEO, LECTURE-AUDIO, LECTURESUBTITLES, and LECTURE-LECTURER as fine aspects. For QUIZ, we identify the fine aspects QUIZ-CONTENT, QUIZ-GRADING, QUIZDEADLINES, and QUIZ-SUBMISSION. We use the label SOCIAL to refer to social interaction posts that do not mention a problem-related aspect.</bodyText>
+<subsectionHeader confidence="0.996354">
+3.2 Dataset
+</subsectionHeader>
+<bodyText confidence="0.999913368421053">We construct a dataset by sampling posts from MOOC courses to capture the variety of aspects discussed in online courses. We include courses from different disciplines (business, technology, history, and the sciences) to ensure broad coverage of aspects. Although we adopt an approach that does not require labeled data for training, which is important for most practical MOOC scenarios, in order to validate our methods we obtain labels for the sampled posts using Crowdflower,1 an online crowd-sourcing annotation platform. Each post was annotated by at least 3 annotators. Crowdflower calculates confidence in labels by computing trust scores for annotators using test questions. Kolhatkar et al. (2013) provide a detailed analysis of Crowdflower trust calculations and the relationship to inter-annotator agreement. We follow their recommendations and retain only labels with confidence &gt; 0.5.</bodyText>
+<sectionHeader confidence="0.976459" genericHeader="method">
+4 Aspect-Sentiment Prediction Models
+</sectionHeader>
+<bodyText confidence="0.999955416666667">In this section, we develop models and featureextraction techniques to address the challenges of aspect-sentiment prediction for MOOC forums. We present two weakly-supervised methods— first, using a seeded topic modeling approach (Jagarlamudi et al., 2012) to identify aspects and sentiment. Second, building upon this method, we then introduce a more powerful statistical relational model which reasons over the seeded LDA predictions as well as sentiment side-information to encode hierarchy information and correlations between sentiment and aspect.</bodyText>
+<subsectionHeader confidence="0.904936">
+4.1 Seeded LDA Model
+</subsectionHeader>
+<bodyText confidence="0.9998972">Topic models (Blei et al., 2003), which identify latent semantic themes from text corpora, have previously been successfully used to discover aspects for sentiment analysis (Diao et al., 2014). By equating the topics, i.e. discrete distributions over words, with aspects and/or sentiment polarities, topic models can recover aspect-sentiment predictions.</bodyText>
+<footnote confidence="0.945373">
+1http://www.crowdflower.com/
+</footnote>
+<bodyText confidence="0.9999515">In the MOOC context we are specifically interested in problems with the courses, rather than general topics which may be identified by a topic model, such as the topics of the course material. To guide the topic model to identify aspects of interest, we use SeededLDA (Jagarlamudi et al., 2012), a variant of LDA which allows an analyst to “seed” topics by providing key words that should belong to the topics. We construct SeededLDA models by providing a set of seed words for each of the coarse and fine aspects in the aspect hierarchy of Table 2. We also seed topics for positive, negative and neutral sentiment polarities. The seed words for coarse topics are provided in Table 3, and fine aspects in Table 4. For the sentiment topics (Table 5), the seed words for the topic positive are positive words often found in online courses such as thank, congratulations, learn, and interest. Similarly, the seed words for the negative topic are negative in the context of online courses, such as difficult, error, issue, problem, and misunderstand. Additionally, we also use SeededLDA for isolating some common problems in online courses that are associated with sentiment, such as difficulty, availability, correctness, and coursespecific seed words from the syllabus as described in Table 6. Finally, having inferred the SeededLDA model from the data set, for each post p we predict the most likely aspect and the most likely sentiment polarity according to the post’s inferred distribution over topics θ(P). In our experiments, we tokenize and stem the posts using NLTK toolkit (Loper and Bird, 2002), and use a stop word list tuned to online course discussion forums. The topic model Dirichlet hyperparameters are set to α = 0.01, Q = 0.01 in our experiments. For SeededLDA models corresponding to the seed sets in Tables 3, 4, and 5, the number of topics is equal to the number of seeded topics. For SeededLDA models corresponding to the seed words in Tables 6 and 3, we use 10 topics, allowing for some unseeded topics that are not captured by the seed words.</bodyText>
+<subsectionHeader confidence="0.983802">
+4.2 Hinge-loss Markov Random Fields
+</subsectionHeader>
+<bodyText confidence="0.998958666666667">The approach described in the previous section automatically identifies user-seeded aspects and sentiment, but it does not make further use of structure or dependencies between these values, or any additional side-information.</bodyText>
+<page confidence="0.998129">
+77
+</page>
+<tableCaption confidence="0.769303192307692">
+LECTURE: lectur, video, download, volum, low, headphon, sound, audio, transcript, subtitl, slide, note
+QUIZ: quiz, assignment, question, midterm,exam, submiss, answer, grade, score, grad, midterm, due, deadlin
+CERTIFICATE: certif, score, signatur, statement, final, course, pass, receiv, coursera, accomplish, fail
+SOCIAL: name, course, introduction, stud, group, everyon, student
+Table 3: Seed words for coarse aspects
+LECTURE-VIDEO: video, problem, download, play, player, watch, speed, length, long, fast, slow, render, qualiti
+LECTURE-AUDIO: volum, low, headphon, sound, audio, hear, maximum, troubl, qualiti, high, loud, heard
+LECTURE-LECTURER: professor, fast, speak, pace, follow, speed, slow, accent, absorb, quick, slowli
+LECTURE-SUBTITLES: transcript, subtitl, slide, note, lectur, difficult, pdf
+LECTURE-CONTENT: typo, error, mistak, wrong, right, incorrect, mistaken
+QUIZ-CONTENT: question, challeng, difficult, understand, typo, error, mistak, quiz, assignment
+QUIZ-SUBMISSION: submiss, submit, quiz, error, unabl, resubmit
+QUIZ-GRADING: answer, question, answer, grade, assignment, quiz, respons ,mark, wrong, score
+QUIZ-DEADLINE: due, deadlin, miss, extend, late
+Table 4: Seed words for fine aspects
+POSITIVE: interest, excit, thank, great, happi, glad, enjoy, forward, insight, opportun, clear, fantast, fascin, learn, hope, congratul
+NEGATIVE: problem, difficult, error, issu, unabl, misunderstand, terribl, bother, hate, bad, wrong, mistak, fear, troubl
+NEUTRAL: coursera, class, hello, everyon, greet, nam, meet, group, studi, request, join, introduct, question, thank
+Table 5: Seed words for sentiment
+DIFFICULTY: difficult, understand, ambigu, disappoint, hard, follow, mislead, difficulti, challeng, clear
+CONTENT: typo, error, mistak, wrong, right, incorrect, mistaken, score
+AVAILABILITY: avail, nowher, find, access, miss, view, download, broken, link, bad, access, deni, miss, permiss
+COURSE-1: develop, eclips, sdk, softwar, hardware, accuser, html, platform, environ, lab, ide, java,
+COURSE-2: protein, food, gene, vitamin, evolut, sequenc, chromosom, genet, speci, peopl, popul, evolv, mutat, ancestri
+COURSE-3: compani, product, industri, strategi, decision, disrupt, technolog, market
+Table 6: Seed words for sentiment specific to online courses
+</tableCaption>
+<bodyText confidence="0.988703318181818">To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density function of the form where Or(Y, X) is a hinge-loss potential corresponding to an instantiation of a rule, and is specified by a linear function lr and optional exponent ρr E 11, 21.</bodyText>
+<equation confidence="0.9984655">
+M
+(P (Y|X) a exp − )ArOr(Y, X)
+r=1
+Or(Y, X) = (max{lr(Y, X), 0})pr , (1)
+</equation>
+<bodyText confidence="0.949362277777778">For example, in our MOOC aspectsentiment model, if P and F denote post P and fine aspect F, then we have predicates SEEDLDAFINE(P, F) to denote the value corresponding to topic F in SeededLDA, and FINE-ASPECT(P, F) is the target variable denoting the fine aspect of the post P. A PSL rule to encode that the SeededLDA topic F suggests that aspect F is present is A : SEEDLDA-FINE(P, F) —* FINE-ASPECT(P, F). We can generate more complex rules connecting the different features and target variables, e.g. A : SEEDLDA-FINE(P, F) n SENTIMENT(P, S) —* FINE-ASPECT(P, F). This rule encodes a dependency between SENTIMENT and FINE-ASPECT, namely that the SeededLDA topic and a strong sentiment score increase the probability of the fine aspect.</bodyText>
+<page confidence="0.995986">
+78
+</page>
+<bodyText confidence="0.999960166666667">The HL-MRF model uses these rules to encode domain knowledge about dependencies among the predicates. The continuous value representation further helps in understanding the confidence of predictions.</bodyText>
+<subsectionHeader confidence="0.99174">
+4.3 Joint Aspect-Sentiment Prediction using
+Probabilistic Soft Logic (PSL-Joint)
+</subsectionHeader>
+<bodyText confidence="0.944137307692308">In this section, we describe our joint approach to predicting aspect and sentiment in online discussion forums, leveraging the strong dependence between aspect and sentiment. We present a system designed using HL-MRFs which combines different features, accounting for their respective uncertainty, and encodes the dependencies between aspect and sentiment in the MOOC context. Table 7 provides some representative rules from our model.2 The rules can be classified into two broad categories—1) rules that combine multiple features, and 2) rules that encode the dependencies between aspect and sentiment.</bodyText>
+<subsectionHeader confidence="0.917199">
+4.3.1 Combining Features
+</subsectionHeader>
+<bodyText confidence="0.999765461538461">The first set of rules in Table 7 combine different features extracted from the post. SEEDLDA-FINE, SEEDLDA-COARSE and SEEDLDA-SENTIMENTCOURSE predicates in rules refer to SeededLDA posterior distributions using coarse, fine, and course-specific sentiment seed words respectively. The strength of our model comes from its ability to encode different combinations of features and weight them according to their importance. The first rule in Table 7 combines the SeededLDA features from both SEEDLDA-FINE and SEEDLDACOARSE to predict the fine aspect. Interpreting the rule, the fine aspect of the post is more likely to be LECTURE-LECTURER if the coarse SeededLDA score for the post is LECTURE, and the fine SeededLDA score for the post is LECTURELECTURER. Similarly, the second rule provides combinations of some of the other features used by the model—two different SeededLDA scores for sentiment, as indicated by seed words in Tables 5 and 6. The third rule states that certain fine aspects occur together with certain values of sentiment more than others. In online courses, posts that discuss grading usually talk about grievances and issues. The rule captures that QUIZ-GRADING occurs with negative sentiment in most cases.</bodyText>
+<footnote confidence="0.892626">
+2Full model available at https://github.com/artir/ramesh-acl15
+</footnote>
+<subsectionHeader confidence="0.85662">
+4.3.2 Encoding Dependencies Between
+Aspect and Sentiment
+</subsectionHeader>
+<bodyText confidence="0.999989608695652">In addition to combining features, we also encode rules to capture the taxonomic dependence between coarse and fine aspects, and the dependence between aspect and sentiment (Table 7, bottom). Rules 4 and 5 encode pair-wise dependency between FINE-ASPECT and SENTIMENT, and COARSE-ASPECT and FINE-ASPECT respectively. Rule 4 uses the SeededLDA value for QUIZ-DEADLINES to predict both SENTIMENT, and FINE-ASPECT jointly. This together with other rules for predicting SENTIMENT and FINEASPECT individually creates a constrained satisfaction problem, forcing aspect and sentiment to agree with each other. Rule 5 is similar to rule 4, capturing the taxonomic relationship between target variables COARSE-ASPECT and FINE-ASPECT. Thus, by using conjunctions to combine features and appropriately weighting these rules, we account for the uncertainties in the underlying features and make them more robust. The combination of these two different types of weighted rules, referred to below as PSL-Joint, is able to reason collectively about aspect and sentiment.</bodyText>
+<sectionHeader confidence="0.99545" genericHeader="evaluation and result">
+5 Empirical Evaluation
+</sectionHeader>
+<bodyText confidence="0.999980111111111">In this section, we present the quantitative and qualitative results of our models on the annotated MOOC dataset. Our models do not require labeled data for training; we use the label annotations only for evaluation. Tables 8 – 11 show the results for the SeededLDA and PSL-Joint models. Statistically significant differences, evaluated using a paired t-test with a rejection threshold of 0.01, are typed in bold.</bodyText>
+<subsectionHeader confidence="0.937012">
+5.1 SeededLDA for Aspect-Sentiment
+</subsectionHeader>
+<bodyText confidence="0.9998814">For SeededLDA, we use the seed words for coarse, fine, and sentiment given in Tables 3 – 5. After training the model, we use the SeededLDA multinomial posterior distribution to predict the target variables. We use the maximum value in the posterior for the distribution over topics for each post to obtain predictions for coarse aspect, fine aspect, and sentiment. We then calculate precision, recall and F1 values comparing with our ground truth labels.</bodyText>
+<page confidence="0.997917">
+79
+</page>
+
+<table confidence="0.987411666666667">
+PSL-JOINT RULES
+Rules combining features
+SEEDLDA-FINE(POST, LECTURE-LECTURER) ∧ SEEDLDA-COARSE(POST,LECTURE) → FINE-ASPECT(POST, LECTURE-LECTURER)
+SEEDLDA-SENTIMENT-COURSE(POST, NEGATIVE) ∧ SEEDLDA-SENTIMENT(POST, NEGATIVE) → SENTIMENT(POST, NEGATIVE)
+SEEDLDA-SENTIMENT-COURSE(POST, NEGATIVE) ∧ SEEDLDA-FINE(POST, QUIZ-GRADING) → FINE-ASPECT(POST, QUIZ-GRADING)
+Encoding dependencies between aspect and sentiment
+SEEDLDA-FINE(POST, QUIZ-DEADLINES) ∧ SENTIMENT(POST, NEGATIVE) → FINE-ASPECT(POST, QUIZ-DEADLINES)
+SEEDLDA-FINE(POST, QUIZ-SUBMISSION) ∧ FINE-ASPECT(POST, QUIZ-SUBMISSION) → COARSE-ASPECT(POST, QUIZ)
+</table>
+<tableCaption confidence="0.9676">
+Table 7: Representative rules from PSL-Joint model
+</tableCaption>
+<table confidence="0.991385">
+Model LECTURE-CONTENT LECTURE-VIDEO LECTURE-AUDIO LECTURE-LECTURER LECTURE-SUBTITLES
+Prec. Rec. F1 Prec. Rec. F1 Prec. Rec. F1 Prec. Rec. F1 Prec. Rec. F1
+SEEDEDLDA 0.137 0.057 0.08 0.156 0.256 0.240 0.684 0.684 0.684 0.037 0.159 0.06 0.289 0.631 0.397
+PSL-JOINT 0.407 0.413 0.410 0.411 0.591 0.485 0.635 0.537 0.582 0.218 0.623 0.323 0.407 0.53 0.461
+</table>
+<tableCaption confidence="0.950155">
+Table 8: Precision, recall and F1 scores for LECTURE fine aspects
+</tableCaption>
+<table confidence="0.994935">
+Model QUIZ-CONTENT QUIZ-SUBMISSION QUIZ-DEADLINES QUIZ-GRADING
+Prec Rec. F1 Prec Rec. F1 Prec. Rec. F1 Prec. Rec. F1
+SEEDEDLDA
+PSL-JOINT
+0.042 0.006 0.011 0.485 0.398
+0.324 0.405 0.36 0.521 0.347
+0.437 0.444 0.141 0.214 0.524 0.508 0.514
+0.416 0.667 0.563 0.611 0.572 0.531 0.550
+</table>
+<tableCaption confidence="0.949852">
+Table 9: Precision, recall and F1 scores for QUIZ fine aspects
+</tableCaption>
+<table confidence="0.993386375">
+Model LECTURE QUIZ CERTIFICATE SOCIAL
+Prec Rec. F1 Prec. Rec. F1 Prec. Rec. F1 Prec. Rec. F1
+SEEDEDLDA
+PSL-JOINT
+0.597 0.673 0.632 0.752 0.583
+0.563 0.715 0.630 0.724 0.688
+0.657 0.315 0.845 0.459 0.902 0.513 0.654
+0.706 0.552 0.711 0.621 0.871 0.530 0.659
+</table>
+<tableCaption confidence="0.932882">
+Table 10: Precision, recall and F1 scores for coarse aspects
+</tableCaption>
+<table confidence="0.996918">
+Model POSITIVE NEGATIVE NEUTRAL
+Prec Rec. F1 Prec. Rec. F1 Prec. Rec. F1
+SEEDEDLDA 0.104 0.721 0.182 0.650 0.429 0.517 0.483 0.282 0.356
+PSL-JOINT 0.114 0.544 0.189 0.571 0.666 0.615 0.664 0.322 0.434
+</table>
+<tableCaption confidence="0.997609">
+Table 11: Precision, recall and F1 scores for sentiment
+</tableCaption>
+<subsectionHeader confidence="0.534515">
+5.2 PSL for Joint Aspect-Sentiment
+</subsectionHeader>
+<bodyText confidence="0.990104555555555">(PSL-Joint) Tables 8 and 9 give the results for the fine aspects under LECTURE and QUIZ. PSL-JOINT performs better than SEEDEDLDA in most cases, without suffering any statistically significant losses. Notable cases include the increase in scores for LECTURE-LECTURER, LECTURE-SUBTITLES, LECTURE-CONTENT, QUIZ-CONTENT, QUIZGRADING, and QUIZ-DEADLINES, for which the scores increase by a large margin over SeededLDA. We observe that for LECTURE-CONTENT and QUIZ-CONTENT, the increase in scores is more significant than others with SeededLDA performing very poorly. Since both lecture and quiz content have the same kind of words related to the course material, SeededLDA is not able to distinguish between these two aspects. We found that in 63% of these missed predictions, SeededLDA predicts LECTURE-CONTENT, instead of QUIZ-CONTENT, and vice versa. In contrast, PSLJoint uses both coarse and fine SeededLDA scores and captures the dependency between a coarse aspect and its corresponding fine aspect. Therefore, PSL-Joint is able to distinguish between LECTURE-CONTENT and QUIZ-CONTENT. In the next section, we present some examples of posts that SEEDEDLDA misclassified but were predicted correctly by PSL-Joint. Table 10 presents results for the coarse-aspects. We observe that PSL-Joint performs better than SeededLDA for all classes. In particular for CERTIFICATE and QUIZ, PSL-Joint exhibits a marked increase in scores when compared to SeededLDA. This is also true for sentiment, for which the scores for NEUTRAL and NEGATIVE sentiment show significant improvement (Table 11).</bodyText>
+<page confidence="0.994386">
+80
+</page>
+<table confidence="0.961960384615385">
+Correct Label PSL SeededLDA Post
+QUIZ-CONTENT QUIZ-CONTENT LECTURE-CONTENT There is a typo or other mistake in the assignment instructions (e.g. es-
+sential information omitted) Type ID: programming-content Problem ID:
+programming-mistake Browser: Chrome 32 OS: Windows 7
+QUIZ-CONTENT QUIZ-CONTENT LECTURE-CONTENT There is a typo or other mistake on the page (e.g. factual error informa-
+tion omitted) Week 4 Quiz Question 6: Question 6 When a user clicks
+on a View that has registered to show a Context Menu which one of the
+following methods will be called?
+LECTURE-AUDIO LECTURE-AUDIO LECTURE-SUBTITLES Thanks for the suggestion about downloading the video and referring to
+the subtitles. I will give that a try but I would also like to point out that
+what the others are saying is true for me too: The audio is just barely
+audible even when the volume on my computer is set to 100%.
+SOCIAL SOCIAL LECTURE-VIDEO Let’s start a group for discussing the lecture videos.
+</table>
+<tableCaption confidence="0.991316">
+Table 12: Example posts that PSL-Joint predicted correctly, but were misclassified by SeededLDA
+</tableCaption>
+<table confidence="0.7678503">
+Correct Label Predicted Label Second Post
+Prediction
+LECTURE-CONTENT QUIZ-CONTENT LECTURE-CONTENT I have a difference of opinion to the answer for Question 6 too. It differs from
+what is presented in lecture 1.
+SOCIAL LECTURE-SUBTITLES SOCIAL Hello guys!!! I am ... The course materials are extraordinary. The subtitles are
+really helpful! Thanks to instructors for giving us all a wonderful opportunity.
+LECTURE-CONTENT QUIZ-CONTENT LECTURE-CONTENT As the second lecture video told me I started windows telnet and connected to
+the virtual device. Then I typed the same command for sending an sms that the
+lecture video told me to. The phone received a message all right and I was able to
+open it but the message itself seems to be written with some strange characters.
+</table>
+<tableCaption confidence="0.981382">
+Table 13: Example posts whose second-best prediction is correct
+</tableCaption>
+<subsectionHeader confidence="0.982713">
+5.3 Interpreting PSL-Joint Predictions
+</subsectionHeader>
+<bodyText confidence="0.999912348837209">Table 12 presents some examples of posts that PSL-Joint predicted correctly, and which SeededLDA misclassified. The first two examples illustrate that PSL can predict the subtle difference between LECTURE-CONTENT and QUIZCONTENT. Particularly notable is the third example, which contains mention of both subtitles and audio, but the negative sentiment is associated with audio rather than subtitles. PSL-Joint predicts the fine aspect as LECTURE-AUDIO, even though the underlying SeededLDA feature has a high score for LECTURE-SUBTITLES. This example illustrates the strength of the joint reasoning approach in PSL-Joint. Finally, in the last example, the post mentions starting a group to discuss videos. This is an ambiguous post containing the keyword video, while it is in reality a social post about starting a group. PSL-Joint is able to predict this because it uses both the sentiment scores associated with the post and the SeededLDA scores for fine aspect, and infers that social posts are generally positive. So, combining the feature values for social aspect and positive sentiment, it is able to predict the fine aspect as SOCIAL correctly. The continuous valued output predictions produced by PSL-Joint allow us to rank the predicted variables by output prediction value. Analyzing the predictions for posts that PSL-Joint misclassified, we observe that for four out of nine fine aspects, more than 70% of the time the correct label is in the top three predictions. And, for all fine aspects, the correct label is found in the top 3 predictions around 40% of the time. Thus, using the top three predictions made by PSL-Joint, we can understand the fine aspect of the post to a great extent. Table 13 gives some examples of posts for which the second best prediction by PSL-Joint is the correct label. For these examples, we found that PSL-Joint misses the correct prediction by a small margin(&lt; 0.2). Since our evaluation scheme only considers the maximum value to determine the scores, these examples were treated as misclassified.</bodyText>
+<subsectionHeader confidence="0.9831965">
+5.4 Understanding Instructor Intervention
+using PSL-Joint Predictions
+</subsectionHeader>
+<bodyText confidence="0.999918866666667">In our 3275 annotated posts, the instructor replied to 787 posts. Of these, 699 posts contain a mention of some MOOC aspect. PSL-Joint predicts 97.8% from those as having an aspect and 46.9% as the correct aspect. This indicates that PSL-Joint is capable of identifying the most important posts, i.e. those that the instructor replied to, with high accuracy. PSL-Joint’s MOOC aspect predictions can potentially be used by the instructor to select a subset of posts to address in order to cover the main reported issues. We found in our data that some fine aspects, such as CERTIFICATE, have a higher percentage of instructor replies than others, such as QUIZ-GRADING. Using our system, instructors can sample from multiple aspect categories, thereby making sure that all categories of problems receive attention.</bodyText>
+<page confidence="0.995133">
+81
+</page>
+<sectionHeader confidence="0.998589" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.99994909375">In this paper, we developed a weakly supervised joint probabilistic model (PSL-Joint) for predicting aspect-sentiment in online courses. Our model provides the ability to conveniently encode domain information in the form of seed words, and weighted logical rules capturing the dependencies between aspects and sentiment. We validated our approach on an annotated dataset of MOOC posts sampled from twelve courses. We compared our PSL-Joint probabilistic model to a simpler SeededLDA approach, and demonstrated that PSL-Joint produced statistically significantly better results, exhibiting a 3–5 times improvement in F1 score in most cases over a system using only SeededLDA. As further shown by our qualitative results and instructor reply information, our system can potentially be used for understanding student requirements and issues, identifying posts for instructor intervention, increasing student retention, and improving future iterations of the course. Acknowledgements This work was supported by NSF grant IIS1218488, and IARPA via DoI/NBC contract number D12PC00337. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation thereon. Disclaimer: The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies or endorsements, either expressed or implied, of IARPA, DoI/NBC, or the U.S. Government.</bodyText>
+<sectionHeader confidence="0.998593" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999623447761194">
+Stephen H. Bach, Bert Huang, Ben London, and Lise
+Getoor. 2013. Hinge-loss Markov random fields:
+Convex inference for structured prediction. In Pro-
+ceedings of the Conference on Uncertainty in Artifi-
+cial Intelligence (UAI).
+S. H. Bach, M. Broecheler, B. Huang, and L. Getoor.
+2015. Hinge-loss Markov random fields and proba-
+bilistic soft logic. arXiv:1505.04406 [cs.LG].
+David M. Blei, Andrew Y. Ng, and Michael I. Jordan.
+2003. Latent Dirichlet allocation. Journal of Ma-
+chine Learning Research (JMLR).
+Samuel Brody and Noemie Elhadad. 2010. An unsu-
+pervised aspect-sentiment model for online reviews.
+In Proceedings of Human Language Technologies:
+Conference of the North American Chapter of the
+Association for Computational Linguistics (HLT).
+Snigdha Chaturvedi, Dan Goldwasser, and Hal
+Daum´e III. 2014. Predicting instructor’s interven-
+tion in mooc forums. In Proceedings of the Annual
+Meeting of the Association for Computational Lin-
+guistics (ACL).
+Qiming Diao, Minghui Qiu, Chao-Yuan Wu, Alexan-
+der J. Smola, Jing Jiang, and Chong Wang. 2014.
+Jointly modeling aspects, ratings and sentiments for
+movie recommendation (JMARS). In Proceedings
+of the SIGKDD International Conference on Knowl-
+edge Discovery and Data Mining (KDD).
+Angela Fahrni and Manfred Klenner. 2008. Old wine
+or warm beer: Target-specific sentiment analysis of
+adjectives. In Proceedings of the Symposium on Af-
+fective Language in Human and Machine (AISB).
+Shobeir Fakhraei, Bert Huang, Louiqa Raschid, and
+Lise Getoor. 2014. Network-based drug-target
+interaction prediction with probabilistic soft logic.
+IEEE/ACM Transactions on Computational Biology
+and Bioinformatics (TCBB).
+Bert Huang, Angelika Kimmig, Lise Getoor, and Jen-
+nifer Golbeck. 2013. A flexible framework for
+probabilistic models of social trust. In Proceed-
+ings of the International Conference on Social Com-
+puting, Behavioral-Cultural Modeling, &amp; Prediction
+(SBP).
+Jagadeesh Jagarlamudi, Hal Daum´e, III, and
+Raghavendra Udupa. 2012. Incorporating lex-
+ical priors into topic models. In Proceedings
+of the European Chapter of the Association for
+Computational Linguistics (EACL).
+Y. Jo and A.H. Oh. 2011. Aspect and sentiment unifi-
+cation model for online review analysis. In Proceed-
+ings of the International Conference on Web Search
+and Data Mining (WSDM).
+Suin Kim, Jianwen Zhang, Zheng Chen, Alice Oh, and
+Shixia Liu. 2013. A hierarchical aspect-sentiment
+model for online reviews. In Proceedings of the
+AAAI Conference on Artificial Intelligence (AAAI).
+Varada Kolhatkar, Heike Zinsmeister, and Graeme
+Hirst. 2013. Annotating anaphoric shell nouns with
+their antecedents. In Linguistic Annotation Work-
+shop and Interoperability with Discourse.
+Chenghua Lin and Yulan He. 2009. Joint senti-
+ment/topic model for sentiment analysis. In Pro-
+ceedings of the Conference on Information and
+Knowledge Management (CIKM).
+Chenghua Lin, Yulan He, R. Everson, and S. Ruger.
+2012. Weakly supervised joint sentiment-topic de-
+tection from text. IEEE Transactions on Knowledge
+and Data Engineering.
+</reference>
+<page confidence="0.980908">
+82
+</page>
+<reference confidence="0.999248309523809">
+Bing Liu and Lei Zhang. 2012. A survey of opinion
+mining and sentiment analysis. In Mining Text Data.
+Edward Loper and Steven Bird. 2002. NLTK: The
+natural language toolkit. In Proceedings of the ACL
+Workshop on Effective Tools and Methodologies for
+Teaching Natural Language Processing and Compu-
+tational Linguistics (ETMTNLP).
+Bin Lu, Myle Ott, Claire Cardie, and Benjamin K.
+Tsou. 2011. Multi-aspect sentiment analysis with
+topic models. In Proceedings of the International
+Conference on Data Mining Workshops (ICDMW).
+Arjun Mukherjee and Bing Liu. 2012. Aspect extrac-
+tion through semi-supervised modeling. In Proceed-
+ings of the Annual Meeting of the Association for
+Computational Linguistics (ACL).
+Jay Pujara, Hui Miao, Lise Getoor, and William Cohen.
+2013. Knowledge graph identification. In Interna-
+tional Semantic Web Conference (ISWC).
+Arti Ramesh, Dan Goldwasser, Bert Huang, Hal
+Daume III, and Lise Getoor. 2014a. Learning latent
+engagement patterns of students in online courses.
+In Proceedings of the AAAI Conference on Artificial
+Intelligence (AAAI).
+Arti Ramesh, Dan Goldwasser, Bert Huang, Hal
+Daum´e III, and Lise Getoor. 2014b. Understand-
+ing MOOC discussion forums using seeded lda. In
+ACL Workshop on Innovative Use of NLP for Build-
+ing Educational Applications (BEA).
+Glenda S. Stump, Jennifer DeBoer, Jonathan Whit-
+tinghill, and Lori Breslow. 2013. Development of
+a framework to classify MOOC discussion forum
+posts: Methodology and challenges. In NIPS Work-
+shop on Data Driven Education.
+Ivan Titov and Ryan McDonald. 2008. Modeling on-
+line reviews with multi-grain topic models. In Pro-
+ceedings of the International Conference on World
+Wide Web (WWW).
+Wayne Xin Zhao, Jing Jiang, Hongfei Yan, and Xiaom-
+ing Li. 2010. Jointly modeling aspects and opinions
+with a maxEnt-LDA hybrid. In Proceedings of the
+Conference on Empirical Methods in Natural Lan-
+guage Processing (EMNLP).
+</reference>
+<page confidence="0.999311">
+83
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.833969" no="0">
+<title confidence="0.9990515">Weakly Supervised Models of for Online Course Discussion Forums</title>
+<author confidence="0.996537">H James Lise</author>
+<address confidence="0.910014">of Maryland, College Park of California, Santa</address>
+<email confidence="0.995064">jfoulds,</email>
+<abstract confidence="0.997570225806452">Massive open online courses (MOOCs) are redefining the education system and transcending boundaries posed by traditional courses. With the increase in popularity of online courses, there is a corresponding increase in the need to understand and interpret the communications of the course participants. Identifying topor conversation and inferring sentiment in online course forum posts can enable instructor interventions to meet the needs of the students, rapidly address course-related issues, and increase student retention. Labeled aspect-sentiment data for MOOCs are expensive to obtain and may not be transferable between courses, suggesting the need for approaches that do not require labeled data. We develop a weakly supervised joint model for aspectsentiment in online courses, modeling the dependencies between various aspects and sentiment using a recently developed scalable class of statistical relational models called hinge-loss Markov random fields. We validate our models on posts sampled from twelve online courses, each containing an average of 10,000 posts, and demonstrate that jointly modeling aspect with sentiment improves the prediction accuracy for both aspect and sentiment.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Stephen H Bach</author>
+<author>Bert Huang</author>
+<author>Ben London</author>
+<author>Lise Getoor</author>
+</authors>
+<title>Hinge-loss Markov random fields: Convex inference for structured prediction.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the Conference on Uncertainty in Artificial Intelligence (UAI).</booktitle>
+<contexts>
+<context citStr="Bach et al., 2013" endWordPosition="3084" position="19883" startWordPosition="3081">: develop, eclips, sdk, softwar, hardware, accuser, html, platform, environ, lab, ide, java, COURSE-2: protein, food, gene, vitamin, evolut, sequenc, chromosom, genet, speci, peopl, popul, evolv, mutat, ancestri COURSE-3: compani, product, industri, strategi, decision, disrupt, technolog, market Table 6: Seed words for sentiment specific to online courses ture or dependencies between these values, or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated wi</context>
+</contexts>
+<marker>Bach, Huang, London, Getoor, 2013</marker>
+<rawString>Stephen H. Bach, Bert Huang, Ben London, and Lise Getoor. 2013. Hinge-loss Markov random fields: Convex inference for structured prediction. In Proceedings of the Conference on Uncertainty in Artificial Intelligence (UAI).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S H Bach</author>
+<author>M Broecheler</author>
+<author>B Huang</author>
+<author>L Getoor</author>
+</authors>
+<title>Hinge-loss Markov random fields and probabilistic soft logic.</title>
+<date>2015</date>
+<note>arXiv:1505.04406 [cs.LG].</note>
+<contexts>
+<context citStr="Bach et al., 2015" endWordPosition="3141" position="20283" startWordPosition="3138"> or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density function of the form M (P (Y|X) a exp − )ArOr(Y, X) r=1 Or(Y, X) = (max{lr(Y, X), 0})pr , (1) where Or(Y, X) is a hinge-loss potential corresponding to an instantiation of a rule, and is specified by a linear function lr and optional exponent ρr E 11, 21. For example,</context>
+</contexts>
+<marker>Bach, Broecheler, Huang, Getoor, 2015</marker>
+<rawString>S. H. Bach, M. Broecheler, B. Huang, and L. Getoor. 2015. Hinge-loss Markov random fields and probabilistic soft logic. arXiv:1505.04406 [cs.LG].</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David M Blei</author>
+<author>Andrew Y Ng</author>
+<author>Michael I Jordan</author>
+</authors>
+<title>Latent Dirichlet allocation.</title>
+<date>2003</date>
+<journal>Journal of Machine Learning Research (JMLR).</journal>
+<contexts>
+<context citStr="Blei et al., 2003" endWordPosition="941" position="6111" startWordPosition="938"> and outperforms the model based only on SeededLDA. 2 Related Work To the best of our knowledge, the problem of predicting aspect and sentiment in MOOC forums has not yet been addressed in the literature. We review prior work in related areas here. Aspect-Sentiment in Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and </context>
+<context citStr="Blei et al., 2003" endWordPosition="2324" position="14743" startWordPosition="2321">tion Models In this section, we develop models and featureextraction techniques to address the challenges of aspect-sentiment prediction for MOOC forums. We present two weakly-supervised methods— first, using a seeded topic modeling approach (Jagarlamudi et al., 2012) to identify aspects and sentiment. Second, building upon this method, we then introduce a more powerful statistical relational model which reasons over the seeded LDA predictions as well as sentiment side-information to encode hierarchy information and correlations between sentiment and aspect. 4.1 Seeded LDA Model Topic models (Blei et al., 2003), which identify latent semantic themes from text corpora, have previously been successfully used to discover aspects for sentiment analysis (Diao et al., 2014). By equating the topics, i.e. discrete distributions over 1http://www.crowdflower.com/ words, with aspects and/or sentiment polarities, topic models can recover aspect-sentiment predictions. In the MOOC context we are specifically interested in problems with the courses, rather than general topics which may be identified by a topic model, such as the topics of the course material. To guide the topic model to identify aspects of interes</context>
+</contexts>
+<marker>Blei, Ng, Jordan, 2003</marker>
+<rawString>David M. Blei, Andrew Y. Ng, and Michael I. Jordan. 2003. Latent Dirichlet allocation. Journal of Machine Learning Research (JMLR).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Samuel Brody</author>
+<author>Noemie Elhadad</author>
+</authors>
+<title>An unsupervised aspect-sentiment model for online reviews.</title>
+<date>2010</date>
+<booktitle>In Proceedings of Human Language Technologies: Conference of the North American Chapter of the Association for Computational Linguistics (HLT).</booktitle>
+<contexts>
+<context citStr="Brody and Elhadad (2010)" endWordPosition="1032" position="6671" startWordPosition="1029">use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that around 90% of MOOC posts have only one aspect, which makes sentence-level aspect modeling inappropriate for our domain. Most previous approaches for sentiment rely on manually constructed lexicons of strongly positive and negative words (Fahrni and Klenner, 2008; Brody and Elhadad, 2010). These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, th</context>
+</contexts>
+<marker>Brody, Elhadad, 2010</marker>
+<rawString>Samuel Brody and Noemie Elhadad. 2010. An unsupervised aspect-sentiment model for online reviews. In Proceedings of Human Language Technologies: Conference of the North American Chapter of the Association for Computational Linguistics (HLT).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Snigdha Chaturvedi</author>
+<author>Dan Goldwasser</author>
+<author>Hal Daum´e</author>
+</authors>
+<title>Predicting instructor’s intervention in mooc forums.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL).</booktitle>
+<marker>Chaturvedi, Goldwasser, Daum´e, 2014</marker>
+<rawString>Snigdha Chaturvedi, Dan Goldwasser, and Hal Daum´e III. 2014. Predicting instructor’s intervention in mooc forums. In Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Qiming Diao</author>
+<author>Minghui Qiu</author>
+<author>Chao-Yuan Wu</author>
+<author>Alexander J Smola</author>
+<author>Jing Jiang</author>
+<author>Chong Wang</author>
+</authors>
+<title>Jointly modeling aspects, ratings and sentiments for movie recommendation (JMARS).</title>
+<date>2014</date>
+<booktitle>In Proceedings of the SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD).</booktitle>
+<contexts>
+<context citStr="Diao et al., 2014" endWordPosition="1201" position="7706" startWordPosition="1198"> These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat 75 Post 1: I have not received the midterm. Post 2: No lecture subtitles week, will they be uploaded? Post 3: I am ... and I am looking </context>
+<context citStr="Diao et al., 2014" endWordPosition="2348" position="14903" startWordPosition="2345">sent two weakly-supervised methods— first, using a seeded topic modeling approach (Jagarlamudi et al., 2012) to identify aspects and sentiment. Second, building upon this method, we then introduce a more powerful statistical relational model which reasons over the seeded LDA predictions as well as sentiment side-information to encode hierarchy information and correlations between sentiment and aspect. 4.1 Seeded LDA Model Topic models (Blei et al., 2003), which identify latent semantic themes from text corpora, have previously been successfully used to discover aspects for sentiment analysis (Diao et al., 2014). By equating the topics, i.e. discrete distributions over 1http://www.crowdflower.com/ words, with aspects and/or sentiment polarities, topic models can recover aspect-sentiment predictions. In the MOOC context we are specifically interested in problems with the courses, rather than general topics which may be identified by a topic model, such as the topics of the course material. To guide the topic model to identify aspects of interest, we use SeededLDA (Jagarlamudi et al., 2012), a variant of LDA which allows an analyst to “seed” topics by providing key words that should belong to the topic</context>
+</contexts>
+<marker>Diao, Qiu, Wu, Smola, Jiang, Wang, 2014</marker>
+<rawString>Qiming Diao, Minghui Qiu, Chao-Yuan Wu, Alexander J. Smola, Jing Jiang, and Chong Wang. 2014. Jointly modeling aspects, ratings and sentiments for movie recommendation (JMARS). In Proceedings of the SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Angela Fahrni</author>
+<author>Manfred Klenner</author>
+</authors>
+<title>Old wine or warm beer: Target-specific sentiment analysis of adjectives.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the Symposium on Affective Language in Human and Machine (AISB).</booktitle>
+<contexts>
+<context citStr="Fahrni and Klenner, 2008" endWordPosition="1094" position="7062" startWordPosition="1091">h for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that around 90% of MOOC posts have only one aspect, which makes sentence-level aspect modeling inappropriate for our domain. Most previous approaches for sentiment rely on manually constructed lexicons of strongly positive and negative words (Fahrni and Klenner, 2008; Brody and Elhadad, 2010). These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and se</context>
+</contexts>
+<marker>Fahrni, Klenner, 2008</marker>
+<rawString>Angela Fahrni and Manfred Klenner. 2008. Old wine or warm beer: Target-specific sentiment analysis of adjectives. In Proceedings of the Symposium on Affective Language in Human and Machine (AISB).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shobeir Fakhraei</author>
+<author>Bert Huang</author>
+<author>Louiqa Raschid</author>
+<author>Lise Getoor</author>
+</authors>
+<title>Network-based drug-target interaction prediction with probabilistic soft logic.</title>
+<date>2014</date>
+<journal>IEEE/ACM Transactions on Computational Biology and Bioinformatics (TCBB).</journal>
+<contexts>
+<context citStr="Fakhraei et al., 2014" endWordPosition="3119" position="20146" startWordPosition="3116"> decision, disrupt, technolog, market Table 6: Seed words for sentiment specific to online courses ture or dependencies between these values, or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density function of the form M (P (Y|X) a exp − )ArOr(Y, X) r=1 Or(Y, X) = (max{lr(Y, X), 0})pr , (1) where Or(Y, X) is a hinge-loss potent</context>
+</contexts>
+<marker>Fakhraei, Huang, Raschid, Getoor, 2014</marker>
+<rawString>Shobeir Fakhraei, Bert Huang, Louiqa Raschid, and Lise Getoor. 2014. Network-based drug-target interaction prediction with probabilistic soft logic. IEEE/ACM Transactions on Computational Biology and Bioinformatics (TCBB).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bert Huang</author>
+<author>Angelika Kimmig</author>
+<author>Lise Getoor</author>
+<author>Jennifer Golbeck</author>
+</authors>
+<title>A flexible framework for probabilistic models of social trust.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the International Conference on Social Computing, Behavioral-Cultural Modeling, &amp; Prediction (SBP).</booktitle>
+<contexts>
+<context citStr="Huang et al., 2013" endWordPosition="3127" position="20195" startWordPosition="3124">words for sentiment specific to online courses ture or dependencies between these values, or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density function of the form M (P (Y|X) a exp − )ArOr(Y, X) r=1 Or(Y, X) = (max{lr(Y, X), 0})pr , (1) where Or(Y, X) is a hinge-loss potential corresponding to an instantiation of a rule, </context>
+</contexts>
+<marker>Huang, Kimmig, Getoor, Golbeck, 2013</marker>
+<rawString>Bert Huang, Angelika Kimmig, Lise Getoor, and Jennifer Golbeck. 2013. A flexible framework for probabilistic models of social trust. In Proceedings of the International Conference on Social Computing, Behavioral-Cultural Modeling, &amp; Prediction (SBP).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jagadeesh Jagarlamudi</author>
+<author>Hal Daum´e</author>
+<author>Raghavendra Udupa</author>
+</authors>
+<title>Incorporating lexical priors into topic models.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the European Chapter of the Association for Computational Linguistics (EACL).</booktitle>
+<marker>Jagarlamudi, Daum´e, Udupa, 2012</marker>
+<rawString>Jagadeesh Jagarlamudi, Hal Daum´e, III, and Raghavendra Udupa. 2012. Incorporating lexical priors into topic models. In Proceedings of the European Chapter of the Association for Computational Linguistics (EACL).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Jo</author>
+<author>A H Oh</author>
+</authors>
+<title>Aspect and sentiment unification model for online review analysis.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the International Conference on Web Search and Data Mining (WSDM).</booktitle>
+<contexts>
+<context citStr="Jo and Oh (2011)" endWordPosition="1041" position="6720" startWordPosition="1038">, 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that around 90% of MOOC posts have only one aspect, which makes sentence-level aspect modeling inappropriate for our domain. Most previous approaches for sentiment rely on manually constructed lexicons of strongly positive and negative words (Fahrni and Klenner, 2008; Brody and Elhadad, 2010). These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a m</context>
+</contexts>
+<marker>Jo, Oh, 2011</marker>
+<rawString>Y. Jo and A.H. Oh. 2011. Aspect and sentiment unification model for online review analysis. In Proceedings of the International Conference on Web Search and Data Mining (WSDM).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Suin Kim</author>
+<author>Jianwen Zhang</author>
+<author>Zheng Chen</author>
+<author>Alice Oh</author>
+<author>Shixia Liu</author>
+</authors>
+<title>A hierarchical aspect-sentiment model for online reviews.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).</booktitle>
+<contexts>
+<context citStr="Kim et al., 2013" endWordPosition="1197" position="7687" startWordPosition="1194">nd Elhadad, 2010). These methods are effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat 75 Post 1: I have not received the midterm. Post 2: No lecture subtitles week, will they be uploaded? Post 3: I am ..</context>
+</contexts>
+<marker>Kim, Zhang, Chen, Oh, Liu, 2013</marker>
+<rawString>Suin Kim, Jianwen Zhang, Zheng Chen, Alice Oh, and Shixia Liu. 2013. A hierarchical aspect-sentiment model for online reviews. In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Varada Kolhatkar</author>
+<author>Heike Zinsmeister</author>
+<author>Graeme Hirst</author>
+</authors>
+<title>Annotating anaphoric shell nouns with their antecedents.</title>
+<date>2013</date>
+<booktitle>In Linguistic Annotation Workshop and Interoperability with Discourse.</booktitle>
+<contexts>
+<context citStr="Kolhatkar et al. (2013)" endWordPosition="2202" position="13908" startWordPosition="2199">f aspects discussed in online courses. We include courses from different disciplines (business, technology, history, and the sciences) to ensure broad coverage of aspects. Although we adopt an approach that does not require labeled data for training, which is important for most practical MOOC scenarios, in order to validate our methods we obtain labels for the sampled posts using Crowdflower,1 an online crowd-sourcing annotation platform. Each post was annotated by at least 3 annotators. Crowdflower calculates confidence in labels by computing trust scores for annotators using test questions. Kolhatkar et al. (2013) provide a detailed analysis of Crowdflower trust calculations and the relationship to inter-annotator agreement. We follow their recommendations and retain only labels with confidence &gt; 0.5. 4 Aspect-Sentiment Prediction Models In this section, we develop models and featureextraction techniques to address the challenges of aspect-sentiment prediction for MOOC forums. We present two weakly-supervised methods— first, using a seeded topic modeling approach (Jagarlamudi et al., 2012) to identify aspects and sentiment. Second, building upon this method, we then introduce a more powerful statistica</context>
+</contexts>
+<marker>Kolhatkar, Zinsmeister, Hirst, 2013</marker>
+<rawString>Varada Kolhatkar, Heike Zinsmeister, and Graeme Hirst. 2013. Annotating anaphoric shell nouns with their antecedents. In Linguistic Annotation Workshop and Interoperability with Discourse.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chenghua Lin</author>
+<author>Yulan He</author>
+</authors>
+<title>Joint sentiment/topic model for sentiment analysis.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Conference on Information and Knowledge Management (CIKM).</booktitle>
+<contexts>
+<context citStr="Lin and He, 2009" endWordPosition="958" position="6201" startWordPosition="955">edge, the problem of predicting aspect and sentiment in MOOC forums has not yet been addressed in the literature. We review prior work in related areas here. Aspect-Sentiment in Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that a</context>
+</contexts>
+<marker>Lin, He, 2009</marker>
+<rawString>Chenghua Lin and Yulan He. 2009. Joint sentiment/topic model for sentiment analysis. In Proceedings of the Conference on Information and Knowledge Management (CIKM).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chenghua Lin</author>
+<author>Yulan He</author>
+<author>R Everson</author>
+<author>S Ruger</author>
+</authors>
+<title>Weakly supervised joint sentiment-topic detection from text.</title>
+<date>2012</date>
+<journal>IEEE Transactions on Knowledge and Data Engineering.</journal>
+<contexts>
+<context citStr="Lin et al., 2012" endWordPosition="1209" position="7744" startWordPosition="1206">ine review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat 75 Post 1: I have not received the midterm. Post 2: No lecture subtitles week, will they be uploaded? Post 3: I am ... and I am looking forward to learn more ... Table 1: Exa</context>
+</contexts>
+<marker>Lin, He, Everson, Ruger, 2012</marker>
+<rawString>Chenghua Lin, Yulan He, R. Everson, and S. Ruger. 2012. Weakly supervised joint sentiment-topic detection from text. IEEE Transactions on Knowledge and Data Engineering.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bing Liu</author>
+<author>Lei Zhang</author>
+</authors>
+<title>A survey of opinion mining and sentiment analysis.</title>
+<date>2012</date>
+<booktitle>In Mining Text Data.</booktitle>
+<contexts>
+<context citStr="Liu and Zhang, 2012" endWordPosition="926" position="6020" startWordPosition="923"> We demonstrate that the proposed HL-MRF model can predict fine-grained aspects and sentiment and outperforms the model based only on SeededLDA. 2 Related Work To the best of our knowledge, the problem of predicting aspect and sentiment in MOOC forums has not yet been addressed in the literature. We review prior work in related areas here. Aspect-Sentiment in Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge tha</context>
+<context citStr="Liu and Zhang, 2012" endWordPosition="1613" position="10183" startWordPosition="1610">of discussion forum posts and thus provides a more informed analysis of MOOC posts. 3 Problem Setting and Data MOOC participants primarily communicate through discussion forums, consisting of posts, which are short pieces of text. Table 1 provides examples of posts in MOOC forums. Posts 1 and 2 report issues and feedback for the course, while post 3 is a social interaction message. Our goal is to distinguish problem-reporting posts such as 1 and 2 from social posts such as 3, and to identify the issues that are being discussed. We formalize this task as an aspect-sentiment prediction problem (Liu and Zhang, 2012). The issues reported in MOOC forums can be related to the different elements of the course such as lectures and quizzes, which are referred to as aspects. The aspects are selected based on MOOC domain expertise and inspiration from Stump et al. (2013), aiming to cover common concerns that could benefit from intervention. The task is to predict these COARSE-ASPECT FINE-ASPECT Description # of posts LECTURE-CONTENT Content of lectures. 559 LECTURE-VIDEO Video of lectures. 215 LECTURE LECTURE-SUBTITLES Subtitles of lecture. 149 LECTURE-AUDIO Audio of lecture. 136 LECTURE-LECTURER Delivery of ins</context>
+</contexts>
+<marker>Liu, Zhang, 2012</marker>
+<rawString>Bing Liu and Lei Zhang. 2012. A survey of opinion mining and sentiment analysis. In Mining Text Data.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Edward Loper</author>
+<author>Steven Bird</author>
+</authors>
+<title>NLTK: The natural language toolkit.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the ACL Workshop on Effective Tools and Methodologies for Teaching Natural Language Processing and Computational Linguistics (ETMTNLP).</booktitle>
+<contexts>
+<context citStr="Loper and Bird, 2002" endWordPosition="2642" position="16696" startWordPosition="2639">rses, such as difficult, error, issue, problem, and misunderstand. Additionally, we also use SeededLDA for isolating some common problems in online courses that are associated with sentiment, such as difficulty, availability, correctness, and coursespecific seed words from the syllabus as described in Table 6. Finally, having inferred the SeededLDA model from the data set, for each post p we predict the most likely aspect and the most likely sentiment polarity according to the post’s inferred distribution over topics θ(P). In our experiments, we tokenize and stem the posts using NLTK toolkit (Loper and Bird, 2002), and use a stop word list tuned to online course discussion forums. The topic model Dirichlet hyperparameters are set to α = 0.01, Q = 0.01 in our experiments. For SeededLDA models corresponding to the seed sets in Tables 3, 4, and 5, the number of topics is equal to the number of seeded topics. For SeededLDA models corresponding to the seed words in Tables 6 and 3, we use 10 topics, allowing for some unseeded topics that are not captured by the seed words. 4.2 Hinge-loss Markov Random Fields The approach described in the previous section automatically identifies user-seeded aspects and senti</context>
+</contexts>
+<marker>Loper, Bird, 2002</marker>
+<rawString>Edward Loper and Steven Bird. 2002. NLTK: The natural language toolkit. In Proceedings of the ACL Workshop on Effective Tools and Methodologies for Teaching Natural Language Processing and Computational Linguistics (ETMTNLP).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bin Lu</author>
+<author>Myle Ott</author>
+<author>Claire Cardie</author>
+<author>Benjamin K Tsou</author>
+</authors>
+<title>Multi-aspect sentiment analysis with topic models.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the International Conference on Data Mining Workshops (ICDMW).</booktitle>
+<contexts>
+<context citStr="Lu et al., 2011" endWordPosition="954" position="6182" startWordPosition="951">best of our knowledge, the problem of predicting aspect and sentiment in MOOC forums has not yet been addressed in the literature. We review prior work in related areas here. Aspect-Sentiment in Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online revi</context>
+</contexts>
+<marker>Lu, Ott, Cardie, Tsou, 2011</marker>
+<rawString>Bin Lu, Myle Ott, Claire Cardie, and Benjamin K. Tsou. 2011. Multi-aspect sentiment analysis with topic models. In Proceedings of the International Conference on Data Mining Workshops (ICDMW).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arjun Mukherjee</author>
+<author>Bing Liu</author>
+</authors>
+<title>Aspect extraction through semi-supervised modeling.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL).</booktitle>
+<contexts>
+<context citStr="Mukherjee and Liu (2012)" endWordPosition="1239" position="7910" startWordPosition="1236">s my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat 75 Post 1: I have not received the midterm. Post 2: No lecture subtitles week, will they be uploaded? Post 3: I am ... and I am looking forward to learn more ... Table 1: Example posts from MOOC forums. Aspect words are highlighted in bold. aspect-sentiment relationships. It is important to note that a broad majority of the previous work </context>
+</contexts>
+<marker>Mukherjee, Liu, 2012</marker>
+<rawString>Arjun Mukherjee and Bing Liu. 2012. Aspect extraction through semi-supervised modeling. In Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jay Pujara</author>
+<author>Hui Miao</author>
+<author>Lise Getoor</author>
+<author>William Cohen</author>
+</authors>
+<title>Knowledge graph identification.</title>
+<date>2013</date>
+<booktitle>In International Semantic Web Conference (ISWC).</booktitle>
+<contexts>
+<context citStr="Pujara et al., 2013" endWordPosition="3101" position="20014" startWordPosition="3098">in, evolut, sequenc, chromosom, genet, speci, peopl, popul, evolv, mutat, ancestri COURSE-3: compani, product, industri, strategi, decision, disrupt, technolog, market Table 6: Seed words for sentiment specific to online courses ture or dependencies between these values, or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density</context>
+</contexts>
+<marker>Pujara, Miao, Getoor, Cohen, 2013</marker>
+<rawString>Jay Pujara, Hui Miao, Lise Getoor, and William Cohen. 2013. Knowledge graph identification. In International Semantic Web Conference (ISWC).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arti Ramesh</author>
+<author>Dan Goldwasser</author>
+<author>Bert Huang</author>
+<author>Hal Daume</author>
+<author>Lise Getoor</author>
+</authors>
+<title>Learning latent engagement patterns of students in online courses.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).</booktitle>
+<contexts>
+<context citStr="Ramesh et al. (2014" endWordPosition="1450" position="9165" startWordPosition="1447">pecific challenges of online review data. As discussed in detail above, MOOC forum data have substantially different properties, and our approach is the first to be designed particularly for this domain. Learning Analytics In another line of research, there is a growing body of work on the analysis of online courses. Regarding MOOC forum data, Stump et al. (2013) propose a framework for taxonomically categorizing forum posts, leveraging manual annotations. We differ from their approach in that we develop an automatic system to predict MOOC forum categories without using labeled training data. Ramesh et al. (2014b) categorize forum posts into three broad categories in order to predict student engagement. Unlike this method, our system is capable of fine-grained categorization and of identifying aspects in MOOCS. Chaturvedi et al. (2014) focus on predicting instructor intervention using lexicon features and thread features. In contrast, our system is capable of predicting fine MOOC aspects and sentiment of discussion forum posts and thus provides a more informed analysis of MOOC posts. 3 Problem Setting and Data MOOC participants primarily communicate through discussion forums, consisting of posts, whi</context>
+<context citStr="Ramesh et al., 2014" endWordPosition="3109" position="20071" startWordPosition="3106">, evolv, mutat, ancestri COURSE-3: compani, product, industri, strategi, decision, disrupt, technolog, market Table 6: Seed words for sentiment specific to online courses ture or dependencies between these values, or any additional side-information. To address this, we propose a more powerful approach using hingeloss Markov random fields (HL-MRFs), a scalable class of continuous, conditional graphical models (Bach et al., 2013). HL-MRFs have achieved state-of-the-art performance in many domains including knowledge graph identification (Pujara et al., 2013), understanding engagements in MOOCs (Ramesh et al., 2014a), biomedicine and multirelational link prediction (Fakhraei et al., 2014), and modelling social trust (Huang et al., 2013). These models can be specified using Probabilistic Soft Logic (PSL) (Bach et al., 2015), a weighted first order logical templating language. An example of a PSL rule is A : P(a) n Q(a, b) —* R(b), where P, Q, and R are predicates, a and b are variables, and A is the weight associated with the rule. The weight of the rule indicates its importance in the HL-MRF probabilistic model, which defines a probability density function of the form M (P (Y|X) a exp − )ArOr(Y, X) r=1 </context>
+</contexts>
+<marker>Ramesh, Goldwasser, Huang, Daume, Getoor, 2014</marker>
+<rawString>Arti Ramesh, Dan Goldwasser, Bert Huang, Hal Daume III, and Lise Getoor. 2014a. Learning latent engagement patterns of students in online courses. In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arti Ramesh</author>
+<author>Dan Goldwasser</author>
+<author>Bert Huang</author>
+<author>Hal Daum´e</author>
+<author>Lise Getoor</author>
+</authors>
+<title>Understanding MOOC discussion forums using seeded lda.</title>
+<date>2014</date>
+<booktitle>In ACL Workshop on Innovative Use of NLP for Building Educational Applications (BEA).</booktitle>
+<marker>Ramesh, Goldwasser, Huang, Daum´e, Getoor, 2014</marker>
+<rawString>Arti Ramesh, Dan Goldwasser, Bert Huang, Hal Daum´e III, and Lise Getoor. 2014b. Understanding MOOC discussion forums using seeded lda. In ACL Workshop on Innovative Use of NLP for Building Educational Applications (BEA).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Glenda S Stump</author>
+<author>Jennifer DeBoer</author>
+<author>Jonathan Whittinghill</author>
+<author>Lori Breslow</author>
+</authors>
+<title>Development of a framework to classify MOOC discussion forum posts: Methodology and challenges.</title>
+<date>2013</date>
+<booktitle>In NIPS Workshop on Data Driven Education.</booktitle>
+<contexts>
+<context citStr="Stump et al. (2013)" endWordPosition="1412" position="8911" startWordPosition="1409"> I am looking forward to learn more ... Table 1: Example posts from MOOC forums. Aspect words are highlighted in bold. aspect-sentiment relationships. It is important to note that a broad majority of the previous work on aspect sentiment focuses on the specific challenges of online review data. As discussed in detail above, MOOC forum data have substantially different properties, and our approach is the first to be designed particularly for this domain. Learning Analytics In another line of research, there is a growing body of work on the analysis of online courses. Regarding MOOC forum data, Stump et al. (2013) propose a framework for taxonomically categorizing forum posts, leveraging manual annotations. We differ from their approach in that we develop an automatic system to predict MOOC forum categories without using labeled training data. Ramesh et al. (2014b) categorize forum posts into three broad categories in order to predict student engagement. Unlike this method, our system is capable of fine-grained categorization and of identifying aspects in MOOCS. Chaturvedi et al. (2014) focus on predicting instructor intervention using lexicon features and thread features. In contrast, our system is ca</context>
+<context citStr="Stump et al. (2013)" endWordPosition="1657" position="10435" startWordPosition="1654">les of posts in MOOC forums. Posts 1 and 2 report issues and feedback for the course, while post 3 is a social interaction message. Our goal is to distinguish problem-reporting posts such as 1 and 2 from social posts such as 3, and to identify the issues that are being discussed. We formalize this task as an aspect-sentiment prediction problem (Liu and Zhang, 2012). The issues reported in MOOC forums can be related to the different elements of the course such as lectures and quizzes, which are referred to as aspects. The aspects are selected based on MOOC domain expertise and inspiration from Stump et al. (2013), aiming to cover common concerns that could benefit from intervention. The task is to predict these COARSE-ASPECT FINE-ASPECT Description # of posts LECTURE-CONTENT Content of lectures. 559 LECTURE-VIDEO Video of lectures. 215 LECTURE LECTURE-SUBTITLES Subtitles of lecture. 149 LECTURE-AUDIO Audio of lecture. 136 LECTURE-LECTURER Delivery of instructor. 69 QUIZ-CONTENT Content in quizzes. 439 QUIZ QUIZ-GRADING Grading of quizzes. 360 QUIZ-SUBMISSION Quiz submission. 329 QUIZ-DEADLINE Deadline of quizzes. 142 CERTIFICATE Course certificates. 194 SOCIAL Social interaction posts. 1187 Table 2: D</context>
+</contexts>
+<marker>Stump, DeBoer, Whittinghill, Breslow, 2013</marker>
+<rawString>Glenda S. Stump, Jennifer DeBoer, Jonathan Whittinghill, and Lori Breslow. 2013. Development of a framework to classify MOOC discussion forum posts: Methodology and challenges. In NIPS Workshop on Data Driven Education.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ivan Titov</author>
+<author>Ryan McDonald</author>
+</authors>
+<title>Modeling online reviews with multi-grain topic models.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the International Conference on World Wide Web (WWW).</booktitle>
+<contexts>
+<context citStr="Titov and McDonald (2008)" endWordPosition="987" position="6386" startWordPosition="984"> Online Reviews It is valuable to identify the sentiment of online reviews towards aspects such as hotel cleanliness and cellphone screen brightness, and sentiment analysis at the aspect-level has been studied extensively in this context (Liu and Zhang, 2012). Several of these methods use latent Dirichlet allocation topic models (Blei et al., 2003) and variants of it for detecting aspect and sentiment (Lu et al., 2011; Lin and He, 2009). Liu and Zhang (2012) provide a comprehensive survey of techniques for aspect and sentiment analysis. Here, we discuss works that are closely related to ours. Titov and McDonald (2008) emphasize the importance of an unsupervised approach for aspect detection. However, the authors also indicate that standard LDA (Blei et al., 2003) methods capture global topics and not necessarily pertinent aspects — a challenge that we address in this work. Brody and Elhadad (2010), Titov and McDonald (2008), and Jo and Oh (2011) apply variations of LDA at the sentence level for online reviews. We find that around 90% of MOOC posts have only one aspect, which makes sentence-level aspect modeling inappropriate for our domain. Most previous approaches for sentiment rely on manually constructe</context>
+</contexts>
+<marker>Titov, McDonald, 2008</marker>
+<rawString>Ivan Titov and Ryan McDonald. 2008. Modeling online reviews with multi-grain topic models. In Proceedings of the International Conference on World Wide Web (WWW).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wayne Xin Zhao</author>
+<author>Jing Jiang</author>
+<author>Hongfei Yan</author>
+<author>Xiaoming Li</author>
+</authors>
+<title>Jointly modeling aspects and opinions with a maxEnt-LDA hybrid.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP).</booktitle>
+<contexts>
+<context citStr="Zhao et al., 2010" endWordPosition="1205" position="7725" startWordPosition="1202">effective in an online review context, however sentiment in MOOC forum posts is often implicit, and not necessarily indicated by standard lexicons. For example, the post “Where is my certificate? Waiting over a month for it.” expresses negative sentiment toward the certificate aspect, but does not include any typical negative sentiment words. In our work, we use a data-driven model-based approach to discover domain-specific lexicon information guided by small sets of seed words. There has also been substantial work on joint models for aspect and sentiment (Kim et al., 2013; Diao et al., 2014; Zhao et al., 2010; Lin et al., 2012), and we adopt such an approach in this paper. Kim et al. (2013) use a hierarchical aspectsentiment model and evaluate it for online reviews. Mukherjee and Liu (2012) use seed words for discovering aspect-based sentiment topics. Drawing on the ideas of Mukherjee and Liu (2012) and Kim et al. (2013), we propose a statistical relational learning approach that combines the advantages of seed words, aspect hierarchy, and flat 75 Post 1: I have not received the midterm. Post 2: No lecture subtitles week, will they be uploaded? Post 3: I am ... and I am looking forward to learn mo</context>
+</contexts>
+<marker>Zhao, Jiang, Yan, Li, 2010</marker>
+<rawString>Wayne Xin Zhao, Jing Jiang, Hongfei Yan, and Xiaoming Li. 2010. Jointly modeling aspects and opinions with a maxEnt-LDA hybrid. In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP).</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

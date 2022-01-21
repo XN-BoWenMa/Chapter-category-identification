@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000057" no="0">
+<title confidence="0.995302">
+SENSEMBED: Learning Sense Embeddings
+for Word and Relational Similarity
+</title>
+<author confidence="0.998401">
+Ignacio Iacobacci, Mohammad Taher Pilehvar and Roberto Navigli
+</author>
+<affiliation confidence="0.9988915">
+Department of Computer Science
+Sapienza University of Rome
+</affiliation>
+<email confidence="0.997642">
+{iacobacci,pilehvar,navigli}@di.uniroma1.it
+</email>
+<sectionHeader confidence="0.997365" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999819363636364">Word embeddings have recently gained considerable popularity for modeling words in different Natural Language Processing (NLP) tasks including semantic similarity measurement. However, notwithstanding their success, word embeddings are by their very nature unable to capture polysemy, as different meanings of a word are conflated into a single representation. In addition, their learning process usually relies on massive corpora only, preventing them from taking advantage of structured knowledge. We address both issues by proposing a multifaceted approach that transforms word embeddings to the sense level and leverages knowledge from a large semantic network for effective semantic similarity measurement. We evaluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets.</bodyText>
+<sectionHeader confidence="0.999517" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999970339285715">The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several research works have tried to address these problems. For instance, basing their work on the original sense discrimination approach of Reisinger and Mooney (2010), Huang et al. (2012) applied K-means clustering to decompose word embeddings into multiple prototypes, each denoting a distinct meaning of the target word. However, the sense representations obtained are not linked to any sense inventory, a mapping that consequently has to be carried out either manually, or with the help of sense-annotated data. Another line of research investigates the possibility of taking advantage of existing semantic resources in word embeddings. A good example is the Relation Constrained Model (Yu and Dredze, 2014). When computing word embeddings, this model replaces the original co-occurrence clues from text corpora with the relationship information derived from the Paraphrase Database1 (Ganitkevitch et al., 2013, PPDB), an automatically extracted dataset of paraphrase pairs. However, none of these techniques have simultaneously solved both above-mentioned issues, i.e., inability to model polysemy and reliance on text corpora as the only source of knowledge. We propose a novel approach, called SENSEMBED, which addresses both drawbacks by exploiting semantic knowledge for modeling arbitrary word senses in a large sense inventory. We evaluate our representation on multiple datasets in two standard tasks: word-level semantic similarity and relational similarity. Experimental results show that moving from words to senses, while making use of lexical-semantic knowledge bases, makes embeddings significantly more powerful, resulting in consistent performance improvement across tasks.</bodyText>
+<footnote confidence="0.983276">
+1http://paraphrase.org/#/download
+</footnote>
+<page confidence="0.967958">
+95
+</page>
+<note confidence="0.977875333333333">
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics
+and the 7th International Joint Conference on Natural Language Processing, pages 95–105,
+Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.9997897">Our contributions are twofold: (1) we propose a knowledge-based approach for obtaining continuous representations for individual word senses; and (2) by leveraging these representations and lexical-semantic knowledge, we put forward a semantic similarity measure with state-of-the-art performance on multiple datasets.</bodyText>
+<sectionHeader confidence="0.986623" genericHeader="method">
+2 Sense Embeddings
+</sectionHeader>
+<bodyText confidence="0.999916525">Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In fact, the largest existing manually sense annotated dataset is the SemCor corpus (Miller et al., 1993), whose creation dates back to more than two decades ago. In order to alleviate this issue, we leveraged a state-of-the-art Word Sense Disambiguation (WSD) algorithm to automatically generate large amounts of sense-annotated corpora. In the rest of Section 2, first, in Section 2.1, we describe the sense inventory used for SENSEMBED. Section 2.2 introduces the corpus and the disambiguation procedure used to sense annotate this corpus. Finally in Section 2.3 we discuss how we leverage the automatically sense-tagged dataset for the training of sense embeddings.</bodyText>
+<subsectionHeader confidence="0.970106">
+2.1 Underlying sense inventory
+</subsectionHeader>
+<bodyText confidence="0.999994230769231">We selected BabelNet2 (Navigli and Ponzetto, 2012) as our underlying sense inventory. The resource is a merger of WordNet with multiple other lexical resources, the most prominent of which is Wikipedia. As a result, the manually-curated information in WordNet is augmented with the complementary knowledge from collaborativelyconstructed resources, providing a high coverage of domain-specific terms and named entities and a rich set of relations. The usage of BabelNet as our underlying sense inventory provides us with the advantage of having our sense embeddings readily applicable to multiple sense inventories.</bodyText>
+<subsectionHeader confidence="0.999546">
+2.2 Generating a sense-annotated corpus
+</subsectionHeader>
+<bodyText confidence="0.999968516129032">As our corpus we used the September-2014 dump of the English Wikipedia.3 This corpus comprises texts from various domains and topics and provides a suitable word coverage. The unprocessed text of the corpus includes approximately three billion tokens and more than three million unique words. We only consider tokens with at least five occurrences. As our WSD system, we opted for Babelfy4 (Moro et al., 2014), a state-of-the-art WSD and Entity Linking algorithm based on BabelNet’s semantic network. Babelfy first models each concept in the network through its corresponding “semantic signature” by leveraging a graph random walk algorithm. Given an input text, the algorithm uses the generated semantic signatures to construct a subgraph of the semantic network representing the input text. Babelfy then searches this subgraph for the intended sense of each content word using an iterative process and a dense subgraph heuristic. Thanks to its use of BabelNet, Babelfy inherently features multilinguality; hence, our representation approach is equally applicable to languages other than English. In order to guarantee high accuracy and to avoid bias towards more frequent senses, we do not consider those judgements made by Babelfy while backing off to the most frequent sense, a case that happens when a certain confidence threshold is not met by the algorithm. The disambiguated items with high confidence correspond to more than 50% of all the bank' bank' number' number' hood' hood'</bodyText>
+<footnote confidence="0.999877">
+2http://www.babelnet.org/
+3http://dumps.wikimedia.org/enwiki/
+4http://www.babelfy.org/
+</footnote>
+<page confidence="0.99519">
+96
+</page>
+<equation confidence="0.981701285714286">
+1 2 4 3 1 12
+(geographical) (financial) (phone) (acting) (gang) (convertible car)
+upstream' commercial bank' calls' appearing� tortures' taillights'
+1 1 1 6 5 1
+downstream'1 financial institution' dialled� minor roles' vengeance' grille'
+1 1 1 1 2
+runs� national bank' operator' stage production' 1 badguy' bumper'
+6 1 20 1 2
+confluence' trust company' telephone network' 1 supporting roles' brutal� fascia'
+1 1 1 1 2
+river' savings bank' telephony' leading roles' execution' rear window'
+1 1 1 1 1 1
+stream' banking' subscriber' stage shows' murders' headlights'
+1 1 2 1 1 1
+</equation>
+<tableCaption confidence="0.983363">
+Table 1: Closest senses to two senses of three ambiguous nouns: bank, number, and hood
+content words.</tableCaption>
+<bodyText confidence="0.9887775">As a result of the disambiguation step, we obtain sense-annotated data comprising around one billion tagged words with at least five occurrences and 2.5 million unique word senses.</bodyText>
+<subsectionHeader confidence="0.999589">
+2.3 Learning sense embeddings
+</subsectionHeader>
+<bodyText confidence="0.99999390625">The disambiguated text is processed with the Word2vec (Mikolov et al., 2013a) toolkit5. We applied Word2vec to produce continuous representations of word senses based on the distributional information obtained from the annotated corpus. For each target word sense, a representation is computed by maximizing the log likelihood of the word sense with respect to its context. We opted for the Continuous Bag of Words (CBOW) architecture, the objective of which is to predict a single word (word sense in our case) given its context. The context is defined by a window, typically with the size of five words on each side with the paragraph ending barrier. We used hierarchical softmax as our training algorithm. The dimensionality of the vectors were set to 400 and the subsampling of frequent words to 10−3. As a result of the learning process, we obtain vector-based semantic representations for each of the word senses in the automatically-annotated corpus. We show in Table 1 some of the closest senses to six sample word senses: the geographical and financial senses of river, the performance and phone number senses of number, and the gang and car senses of hood.6 As can be seen, sense embeddings can capture effectively the clear distinctions between different senses of a word. Additionally, the closest senses are not necessarily constrained to the same part of speech. For instance, the river sense of bank has the adverbs upstream and downstream and the “move along, of liquid” sense of the verb run among its closest senses.</bodyText>
+<footnote confidence="0.999267333333333">
+5http://code.google.com/p/word2vec/
+6We follow Navigli (2009) and show the nth sense of the
+word with part of speech x as word�'.
+</footnote>
+<subsectionHeader confidence="0.876573">
+Synset Description Synonymous senses
+</subsectionHeader>
+<footnote confidence="0.478592">
+hood'1 rough or violent youth hoodlum'1, goon'2, thug'1
+hood'4 photography equipment lens hood'1
+hood'9 automotive body parts bonnet'2 , cowl' 1 , cowling' 1
+hood'12 car with retractable top convertible'1
+</footnote>
+<tableCaption confidence="0.656769">
+Table 2: Sample initial senses of the noun hood
+(leftmost column) and their synonym expansion
+(rightmost column).
+</tableCaption>
+<sectionHeader confidence="0.989535" genericHeader="method">
+3 Similarity Measurement
+</sectionHeader>
+<bodyText confidence="0.9999245">This Section describes how we leverage the generated sense embeddings for the computation of word similarity and relational similarity. We start the Section by explaining how we associate a word with its set of corresponding senses and how we compare pairs of senses in Sections 3.1 and 3.2, respectively. We then illustrate our approach for measuring word similarity, together with its knowledge-based enhancement, in Section 3.3, and relational similarity in Section 3.4. Hereafter, we refer to our similarity measurement approach as SENSEMBED.</bodyText>
+<subsectionHeader confidence="0.999491">
+3.1 Associating senses with words
+</subsectionHeader>
+<bodyText confidence="0.999957866666667">In order to be able to utilize our sense embeddings for a word-level task such as word similarity measurement, we need to associate each word with its set of relevant senses, each modeled by its corresponding vector. Let 5,,, be the set of senses associated with the word w. Our objective is to cover as many senses as can be associated with the word w. To this end we first initialize the set 5,,, by the word senses of the word w and all its synonymous word senses, as defined in the BabelNet sense inventory. We show in Table 2 some of the senses of the noun hood and the synonym expansion for these senses. We further expand the set 5,,, by repeating the same process for the lemma of word w (if not already in lemma form).</bodyText>
+<page confidence="0.997329">
+97
+</page>
+<subsectionHeader confidence="0.991723">
+3.2 Vector comparison
+</subsectionHeader>
+<bodyText confidence="0.999927">For comparing vectors, we use the Tanimoto distance. The measure is a generalization of Jaccard similarity for real-valued vectors in [-1, 1]:</bodyText>
+<equation confidence="0.9994755">
+~w1 · ~w2
+k ~w1 k2 + k ~w
+2 k
+2 − ~w1 · w2 (1)
+</equation>
+<bodyText confidence="0.9999505">where ~w1 · ~w2 is the dot product of the vectors ~w1 and ~w2 and k ~w1k is the Euclidean norm of ~w1. Rink and Harabagiu (2013) reported consistent improvements when using vector space metrics, in particular the Tanimoto distance, on the SemEval-2012 task on relational similarity (Jurgens et al., 2012) in comparison to several other measures that are designed for probability distributions, such as Jensen-Shannon divergence and Hellinger distance.</bodyText>
+<subsectionHeader confidence="0.99938">
+3.3 Word similarity
+</subsectionHeader>
+<bodyText confidence="0.999936">We show in Algorithm 1 our procedure for measuring the semantic similarity of a pair of input words w1 and w2. The algorithm also takes as its inputs the similarity strategy and the weighted similarity parameter α (Section 3.3.1) along with a graph vicinity factor flag (Section 3.3.2).</bodyText>
+<subsectionHeader confidence="0.714598">
+3.3.1 Similarity measurement strategy
+</subsectionHeader>
+<bodyText confidence="0.999990333333333">We take two strategies for calculating the similarity of the given words w1 and w2. Let Sw1 and Sw2 be the sets of senses associated with the two respective input words w1 and w2, and let ~si be the sense embedding vector of the sense si. In the first strategy, which we refer to as closest, we follow the conventional approach (Budanitsky and Hirst, 2006) and measure the similarity of the two words as the similarity of their closest senses, i.e.:</bodyText>
+<equation confidence="0.976647666666667">
+Simclosest (w1, w2) = max
+s1ES-1
+s2ES-2
+</equation>
+<bodyText confidence="0.973590333333333">However, taking the similarity of the closest senses of two words as their overall similarity ignores the fact that the other senses can also contribute to the process of similarity judgement. In fact, psychological studies suggest that humans, while judging semantic similarity of a pair of words, consider different meanings of the two words and not only the closest ones (Tversky, 1977; Markman and Gentner, 1993). For instance, the WordSim-353 dataset (Finkelstein et al., 2002) contains the word pair brother-monk. Despite having the religious devotee sense in common, the Algorithm 1 Word Similarity Input: Two words w1 and w2 Str, the similarity strategy Vic, the graph vicinity factor flag α parameter for the weighted strategy Output: The similarity between w1 and w2</bodyText>
+<listItem confidence="0.992306055555556">1: Sw1 ← getSenses(w1), Sw2 ← getSenses(w2) 2: if Str is closest then 3: sim ← -1 4: else 5: sim ← 0 6: end if 7: for each s1 ∈ Sw1 and s2 ∈ Sw2 do 8: if Vic is true then 9: tmp ← T �(~s1,~s2) 10: else 11: tmp ← T (~s1,~s2) 12: end if 13: if Str is closest then 14: sim ← max (sim, tmp) 15: else 16: sim ← sim + tmpα × d(s1) × d(s2) 17: end if 18: end for two words are assigned the similarity judgement of 6.27, which is slightly above the middle point in the similarity scale [0,10] of the dataset.</listItem>
+<bodyText confidence="0.99987495">This clearly indicates that other non-synonymous, yet still related, senses of the two words have also played a role in the similarity judgement. Additionally, the relatively low score reflects the fact that the religious devotee sense is not a dominant meaning of the word brother. We therefore put forward another similarity measurement strategy, called weighted, in which different senses of the two words contribute to their similarity computation, but the contributions are scaled according to their relative importance. To this end, we first leverage sense occurrence frequencies in order to estimate the dominance of each specific word sense. For each word w, we first compute the dominance of its sense s ∈ Sw by dividing the frequency of s by the overall frequency of all senses associated with w, i.e., Sw:</bodyText>
+<equation confidence="0.9996745">
+d(s) =
+EsIE S- efreq(st) (3)
+</equation>
+<bodyText confidence="0.9989095">We further recognize that the importance of a specific sense of a word can also be triggered by the word it is being compared with.</bodyText>
+<equation confidence="0.9999345">
+T ( ~w1, ~w2) =
+T (~s1, ~s2) (2)
+</equation>
+<page confidence="0.986292">
+98
+</page>
+<bodyText confidence="0.999313714285714">We model this by biasing the similarity computation towards closer senses, by increasing the contribution of closer senses through a power function with parameter α. The similarity of a pair of words w1 and w2 according to the weighted strategy is computed as:</bodyText>
+<equation confidence="0.997732">
+Simweighted (w1, w2) =
+d(s1) d(s2) T (~s1, ~s2)α (4)
+</equation>
+<bodyText confidence="0.999808333333333">where the α parameter is a real-valued constant greater than one. We show in Section 4.1.3 how we tune the value of this parameter.</bodyText>
+<subsectionHeader confidence="0.825824">
+3.3.2 Enhancing similarity accuracy
+</subsectionHeader>
+<bodyText confidence="0.999914677419355">Our similarity measurement approach takes advantage of lexical knowledge at two different levels. First, as we described in Sections 2.2 and 2.3, we use a knowledge-based disambiguation approach, i.e., Babelfy, which exploits BabelNet’s semantic network. Second, we put forward a methodology that leverages the relations in BabelNet’s graph for enhancing the accuracy of similarity judgements, to be discussed next. As a distributional vector representation technique, our sense embeddings can potentially suffer from inaccurate modeling of less frequent word senses. In contrast, our underlying sense inventory provides a full coverage of all its concepts, with relations that are taken from WordNet and Wikipedia. In order to make use of the complementary information provided by our lexical knowledge base and to obtain more accurate similarity judgements, we introduce a graph vicinity factor, that combines the structural knowledge from BabelNet’s semantic network and the distributional representation of sense embeddings. To this end, for a given sense pair, we scale the similarity judgement obtained by comparing their corresponding sense embeddings, based on their placement in the network. Let E be the set of all sense-to-sense relations provided by BabelNet’s semantic network, i.e., E = {(si, sj) : si − sj}. Then, the similarity of a pair of words with the graph vicinity factor in formulas 2 and 4 is computed by replacing T with T*, defined as:</bodyText>
+<equation confidence="0.964383333333333">
+�
+T* T(sl, ~s2) × β, if
+(s1, s2) ∈ E
+(sly s2) _
+T (~s1, ~s2) × β−1, otherwise
+(5)
+</equation>
+<bodyText confidence="0.999926125">We show in Section 4.1.3 how we tune the parameter β. This procedure is particularly helpful for the case of less frequent word senses that do not have enough contextual information to allow an effective representation. For instance, the SimLex-999 dataset (Hill et al., 2014), which we use as our tuning dataset (see Section 4.1.3), contains the highly-related pair orthodontist-dentist. We observed that the intended sense of the noun orthodontist occurs only 70 times in our annotated corpus. As a result, the obtained representation was not accurate, resulting in a low similarity score for the pair. The two respective senses are, however, directly connected in the BabelNet graph. Hence, the graph vicinity factor scales up the computed similarity value for the word pair.</bodyText>
+<subsectionHeader confidence="0.910556">
+3.4 Relational similarity
+</subsectionHeader>
+<bodyText confidence="0.998834933333333">Relational similarity evaluates the correspondence between relations (Medin et al., 1990). The task can be viewed as an analogy problem in which, given two pairs of words (wa, wb) and (wc, wd), the goal is to compute the extent to which the relations of wa to wb and wc to wd are similar. Sense embeddings are suitable candidates for measuring this type of similarity, as they represent relations between senses as linear transformations. Given this property, the relation between a pair of words can be obtained by subtracting their corresponding normalized embeddings. Following Zhila et al. (2013), the relational similarity between two pairs of word (wa, wb) and (wc, wd) is accordingly calculated as:</bodyText>
+<equation confidence="0.708764">
+ANALOGY( ~wa, ~wb, ~wc, ~wd) =
+T ( ~wb − ~wa, ~wd − ~wc)
+</equation>
+<bodyText confidence="0.9999765">We show the procedure for measuring the relational similarity in Algorithm 2. The algorithm first finds the closest senses across the two word pairs: s*a and s*b for the first pair and s*c and s*d for the second. The analogy vector representations are accordingly computed as the difference between the sense embeddings of the corresponding closest senses. Finally, the relational similarity is computed as the similarity of the analogy vectors of the two pairs.</bodyText>
+<sectionHeader confidence="0.999874" genericHeader="evaluation and result">
+4 Experiments
+</sectionHeader>
+<bodyText confidence="0.99959025">We evaluate our sense-enhanced semantic representation on multiple word similarity and relatedness datasets (Section 4.1), as well as the relational similarity framework (Section 4.2).</bodyText>
+<figure confidence="0.787766571428571">
+�
+s1ESw1
+�
+s2ESw2
+(6)
+99
+Algorithm 2 Relational Similarity
+</figure>
+<bodyText confidence="0.95604">Input: Two pairs of words wa, wb and wc, wd Output: The degree of analogy between the two pairs</bodyText>
+<listItem confidence="0.982052285714286">1: Swa ←getSenses(wa), Swb ← getSenses(wb) 2: (s∗a, s∗b) ← argmaxsaESwa T (sa, SO sbESwb 3: Swc ← getSenses(wc), Swd ← getSenses(wd) 4: (s∗c, s∗d) ← argmaxscESwc T (�sc, Sd) sdESwd 5: return: T (sb∗ − sa∗ , sd∗ − sc∗)</listItem>
+<subsectionHeader confidence="0.988347">
+4.1 Word similarity experiment
+</subsectionHeader>
+<bodyText confidence="0.99996675">Word similarity measurement is one of the most popular evaluation methods in lexical semantics, and semantic similarity in particular, with numerous evaluation benchmarks and datasets. Given a set of word pairs, a system’s task is to provide similarity judgments for each pair, and these judgements should ideally be as close as possible to those given by humans.</bodyText>
+<subsectionHeader confidence="0.361659">
+4.1.1 Datasets
+</subsectionHeader>
+<bodyText confidence="0.99635212">We evaluate SENSEMBED on standard word similarity and relatedness datasets: the RG-65 (Rubenstein and Goodenough, 1965) and the WordSim353 (Finkelstein et al., 2002, WS-353) datasets. Agirre et al. (2009) suggested that the original WS-353 dataset conflates similarity and relatedness and divided the dataset into two subsets, each containing pairs for just one type of association measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Huang et al., 2012). In the SCWS dataset each word is provided with the sentence containing it, which helps in pointing out the intended sense of the corresponding target word. Finally, we also report results on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk.</bodyText>
+<subsubsectionHeader confidence="0.467217">
+4.1.2 Comparison systems
+</subsubsectionHeader>
+<bodyText confidence="0.999992642857143">We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results computed by Baroni et al. (2014) for PMI-SVD, a system based on Pointwise Mutual Information (PMI) and SVD-based dimensionality reduction. For word embeddings, we report the results of Pennington et al. (2014, GloVe) and Collobert and Weston (2008). GloVe is an alternative way for learning embeddings, in which vector dimensions are made explicit, as opposed to the opaque meaning of the vector dimensions in Word2vec. The approach of Collobert and Weston (2008) is an embeddings model with a deeper architecture, designed to preserve more complex knowledge as distant relations. We also show results for the word embeddings trained by Baroni et al. (2014). The authors first constructed a massive corpus by combining several large corpora. Then, they trained dozens of different Word2vec models by varying the system’s training parameters and reported the best performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3).</bodyText>
+<subsubsectionHeader confidence="0.725356">
+4.1.3 Parameter tuning
+</subsubsectionHeader>
+<bodyText confidence="0.999780714285714">Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We picked SimLex-999 since there are not many comparison systems in the literature that report results on the dataset.</bodyText>
+<page confidence="0.813313">
+100
+</page>
+<table confidence="0.999462833333333">
+Measure Dataset Average
+RG-65 WS-Sim WS-Rel YP-130 MEN
+Pilehvar et al. (2013) 0.868 0.677 0.457 0.710 0.690 0.677
+Zesch et al. (2008) 0.820 — — 0.710 — —
+Collobert and Weston (2008) 0.480 0.610 0.380 — 0.570 —
+Word2vec (Baroni et al., 2014) 0.840 0.800 0.700 — 0.800 —
+GloVe 0.769 0.666 0.559 0.577 0.763 0.737
+ESA 0.749 — — — — —
+PMI-SVD 0.738 0.659 0.523 0.337 0.726 0.695
+Word2vec 0.732 0.707 0.476 0.343 0.665 0.644
+SENSEMBEDclosest 0.894 0.756 0.645 0.734 0.779 0.769
+SENSEMBEDweighted 0.871 0.812 0.703 0.639 0.805 0.794
+</table>
+<tableCaption confidence="0.99991">
+Table 3: Spearman correlation performance on five word similarity and relatedness datasets.
+</tableCaption>
+<bodyText confidence="0.9979025">We found the optimal values for α and β to be 8 and 1.6, respectively.</bodyText>
+<subsectionHeader confidence="0.725356">
+4.1.4 Results
+</subsectionHeader>
+<bodyText confidence="0.999974">Table 3 shows the experimental results on five different word similarity and relatedness datasets. We report the Spearman correlation performance for the two strategies of our approach as well as eight other comparison systems. SENSEMBED proves to be highly reliable on both similarity and relatedness measurement tasks, obtaining the best performance on most datasets. In addition, our approach shows itself to be equally suitable for verb similarity, as indicated by the results on YP-130. The rightmost column in the Table shows the average performance weighted by dataset size. Between the two similarity measurement strategies, weighted proves to be the more suitable, achieving the best overall performance on three datasets and the best mean performance of 0.794 across the two strategies. This indicates that our assumption of considering all senses of a word in similarity computation was beneficial. We report in Table 4 the Spearman correlation performance of four approaches that are similar to SENSEMBED: the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and the semantically enhanced models of Yu and Dredze (2014) and Chen et al. (2014). We provide results only on WS-353 and SCWS, since the above-mentioned approaches do not report their performance on other datasets. As we can see from the Table, SENSEMBED outperforms the other approaches on the WS-353 dataset. However, our approach lags behind on SCWS, highlighting the negative impact of taking the closest senses as the intended meanings.</bodyText>
+<table confidence="0.9990995">
+Measure WS-353 SCWS
+Huang et al. (2012) 0.713 0.628
+Reisinger and Mooney (2010) 0.770 –
+Chen et al. (2014) – 0.662
+Yu and Dredze (2014) 0.537 –
+Word2vec 0.694 0.642
+SENSEMBEDclosest 0.714 0.589
+SENSEMBEDweighted 0.779 0.624
+</table>
+<tableCaption confidence="0.6903025">
+Table 4: Spearman correlation performance of the
+multi-prototype and semantically-enhanced ap-
+proaches on the WordSim-353 and the Stanford’s
+Contextual Word Similarities datasets.
+</tableCaption>
+<bodyText confidence="0.999878375">In fact, on this dataset, SENSEMBEDweighted provides better performance owing to its taking into account other senses as well. The better performance of the multi-prototype systems can be attributed to their coarse-grained sense inventories which are automatically constructed by means of Word Sense Induction.</bodyText>
+<subsectionHeader confidence="0.978342">
+4.2 Relational similarity experiment
+</subsectionHeader>
+<bodyText confidence="0.999241444444445">Dataset and evaluation. We take as our benchmark the SemEval-2012 task on Measuring Degrees of Relational Similarity (Jurgens et al., 2012). The task provides a dataset comprising 79 graded word relations, 10 of which are used for training and the rest for test. The task evaluated the participating systems in terms of the Spearman correlation and the MaxDiff score (Louviere, 1991).</bodyText>
+<page confidence="0.995021">
+101
+</page>
+<table confidence="0.9997728">
+Model Setting Dataset Average
+Strategy Vicinity Expansion RG-65 WS-Sim WS-Rel YP-130 MEN
+Word2vec – – 0.732 0.707 0.476 0.343 0.665 0.644
+Word2vec,�v – – X 0.700 0.665 0.326 0.621 0.655 0.632
+0.825 0.693 0.488 0.492 0.712 0.690
+closest X 0.844 0.714 0.562 0.681 0.743 0.728
+SENSEMBED X X 0.894 0.756 0.645 0.734 0.779 0.769
+0.877 0.776 0.639 0.446 0.783 0.762
+weighted X 0.864 0.783 0.665 0.591 0.773 0.761
+X X 0.871 0.812 0.703 0.639 0.805 0.794
+</table>
+<tableCaption confidence="0.9899855">
+Table 6: Spearman correlation performance of word embeddings (Word2vec) and SENSEMBED on dif-
+ferent semantic similarity and relatedness datasets.
+</tableCaption>
+<table confidence="0.9997115">
+Measure MaxDiff
+Com 45.2
+PairDirection 45.2
+RNN-1600 41.8
+UTD-LDA —
+UTD-NB 39.4
+UTD-SVM 34.7
+PMI baseline 33.9
+Word2vec 43.2
+SENSEMBEDclosest 45.9
+</table>
+<tableCaption confidence="0.990314">
+Table 5: Spearman correlation performance of dif-
+ferent systems on the SemEval-2012 Task on Relational Similarity.Comparison systems.</tableCaption>
+<bodyText confidence="0.9756025">We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline based on word embeddings (Word2vec) trained on the same corpus and with the same settings as SENSEMBED.Results. Table 5 shows the performance of different systems in the task of relational similarity in terms of the Spearman correlation and MaxDiff score. A comparison of the results for Word2vec and SENSEMBED shows the advantage gained by</bodyText>
+<subsectionHeader confidence="0.99981">
+4.3 Analysis
+</subsectionHeader>
+<bodyText confidence="0.999977307692308">In order to analyze the impact of the different components of our similarity measure, we carried out a series of experiments on our word similarity datasets. We show in Table 6 the experimental results in terms of Spearman correlation. Performance is reported for the two similarity measurement strategies, i.e., closest and weighted, and for different system settings with and without the expansion procedure (cf. Section 3.1) and graph vicinity factor (cf. Section 3.3.2). As our comparison baseline, we also report results for word embeddings, obtained using the Word2vec toolkit on the same corpus and with the same configuration (cf. Section 2.3) used for learning the sense embeddings (Word2vec in the Table). The rightmost column in the Table reports the mean performance weighted by dataset size. Word2vecexp is the word embeddings system in which the similarity of the two words is determined in terms of the closest word embeddings among all the corresponding synonyms obtained with the expansion procedure (cf. Section 3.1). A comparison of word and sense embeddings in the vanilla setting (with neither the expansion procedure nor graph vicinity factor) indicates the consistent advantage gained by moving from word to sense level, irrespective of the dataset and the similarity measurement strategy.</bodyText>
+<figure confidence="0.926902583333333">
+Spearman
+0.353
+—
+0.275
+0.334
+0.288
+0.358
+moving from the word to the sense level. Among
+0.229 the comparison systems, Com attains the clos-
+0.116 est performance. However, we note that the sys-
+0.112 tem is a combination of several methods, whereas
+SENSEMBED is based on a single approach.
+</figure>
+<page confidence="0.994312">
+102
+</page>
+<bodyText confidence="0.999956">The consistent improvement shows that the semantic information provided more than compensates for the inherently imperfect disambiguation. Moreover, the results indicate the consistent benefit gained by introducing the graph vicinity factor, highlighting the fact that our combination of the complementary knowledge from sense embeddings and information derived from a semantic network is beneficial. Finally, note that the expansion procedure leads to performance improvement in most cases for sense embeddings. In direct contrast, the step proves harmful in the case of word embeddings, mainly due to their inability to distinguish individual word senses.</bodyText>
+<sectionHeader confidence="0.999946" genericHeader="related work">
+5 Related Work
+</sectionHeader>
+<bodyText confidence="0.999990692307693">Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-generated senseannotated data was later used for training sensespecific word embeddings. Huang et al. (2012) adopted a similar strategy by decomposing each word’s single-prototype representation into multiple prototypes, denoting different senses of that word. To this end, they first gathered the context for all occurrences of a word and then used spherical K-means to cluster the contexts. Each cluster was taken as the context for a specific meaning of the word and hence used to train embeddings for that specific meaning (i.e., word sense). However, these techniques either suffer from low coverage as they can only model word senses that occur in the parallel data, or require manual intervention for linking the obtained representations to an existing sense inventory. In contrast, our approach enables high coverage and is readily applicable for the representation of word senses in widely-used lexical resources, such as WordNet, Wikipedia and Wiktionary, without needing to resort to additional manual effort.</bodyText>
+<sectionHeader confidence="0.999387" genericHeader="conclusion">
+6 Conclusions and Future Work
+</sectionHeader>
+<bodyText confidence="0.999993476190476">We proposed an approach for obtaining continuous representations of individual word senses, referred to as sense embeddings. Based on the proposed sense embeddings and the knowledge obtained from a large-scale lexical resource, i.e., BabelNet, we put forward an effective technique, called SENSEMBED, for measuring semantic similarity. We evaluated our approach on multiple datasets in the tasks of word and relational similarity. Two conclusions can be drawn on the basis of the experimental results: (1) moving from word to sense embeddings can significantly improve the effectiveness and accuracy of the representations; and (2) a meaningful combination of sense embeddings and knowledge from a semantic network can further enhance the similarity judgements. As future work, we intend to utilize our sense embeddings to perform WSD, as was proposed in Chen et al. (2014), in order to speed up the process and train sense embeddings on larger amounts of sense-annotated data.</bodyText>
+<sectionHeader confidence="0.998813" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.998528666666667">The authors gratefully acknowledge the support of the ERC Starting Grant MultiJEDI No. 259234.</bodyText>
+<page confidence="0.999183">
+103
+</page>
+<sectionHeader confidence="0.995932" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999034781818182">
+Eneko Agirre, Enrique Alfonseca, Keith Hall, Jana
+Kravalova, Marius Pas¸ca, and Aitor Soroa. 2009. A
+Study on Similarity and Relatedness Using Distribu-
+tional and WordNet-based Approaches. In Proceed-
+ings of Human Language Technologies: The 2009
+Annual Conference of the North American Chap-
+ter of the Association for Computational Linguistics,
+pages 19–27, Boulder, Colorado.
+Marco Baroni, Georgiana Dinu, and Germ´an
+Kruszewski. 2014. Don’t count, predict! A
+systematic comparison of context-counting vs.
+context-predicting semantic vectors. In Proceedings
+of the 52nd Annual Meeting of the Association
+for Computational Linguistics, volume 1, pages
+238–247, Baltimore, Maryland.
+Yoshua Bengio, R´ejean Ducharme, Pascal Vincent, and
+Christian Janvin. 2003. A Neural Probabilistic Lan-
+guage Model. The Journal of Machine Learning Re-
+search, 3:1137–1155.
+Antoine Bordes, Nicolas Usunier, Alberto Garcia-
+Duran, Jason Weston, and Oksana Yakhnenko.
+2013. Translating Embeddings for Modeling Multi-
+relational Data. In Advances in Neural Information
+Processing Systems, volume 26, pages 2787–2795.
+Elia Bruni, Nam Khanh Tran, and Marco Baroni. 2014.
+Multimodal Distributional Semantics. Journal of
+Artificial Intelligence Research, 49(1):1–47.
+Alexander Budanitsky and Graeme Hirst. 2006.
+Evaluating WordNet-based measures of Lexical Se-
+mantic Relatedness. Computational Linguistics,
+32(1):13–47.
+John A. Bullinaria and Joseph P. Levy. 2012. Ex-
+tracting Semantic Representations from Word Co-
+occurrence Statistics: Stop-lists, Stemming and
+SVD. Behavior Research Methods, 44:890–907.
+Yee Seng Chan and Hwee Tou Ng. 2005. Scaling
+Up Word Sense Disambiguation via Parallel Texts.
+In Proceedings of the 20th National Conference on
+Artificial Intelligence - Volume 3, pages 1037–1042,
+Pittsburgh, Pennsylvania.
+Xinxiong Chen, Zhiyuan Liu, and Maosong Sun.
+2014. A unified model for word sense represen-
+tation and disambiguation. In Proceedings of the
+2014 Conference on Empirical Methods in Natural
+Language Processing (EMNLP), pages 1025–1035,
+Doha, Qatar.
+Ronan Collobert and Jason Weston. 2008. A unified
+architecture for natural language processing: Deep
+neural networks with multitask learning. In Pro-
+ceedings of the 25th International Conference on
+Machine Learning, pages 160–167, Helsinki, Fin-
+land.
+Scott C. Deerwester, Susan T. Dumais, Thomas K. Lan-
+dauer, George W. Furnas, and Richard A. Harshman.
+1990. Indexing by latent semantic analysis. Jour-
+nal of American Society for Information Science,
+41(6):391–407.
+Lev Finkelstein, Gabrilovich Evgeniy, Matias Yossi,
+Rivlin Ehud, Solan Zach, Wolfman Gadi, and Rup-
+pin Eytan. 2002. Placing Search in Context: The
+Concept Revisited. ACM Transactions on Informa-
+tion Systems, 20(1):116–131.
+Juri Ganitkevitch, Benjamin Van Durme, and Chris
+Callison-Burch. 2013. PPDB: The Paraphrase
+Database. In Proceedings of Human Language
+Technologies: The 2013 Annual Conference of the
+North American Chapter of the Association for
+Computational Linguistics, pages 758–764, Atlanta,
+Georgia.
+Jiang Guo, Wanxiang Che, Haifeng Wang, and Ting
+Liu. 2014. Learning Sense-specific Word Embed-
+dings By Exploiting Bilingual Resources. In Pro-
+ceedings of COLING 2014, the 25th International
+Conference on Computational Linguistics: Techni-
+cal Papers, pages 497–507, Dublin, Ireland.
+Felix Hill, Roi Reichart, and Anna Korhonen. 2014.
+SimLex-999: Evaluating semantic models with
+(genuine) similarity estimation. arXiv preprint
+arXiv:1408.3456.
+Eric H. Huang, Richard Socher, Christopher D. Man-
+ning, and Andrew Y. Ng. 2012. Improving Word
+Representations Via Global Context And Multiple
+Word Prototypes. In Proceedings of 50th Annual
+Meeting of the Association for Computational Lin-
+guistics, volume 1, pages 873–882, Jeju Island,
+South Korea.
+David A. Jurgens, Peter D. Turney, Saif M. Moham-
+mad, and Keith J. Holyoak. 2012. Semeval-2012
+task 2: Measuring degrees of relational similarity.
+In Proceedings of the First Joint Conference on Lex-
+ical and Computational Semantics - Volume 1: Pro-
+ceedings of the Main Conference and the Shared
+Task, and Volume 2: Proceedings of the Sixth Inter-
+national Workshop on Semantic Evaluation, pages
+356–364, Montreal, Canada.
+Omer Levy and Yoav Goldberg. 2014. Linguistic
+regularities in sparse and explicit word representa-
+tions. In Proceedings of the Eighteenth Confer-
+ence on Computational Natural Language Learning,
+pages 171–180, Ann Arbor, Michigan.
+Jordan Louviere. 1991. Best-Worst Scaling: A Model
+for the Largest Difference Judgments. Working pa-
+per, University of Alberta.
+Arthur B. Markman and Dedre Gentner. 1993. Struc-
+tural alignment during similarity comparisons. Cog-
+nitive Psychology, 25(4):431 – 467.
+Douglas L. Medin, Robert L. Goldstone, and Dedre
+Gentner. 1990. Similarity involving attributes and
+relations: Judgments of similarity and difference are
+not inverses. Psychological Science, 1(1):64–69.
+</reference>
+<page confidence="0.983936">
+104
+</page>
+<reference confidence="0.999471284313725">
+Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey
+Dean. 2013a. Efficient Estimation of Word Repre-
+sentations in Vector Space. CoRR, abs/1301.3781.
+Tomas Mikolov, Quoc V. Le, and Ilya Sutskever.
+2013b. Exploiting Similarities among Lan-
+guages for Machine Translation. arXiv preprint
+arXiv:1309.4168.
+Tomas Mikolov, Wen-tau Yih, and Geoffrey Zweig.
+2013c. Linguistic Regularities in Continuous Space
+Word Representations. In Proceedings of Human
+Language Technologies: The 2013 Annual Confer-
+ence of the North American Chapter of the Associa-
+tion for Computational Linguistics, pages 746–751,
+Atlanta, Georgia.
+George A. Miller, Claudia Leacock, Randee Tengi, and
+Ross T. Bunker. 1993. A Semantic Concordance. In
+Proceedings of the Workshop on Human Language
+Technology, pages 303–308, Princeton, New Jersey.
+Andriy Mnih and Geoffrey Hinton. 2007. Three New
+Graphical Models for Statistical Language Mod-
+elling. In Proceedings of the 24th International
+Conference on Machine Learning, pages 641–648,
+Corvallis, Oregon.
+Andrea Moro, Alessandro Raganato, and Roberto Nav-
+igli. 2014. Entity Linking meets Word Sense Dis-
+ambiguation: a Unified Approach. Transactions
+of the Association for Computational Linguistics
+(TACL), 2:231–244.
+Roberto Navigli and Simone Paolo Ponzetto. 2012.
+BabelNet: The Automatic Construction, Evaluation
+and Application of a Wide-Coverage Multilingual
+Semantic Network. Artificial Intelligence, 193:217–
+250.
+Roberto Navigli. 2009. Word Sense Disambiguation:
+A survey. ACM Computing Surveys, 41(2):1–69.
+Jeffrey Pennington, Richard Socher, and Christopher D
+Manning. 2014. GloVe: Global Vectors for
+Word Representation. In Proceedings of the Em-
+pirical Methods in Natural Language Processing
+(EMNLP), volume 12, pages 1532–1543, Doha,
+Qatar.
+Mohammad Taher Pilehvar, David A. Jurgens, and
+Roberto Navigli. 2013. Align, Disambiguate and
+Walk: a Unified Approach for Measuring Semantic
+Similarity. In Proceedings of the 51st Annual Meet-
+ing of the Association for Computational Linguis-
+tics, pages 1341–1351, Sofia, Bulgaria.
+Joseph Reisinger and Raymond J. Mooney. 2010.
+Multi-Prototype Vector-Space Models of Word
+Meaning. In Proceedings of Human Language Tech-
+nologies: The 2010 Annual Conference of the North
+American Chapter of the Association for Compu-
+tational Linguistics, pages 109–117, Los Angeles,
+California.
+Bryan Rink and Sanda Harabagiu. 2012. UTD: De-
+termining relational similarity using lexical patterns.
+In *SEM 2012: The First Joint Conference on Lexi-
+cal and Computational Semantics – Volume 1: Pro-
+ceedings of the main conference and the shared task,
+and Volume 2: Proceedings of the Sixth Interna-
+tional Workshop on Semantic Evaluation (SemEval
+2012), pages 413–418, Montreal, Canada.
+Bryan Rink and Sanda Harabagiu. 2013. The Impact
+of Selectional Preference Agreement on Semantic
+Relational Similarity. In Proceedings of the 10th
+International Conference on Computational Seman-
+tics (IWCS) – Long Papers, pages 204–215, Pots-
+dam, Germany.
+Herbert Rubenstein and John B. Goodenough. 1965.
+Contextual Correlates of Synonymy. Communica-
+tions of the ACM, 8(10):627–633.
+Joseph Turian, Lev Ratinov, and Yoshua Bengio.
+2010. Word Representations: A Simple and General
+Method for Semi-supervised Learning. In Proceed-
+ings of the 48th Annual Meeting of the Association
+for Computational Linguistics, pages 384–394, Up-
+psala, Sweden.
+Amos Tversky. 1977. Features of similarity. Psycho-
+logical Review, 84:327–352.
+Dongqiang Yang and David M. W. Powers. 2005.
+Measuring semantic similarity in the taxonomy of
+wordnet. In Proceedings of the Twenty-eighth Aus-
+tralasian Conference on Computer Science, vol-
+ume 38, pages 315–322, Darlinghurst, Australia.
+Mo Yu and Mark Dredze. 2014. Improving Lexi-
+cal Embeddings with Semantic Knowledge. In Pro-
+ceedings of the 52nd Annual Meeting of the Associa-
+tion for Computational Linguistics, volume 2, pages
+545–550, Baltimore, Maryland.
+Torsten Zesch, Christof M¨uller, and Iryna Gurevych.
+2008. Using Wiktionary for Computing Seman-
+tic Relatedness. In Proceedings of the 23rd Na-
+tional Conference on Artificial Intelligence, vol-
+ume 2, pages 861–866, Chicago, Illinois.
+Alisa Zhila, Wen-tau Yih, Christopher Meek, Geoffrey
+Zweig, and Tomas Mikolov. 2013. Combining Het-
+erogeneous Models for Measuring Relational Sim-
+ilarity. In Proceedings of Human Language Tech-
+nologies: The 2013 Annual Conference of the North
+American Chapter of the Association for Computa-
+tional Linguistics, pages 1000–1009, Atlanta, Geor-
+gia.
+</reference>
+<page confidence="0.999009">
+105
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.955604" no="0">
+<title confidence="0.996172">Learning Sense for Word and Relational Similarity</title>
+<author confidence="0.993397">Taher Pilehvar</author>
+<affiliation confidence="0.9880935">Department of Computer Sapienza University of</affiliation>
+<abstract confidence="0.999645086956522">Word embeddings have recently gained considerable popularity for modeling words in different Natural Language Processing (NLP) tasks including semantic similarity measurement. However, notwithstanding their success, word embeddings are by their very nature unable to capture polysemy, as different meanings of a word are conflated into a single representation. In addition, their learning process usually relies on massive corpora only, preventing them from taking advantage of structured knowledge. We address both issues by proposing a multifaceted approach that transforms word embeddings to the sense level and leverages knowledge from a large semantic network for effective semantic similarity measurement. We evaluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Eneko Agirre</author>
+<author>Enrique Alfonseca</author>
+<author>Keith Hall</author>
+<author>Jana Kravalova</author>
+<author>Marius Pas¸ca</author>
+<author>Aitor Soroa</author>
+</authors>
+<title>A Study on Similarity and Relatedness Using Distributional and WordNet-based Approaches.</title>
+<date>2009</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2009 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>pages</pages>
+<location>Boulder, Colorado.</location>
+<marker>Agirre, Alfonseca, Hall, Kravalova, Pas¸ca, Soroa, 2009</marker>
+<rawString>Eneko Agirre, Enrique Alfonseca, Keith Hall, Jana Kravalova, Marius Pas¸ca, and Aitor Soroa. 2009. A Study on Similarity and Relatedness Using Distributional and WordNet-based Approaches. In Proceedings of Human Language Technologies: The 2009 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 19–27, Boulder, Colorado.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marco Baroni</author>
+<author>Georgiana Dinu</author>
+<author>Germ´an Kruszewski</author>
+</authors>
+<title>Don’t count, predict! A systematic comparison of context-counting vs. context-predicting semantic vectors.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<volume>1</volume>
+<pages>238--247</pages>
+<location>Baltimore, Maryland.</location>
+<contexts>
+<context citStr="Baroni et al., 2014" endWordPosition="235" position="1677" startWordPosition="232">of-the-art performance on multiple datasets. 1 Introduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several research works have tried to address these problems. For instance, basing their work on the </context>
+<context citStr="Baroni et al. (2014)" endWordPosition="3721" position="23113" startWordPosition="3718">WS dataset each word is provided with the sentence containing it, which helps in pointing out the intended sense of the corresponding target word. Finally, we also report results on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 Comparison systems We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results computed by Baroni et al. (2014) for PMI-SVD, a system based on Pointwise Mutual Information (PMI) and SVD-based dimensionality reduction. For word embeddings, we report the results of Pennington et al. (2014, GloVe) and Collobert and Weston (2008). GloVe is an alternative way for learning embeddings, in which vector dimensions are made explicit, as opposed to the opaque meaning of the vector dimensions in Word2vec. The approach of Collobert and Weston (2008) is an embeddings model with a deeper architecture, designed to preserve more complex knowledge as distant relations. We also show results for the word embeddings traine</context>
+<context citStr="Baroni et al., 2014" endWordPosition="4107" position="25472" startWordPosition="4104">ion 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We picked SimLex-999 since there are not many comparison systems in the literature that report re100 Measure Dataset Average RG-65 WS-Sim WS-Rel YP-130 MEN Pilehvar et al. (2013) 0.868 0.677 0.457 0.710 0.690 0.677 Zesch et al. (2008) 0.820 — — 0.710 — — Collobert and Weston (2008) 0.480 0.610 0.380 — 0.570 — Word2vec (Baroni et al., 2014) 0.840 0.800 0.700 — 0.800 — GloVe 0.769 0.666 0.559 0.577 0.763 0.737 ESA 0.749 — — — — — PMI-SVD 0.738 0.659 0.523 0.337 0.726 0.695 Word2vec 0.732 0.707 0.476 0.343 0.665 0.644 SENSEMBEDclosest 0.894 0.756 0.645 0.734 0.779 0.769 SENSEMBEDweighted 0.871 0.812 0.703 0.639 0.805 0.794 Table 3: Spearman correlation performance on five word similarity and relatedness datasets. sults on the dataset. We found the optimal values for α and β to be 8 and 1.6, respectively. 4.1.4 Results Table 3 shows the experimental results on five different word similarity and relatedness datasets. We report the S</context>
+</contexts>
+<marker>Baroni, Dinu, Kruszewski, 2014</marker>
+<rawString>Marco Baroni, Georgiana Dinu, and Germ´an Kruszewski. 2014. Don’t count, predict! A systematic comparison of context-counting vs. context-predicting semantic vectors. In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, volume 1, pages 238–247, Baltimore, Maryland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yoshua Bengio</author>
+<author>R´ejean Ducharme</author>
+<author>Pascal Vincent</author>
+<author>Christian Janvin</author>
+</authors>
+<title>A Neural Probabilistic Language Model.</title>
+<date>2003</date>
+<journal>The Journal of Machine Learning Research,</journal>
+<pages>3--1137</pages>
+<contexts>
+<context citStr="Bengio et al., 2003" endWordPosition="726" position="5064" startWordPosition="723">f-the-art performance on multiple datasets. 2 Sense Embeddings Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-cons</context>
+<context citStr="Bengio et al. (2003)" endWordPosition="5303" position="33036" startWordPosition="5299">mperfect disambiguation. Moreover, the results indicate the consistent benefit gained by introducing the graph vicinity factor, highlighting the fact that our combination of the complementary knowledge from sense embeddings and information derived from a semantic network is beneficial. Finally, note that the expansion procedure leads to performance improvement in most cases for sense embeddings. In direct contrast, the step proves harmful in the case of word embeddings, mainly due to their inability to distinguish individual word senses. 5 Related Work Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the t</context>
+</contexts>
+<marker>Bengio, Ducharme, Vincent, Janvin, 2003</marker>
+<rawString>Yoshua Bengio, R´ejean Ducharme, Pascal Vincent, and Christian Janvin. 2003. A Neural Probabilistic Language Model. The Journal of Machine Learning Research, 3:1137–1155.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Nicolas Usunier</author>
+<author>Alberto GarciaDuran</author>
+<author>Jason Weston</author>
+<author>Oksana Yakhnenko</author>
+</authors>
+<title>Translating Embeddings for Modeling Multirelational Data.</title>
+<date>2013</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<volume>26</volume>
+<pages>2787--2795</pages>
+<contexts>
+<context citStr="Bordes et al., 2013" endWordPosition="242" position="1728" startWordPosition="239">oduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several research works have tried to address these problems. For instance, basing their work on the original sense discrimination approach of Reisinger</context>
+<context citStr="Bordes et al. (2013)" endWordPosition="5431" position="33832" startWordPosition="5428">two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-</context>
+</contexts>
+<marker>Bordes, Usunier, GarciaDuran, Weston, Yakhnenko, 2013</marker>
+<rawString>Antoine Bordes, Nicolas Usunier, Alberto GarciaDuran, Jason Weston, and Oksana Yakhnenko. 2013. Translating Embeddings for Modeling Multirelational Data. In Advances in Neural Information Processing Systems, volume 26, pages 2787–2795.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Elia Bruni</author>
+<author>Nam Khanh Tran</author>
+<author>Marco Baroni</author>
+</authors>
+<title>Multimodal Distributional Semantics.</title>
+<date>2014</date>
+<journal>Journal of Artificial Intelligence Research,</journal>
+<volume>49</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Bruni et al. (2014)" endWordPosition="3668" position="22743" startWordPosition="3665">ion measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Huang et al., 2012). In the SCWS dataset each word is provided with the sentence containing it, which helps in pointing out the intended sense of the corresponding target word. Finally, we also report results on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 Comparison systems We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results computed by Baroni et al. (2014) for PMI-SVD, a system based on Pointwise Mutual Information (PMI) and SVD-based dimensionality reduction. For word embeddings, we report the results of Pennington et al. (2014, GloVe) and Collobert and Weston (2008). GloVe is an </context>
+</contexts>
+<marker>Bruni, Tran, Baroni, 2014</marker>
+<rawString>Elia Bruni, Nam Khanh Tran, and Marco Baroni. 2014. Multimodal Distributional Semantics. Journal of Artificial Intelligence Research, 49(1):1–47.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alexander Budanitsky</author>
+<author>Graeme Hirst</author>
+</authors>
+<title>Evaluating WordNet-based measures of Lexical Semantic Relatedness.</title>
+<date>2006</date>
+<journal>Computational Linguistics,</journal>
+<volume>32</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Budanitsky and Hirst, 2006" endWordPosition="2231" position="14281" startWordPosition="2228"> semantic similarity of a pair of input words w1 and w2. The algorithm also takes as its inputs the similarity strategy and the weighted similarity parameter α (Section 3.3.1) along with a graph vicinity factor flag (Section 3.3.2). 3.3.1 Similarity measurement strategy We take two strategies for calculating the similarity of the given words w1 and w2. Let Sw1 and Sw2 be the sets of senses associated with the two respective input words w1 and w2, and let ~si be the sense embedding vector of the sense si. In the first strategy, which we refer to as closest, we follow the conventional approach (Budanitsky and Hirst, 2006) and measure the similarity of the two words as the similarity of their closest senses, i.e.: Simclosest (w1, w2) = max s1ES-1 s2ES-2 However, taking the similarity of the closest senses of two words as their overall similarity ignores the fact that the other senses can also contribute to the process of similarity judgement. In fact, psychological studies suggest that humans, while judging semantic similarity of a pair of words, consider different meanings of the two words and not only the closest ones (Tversky, 1977; Markman and Gentner, 1993). For instance, the WordSim-353 dataset (Finkelste</context>
+</contexts>
+<marker>Budanitsky, Hirst, 2006</marker>
+<rawString>Alexander Budanitsky and Graeme Hirst. 2006. Evaluating WordNet-based measures of Lexical Semantic Relatedness. Computational Linguistics, 32(1):13–47.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John A Bullinaria</author>
+<author>Joseph P Levy</author>
+</authors>
+<title>Extracting Semantic Representations from Word Cooccurrence Statistics: Stop-lists, Stemming and SVD. Behavior Research Methods,</title>
+<date>2012</date>
+<pages>44--890</pages>
+<contexts>
+<context citStr="Bullinaria and Levy, 2012" endWordPosition="717" position="5007" startWordPosition="714">edge, we put forward a semantic similarity measure with state-of-the-art performance on multiple datasets. 2 Sense Embeddings Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. Howe</context>
+</contexts>
+<marker>Bullinaria, Levy, 2012</marker>
+<rawString>John A. Bullinaria and Joseph P. Levy. 2012. Extracting Semantic Representations from Word Cooccurrence Statistics: Stop-lists, Stemming and SVD. Behavior Research Methods, 44:890–907.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yee Seng Chan</author>
+<author>Hwee Tou Ng</author>
+</authors>
+<title>Scaling Up Word Sense Disambiguation via Parallel Texts.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the 20th National Conference on Artificial Intelligence -</booktitle>
+<volume>3</volume>
+<pages>1037--1042</pages>
+<location>Pittsburgh, Pennsylvania.</location>
+<contexts>
+<context citStr="Chan and Ng, 2005" endWordPosition="5518" position="34412" startWordPosition="5515">d the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-generated senseannotated data was later used for training sensespecific word embeddings. Huang et al. (2012) adopted a similar strategy by decomposing each word’s single-prototype representation into multiple prototypes, denoting different senses of that word. To this end, they first gathered the context for all occurrences of a word and then used spherical K-means to cluster the contexts. Each cluster was taken as the context for a specific meaning of the word and hence used to train embeddings for that specific meaning (i.e., word sense). However, these techniques either </context>
+</contexts>
+<marker>Chan, Ng, 2005</marker>
+<rawString>Yee Seng Chan and Hwee Tou Ng. 2005. Scaling Up Word Sense Disambiguation via Parallel Texts. In Proceedings of the 20th National Conference on Artificial Intelligence - Volume 3, pages 1037–1042, Pittsburgh, Pennsylvania.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xinxiong Chen</author>
+<author>Zhiyuan Liu</author>
+<author>Maosong Sun</author>
+</authors>
+<title>A unified model for word sense representation and disambiguation.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<pages>1025--1035</pages>
+<location>Doha, Qatar.</location>
+<contexts>
+<context citStr="Chen et al., 2014" endWordPosition="215" position="1541" startWordPosition="212">ve semantic similarity measurement. We evaluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets. 1 Introduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provi</context>
+<context citStr="Chen et al. (2014)" endWordPosition="3954" position="24560" startWordPosition="3951">t performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We picked SimLex-999 since th</context>
+<context citStr="Chen et al. (2014)" endWordPosition="4372" position="27142" startWordPosition="4369">y dataset size. Between the two similarity measurement strategies, weighted proves to be the more suitable, achieving the best overall performance on three datasets and the best mean performance of 0.794 across the two strategies. This indicates that our assumption of considering all senses of a word in similarity computation was beneficial. We report in Table 4 the Spearman correlation performance of four approaches that are similar to SENSEMBED: the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and the semantically enhanced models of Yu and Dredze (2014) and Chen et al. (2014). We provide results only on WS-353 and SCWS, since the above-mentioned approaches do not report their performance on other datasets. As we can see from the Table, SENSEMBED outperforms the other approaches on the WS-353 dataset. However, our approach lags behind on SCWS, highlighting the negative impact of taking the closest Measure WS-353 SCWS Huang et al. (2012) 0.713 0.628 Reisinger and Mooney (2010) 0.770 – Chen et al. (2014) – 0.662 Yu and Dredze (2014) 0.537 – Word2vec 0.694 0.642 SENSEMBEDclosest 0.714 0.589 SENSEMBEDweighted 0.779 0.624 Table 4: Spearman correlation performance of the</context>
+<context citStr="Chen et al. (2014)" endWordPosition="5462" position="34035" startWordPosition="5459">eling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-generated senseannotated data was later used for training sensespecific word embeddings. Huang et al. (2012) adopted a similar strategy by decomposing each word’s single-prototype representation into mul</context>
+</contexts>
+<marker>Chen, Liu, Sun, 2014</marker>
+<rawString>Xinxiong Chen, Zhiyuan Liu, and Maosong Sun. 2014. A unified model for word sense representation and disambiguation. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 1025–1035, Doha, Qatar.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ronan Collobert</author>
+<author>Jason Weston</author>
+</authors>
+<title>A unified architecture for natural language processing: Deep neural networks with multitask learning.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 25th International Conference on Machine Learning,</booktitle>
+<pages>160--167</pages>
+<location>Helsinki, Finland.</location>
+<contexts>
+<context citStr="Collobert and Weston, 2008" endWordPosition="730" position="5092" startWordPosition="727"> on multiple datasets. 2 Sense Embeddings Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-</context>
+<context citStr="Collobert and Weston (2008)" endWordPosition="3756" position="23329" startWordPosition="3753">ecently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 Comparison systems We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results computed by Baroni et al. (2014) for PMI-SVD, a system based on Pointwise Mutual Information (PMI) and SVD-based dimensionality reduction. For word embeddings, we report the results of Pennington et al. (2014, GloVe) and Collobert and Weston (2008). GloVe is an alternative way for learning embeddings, in which vector dimensions are made explicit, as opposed to the opaque meaning of the vector dimensions in Word2vec. The approach of Collobert and Weston (2008) is an embeddings model with a deeper architecture, designed to preserve more complex knowledge as distant relations. We also show results for the word embeddings trained by Baroni et al. (2014). The authors first constructed a massive corpus by combining several large corpora. Then, they trained dozens of different Word2vec models by varying the system’s training parameters and rep</context>
+<context citStr="Collobert and Weston (2008)" endWordPosition="4096" position="25413" startWordPosition="4093">was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We picked SimLex-999 since there are not many comparison systems in the literature that report re100 Measure Dataset Average RG-65 WS-Sim WS-Rel YP-130 MEN Pilehvar et al. (2013) 0.868 0.677 0.457 0.710 0.690 0.677 Zesch et al. (2008) 0.820 — — 0.710 — — Collobert and Weston (2008) 0.480 0.610 0.380 — 0.570 — Word2vec (Baroni et al., 2014) 0.840 0.800 0.700 — 0.800 — GloVe 0.769 0.666 0.559 0.577 0.763 0.737 ESA 0.749 — — — — — PMI-SVD 0.738 0.659 0.523 0.337 0.726 0.695 Word2vec 0.732 0.707 0.476 0.343 0.665 0.644 SENSEMBEDclosest 0.894 0.756 0.645 0.734 0.779 0.769 SENSEMBEDweighted 0.871 0.812 0.703 0.639 0.805 0.794 Table 3: Spearman correlation performance on five word similarity and relatedness datasets. sults on the dataset. We found the optimal values for α and β to be 8 and 1.6, respectively. 4.1.4 Results Table 3 shows the experimental results on five differen</context>
+<context citStr="Collobert and Weston (2008)" endWordPosition="5350" position="33323" startWordPosition="5347">icial. Finally, note that the expansion procedure leads to performance improvement in most cases for sense embeddings. In direct contrast, the step proves harmful in the case of word embeddings, mainly due to their inability to distinguish individual word senses. 5 Related Work Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNe</context>
+</contexts>
+<marker>Collobert, Weston, 2008</marker>
+<rawString>Ronan Collobert and Jason Weston. 2008. A unified architecture for natural language processing: Deep neural networks with multitask learning. In Proceedings of the 25th International Conference on Machine Learning, pages 160–167, Helsinki, Finland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Scott C Deerwester</author>
+<author>Susan T Dumais</author>
+<author>Thomas K Landauer</author>
+<author>George W Furnas</author>
+<author>Richard A Harshman</author>
+</authors>
+<title>Indexing by latent semantic analysis.</title>
+<date>1990</date>
+<journal>Journal of American Society for Information Science,</journal>
+<volume>41</volume>
+<issue>6</issue>
+<contexts>
+<context citStr="Deerwester et al., 1990" endWordPosition="713" position="4980" startWordPosition="710">nd lexical-semantic knowledge, we put forward a semantic similarity measure with state-of-the-art performance on multiple datasets. 2 Sense Embeddings Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora</context>
+</contexts>
+<marker>Deerwester, Dumais, Landauer, Furnas, Harshman, 1990</marker>
+<rawString>Scott C. Deerwester, Susan T. Dumais, Thomas K. Landauer, George W. Furnas, and Richard A. Harshman. 1990. Indexing by latent semantic analysis. Journal of American Society for Information Science, 41(6):391–407.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lev Finkelstein</author>
+<author>Gabrilovich Evgeniy</author>
+<author>Matias Yossi</author>
+<author>Rivlin Ehud</author>
+<author>Solan Zach</author>
+<author>Wolfman Gadi</author>
+<author>Ruppin Eytan</author>
+</authors>
+<title>Placing Search in Context: The Concept Revisited.</title>
+<date>2002</date>
+<journal>ACM Transactions on Information Systems,</journal>
+<volume>20</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Finkelstein et al., 2002" endWordPosition="2331" position="14897" startWordPosition="2328">st, 2006) and measure the similarity of the two words as the similarity of their closest senses, i.e.: Simclosest (w1, w2) = max s1ES-1 s2ES-2 However, taking the similarity of the closest senses of two words as their overall similarity ignores the fact that the other senses can also contribute to the process of similarity judgement. In fact, psychological studies suggest that humans, while judging semantic similarity of a pair of words, consider different meanings of the two words and not only the closest ones (Tversky, 1977; Markman and Gentner, 1993). For instance, the WordSim-353 dataset (Finkelstein et al., 2002) contains the word pair brother-monk. Despite having the religious devotee sense in common, the Algorithm 1 Word Similarity Input: Two words w1 and w2 Str, the similarity strategy Vic, the graph vicinity factor flag α parameter for the weighted strategy Output: The similarity between w1 and w2 1: Sw1 ← getSenses(w1), Sw2 ← getSenses(w2) 2: if Str is closest then 3: sim ← -1 4: else 5: sim ← 0 6: end if 7: for each s1 ∈ Sw1 and s2 ∈ Sw2 do 8: if Vic is true then 9: tmp ← T �(~s1,~s2) 10: else 11: tmp ← T (~s1,~s2) 12: end if 13: if Str is closest then 14: sim ← max (sim, tmp) 15: else 16: sim ←</context>
+<context citStr="Finkelstein et al., 2002" endWordPosition="3536" position="21910" startWordPosition="3533">, Sd) sdESwd 5: return: T (sb∗ − sa∗ , sd∗ − sc∗) 4.1 Word similarity experiment Word similarity measurement is one of the most popular evaluation methods in lexical semantics, and semantic similarity in particular, with numerous evaluation benchmarks and datasets. Given a set of word pairs, a system’s task is to provide similarity judgments for each pair, and these judgements should ideally be as close as possible to those given by humans. 4.1.1 Datasets We evaluate SENSEMBED on standard word similarity and relatedness datasets: the RG-65 (Rubenstein and Goodenough, 1965) and the WordSim353 (Finkelstein et al., 2002, WS-353) datasets. Agirre et al. (2009) suggested that the original WS-353 dataset conflates similarity and relatedness and divided the dataset into two subsets, each containing pairs for just one type of association measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Huang et al., 2012). In the SCWS dataset each w</context>
+</contexts>
+<marker>Finkelstein, Evgeniy, Yossi, Ehud, Zach, Gadi, Eytan, 2002</marker>
+<rawString>Lev Finkelstein, Gabrilovich Evgeniy, Matias Yossi, Rivlin Ehud, Solan Zach, Wolfman Gadi, and Ruppin Eytan. 2002. Placing Search in Context: The Concept Revisited. ACM Transactions on Information Systems, 20(1):116–131.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Juri Ganitkevitch</author>
+<author>Benjamin Van Durme</author>
+<author>Chris Callison-Burch</author>
+</authors>
+<title>PPDB: The Paraphrase Database.</title>
+<date>2013</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>758--764</pages>
+<location>Atlanta,</location>
+<marker>Ganitkevitch, Van Durme, Callison-Burch, 2013</marker>
+<rawString>Juri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2013. PPDB: The Paraphrase Database. In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 758–764, Atlanta, Georgia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jiang Guo</author>
+<author>Wanxiang Che</author>
+<author>Haifeng Wang</author>
+<author>Ting Liu</author>
+</authors>
+<title>Learning Sense-specific Word Embeddings By Exploiting Bilingual Resources.</title>
+<date>2014</date>
+<booktitle>In Proceedings of COLING 2014, the 25th International Conference on Computational Linguistics: Technical Papers,</booktitle>
+<pages>497--507</pages>
+<location>Dublin, Ireland.</location>
+<contexts>
+<context citStr="Guo et al. (2014)" endWordPosition="5486" position="34208" startWordPosition="5483">yer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-generated senseannotated data was later used for training sensespecific word embeddings. Huang et al. (2012) adopted a similar strategy by decomposing each word’s single-prototype representation into multiple prototypes, denoting different senses of that word. To this end, they first gathered the context for all occurrences of a word and then used spherical K-means to clust</context>
+</contexts>
+<marker>Guo, Che, Wang, Liu, 2014</marker>
+<rawString>Jiang Guo, Wanxiang Che, Haifeng Wang, and Ting Liu. 2014. Learning Sense-specific Word Embeddings By Exploiting Bilingual Resources. In Proceedings of COLING 2014, the 25th International Conference on Computational Linguistics: Technical Papers, pages 497–507, Dublin, Ireland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Felix Hill</author>
+<author>Roi Reichart</author>
+<author>Anna Korhonen</author>
+</authors>
+<title>SimLex-999: Evaluating semantic models with (genuine) similarity estimation. arXiv preprint arXiv:1408.3456.</title>
+<date>2014</date>
+<contexts>
+<context citStr="Hill et al., 2014" endWordPosition="3052" position="19009" startWordPosition="3049">et E be the set of all sense-to-sense relations provided by BabelNet’s semantic network, i.e., E = {(si, sj) : si − sj}. Then, the similarity of a pair of words with the graph vicinity factor in formulas 2 and 4 is computed by replacing T with T*, defined as: � T* T(sl, ~s2) × β, if (s1, s2) ∈ E (sly s2) _ T (~s1, ~s2) × β−1, otherwise (5) We show in Section 4.1.3 how we tune the parameter β. This procedure is particularly helpful for the case of less frequent word senses that do not have enough contextual information to allow an effective representation. For instance, the SimLex-999 dataset (Hill et al., 2014), which we use as our tuning dataset (see Section 4.1.3), contains the highly-related pair orthodontist-dentist. We observed that the intended sense of the noun orthodontist occurs only 70 times in our annotated corpus. As a result, the obtained representation was not accurate, resulting in a low similarity score for the pair. The two respective senses are, however, directly connected in the BabelNet graph. Hence, the graph vicinity factor scales up the computed similarity value for the word pair. 3.4 Relational similarity Relational similarity evaluates the correspondence between relations (M</context>
+<context citStr="Hill et al., 2014" endWordPosition="4047" position="25129" startWordPosition="4044">es of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We picked SimLex-999 since there are not many comparison systems in the literature that report re100 Measure Dataset Average RG-65 WS-Sim WS-Rel YP-130 MEN Pilehvar et al. (2013) 0.868 0.677 0.457 0.710 0.690 0.677 Zesch et al. (2008) 0.820 — — 0.710 — — Collobert and Weston (2008) 0.480 0.610 0.380 — 0.570 — Word2vec (Baroni et al., 2014) 0.840 0.800 0.700 — 0.800 — GloVe 0.769 0.666 0.559 0.577 0.763 0.737 ESA 0.749 — — — — — PMI-SVD 0.738 0.659 0.523 0.337 0.726 0.695 Word2vec 0.732 0.707 0.476 0.343 0.665 0.644 SENSEMBEDclosest 0.894 0.756 0.645 0.734 0.779 0.769 SENSEMBEDweighted 0.871 </context>
+</contexts>
+<marker>Hill, Reichart, Korhonen, 2014</marker>
+<rawString>Felix Hill, Roi Reichart, and Anna Korhonen. 2014. SimLex-999: Evaluating semantic models with (genuine) similarity estimation. arXiv preprint arXiv:1408.3456.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eric H Huang</author>
+<author>Richard Socher</author>
+<author>Christopher D Manning</author>
+<author>Andrew Y Ng</author>
+</authors>
+<title>Improving Word Representations Via Global Context And Multiple Word Prototypes.</title>
+<date>2012</date>
+<booktitle>In Proceedings of 50th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<volume>1</volume>
+<pages>873--882</pages>
+<location>Jeju Island, South</location>
+<contexts>
+<context citStr="Huang et al. (2012)" endWordPosition="339" position="2367" startWordPosition="336">ddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several research works have tried to address these problems. For instance, basing their work on the original sense discrimination approach of Reisinger and Mooney (2010), Huang et al. (2012) applied K-means clustering to decompose word embeddings into multiple prototypes, each denoting a distinct meaning of the target word. However, the sense representations obtained are not linked to any sense inventory, a mapping that consequently has to be carried out either manually, or with the help of sense-annotated data. Another line of research investigates the possibility of taking advantage of existing semantic resources in word embeddings. A good example is the Relation Constrained Model (Yu and Dredze, 2014). When computing word embeddings, this model replaces the original co-occurre</context>
+<context citStr="Huang et al., 2012" endWordPosition="3623" position="22482" startWordPosition="3620">5) and the WordSim353 (Finkelstein et al., 2002, WS-353) datasets. Agirre et al. (2009) suggested that the original WS-353 dataset conflates similarity and relatedness and divided the dataset into two subsets, each containing pairs for just one type of association measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Huang et al., 2012). In the SCWS dataset each word is provided with the sentence containing it, which helps in pointing out the intended sense of the corresponding target word. Finally, we also report results on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 Comparison systems We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results c</context>
+<context citStr="Huang et al. (2012)" endWordPosition="3940" position="24485" startWordPosition="3937">2vec models by varying the system’s training parameters and reported the best performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters o</context>
+<context citStr="Huang et al. (2012)" endWordPosition="4357" position="27057" startWordPosition="4354"> on YP-130. The rightmost column in the Table shows the average performance weighted by dataset size. Between the two similarity measurement strategies, weighted proves to be the more suitable, achieving the best overall performance on three datasets and the best mean performance of 0.794 across the two strategies. This indicates that our assumption of considering all senses of a word in similarity computation was beneficial. We report in Table 4 the Spearman correlation performance of four approaches that are similar to SENSEMBED: the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and the semantically enhanced models of Yu and Dredze (2014) and Chen et al. (2014). We provide results only on WS-353 and SCWS, since the above-mentioned approaches do not report their performance on other datasets. As we can see from the Table, SENSEMBED outperforms the other approaches on the WS-353 dataset. However, our approach lags behind on SCWS, highlighting the negative impact of taking the closest Measure WS-353 SCWS Huang et al. (2012) 0.713 0.628 Reisinger and Mooney (2010) 0.770 – Chen et al. (2014) – 0.662 Yu and Dredze (2014) 0.537 – Word2vec 0.694 0.642 SENSEMBEDclosest 0.714</context>
+<context citStr="Huang et al. (2012)" endWordPosition="5536" position="34540" startWordPosition="5533">Net. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that different senses of a word are usually translated to different words in another language (Chan and Ng, 2005). The automatically-generated senseannotated data was later used for training sensespecific word embeddings. Huang et al. (2012) adopted a similar strategy by decomposing each word’s single-prototype representation into multiple prototypes, denoting different senses of that word. To this end, they first gathered the context for all occurrences of a word and then used spherical K-means to cluster the contexts. Each cluster was taken as the context for a specific meaning of the word and hence used to train embeddings for that specific meaning (i.e., word sense). However, these techniques either suffer from low coverage as they can only model word senses that occur in the parallel data, or require manual intervention for </context>
+</contexts>
+<marker>Huang, Socher, Manning, Ng, 2012</marker>
+<rawString>Eric H. Huang, Richard Socher, Christopher D. Manning, and Andrew Y. Ng. 2012. Improving Word Representations Via Global Context And Multiple Word Prototypes. In Proceedings of 50th Annual Meeting of the Association for Computational Linguistics, volume 1, pages 873–882, Jeju Island, South Korea.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>David A Jurgens</author>
+<author>Peter D Turney</author>
+<author>Saif M Mohammad</author>
+<author>Keith J Holyoak</author>
+</authors>
+<title>Semeval-2012 task 2: Measuring degrees of relational similarity.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the First Joint Conference on Lexical and Computational Semantics - Volume 1: Proceedings of the Main Conference and the Shared Task, and Volume 2: Proceedings of the Sixth International Workshop on Semantic Evaluation,</booktitle>
+<pages>356--364</pages>
+<location>Montreal, Canada.</location>
+<contexts>
+<context citStr="Jurgens et al., 2012" endWordPosition="2089" position="13432" startWordPosition="2085">nd the set 5,,, by repeating the same process for the lemma of word w (if not already in lemma form). 97 3.2 Vector comparison For comparing vectors, we use the Tanimoto distance. The measure is a generalization of Jaccard similarity for real-valued vectors in [-1, 1]: ~w1 · ~w2 k ~w1 k2 + k ~w 2 k 2 − ~w1 · w2 (1) where ~w1 · ~w2 is the dot product of the vectors ~w1 and ~w2 and k ~w1k is the Euclidean norm of ~w1. Rink and Harabagiu (2013) reported consistent improvements when using vector space metrics, in particular the Tanimoto distance, on the SemEval-2012 task on relational similarity (Jurgens et al., 2012) in comparison to several other measures that are designed for probability distributions, such as Jensen-Shannon divergence and Hellinger distance. 3.3 Word similarity We show in Algorithm 1 our procedure for measuring the semantic similarity of a pair of input words w1 and w2. The algorithm also takes as its inputs the similarity strategy and the weighted similarity parameter α (Section 3.3.1) along with a graph vicinity factor flag (Section 3.3.2). 3.3.1 Similarity measurement strategy We take two strategies for calculating the similarity of the given words w1 and w2. Let Sw1 and Sw2 be the </context>
+<context citStr="Jurgens et al., 2012" endWordPosition="4562" position="28393" startWordPosition="4559">lly-enhanced approaches on the WordSim-353 and the Stanford’s Contextual Word Similarities datasets. senses as the intended meanings. In fact, on this dataset, SENSEMBEDweighted provides better performance owing to its taking into account other senses as well. The better performance of the multi-prototype systems can be attributed to their coarse-grained sense inventories which are automatically constructed by means of Word Sense Induction. 4.2 Relational similarity experiment Dataset and evaluation. We take as our benchmark the SemEval-2012 task on Measuring Degrees of Relational Similarity (Jurgens et al., 2012). The task provides a dataset comprising 79 graded word relations, 10 of which are used for training and the rest for test. The task evaluated the participating systems in terms of the Spearman correlation and the MaxDiff score (Louviere, 1991). 101 Model Setting Dataset Average Strategy Vicinity Expansion RG-65 WS-Sim WS-Rel YP-130 MEN Word2vec – – 0.732 0.707 0.476 0.343 0.665 0.644 Word2vec,�v – – X 0.700 0.665 0.326 0.621 0.655 0.632 0.825 0.693 0.488 0.492 0.712 0.690 closest X 0.844 0.714 0.562 0.681 0.743 0.728 SENSEMBED X X 0.894 0.756 0.645 0.734 0.779 0.769 0.877 0.776 0.639 0.446 0.</context>
+</contexts>
+<marker>Jurgens, Turney, Mohammad, Holyoak, 2012</marker>
+<rawString>David A. Jurgens, Peter D. Turney, Saif M. Mohammad, and Keith J. Holyoak. 2012. Semeval-2012 task 2: Measuring degrees of relational similarity. In Proceedings of the First Joint Conference on Lexical and Computational Semantics - Volume 1: Proceedings of the Main Conference and the Shared Task, and Volume 2: Proceedings of the Sixth International Workshop on Semantic Evaluation, pages 356–364, Montreal, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Omer Levy</author>
+<author>Yoav Goldberg</author>
+</authors>
+<title>Linguistic regularities in sparse and explicit word representations.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the Eighteenth Conference on Computational Natural Language Learning,</booktitle>
+<pages>171--180</pages>
+<location>Ann Arbor, Michigan.</location>
+<contexts>
+<context citStr="Levy and Goldberg, 2014" endWordPosition="4783" position="29794" startWordPosition="4780">EMBED on different semantic similarity and relatedness datasets. Measure MaxDiff Com 45.2 PairDirection 45.2 RNN-1600 41.8 UTD-LDA — UTD-NB 39.4 UTD-SVM 34.7 PMI baseline 33.9 Word2vec 43.2 SENSEMBEDclosest 45.9 Table 5: Spearman correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline based on word embeddings (Word2vec) trained on the</context>
+</contexts>
+<marker>Levy, Goldberg, 2014</marker>
+<rawString>Omer Levy and Yoav Goldberg. 2014. Linguistic regularities in sparse and explicit word representations. In Proceedings of the Eighteenth Conference on Computational Natural Language Learning, pages 171–180, Ann Arbor, Michigan.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jordan Louviere</author>
+</authors>
+<title>Best-Worst Scaling: A Model for the Largest Difference Judgments. Working paper,</title>
+<date>1991</date>
+<institution>University of Alberta.</institution>
+<contexts>
+<context citStr="Louviere, 1991" endWordPosition="4603" position="28637" startWordPosition="4602">s as well. The better performance of the multi-prototype systems can be attributed to their coarse-grained sense inventories which are automatically constructed by means of Word Sense Induction. 4.2 Relational similarity experiment Dataset and evaluation. We take as our benchmark the SemEval-2012 task on Measuring Degrees of Relational Similarity (Jurgens et al., 2012). The task provides a dataset comprising 79 graded word relations, 10 of which are used for training and the rest for test. The task evaluated the participating systems in terms of the Spearman correlation and the MaxDiff score (Louviere, 1991). 101 Model Setting Dataset Average Strategy Vicinity Expansion RG-65 WS-Sim WS-Rel YP-130 MEN Word2vec – – 0.732 0.707 0.476 0.343 0.665 0.644 Word2vec,�v – – X 0.700 0.665 0.326 0.621 0.655 0.632 0.825 0.693 0.488 0.492 0.712 0.690 closest X 0.844 0.714 0.562 0.681 0.743 0.728 SENSEMBED X X 0.894 0.756 0.645 0.734 0.779 0.769 0.877 0.776 0.639 0.446 0.783 0.762 weighted X 0.864 0.783 0.665 0.591 0.773 0.761 X X 0.871 0.812 0.703 0.639 0.805 0.794 Table 6: Spearman correlation performance of word embeddings (Word2vec) and SENSEMBED on different semantic similarity and relatedness datasets. Me</context>
+</contexts>
+<marker>Louviere, 1991</marker>
+<rawString>Jordan Louviere. 1991. Best-Worst Scaling: A Model for the Largest Difference Judgments. Working paper, University of Alberta.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arthur B Markman</author>
+<author>Dedre Gentner</author>
+</authors>
+<title>Structural alignment during similarity comparisons.</title>
+<date>1993</date>
+<journal>Cognitive Psychology,</journal>
+<volume>25</volume>
+<issue>4</issue>
+<pages>467</pages>
+<contexts>
+<context citStr="Markman and Gentner, 1993" endWordPosition="2322" position="14831" startWordPosition="2319">as closest, we follow the conventional approach (Budanitsky and Hirst, 2006) and measure the similarity of the two words as the similarity of their closest senses, i.e.: Simclosest (w1, w2) = max s1ES-1 s2ES-2 However, taking the similarity of the closest senses of two words as their overall similarity ignores the fact that the other senses can also contribute to the process of similarity judgement. In fact, psychological studies suggest that humans, while judging semantic similarity of a pair of words, consider different meanings of the two words and not only the closest ones (Tversky, 1977; Markman and Gentner, 1993). For instance, the WordSim-353 dataset (Finkelstein et al., 2002) contains the word pair brother-monk. Despite having the religious devotee sense in common, the Algorithm 1 Word Similarity Input: Two words w1 and w2 Str, the similarity strategy Vic, the graph vicinity factor flag α parameter for the weighted strategy Output: The similarity between w1 and w2 1: Sw1 ← getSenses(w1), Sw2 ← getSenses(w2) 2: if Str is closest then 3: sim ← -1 4: else 5: sim ← 0 6: end if 7: for each s1 ∈ Sw1 and s2 ∈ Sw2 do 8: if Vic is true then 9: tmp ← T �(~s1,~s2) 10: else 11: tmp ← T (~s1,~s2) 12: end if 13: </context>
+</contexts>
+<marker>Markman, Gentner, 1993</marker>
+<rawString>Arthur B. Markman and Dedre Gentner. 1993. Structural alignment during similarity comparisons. Cognitive Psychology, 25(4):431 – 467.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Douglas L Medin</author>
+<author>Robert L Goldstone</author>
+<author>Dedre Gentner</author>
+</authors>
+<title>Similarity involving attributes and relations: Judgments of similarity and difference are not inverses.</title>
+<date>1990</date>
+<journal>Psychological Science,</journal>
+<volume>1</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Medin et al., 1990" endWordPosition="3148" position="19627" startWordPosition="3145">), which we use as our tuning dataset (see Section 4.1.3), contains the highly-related pair orthodontist-dentist. We observed that the intended sense of the noun orthodontist occurs only 70 times in our annotated corpus. As a result, the obtained representation was not accurate, resulting in a low similarity score for the pair. The two respective senses are, however, directly connected in the BabelNet graph. Hence, the graph vicinity factor scales up the computed similarity value for the word pair. 3.4 Relational similarity Relational similarity evaluates the correspondence between relations (Medin et al., 1990). The task can be viewed as an analogy problem in which, given two pairs of words (wa, wb) and (wc, wd), the goal is to compute the extent to which the relations of wa to wb and wc to wd are similar. Sense embeddings are suitable candidates for measuring this type of similarity, as they represent relations between senses as linear transformations. Given this property, the relation between a pair of words can be obtained by subtracting their corresponding normalized embeddings. Following Zhila et al. (2013), the relational similarity between two pairs of word (wa, wb) and (wc, wd) is accordingl</context>
+</contexts>
+<marker>Medin, Goldstone, Gentner, 1990</marker>
+<rawString>Douglas L. Medin, Robert L. Goldstone, and Dedre Gentner. 1990. Similarity involving attributes and relations: Judgments of similarity and difference are not inverses. Psychological Science, 1(1):64–69.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tomas Mikolov</author>
+<author>Kai Chen</author>
+<author>Greg Corrado</author>
+<author>Jeffrey Dean</author>
+</authors>
+<title>Efficient Estimation of Word Representations in Vector Space.</title>
+<date>2013</date>
+<location>CoRR, abs/1301.3781.</location>
+<contexts>
+<context citStr="Mikolov et al., 2013" endWordPosition="221" position="1584" startWordPosition="218">aluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets. 1 Introduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="742" position="5158" startWordPosition="739">ce models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In fact, the largest exis</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="1432" position="9633" startWordPosition="1429">company' telephone network' 1 supporting roles' brutal� fascia' 1 1 1 1 2 river' savings bank' telephony' leading roles' execution' rear window' 1 1 1 1 1 1 stream' banking' subscriber' stage shows' murders' headlights' 1 1 2 1 1 1 Table 1: Closest senses to two senses of three ambiguous nouns: bank, number, and hood content words. As a result of the disambiguation step, we obtain sense-annotated data comprising around one billion tagged words with at least five occurrences and 2.5 million unique word senses. 2.3 Learning sense embeddings The disambiguated text is processed with the Word2vec (Mikolov et al., 2013a) toolkit5. We applied Word2vec to produce continuous representations of word senses based on the distributional information obtained from the annotated corpus. For each target word sense, a representation is computed by maximizing the log likelihood of the word sense with respect to its context. We opted for the Continuous Bag of Words (CBOW) architecture, the objective of which is to predict a single word (word sense in our case) given its context. The context is defined by a window, typically with the size of five words on each side with the paragraph ending barrier. We used hierarchical s</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="4777" position="29748" startWordPosition="4774">nce of word embeddings (Word2vec) and SENSEMBED on different semantic similarity and relatedness datasets. Measure MaxDiff Com 45.2 PairDirection 45.2 RNN-1600 41.8 UTD-LDA — UTD-NB 39.4 UTD-SVM 34.7 PMI baseline 33.9 Word2vec 43.2 SENSEMBEDclosest 45.9 Table 5: Spearman correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline base</context>
+<context citStr="Mikolov et al. (2013" endWordPosition="5381" position="33516" startWordPosition="5378">y due to their inability to distinguish individual word senses. 5 Related Work Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the poss</context>
+</contexts>
+<marker>Mikolov, Chen, Corrado, Dean, 2013</marker>
+<rawString>Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. 2013a. Efficient Estimation of Word Representations in Vector Space. CoRR, abs/1301.3781.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tomas Mikolov</author>
+<author>Quoc V Le</author>
+<author>Ilya Sutskever</author>
+</authors>
+<title>Exploiting Similarities among Languages for Machine Translation. arXiv preprint arXiv:1309.4168.</title>
+<date>2013</date>
+<contexts>
+<context citStr="Mikolov et al., 2013" endWordPosition="221" position="1584" startWordPosition="218">aluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets. 1 Introduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="742" position="5158" startWordPosition="739">ce models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In fact, the largest exis</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="1432" position="9633" startWordPosition="1429">company' telephone network' 1 supporting roles' brutal� fascia' 1 1 1 1 2 river' savings bank' telephony' leading roles' execution' rear window' 1 1 1 1 1 1 stream' banking' subscriber' stage shows' murders' headlights' 1 1 2 1 1 1 Table 1: Closest senses to two senses of three ambiguous nouns: bank, number, and hood content words. As a result of the disambiguation step, we obtain sense-annotated data comprising around one billion tagged words with at least five occurrences and 2.5 million unique word senses. 2.3 Learning sense embeddings The disambiguated text is processed with the Word2vec (Mikolov et al., 2013a) toolkit5. We applied Word2vec to produce continuous representations of word senses based on the distributional information obtained from the annotated corpus. For each target word sense, a representation is computed by maximizing the log likelihood of the word sense with respect to its context. We opted for the Continuous Bag of Words (CBOW) architecture, the objective of which is to predict a single word (word sense in our case) given its context. The context is defined by a window, typically with the size of five words on each side with the paragraph ending barrier. We used hierarchical s</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="4777" position="29748" startWordPosition="4774">nce of word embeddings (Word2vec) and SENSEMBED on different semantic similarity and relatedness datasets. Measure MaxDiff Com 45.2 PairDirection 45.2 RNN-1600 41.8 UTD-LDA — UTD-NB 39.4 UTD-SVM 34.7 PMI baseline 33.9 Word2vec 43.2 SENSEMBEDclosest 45.9 Table 5: Spearman correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline base</context>
+<context citStr="Mikolov et al. (2013" endWordPosition="5381" position="33516" startWordPosition="5378">y due to their inability to distinguish individual word senses. 5 Related Work Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the poss</context>
+</contexts>
+<marker>Mikolov, Le, Sutskever, 2013</marker>
+<rawString>Tomas Mikolov, Quoc V. Le, and Ilya Sutskever. 2013b. Exploiting Similarities among Languages for Machine Translation. arXiv preprint arXiv:1309.4168.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tomas Mikolov</author>
+<author>Wen-tau Yih</author>
+<author>Geoffrey Zweig</author>
+</authors>
+<title>Linguistic Regularities in Continuous Space Word Representations.</title>
+<date>2013</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>746--751</pages>
+<location>Atlanta,</location>
+<contexts>
+<context citStr="Mikolov et al., 2013" endWordPosition="221" position="1584" startWordPosition="218">aluate our approach on word similarity and relational similarity frameworks, reporting state-of-the-art performance on multiple datasets. 1 Introduction The much celebrated word embeddings represent a new branch of corpus-based distributional semantic model which leverages neural networks to model the context in which a word is expected to appear. Thanks to their high coverage and their ability to capture both syntactic and semantic information, word embeddings have been successfully applied to a variety of NLP tasks, such as Word Sense Disambiguation (Chen et al., 2014), Machine Translation (Mikolov et al., 2013b), Relational Similarity (Mikolov et al., 2013c), Semantic Relatedness (Baroni et al., 2014) and Knowledge Representation (Bordes et al., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="742" position="5158" startWordPosition="739">ce models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In fact, the largest exis</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="1432" position="9633" startWordPosition="1429">company' telephone network' 1 supporting roles' brutal� fascia' 1 1 1 1 2 river' savings bank' telephony' leading roles' execution' rear window' 1 1 1 1 1 1 stream' banking' subscriber' stage shows' murders' headlights' 1 1 2 1 1 1 Table 1: Closest senses to two senses of three ambiguous nouns: bank, number, and hood content words. As a result of the disambiguation step, we obtain sense-annotated data comprising around one billion tagged words with at least five occurrences and 2.5 million unique word senses. 2.3 Learning sense embeddings The disambiguated text is processed with the Word2vec (Mikolov et al., 2013a) toolkit5. We applied Word2vec to produce continuous representations of word senses based on the distributional information obtained from the annotated corpus. For each target word sense, a representation is computed by maximizing the log likelihood of the word sense with respect to its context. We opted for the Continuous Bag of Words (CBOW) architecture, the objective of which is to predict a single word (word sense in our case) given its context. The context is defined by a window, typically with the size of five words on each side with the paragraph ending barrier. We used hierarchical s</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="4777" position="29748" startWordPosition="4774">nce of word embeddings (Word2vec) and SENSEMBED on different semantic similarity and relatedness datasets. Measure MaxDiff Com 45.2 PairDirection 45.2 RNN-1600 41.8 UTD-LDA — UTD-NB 39.4 UTD-SVM 34.7 PMI baseline 33.9 Word2vec 43.2 SENSEMBEDclosest 45.9 Table 5: Spearman correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline base</context>
+<context citStr="Mikolov et al. (2013" endWordPosition="5381" position="33516" startWordPosition="5378">y due to their inability to distinguish individual word senses. 5 Related Work Word embeddings were first introduced by Bengio et al. (2003) with the goal of statistical language modeling, i.e., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the poss</context>
+</contexts>
+<marker>Mikolov, Yih, Zweig, 2013</marker>
+<rawString>Tomas Mikolov, Wen-tau Yih, and Geoffrey Zweig. 2013c. Linguistic Regularities in Continuous Space Word Representations. In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 746–751, Atlanta, Georgia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>George A Miller</author>
+<author>Claudia Leacock</author>
+<author>Randee Tengi</author>
+<author>Ross T Bunker</author>
+</authors>
+<title>A Semantic Concordance.</title>
+<date>1993</date>
+<booktitle>In Proceedings of the Workshop on Human Language Technology,</booktitle>
+<pages>303--308</pages>
+<location>Princeton, New Jersey.</location>
+<contexts>
+<context citStr="Miller et al., 1993" endWordPosition="841" position="5838" startWordPosition="838"> supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In fact, the largest existing manually sense annotated dataset is the SemCor corpus (Miller et al., 1993), whose creation dates back to more than two decades ago. In order to alleviate this issue, we leveraged a state-of-the-art Word Sense Disambiguation (WSD) algorithm to automatically generate large amounts of sense-annotated corpora. In the rest of Section 2, first, in Section 2.1, we describe the sense inventory used for SENSEMBED. Section 2.2 introduces the corpus and the disambiguation procedure used to sense annotate this corpus. Finally in Section 2.3 we discuss how we leverage the automatically sense-tagged dataset for the training of sense embeddings. 2.1 Underlying sense inventory We s</context>
+</contexts>
+<marker>Miller, Leacock, Tengi, Bunker, 1993</marker>
+<rawString>George A. Miller, Claudia Leacock, Randee Tengi, and Ross T. Bunker. 1993. A Semantic Concordance. In Proceedings of the Workshop on Human Language Technology, pages 303–308, Princeton, New Jersey.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andriy Mnih</author>
+<author>Geoffrey Hinton</author>
+</authors>
+<title>Three New Graphical Models for Statistical Language Modelling.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 24th International Conference on Machine Learning,</booktitle>
+<pages>641--648</pages>
+<location>Corvallis, Oregon.</location>
+<contexts>
+<context citStr="Mnih and Hinton, 2007" endWordPosition="734" position="5115" startWordPosition="731">se Embeddings Word embeddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquis</context>
+</contexts>
+<marker>Mnih, Hinton, 2007</marker>
+<rawString>Andriy Mnih and Geoffrey Hinton. 2007. Three New Graphical Models for Statistical Language Modelling. In Proceedings of the 24th International Conference on Machine Learning, pages 641–648, Corvallis, Oregon.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andrea Moro</author>
+<author>Alessandro Raganato</author>
+<author>Roberto Navigli</author>
+</authors>
+<title>Entity Linking meets Word Sense Disambiguation: a Unified Approach.</title>
+<date>2014</date>
+<journal>Transactions of the Association for Computational Linguistics (TACL),</journal>
+<pages>2--231</pages>
+<contexts>
+<context citStr="Moro et al., 2014" endWordPosition="1097" position="7499" startWordPosition="1094"> The usage of BabelNet as our underlying sense inventory provides us with the advantage of having our sense embeddings readily applicable to multiple sense inventories. 2.2 Generating a sense-annotated corpus As our corpus we used the September-2014 dump of the English Wikipedia.3 This corpus comprises texts from various domains and topics and provides a suitable word coverage. The unprocessed text of the corpus includes approximately three billion tokens and more than three million unique words. We only consider tokens with at least five occurrences. As our WSD system, we opted for Babelfy4 (Moro et al., 2014), a state-of-the-art WSD and Entity Linking algorithm based on BabelNet’s semantic network. Babelfy first models each concept in the network through its corresponding “semantic signature” by leveraging a graph random walk algorithm. Given an input text, the algorithm uses the generated semantic signatures to construct a subgraph of the semantic network representing the input text. Babelfy then searches this subgraph for the intended sense of each content word using an iterative process and a dense subgraph heuristic. Thanks to its use of BabelNet, Babelfy inherently features multilinguality; h</context>
+</contexts>
+<marker>Moro, Raganato, Navigli, 2014</marker>
+<rawString>Andrea Moro, Alessandro Raganato, and Roberto Navigli. 2014. Entity Linking meets Word Sense Disambiguation: a Unified Approach. Transactions of the Association for Computational Linguistics (TACL), 2:231–244.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roberto Navigli</author>
+<author>Simone Paolo Ponzetto</author>
+</authors>
+<title>BabelNet: The Automatic Construction, Evaluation and Application of a Wide-Coverage Multilingual Semantic Network.</title>
+<date>2012</date>
+<journal>Artificial Intelligence,</journal>
+<volume>193</volume>
+<pages>250</pages>
+<contexts>
+<context citStr="Navigli and Ponzetto, 2012" endWordPosition="940" position="6484" startWordPosition="937">tes back to more than two decades ago. In order to alleviate this issue, we leveraged a state-of-the-art Word Sense Disambiguation (WSD) algorithm to automatically generate large amounts of sense-annotated corpora. In the rest of Section 2, first, in Section 2.1, we describe the sense inventory used for SENSEMBED. Section 2.2 introduces the corpus and the disambiguation procedure used to sense annotate this corpus. Finally in Section 2.3 we discuss how we leverage the automatically sense-tagged dataset for the training of sense embeddings. 2.1 Underlying sense inventory We selected BabelNet2 (Navigli and Ponzetto, 2012) as our underlying sense inventory. The resource is a merger of WordNet with multiple other lexical resources, the most prominent of which is Wikipedia. As a result, the manually-curated information in WordNet is augmented with the complementary knowledge from collaborativelyconstructed resources, providing a high coverage of domain-specific terms and named entities and a rich set of relations. The usage of BabelNet as our underlying sense inventory provides us with the advantage of having our sense embeddings readily applicable to multiple sense inventories. 2.2 Generating a sense-annotated c</context>
+</contexts>
+<marker>Navigli, Ponzetto, 2012</marker>
+<rawString>Roberto Navigli and Simone Paolo Ponzetto. 2012. BabelNet: The Automatic Construction, Evaluation and Application of a Wide-Coverage Multilingual Semantic Network. Artificial Intelligence, 193:217– 250.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roberto Navigli</author>
+</authors>
+<title>Word Sense Disambiguation: A survey.</title>
+<date>2009</date>
+<journal>ACM Computing Surveys,</journal>
+<volume>41</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Navigli (2009)" endWordPosition="1688" position="11154" startWordPosition="1687">of the closest senses to six sample word senses: the geographical and financial senses of river, the performance and phone number senses of number, and the gang and car senses of hood.6 As can be seen, sense embeddings can capture effectively the clear distinctions between different senses of a word. Additionally, the closest senses are not necessarily constrained to the same part of speech. For instance, the river sense of bank has the adverbs upstream and downstream and the “move along, of liquid” sense of the verb run among its closest senses. 5http://code.google.com/p/word2vec/ 6We follow Navigli (2009) and show the nth sense of the word with part of speech x as word�'. Synset Description Synonymous senses hood'1 rough or violent youth hoodlum'1, goon'2, thug'1 hood'4 photography equipment lens hood'1 hood'9 automotive body parts bonnet'2 , cowl' 1 , cowling' 1 hood'12 car with retractable top convertible'1 Table 2: Sample initial senses of the noun hood (leftmost column) and their synonym expansion (rightmost column). 3 Similarity Measurement This Section describes how we leverage the generated sense embeddings for the computation of word similarity and relational similarity. We start the S</context>
+</contexts>
+<marker>Navigli, 2009</marker>
+<rawString>Roberto Navigli. 2009. Word Sense Disambiguation: A survey. ACM Computing Surveys, 41(2):1–69.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jeffrey Pennington</author>
+<author>Richard Socher</author>
+<author>Christopher D Manning</author>
+</authors>
+<title>GloVe: Global Vectors for Word Representation.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<volume>12</volume>
+<pages>1532--1543</pages>
+<location>Doha, Qatar.</location>
+<contexts>
+<context citStr="Pennington et al. (2014" endWordPosition="3750" position="23289" startWordPosition="3747">sults on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 Comparison systems We compare the performance of our similarity measure against twelve other approaches. As regards traditional distributional models, we report the best results computed by Baroni et al. (2014) for PMI-SVD, a system based on Pointwise Mutual Information (PMI) and SVD-based dimensionality reduction. For word embeddings, we report the results of Pennington et al. (2014, GloVe) and Collobert and Weston (2008). GloVe is an alternative way for learning embeddings, in which vector dimensions are made explicit, as opposed to the opaque meaning of the vector dimensions in Word2vec. The approach of Collobert and Weston (2008) is an embeddings model with a deeper architecture, designed to preserve more complex knowledge as distant relations. We also show results for the word embeddings trained by Baroni et al. (2014). The authors first constructed a massive corpus by combining several large corpora. Then, they trained dozens of different Word2vec models by varying </context>
+<context citStr="Pennington et al., 2014" endWordPosition="5410" position="33712" startWordPosition="5406">., learning the joint probability function of a sequence of words. The initial model was a Multilayer Perceptron (MLP) with two hidden layers: a shared non-linear and a regular hidden hyperbolic tangent one. Collobert and Weston (2008) deepened the original neural model by adding a convolutional layer and an extra layer for modeling long-distance dependencies. A significant contribution was later made by Mikolov et al. (2013a), who simplified the original model by removing the hyperbolic tangent layer and hence significantly speeding up the training process. Other related work includes GloVe (Pennington et al., 2014), which is an effort to make the vector dimensions in word embeddings explicit, and the approach of Bordes et al. (2013), which trains word embeddings on the basis of relationship information derived from WordNet. Several techniques have been proposed for transforming word embeddings to the sense level. Chen et al. (2014) leveraged word embeddings in Word Sense Disambiguation and investigated the possibility of retrofitting embeddings with the resulting disambiguated words. Guo et al. (2014) exploited parallel data to automatically generate sense-annotated data, based on the fact that differen</context>
+</contexts>
+<marker>Pennington, Socher, Manning, 2014</marker>
+<rawString>Jeffrey Pennington, Richard Socher, and Christopher D Manning. 2014. GloVe: Global Vectors for Word Representation. In Proceedings of the Empirical Methods in Natural Language Processing (EMNLP), volume 12, pages 1532–1543, Doha, Qatar.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mohammad Taher Pilehvar</author>
+<author>David A Jurgens</author>
+<author>Roberto Navigli</author>
+</authors>
+<title>Align, Disambiguate and Walk: a Unified Approach for Measuring Semantic Similarity.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 51st Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>1341--1351</pages>
+<location>Sofia, Bulgaria.</location>
+<contexts>
+<context citStr="Pilehvar et al. (2013)" endWordPosition="3880" position="24116" startWordPosition="3877">d2vec. The approach of Collobert and Weston (2008) is an embeddings model with a deeper architecture, designed to preserve more complex knowledge as distant relations. We also show results for the word embeddings trained by Baroni et al. (2014). The authors first constructed a massive corpus by combining several large corpora. Then, they trained dozens of different Word2vec models by varying the system’s training parameters and reported the best performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our </context>
+</contexts>
+<marker>Pilehvar, Jurgens, Navigli, 2013</marker>
+<rawString>Mohammad Taher Pilehvar, David A. Jurgens, and Roberto Navigli. 2013. Align, Disambiguate and Walk: a Unified Approach for Measuring Semantic Similarity. In Proceedings of the 51st Annual Meeting of the Association for Computational Linguistics, pages 1341–1351, Sofia, Bulgaria.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joseph Reisinger</author>
+<author>Raymond J Mooney</author>
+</authors>
+<title>Multi-Prototype Vector-Space Models of Word Meaning.</title>
+<date>2010</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2010 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>109--117</pages>
+<location>Los Angeles, California.</location>
+<contexts>
+<context citStr="Reisinger and Mooney (2010)" endWordPosition="335" position="2346" startWordPosition="332">l., 2013). However, word embeddings inherit two important limitations from their antecedent corpusbased distributional models: (1) they are unable to model distinct meanings of a word as they conflate the contextual evidence of different meanings of a word into a single vector; and (2) they base their representations solely on the distributional statistics obtained from corpora, ignoring the wealth of information provided by existing semantic resources. Several research works have tried to address these problems. For instance, basing their work on the original sense discrimination approach of Reisinger and Mooney (2010), Huang et al. (2012) applied K-means clustering to decompose word embeddings into multiple prototypes, each denoting a distinct meaning of the target word. However, the sense representations obtained are not linked to any sense inventory, a mapping that consequently has to be carried out either manually, or with the help of sense-annotated data. Another line of research investigates the possibility of taking advantage of existing semantic resources in word embeddings. A good example is the Relation Constrained Model (Yu and Dredze, 2014). When computing word embeddings, this model replaces th</context>
+<context citStr="Reisinger and Mooney (2010)" endWordPosition="3935" position="24461" startWordPosition="3932">trained dozens of different Word2vec models by varying the system’s training parameters and reported the best performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tune</context>
+<context citStr="Reisinger and Mooney (2010)" endWordPosition="4352" position="27033" startWordPosition="4349">ity, as indicated by the results on YP-130. The rightmost column in the Table shows the average performance weighted by dataset size. Between the two similarity measurement strategies, weighted proves to be the more suitable, achieving the best overall performance on three datasets and the best mean performance of 0.794 across the two strategies. This indicates that our assumption of considering all senses of a word in similarity computation was beneficial. We report in Table 4 the Spearman correlation performance of four approaches that are similar to SENSEMBED: the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and the semantically enhanced models of Yu and Dredze (2014) and Chen et al. (2014). We provide results only on WS-353 and SCWS, since the above-mentioned approaches do not report their performance on other datasets. As we can see from the Table, SENSEMBED outperforms the other approaches on the WS-353 dataset. However, our approach lags behind on SCWS, highlighting the negative impact of taking the closest Measure WS-353 SCWS Huang et al. (2012) 0.713 0.628 Reisinger and Mooney (2010) 0.770 – Chen et al. (2014) – 0.662 Yu and Dredze (2014) 0.537 – Word2vec 0.694 0.64</context>
+</contexts>
+<marker>Reisinger, Mooney, 2010</marker>
+<rawString>Joseph Reisinger and Raymond J. Mooney. 2010. Multi-Prototype Vector-Space Models of Word Meaning. In Proceedings of Human Language Technologies: The 2010 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 109–117, Los Angeles, California.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bryan Rink</author>
+<author>Sanda Harabagiu</author>
+</authors>
+<title>UTD: Determining relational similarity using lexical patterns.</title>
+<date>2012</date>
+<booktitle>In *SEM 2012: The First Joint Conference on Lexical and Computational Semantics – Volume 1: Proceedings of the main conference and the shared task, and Volume 2: Proceedings of the Sixth International Workshop on Semantic Evaluation (SemEval</booktitle>
+<pages>413--418</pages>
+<location>Montreal, Canada.</location>
+<contexts>
+<context citStr="Rink and Harabagiu, 2012" endWordPosition="4795" position="29868" startWordPosition="4792">MaxDiff Com 45.2 PairDirection 45.2 RNN-1600 41.8 UTD-LDA — UTD-NB 39.4 UTD-SVM 34.7 PMI baseline 33.9 Word2vec 43.2 SENSEMBEDclosest 45.9 Table 5: Spearman correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline based on word embeddings (Word2vec) trained on the same corpus and with the same settings as SENSEMBED. Results. Table 5 sho</context>
+</contexts>
+<marker>Rink, Harabagiu, 2012</marker>
+<rawString>Bryan Rink and Sanda Harabagiu. 2012. UTD: Determining relational similarity using lexical patterns. In *SEM 2012: The First Joint Conference on Lexical and Computational Semantics – Volume 1: Proceedings of the main conference and the shared task, and Volume 2: Proceedings of the Sixth International Workshop on Semantic Evaluation (SemEval 2012), pages 413–418, Montreal, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bryan Rink</author>
+<author>Sanda Harabagiu</author>
+</authors>
+<title>The Impact of Selectional Preference Agreement on Semantic Relational Similarity.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 10th International Conference on Computational Semantics (IWCS) – Long Papers,</booktitle>
+<pages>204--215</pages>
+<location>Potsdam, Germany.</location>
+<contexts>
+<context citStr="Rink and Harabagiu (2013)" endWordPosition="2062" position="13256" startWordPosition="2059">nonymous word senses, as defined in the BabelNet sense inventory. We show in Table 2 some of the senses of the noun hood and the synonym expansion for these senses. We further expand the set 5,,, by repeating the same process for the lemma of word w (if not already in lemma form). 97 3.2 Vector comparison For comparing vectors, we use the Tanimoto distance. The measure is a generalization of Jaccard similarity for real-valued vectors in [-1, 1]: ~w1 · ~w2 k ~w1 k2 + k ~w 2 k 2 − ~w1 · w2 (1) where ~w1 · ~w2 is the dot product of the vectors ~w1 and ~w2 and k ~w1k is the Euclidean norm of ~w1. Rink and Harabagiu (2013) reported consistent improvements when using vector space metrics, in particular the Tanimoto distance, on the SemEval-2012 task on relational similarity (Jurgens et al., 2012) in comparison to several other measures that are designed for probability distributions, such as Jensen-Shannon divergence and Hellinger distance. 3.3 Word similarity We show in Algorithm 1 our procedure for measuring the semantic similarity of a pair of input words w1 and w2. The algorithm also takes as its inputs the similarity strategy and the weighted similarity parameter α (Section 3.3.1) along with a graph vicinit</context>
+<context citStr="Rink and Harabagiu, 2013" endWordPosition="4817" position="30024" startWordPosition="4814"> correlation performance of different systems on the SemEval-2012 Task on Relational Similarity. Comparison systems. We compare our results against six other systems and the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline based on word embeddings (Word2vec) trained on the same corpus and with the same settings as SENSEMBED. Results. Table 5 shows the performance of different systems in the task of relational similarity in terms of the Spearman correlation and MaxDiff score. A comparison of the res</context>
+</contexts>
+<marker>Rink, Harabagiu, 2013</marker>
+<rawString>Bryan Rink and Sanda Harabagiu. 2013. The Impact of Selectional Preference Agreement on Semantic Relational Similarity. In Proceedings of the 10th International Conference on Computational Semantics (IWCS) – Long Papers, pages 204–215, Potsdam, Germany.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Herbert Rubenstein</author>
+<author>John B Goodenough</author>
+</authors>
+<title>Contextual Correlates of Synonymy.</title>
+<date>1965</date>
+<journal>Communications of the ACM,</journal>
+<volume>8</volume>
+<issue>10</issue>
+<contexts>
+<context citStr="Rubenstein and Goodenough, 1965" endWordPosition="3528" position="21865" startWordPosition="3524">d ← getSenses(wd) 4: (s∗c, s∗d) ← argmaxscESwc T (�sc, Sd) sdESwd 5: return: T (sb∗ − sa∗ , sd∗ − sc∗) 4.1 Word similarity experiment Word similarity measurement is one of the most popular evaluation methods in lexical semantics, and semantic similarity in particular, with numerous evaluation benchmarks and datasets. Given a set of word pairs, a system’s task is to provide similarity judgments for each pair, and these judgements should ideally be as close as possible to those given by humans. 4.1.1 Datasets We evaluate SENSEMBED on standard word similarity and relatedness datasets: the RG-65 (Rubenstein and Goodenough, 1965) and the WordSim353 (Finkelstein et al., 2002, WS-353) datasets. Agirre et al. (2009) suggested that the original WS-353 dataset conflates similarity and relatedness and divided the dataset into two subsets, each containing pairs for just one type of association measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Hu</context>
+</contexts>
+<marker>Rubenstein, Goodenough, 1965</marker>
+<rawString>Herbert Rubenstein and John B. Goodenough. 1965. Contextual Correlates of Synonymy. Communications of the ACM, 8(10):627–633.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joseph Turian</author>
+<author>Lev Ratinov</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>Word Representations: A Simple and General Method for Semi-supervised Learning.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>384--394</pages>
+<location>Uppsala,</location>
+<contexts>
+<context citStr="Turian et al., 2010" endWordPosition="738" position="5136" startWordPosition="735">ddings are vector space models (VSM) that represent words as real-valued vectors in a low-dimensional (relative to the size of the vocabulary) semantic space, usually referred to as the continuous space language model. The conventional way to obtain such representations is to compute a term-document occurrence matrix on large corpora and then reduce the dimensionality of the matrix using techniques such as singular value decomposition (Deerwester et al., 1990; Bullinaria and Levy, 2012, SVD). Recent predictive techniques (Bengio et al., 2003; Collobert and Weston, 2008; Mnih and Hinton, 2007; Turian et al., 2010; Mikolov et al., 2013a) replace the conventional two-phase approach with a single supervised process, usually based on neural networks. In contrast to word embeddings, which obtain a single model for potentially ambiguous words, sense embeddings are continuous representations of individual word senses. In order to be able to apply word embeddings techniques to obtain representations for individual word senses, large sense-annotated corpora have to be available. However, manual sense annotation is a difficult and time-consuming process, i.e., the so-called knowledge acquisition bottleneck. In </context>
+</contexts>
+<marker>Turian, Ratinov, Bengio, 2010</marker>
+<rawString>Joseph Turian, Lev Ratinov, and Yoshua Bengio. 2010. Word Representations: A Simple and General Method for Semi-supervised Learning. In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 384–394, Uppsala, Sweden.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Amos Tversky</author>
+</authors>
+<title>Features of similarity.</title>
+<date>1977</date>
+<journal>Psychological Review,</journal>
+<pages>84--327</pages>
+<contexts>
+<context citStr="Tversky, 1977" endWordPosition="2318" position="14803" startWordPosition="2317">ch we refer to as closest, we follow the conventional approach (Budanitsky and Hirst, 2006) and measure the similarity of the two words as the similarity of their closest senses, i.e.: Simclosest (w1, w2) = max s1ES-1 s2ES-2 However, taking the similarity of the closest senses of two words as their overall similarity ignores the fact that the other senses can also contribute to the process of similarity judgement. In fact, psychological studies suggest that humans, while judging semantic similarity of a pair of words, consider different meanings of the two words and not only the closest ones (Tversky, 1977; Markman and Gentner, 1993). For instance, the WordSim-353 dataset (Finkelstein et al., 2002) contains the word pair brother-monk. Despite having the religious devotee sense in common, the Algorithm 1 Word Similarity Input: Two words w1 and w2 Str, the similarity strategy Vic, the graph vicinity factor flag α parameter for the weighted strategy Output: The similarity between w1 and w2 1: Sw1 ← getSenses(w1), Sw2 ← getSenses(w2) 2: if Str is closest then 3: sim ← -1 4: else 5: sim ← 0 6: end if 7: for each s1 ∈ Sw1 and s2 ∈ Sw2 do 8: if Vic is true then 9: tmp ← T �(~s1,~s2) 10: else 11: tmp ←</context>
+</contexts>
+<marker>Tversky, 1977</marker>
+<rawString>Amos Tversky. 1977. Features of similarity. Psychological Review, 84:327–352.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dongqiang Yang</author>
+<author>David M W Powers</author>
+</authors>
+<title>Measuring semantic similarity in the taxonomy of wordnet.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Twenty-eighth Australasian Conference on Computer Science,</booktitle>
+<volume>38</volume>
+<pages>315--322</pages>
+<location>Darlinghurst, Australia.</location>
+<contexts>
+<context citStr="Yang and Powers (2005)" endWordPosition="3597" position="22303" startWordPosition="3594">be as close as possible to those given by humans. 4.1.1 Datasets We evaluate SENSEMBED on standard word similarity and relatedness datasets: the RG-65 (Rubenstein and Goodenough, 1965) and the WordSim353 (Finkelstein et al., 2002, WS-353) datasets. Agirre et al. (2009) suggested that the original WS-353 dataset conflates similarity and relatedness and divided the dataset into two subsets, each containing pairs for just one type of association measure: similarity (the WS-Sim dataset) and relatedness (the WS-Rel dataset). We also evaluate our approach on the YP-130 dataset, which was created by Yang and Powers (2005) specifically for measuring verb similarity, and also on the Stanford’s Contextual Word Similarities (SCWS), a dataset for measuring wordin-context similarity (Huang et al., 2012). In the SCWS dataset each word is provided with the sentence containing it, which helps in pointing out the intended sense of the corresponding target word. Finally, we also report results on the MEN dataset which was recently introduced by Bruni et al. (2014). MEN contains two sets of English word pairs, together with human-assigned similarity judgments, obtained by crowdsourcing using Amazon Mechanical Turk. 4.1.2 </context>
+</contexts>
+<marker>Yang, Powers, 2005</marker>
+<rawString>Dongqiang Yang and David M. W. Powers. 2005. Measuring semantic similarity in the taxonomy of wordnet. In Proceedings of the Twenty-eighth Australasian Conference on Computer Science, volume 38, pages 315–322, Darlinghurst, Australia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mo Yu</author>
+<author>Mark Dredze</author>
+</authors>
+<title>Improving Lexical Embeddings with Semantic Knowledge.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<volume>2</volume>
+<pages>545--550</pages>
+<location>Baltimore, Maryland.</location>
+<contexts>
+<context citStr="Yu and Dredze, 2014" endWordPosition="421" position="2890" startWordPosition="418">on the original sense discrimination approach of Reisinger and Mooney (2010), Huang et al. (2012) applied K-means clustering to decompose word embeddings into multiple prototypes, each denoting a distinct meaning of the target word. However, the sense representations obtained are not linked to any sense inventory, a mapping that consequently has to be carried out either manually, or with the help of sense-annotated data. Another line of research investigates the possibility of taking advantage of existing semantic resources in word embeddings. A good example is the Relation Constrained Model (Yu and Dredze, 2014). When computing word embeddings, this model replaces the original co-occurrence clues from text corpora with the relationship information derived from the Paraphrase Database1 (Ganitkevitch et al., 2013, PPDB), an automatically extracted dataset of paraphrase pairs. However, none of these techniques have simultaneously solved both above-mentioned issues, i.e., inability to model polysemy and reliance on text corpora as the only source of knowledge. We propose a novel approach, called SENSEMBED, which addresses both drawbacks by exploiting semantic knowledge for modeling arbitrary word senses </context>
+<context citStr="Yu and Dredze (2014)" endWordPosition="3949" position="24537" startWordPosition="3946">ters and reported the best performance obtained on each dataset. As representatives for graph-based similarity techniques, we report results for the state-of-theart approach of Pilehvar et al. (2013) which is based on random walks on WordNet’s semantic network. Moreover, we present results for the graph-based approach of Zesch et al. (2008), which compares a pair of words based on the path lengths on Wiktionary’s semantic network. We also compare our word similarity measure against the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and against the approaches of Yu and Dredze (2014) and Chen et al. (2014), which enhance word embeddings with semantic knowledge derived from PPDB and WordNet, respectively. Finally, we report results for word embeddings, as our baseline, obtained using the Word2vec toolkit on the same corpus that was annotated and used for learning our sense embeddings (cf. Section 2.3). 4.1.3 Parameter tuning Recall from Sections 3.3.1 and 3.3.2 that our algorithm has two parameters: the α parameter for the weighted strategy and the Q parameter for the graph vicinity factor. We tuned these two parameters on the SimLex-999 dataset (Hill et al., 2014). We pic</context>
+<context citStr="Yu and Dredze (2014)" endWordPosition="4367" position="27119" startWordPosition="4364">ge performance weighted by dataset size. Between the two similarity measurement strategies, weighted proves to be the more suitable, achieving the best overall performance on three datasets and the best mean performance of 0.794 across the two strategies. This indicates that our assumption of considering all senses of a word in similarity computation was beneficial. We report in Table 4 the Spearman correlation performance of four approaches that are similar to SENSEMBED: the multi-prototype models of Reisinger and Mooney (2010) and Huang et al. (2012), and the semantically enhanced models of Yu and Dredze (2014) and Chen et al. (2014). We provide results only on WS-353 and SCWS, since the above-mentioned approaches do not report their performance on other datasets. As we can see from the Table, SENSEMBED outperforms the other approaches on the WS-353 dataset. However, our approach lags behind on SCWS, highlighting the negative impact of taking the closest Measure WS-353 SCWS Huang et al. (2012) 0.713 0.628 Reisinger and Mooney (2010) 0.770 – Chen et al. (2014) – 0.662 Yu and Dredze (2014) 0.537 – Word2vec 0.694 0.642 SENSEMBEDclosest 0.714 0.589 SENSEMBEDweighted 0.779 0.624 Table 4: Spearman correla</context>
+</contexts>
+<marker>Yu, Dredze, 2014</marker>
+<rawString>Mo Yu and Mark Dredze. 2014. Improving Lexical Embeddings with Semantic Knowledge. In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, volume 2, pages 545–550, Baltimore, Maryland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Torsten Zesch</author>
+<author>Christof M¨uller</author>
+<author>Iryna Gurevych</author>
+</authors>
+<title>Using Wiktionary for Computing Semantic Relatedness.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 23rd National Conference on Artificial Intelligence,</booktitle>
+<volume>2</volume>
+<pages>861--866</pages>
+<location>Chicago, Illinois.</location>
+<marker>Zesch, M¨uller, Gurevych, 2008</marker>
+<rawString>Torsten Zesch, Christof M¨uller, and Iryna Gurevych. 2008. Using Wiktionary for Computing Semantic Relatedness. In Proceedings of the 23rd National Conference on Artificial Intelligence, volume 2, pages 861–866, Chicago, Illinois.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alisa Zhila</author>
+<author>Wen-tau Yih</author>
+<author>Christopher Meek</author>
+<author>Geoffrey Zweig</author>
+<author>Tomas Mikolov</author>
+</authors>
+<title>Combining Heterogeneous Models for Measuring Relational Similarity.</title>
+<date>2013</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>1000--1009</pages>
+<location>Atlanta,</location>
+<contexts>
+<context citStr="Zhila et al. (2013)" endWordPosition="3236" position="20138" startWordPosition="3233">ational similarity Relational similarity evaluates the correspondence between relations (Medin et al., 1990). The task can be viewed as an analogy problem in which, given two pairs of words (wa, wb) and (wc, wd), the goal is to compute the extent to which the relations of wa to wb and wc to wd are similar. Sense embeddings are suitable candidates for measuring this type of similarity, as they represent relations between senses as linear transformations. Given this property, the relation between a pair of words can be obtained by subtracting their corresponding normalized embeddings. Following Zhila et al. (2013), the relational similarity between two pairs of word (wa, wb) and (wc, wd) is accordingly calculated as: ANALOGY( ~wa, ~wb, ~wc, ~wd) = T ( ~wb − ~wa, ~wd − ~wc) We show the procedure for measuring the relational similarity in Algorithm 2. The algorithm first finds the closest senses across the two word pairs: s*a and s*b for the first pair and s*c and s*d for the second. The analogy vector representations are accordingly computed as the difference between the sense embeddings of the corresponding closest senses. Finally, the relational similarity is computed as the similarity of the analogy </context>
+<context citStr="Zhila et al., 2013" endWordPosition="4847" position="30187" startWordPosition="4844"> the PMI baseline provided by the task organizers. As for systems that use word embeddings for measuring relational similarity, we report results for RNN-1600 (Mikolov et al., 2013c) and PairDirection (Levy and Goldberg, 2014). We also report results for UTD-NB and UTD-SVM (Rink and Harabagiu, 2012), which rely on lexical pattern classification based on Naive Bayes and Support Vector Machine classifiers, respectively. UTD-LDA (Rink and Harabagiu, 2013) is another system presented by the same authors that casts the task as a selectional preferences one. Finally, we show the performance of Com (Zhila et al., 2013), a system that combines Word2vec, lexical patterns, and knowledge base information. Similarly to the word similarity experiments, we also report a baseline based on word embeddings (Word2vec) trained on the same corpus and with the same settings as SENSEMBED. Results. Table 5 shows the performance of different systems in the task of relational similarity in terms of the Spearman correlation and MaxDiff score. A comparison of the results for Word2vec and SENSEMBED shows the advantage gained by 4.3 Analysis In order to analyze the impact of the different components of our similarity measure, we</context>
+</contexts>
+<marker>Zhila, Yih, Meek, Zweig, Mikolov, 2013</marker>
+<rawString>Alisa Zhila, Wen-tau Yih, Christopher Meek, Geoffrey Zweig, and Tomas Mikolov. 2013. Combining Heterogeneous Models for Measuring Relational Similarity. In Proceedings of Human Language Technologies: The 2013 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 1000–1009, Atlanta, Georgia.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

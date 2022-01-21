@@ -1,0 +1,800 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000724" no="0">
+<title confidence="0.99021">
+Empirically-based Control of Natural Language Generation
+</title>
+<author confidence="0.997012">
+Daniel S. Paiva Roger Evans
+</author>
+<affiliation confidence="0.9995755">
+Department of Informatics Information Technology Research Institute
+University of Sussex University of Brighton
+</affiliation>
+<address confidence="0.940676">
+Brighton, UK Brighton, UK
+</address>
+<email confidence="0.998957">
+danielpa@sussex.ac.uk Roger.Evans@itri.brighton.ac.uk
+</email>
+<sectionHeader confidence="0.993914" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999291588235294">In this paper we present a new approach to controlling the behaviour of a natural language generation system by correlating internal decisions taken during free generation of a wide range of texts with the surface stylistic characteristics of the resulting outputs, and using the correlation to control the generator. This contrasts with the generate-andtest architecture adopted by most previous empirically-based generation approaches, offering a more efficient, generic and holistic method of generator control. We illustrate the approach by describing a system in which stylistic variation (in the sense of Biber (1988)) can be effectively controlled during the generation of short medical information texts.</bodyText>
+<sectionHeader confidence="0.998992" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.985025827586207">This paper1 is concerned with the problem of controlling the output of natural language generation (NLG) systems. In many application scenarios the generator’s task is underspecified, resulting in multiple possible solutions (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andtest architecture, in which all solutions are generated, and then ranked or otherwise selected according to their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkilde-Geary (2002)). However, this approach suffers from a number of drawbacks:</bodyText>
+<listItem confidence="0.98783">1. It requires generation of all, or at least many solutions (often hundreds of thousands), expensive both in time and space, and liable to lead to unnecessary interactions with other components (e.g. knowledge bases) in complex systems. Recent advances in the use of packed representations ameliorate some of these issues, but the basic need to compare a large number of solutions in order to rank them remains. 2. The ‘test’ component generally does not give fine-grained control — for example, in a statistically-based system it typically measures how close a text is to some single notion of ideal (actually, statistically average) output. 3. Use of an external filter does not combine well with any control mechanisms within the generator: e.g. controlling combinatorial explosion of modifier attachment or adjective order.</listItem>
+<bodyText confidence="0.9287518">In this paper we present an empirically-based method for controlling a generator which overcomes these deficiencies. It controls the generator internally, so that it can produce just one (locally) optimal solution; it employs a model of language variation, so that the generator can be controlled within a multidimensional space of possible variants; its view of the generator is completely holistic, so that it can accommodate any other control mechanisms intrinsic to the generation task.</bodyText>
+<page confidence="0.984543">
+58
+</page>
+<note confidence="0.9915885">
+Proceedings of the 43rd Annual Meeting of the ACL, pages 58–65,
+Ann Arbor, June 2005. c�2005 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999753333333333">To illustrate our approach we describe a system for controlling ‘style’ in the sense of Biber (1988) during the generation of short texts giving instructions about doses of medicine. The paper continues as follows. In §2 we describe our overall approach. We then present the implemented system (§3) and report on our experimental evaluation (§4). We end with a discussion of conclusions and future directions (§5).</bodyText>
+<sectionHeader confidence="0.68065" genericHeader="method">
+2 Overview of the Approach
+</sectionHeader>
+<bodyText confidence="0.999143181818182">Our overall approach has two phases: (1) offline calculation of the control parameters, and (2) online application to generation. In the first phase we determine a set of correlation equations, which capture the relationship between surface linguistic features of generated texts and the internal generator decisions that gave rise to those texts (see figure 1). In the second phase, these correlations are used to guide the generator to produce texts with particular surface feature characteristics (see figure 2).</bodyText>
+<figureCaption confidence="0.999467">
+Figure 1: Offline processing
+</figureCaption>
+<bodyText confidence="0.999875862068966">The starting point is a corpus of texts which represents all the variability that we wish to capture. Counts for (surface) linguistic features from the texts in the corpus are obtained, and a factor analysis is used to establish dimensions of variation in terms of these counts: each dimension is defined by a weighted sum of scores for particular features, and factor analysis determines the combination that best accounts for the variability across the whole corpus. This provides a language variation model which can be used to score a new text along each of the identified dimensions, that is, to locate the text in the variation space determined by the corpus. The next step is to take a generator which can generate across the range of variation in the corpus, and identify within it the key choice points (CP1, CP2, ... CPn) in its generation of a text. We then allow the generator to freely generate all possible texts from one or more inputs. For each text so generated we record (a) the text’s score according to the variation model and (b) the set of decisions made at each of the selected choice points in the generator. Finally, for a random sample of the generated texts, a statistical correlation analysis is undertaken between the scores and the corresponding generator decisions, resulting in correlation equations which predict likely variation scores from generator decisions.</bodyText>
+<figureCaption confidence="0.997151">
+Figure 2: Online processing
+</figureCaption>
+<bodyText confidence="0.9999826">In the second phase, the generator is adapted to use the correlation equations to conduct a best-first search of the generation space. As well as the usual input, the generator is supplied with target scores for each dimension of variation. At each choice point, the correlation equations are used to predict which choice is most likely to move closer to the target score for the final text. This basic architecture makes no commitment to what is meant by ‘variation’, ‘linguistic features’, ‘generator choice points’, or even ‘NLG system’. The key ideas are that a statistical analysis of surface features of a corpus of texts can be used to define a model of variation; this model can then be used to control a generator; and the model can also be used to evaluate the generator’s performance. In the next section we describe a concrete instantiation of this architecture, in which ‘variation’ is stylistic variation as characterised by a collection of shallow lexical and syntactic features.</bodyText>
+<sectionHeader confidence="0.925002" genericHeader="method">
+3 An Implemented System
+</sectionHeader>
+<bodyText confidence="0.999638666666667">In order to evaluate the effectiveness of this general approach, we implemented a system which attempts to control style of text generated as defined by Biber (1988) in short text (typically 2-3 sentences) describing medicine dosage instructions.</bodyText>
+<figure confidence="0.995650931818182">
+variation
+dimensions
+corpus
+factor
+analysis
+linguistic
+features
+variation
+model
+NLG
+system
+...
+input
+text
+CP1
+CP2
+CPn
+correlation
+analysis
+generator
+decisions
+at different
+choice
+points
+variation
+scores
+correlation
+equations
+input
+NLG
+system
+text in
+specified
+style
+CP1
+CP2
+CPn
+...
+...
+target
+variation
+score
+correlation
+equations
+</figure>
+<page confidence="0.99688">
+59
+</page>
+<subsectionHeader confidence="0.999274">
+3.1 Factor Analysis
+</subsectionHeader>
+<bodyText confidence="0.999974153846154">Biber characterised style in terms of very shallow linguistic features, such as presence of pronouns, auxiliaries, passives etc. By using factor analysis techniques he was able to determine complex correlations between the occurrence and nonoccurrence of such features in text, which he used to characterise different styles of text.2 We adopted the same basic methodology, applied to a smaller more consistent corpus of just over 300 texts taken from proprietary patient information leaflets. Starting with around 70 surface linguistic features as variables, our factor analysis yielded two main factors (each containing linguistic features grouped in positive and negative correlated subgroups) which we used as our dimensions of variation. We interpreted these dimensions as follows (this is a subjective process — factor analysis does not itself provide any interpretation of factors): dimension 1 ranges from texts that try to involve the reader (high positive score) to text that try to be distant from the reader (high negative score); dimension 2 ranges from texts with more pronominal reference and a higher proportion of certain verbal forms (high positive score) to text that use full nominal reference (high negative score).3</bodyText>
+<subsectionHeader confidence="0.998566">
+3.2 Generator Architecture
+</subsectionHeader>
+<bodyText confidence="0.995425933333333">The generator was constructed from a mixture of existing components and new implementation, using a fairly standard overall architecture as shown in figure 3. Here, dotted lines show the control flow and the straight lines show data flow — the choice point annotations are described below. The input constructor takes an input specification and, using a background database of medicine information, creates a network of concepts and re2 Some authors (e.g. Lee (1999)) have criticised Biber for making assumptions about the validity and generalisability of his approach to English language as a whole. Here, however, we use his methodology to characterise whatever variation exists without needing to make any broader claims.</bodyText>
+<footnote confidence="0.7363705">
+3 Full details of the factor analysis can be found in
+(Paiva 2000).
+</footnote>
+<figure confidence="0.61426">
+sentence
+</figure>
+<figureCaption confidence="0.999422">
+Figure 3: Generator architecture with choice points
+</figureCaption>
+<bodyText confidence="0.9898892">Each network is then split into subnetworks by the split network module. This partitions the network by locating ‘proposition’ objects (marked with a double-lined box in figure 4) which have no parent and tracing the subnetwork reachable from each one. We call these subnetworks propnets. In figure 4, there are two propnets, rooted in [1:take] and [9:state] — proposition [15:state] is not a root as it can be reached from [1:take]. A list of all possible groupings of these propnets is obtained4, and one of the possible combinations is passed to the network ordering module. This is the first source of non-determinism in our system, marked as choice point one in figure 3. A combination of subnetworks will be material for the realisation of one paragraph and each subnetwork will be realised as one sentence. 4 For instance, with three propnets (A, B and C) the list of combinations would be [(A,B,C), (A,BC), (AB, C), (AC,B), (ABC)].</bodyText>
+<figure confidence="0.988275285714286">
+input
+constructor
+choice
+point 1:
+number of
+sentences
+network
+ordering
+lations (see figure 4) using a schema-based ap-
+proach (McKeown, 1985).
+input
+specification
+initial input networks
+sentence-size networks
+choice
+point 2:
+type of
+referring
+expression
+referring
+expression
+subnetwork chosen
+referring expression net
+NP pruning
+pruned network
+split
+network
+choice
+point 3:
+choice of
+mapping
+rule
+realiser
+60
+13:value(2xday)
+</figure>
+<figureCaption confidence="0.9897255">
+Figure 4: Example of semantic network produced by the
+input constructor5
+</figureCaption>
+<bodyText confidence="0.9994340625">The network ordering module receives a combination of subnetworks and orders them based on the number of common elements between each subnetwork. The strategy is to try to maximise the possibility of having a smooth transition from one sentence to the next in accordance with Centering Theory (Grosz et al., 1995), and so increase the possibility of having a pronoun generated. The referring expression module receives one subnetwork at a time and decides, for each object that is of type [thing], which type of referring expression will be generated. The module is re-used from the Riches system (Cahill et al., 2001) and it generates either a definite description or a pronoun. This is the second source of non-determinism in our system, marked as choice point two in figure 3. Referring expression decisions are recorded by introducing additional nodes into the network, as shown for example in figure 5 (a fragment of the network in figure 4, with the additional nodes). NP pruning is responsible for erasing from a referring expression subnetwork all the nodes that can be transitively reached from a node marked to be pronominalised. This prevents the realiser from trying to express the information twice. In figure 5, [7:dose] is marked to be pronominalised, so the concepts [11:of] and [3:medicine] do not need to be realised, so they are pruned. 5 Although some of the labels in this figure look like words, they bear no direct relation to words in the surface text — for example, ‘of’ may be realised as a genitive construction or a possessive.</bodyText>
+<figure confidence="0.9243375">
+22:definite
+arg0
+</figure>
+<figureCaption confidence="0.998986">
+Figure 5: Referring expressions and pruning
+</figureCaption>
+<bodyText confidence="0.996357541666667">The realiser is a re-implementation of Nicolov’s (1999) generator, extended to use the widecoverage lexicalised grammar developed in the LEXSYS project (Carroll et al., 2000), with further semantic extensions for the present system. It selects grammar rules by matching their semantic patterns to subnetworks of the input, and tries to generate a sentence consuming the whole input. In general there are several rules linking each piece of semantics to its possible realisation, so this is our third, and most prolific, source of non-determinism in the architecture, marked as choice point three in figure 3. A few examples of outputs for the input represented in figure 4 are: the dose of the patient 's medicine is taken twice a day. it is two grams. the two-gram dose of the patient 's medicine is taken twice a day. the patient takes the two-gram dose of the patient 's medicine twice a day. From a typical input corresponding to 2-3 sentences, this generator will generate over a 1000 different texts.</bodyText>
+<subsectionHeader confidence="0.999605">
+3.3 Tracing Generator Behaviour
+</subsectionHeader>
+<bodyText confidence="0.999989421052631">In order to control the generator’s behaviour we first allow it to run freely, recording a ‘trace’ of the decisions it makes at each choice point during the production of each text. Although there are only three choice points in figure 3, the control structure included two loops: an outer loop which ranges over the sequence of propnets, generating a sentence for each one, and an inner loop which ranges over subnetworks of a propnet as realisation rules are chosen. So the decision structure for even a small text may be quite complex. In the experiments reported here, the trace of the generation process is simply a record of the number of times each decision (choice point, and what choice was made) occurred. Paiva (2004) discusses more complex tracing models, where the context of each decision (for example, what the preceding decision was) is recorded and used in the correlation. However the best results were obtained using just the simple decision-counting model (perhaps in part due to data sparseness for more complex models).</bodyText>
+<figure confidence="0.999513166666667">
+arg0
+arg0
+6:of
+3:medicine
+5:patient
+2:patient
+1:take
+arg0
+arg0
+tense
+4:pres
+freq
+12:freq
+arg0
+14:pres
+tense
+15:state
+arg1
+7:dose
+arg1
+8:value(2gram)
+10:pres
+arg0
+tense
+9:state
+arg0
+11:of
+proxy
+arg1
+11:of
+arg0
+refexp
+7:dose
+refexp
+3:medicine
+21:pronoun
+</figure>
+<page confidence="0.99045">
+61
+</page>
+<subsectionHeader confidence="0.895541">
+3.4 Correlating Decisions with Text Features
+</subsectionHeader>
+<bodyText confidence="0.999904071428571">By allowing the generator to freely generate all possible output from a single input, we recorded a set of &lt;trace, text&gt; pairs ranging across the full variation space. From these pairs we derived corresponding &lt;decision-count, factor-score&gt; pairs, to which we applied a very simple correlational technique, multivariate linear regression analysis, which is used to find an estimator function for a linear relationship (i.e., one that can be approximated by a straight line) from the data available for several variables (Weisberg, 1985). In our case we want to predict the value for a score in a stylistic dimension (SSi) based on a configuration of generator decisions (GDj) as seen in equation 1.</bodyText>
+<equation confidence="0.701604">
+(eq. 1) SSi = x0 + x1GD1 + ... + xnGDn + c 6
+</equation>
+<bodyText confidence="0.999969777777778">We used three randomly sampled data sets of 1400, 1400 and 5000 observations obtained from a potential base of about 1,400,000 different texts that could be produced by our generator from a single input. With each sample, we obtained a regression equation for each stylistic dimension separately. In the next subsections we will present the final results for each of the dimensions separately.</bodyText>
+<subsubsectionHeader confidence="0.652584">
+Regression on Stylistic Dimension 1
+</subsubsectionHeader>
+<bodyText confidence="0.948667666666667">For the regression model on the first stylistic dimension (SS1), the generator decisions that were used in the regression analysis7 are: imperative with one object sentences (IMP_VNP), V_NP_PP agentless passive sentences (PAS_VNPP), V_NP bypassives (BYPAS_VN), and N_PP clauses (NPP) and these are all decisions that happen in the realiser, i.e., at the third choice point in the architecture. This resulted in the regression equation shown in equation 2. 6 SSi represents a stylistic score and is the dependent variable or criterion in the regression analysis; the GDj’s represent generator decisions and are called the independent variables or predictors; the xj’s are weights, and c is the error. 7 The process of determining the regression takes care of eliminating the variables (i.e. generator decisions) that are not useful to estimate the stylistic dimensions.</bodyText>
+<equation confidence="0.99902">
+(eq. 2)
+SS1 = 6.459 − (1.460*NPP) − (1.273*BYPAS_VN)
+− (1.826*PAS_VNPP) + (1.200*IMP_VNP)8
+</equation>
+<bodyText confidence="0.999946388888889">The coefficients for the regression on SS1 are unstandardised coefficients, i.e. the ones that are used when dealing with raw counts for the generator decisions. The coefficient of determination (R2), which measures the proportion of the variance of the dependent variable about its mean that is explained by the independent variables, had a reasonably high value (.895)9 and the analysis of variance obtained an F test of 1701.495. One of the assumptions that this technique assumes is the linearity of the relation between the dependent and the independent variables (i.e., in our case, between the stylistic scores in a dimension and the generator decisions). The analysis of the residuals resulted in a graph that had some problems but that resembled a normal graph (see (Paiva, 2004) for more details).</bodyText>
+<subsubsectionHeader confidence="0.48026">
+Regression on Stylistic Dimension 2
+</subsubsectionHeader>
+<bodyText confidence="0.9999863125">For the regression model on the second stylistic dimension (SS2) the variables that we used were: the number of times a network was split (SPLITNET), generation of a pronoun (RE_PRON), auxiliary verb (VAUX), noun with determiner (NOUN), transitive verb (VNP), and agentless passive (PAS_VNP) — the first type of decision happens in the split network module (our first choice point); the second, in the referring expression module (second choice point); and the rest in the realiser (third choice point). The main results for this model are as follows: the coefficient of determination (R2) was .959 and the analysis of variance obtained an F test of 2298.519. The unstandardised regression coefficients for this model can be seen in eq. 3.</bodyText>
+<equation confidence="0.99862175">
+(eq. 3)
+SS2 = − 27.208 − (1.530*VNP) + (2.002*RE_PRON)
+− (.547*NOUN) + (.356*VAUX)
++ (.860*SPLITNET) + (.213*PAS_VNP)10
+</equation>
+<footnote confidence="0.984124857142857">
+8 This specific equation came from the sample with
+5,000 observations — the equations obtained from
+the other samples are very similar to this one.
+9 All the statistical results presented in this paper are
+significant at the 0.01 level (two-tailed).
+10 This specific equation comes from one of the samples
+of 1,400 observations.
+</footnote>
+<page confidence="0.999323">
+62
+</page>
+<bodyText confidence="0.999978333333333">With this second model we did not find any problems with the linearity assumptions as the analysis of the residuals gave a normal graph.</bodyText>
+<sectionHeader confidence="0.956429" genericHeader="evaluation and result">
+4 Controlling the Generator
+</sectionHeader>
+<bodyText confidence="0.999986540540541">These regression equations characterise the way in which generator decisions influence the final style of the text (as measured by the stylistic factors). In order to control the generator, the user specifies a target stylistic score for each dimension of the text to be generated. At each choice point during generation, all possible decisions are collected in a list and the regression equations are used to order them. The equations allow us to estimate the subsequent values of SS1 and SS2 for each of the possible decisions, and the decisions are ordered according to the distance of the resulting scores from the target scores — the closer the score, the better the decision. Hence the search algorithm that we are using here is the best-first search, i.e., the best local solution according to an evaluation function (which in this case is the Euclidian distance from the target and the resulted value obtained by using the regression equation) is tried first but all the other local solutions are kept in order so backtracking is possible. In this paper we report on tests of two internal aspects of the system11. First we wish to know how good the generator is at hitting a user-specified target — i.e., how close are the scores given by the regression equations for the first text generated to the user’s input target scores. Second, we wish to know how good the regression equation scores are at modelling the original stylistic factors — i.e., we want to compare the regression scores of an output text with the factor analysis scores. We address these questions across the whole of the twodimensional stylistic space, by specifying a rectangular grid of scores spanning the whole space, and asking the generator to produce texts for each grid point from the same semantic input specification.</bodyText>
+<table confidence="0.974359">
+71 72 73 74 75 76 77 78 79 80
+61 62 63 64 65 66 67 68 69 70
+51 52 53 54 55 56 57 58 59 60
+41 42 43 44 45 46 47 48 49 50
+31 32 33 34 35 36 37 38 39 40
+21 22 23 24 25 26 27 28 29 30
+11 12 13 14 15 16 17 18 19 20
+1 2 3 4 5 6 7 8 9 10
+-45 -40 -35 -30 -25
+</table>
+<figureCaption confidence="0.989091">
+Figure 6: Target scores for the texts
+</figureCaption>
+<bodyText confidence="0.999937125">In this case we divided the scoring space with an 8 by 10 grid pattern as shown in figure 6.12 Each point specifies the target scores for each text that should be generated (the number next to each point is an identifier of each text). For instance, text number 1 was targeted at coordinate (−7, −44), whereas text number 79 was targeted at coordinate (+7, −28).</bodyText>
+<subsectionHeader confidence="0.9993255">
+4.1 Comparing Target Points and Regression
+Scores
+</subsectionHeader>
+<bodyText confidence="0.999659538461538">In the first part of this experiment we wanted to know how close to the user-specified target coordinates the resulting regression scores of the first generated text were. This can be done in two different ways. The first is to plot the resulting regression scores (see figure 7) and visually check if it mirrors the grid-shape pattern of the target points (figure 6) — this can be done by inspecting the text identifiers13. This can be a bit misleading because there will always be variation around the target point that was supposed to be achieved (i.e., there is a margin for error) and this can blur the comparison unfavourably.</bodyText>
+<figure confidence="0.978826272727273">
+10
+8
+6
+4
+2
+0
+-2
+-4
+-6
+-8
+-10
+</figure>
+<footnote confidence="0.941474769230769">
+11 We are not dealing with external (user) evaluation of
+the system and of the stylistic dimensions we ob-
+tained — this was left for future work. Nonetheless,
+Sigley (1997) showed that the dimensions obtained
+with factor analysis and people’s perception have a
+high correlation.
+12 The range for each scale comes from the maximum
+and minimum values for the factors obtained in the
+samples of generated texts.
+13 Note that some texts obtained the same regression
+score and, in the statistical package, only one was
+numbered. Those instances are: 1 and 7; 18 and 24;
+22 and 28.
+</footnote>
+<page confidence="0.990942">
+63
+</page>
+<table confidence="0.980622432432432">
+72 473 75 76 77 78 79 80
+61 6362 64 65 68 69
+51 52 66 67 58 70
+57
+41 53 54 56 59 60
+55
+42 43 44 45 47 49 50
+31 46
+21 33 11 48 39 40
+32 22 534 36 37 38
+23
+121 25 26 27 28 29 30
+24
+13 14
+2
+15 16 17 20
+43 76 18 19
+5
+8 9 10
+75 76 77
+72 66 78 79 80
+71 61 62473 6465 67 68 58 69
+70
+5152 54 5756 47 59 60
+63 4455
+41
+42 49 50
+43
+53 45
+31 53446 48 39 40
+21 11 2425 33 23 36 27 38 29 30 20
+32 22 26 17
+37 28
+14 18 19
+76
+12 1 13 2 3 16 8 9 10
+154 5
+</table>
+<figure confidence="0.978369217391304">
+10
+8
+6
+4
+2
+0
+-2
+-4
+-6
+-8
+-10
+10
+8
+6
+4
+2
+0
+-2
+-4
+-6
+-8
+-10
+-45 -40 -35 -30 -25 -45 -40 -35 -30 -25
+</figure>
+<figureCaption confidence="0.994244">
+Figure 7: Texts scored by using the
+regression equation
+</figureCaption>
+<bodyText confidence="0.9980884">A more formal comparison can be made by plotting the target points versus the regression results for each dimension separately and obtaining a correlation measure between these values. These correlations are shown in figure 8 for SS1 (left) and SS2 (right). The degree of correlation (R2) between the values of target and regression points is 0.9574 for SS1 and 0.942 for SS2, which means that the search mechanism is working very satisfactorily on both dimensions.14</bodyText>
+<figureCaption confidence="0.9957955">
+Figure 8: Plotting target points versus regression results
+on SS1 (left) and SS2 (right)
+</figureCaption>
+<subsectionHeader confidence="0.99392">
+4.2 Comparing Target Points and Stylistic
+Scores
+</subsectionHeader>
+<bodyText confidence="0.880314583333333">In the second part of this experiment we wanted to know whether the regression equations were doing the job they were supposed to do by comparing the regression scores with stylistic scores obtained (from the factor analysis) for each of the generated texts. In figure 9 we plotted the texts in a graph in accordance with their stylistic scores (once again, some texts occupy the same point so they do not appear). 14 All the correlational figures (R2) presented for this experiment are significant at the 0.01 level (twotailed).</bodyText>
+<figureCaption confidence="0.98555">
+Figure 9: Texts scored using the two stylistic dimension
+obtained in our factor analysis
+</figureCaption>
+<bodyText confidence="0.999856318181818">In the ideal situation, the generator would have produced texts with the perfect regression scores and they would be identical to the stylistic scores, so the graph in the figure 9 would be like a gridshape one as in figure 6. However we have already seen in figure 7, that this is not the case for the relation between the target coordinates and the regression scores. So we did not expect the plot of stylistic scores 1 (SS1) against stylistic scores 2 (SS2) to be a perfect grid. Figure 10 (left-hand side) shows the relation between the target points and the scores obtained from the original factor equation of SS1. The value of R2, which represents their correlation, is high (0.9458), considering that this represents the possible accumulation of errors of two stages: from the target to the regression scores, and then from the regression to the actual factor scores. On the right of figure 10 we can see the plotting of the target points and their respective factor scores on SS2. The correlation obtained is also reasonably high (R2 = 0.9109).</bodyText>
+<figureCaption confidence="0.88831">
+Figure 10: Plotting target points versus factor scores on
+SS1 (left) and SS2 (right)
+</figureCaption>
+<sectionHeader confidence="0.996162" genericHeader="other">
+5 Discussion and Future Work
+</sectionHeader>
+<bodyText confidence="0.99967375">These results demonstrate that it is possible to provide effective control of a generator correlating internal generator behaviour with characteristics of the resulting texts. It is important to note that these two sets of variables (generator decision and surface features) are in principle quite independent of each other.</bodyText>
+<figure confidence="0.993589316666667">
+-6
+4
+0
+6
+2
+8
+-1
+-4
+-2
+-8
+-40
+-45
+-35
+-30
+-25
+8
+6
+4
+2
+0
+-2
+-4
+-6
+-8
+-10
+-25
+-30
+-35
+-40
+-45
+-25
+10
+8
+6
+4
+2
+-30
+0
+-2
+-4
+-6
+-8
+-35
+-40
+-10
+-45
+-1
+-30 -25
+-40 -35
+-45
+-8
+6
+-6
+10
+8
+4
+2
+0
+-2
+-4
+</figure>
+<page confidence="0.995151">
+64
+</page>
+<bodyText confidence="0.999961434782609">Although in some cases there are strong correlations (for example, the generator’s use of a ‘passive’ rule, correlates with the occurrence of passive participles in the text), in others the relationship is much less direct (for example, the choice of how many subnetworks to split a network into, i.e., SPLITNET, does not correspond to any feature in the factor analysis), and the way individual features combine into significant factors may be quite different. Another feature of our approach is that we do not assume some pre-defined notion of parameters of variation – variation is characterised completely by a corpus (in contrast to approaches which use a corpus to characterise a single style). The disadvantage of this is that variation is not grounded in some ‘intuitive’ notion of style: the interpretation of the stylistic dimensions is subjective and tentative. However, as no comprehensive computationally realisable theory of style yet exists, we believe that this approach has considerable promise for practical, empirically-based stylistic control. The results reported here also make us think that a possible avenue for future work is to explore the issue of what types of problems the generalisation induced by our framework (which will be discussed below) can be applied to. This paper dealt with an application to stylistic variation but, in theory, the approach can be applied to any kind of process to which there is a sorting function that can impose an order, using a measurable scale (e.g., ranking), onto the outputs of another process. Schematically the approach can be abstracted to any sort of problem of the form shown in figure 11. Here there is a producer process outputting a large number of solutions. There is also a sorter process which will classify those solutions in a certain order. The numerical value associated with the output by the sorter can be correlated with the decisions the producer took to generate the output. The same correlation and control mechanism used in this paper can be introduced in the producer process, making it controllable with respect to the sorting dimension.</bodyText>
+<figure confidence="0.786279">
+output m
+</figure>
+<figureCaption confidence="0.99587">
+Figure 11: The producer-sorter scheme.
+</figureCaption>
+<sectionHeader confidence="0.996887" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999634529411765">
+Biber, Douglas (1988) Variation across speech and writing.
+Cambridge University Press.
+Cahill, Lynne; J. Carroll; R. Evans; D. Paiva; R. Power; D. Scott; and
+K. van Deemter From RAGS to RICHES: exploiting the potential
+of a flexible generation architecture. Proceedings of ACL/EACL
+2001, pp. 98-105.
+Carroll, John; N. Nicolov; O. Shaumyan; M. Smets; and D. Weir
+(2000) Engineering a wide-coverage lexicalized grammar. Pro-
+ceedings of the Fifth International Workshop on Tree Adjoining
+Grammars and Related Frameworks.
+Green, Stephen J.; and C. DiMarco (1993) Stylistic decision-making
+in NLG. In Proceedings of the 4th European Workshop on Natu-
+ral Language Generation. Pisa, Italy.
+Grosz, Barbara J.; A.K. Joshi; and S. Weinstein (1995) Centering: A
+Framework for Modelling the Local Coherence of Discourse. In-
+stitute for Research in Cognitive Science, IRCS-95-01, University
+of Pennsylvania.
+Hovy, Eduard H. (1988) Generating natural language under prag-
+matic constraints. Lawrence Erlbaum Associates.
+Langkilde-Geary, Irene. (2002) An empirical verification of coverage
+and correctness for a general-purpose sentence generator. Proceed-
+ing of INLG’02, pp. 17-24.
+Lee, David (1999) Modelling Variation in Spoken And Written Eng-
+lish: the Multi-Dimensional Approach Revisited. PhD thesis, Uni-
+versity of Lancaster, UK.
+McKeown, Kathleen R. (1985) Text Generation: Using Discourse
+Strategies and Focus Constraints to Generate Natural Language
+Text. Cambridge University Press.
+Nicolov, Nicolas (1999) Approximate Text Generation from Non-
+hierarchical Representations in a Declarative Framework. PhD
+Thesis, University of Edinburgh.
+Paiva, Daniel S. (2000) Investigating style in a corpus of pharmaceuti-
+cal leaflets: results of a factor analysis. Proceedings of the Student
+Workshop of the 38th Annual Meeting of the Association for Com-
+putational Linguistics (ACL'2000), Hong Kong, China.
+Paiva, Daniel S. (2004) Using Stylistic Parameters to Control
+a Natural Language Generation System. PhD Thesis, University of
+Brighton, Brighton, UK.
+Paiva, Daniel S.; R. Evans (2004) A Framework for Stylistically Con-
+trolled Generation. In Proceedings of the 3rd International Confer-
+ence on Natural Language Generation (INLG’04). New Forest,
+UK.
+Sigley, Robert (1997) Text categories and where you can stick them: a
+crude formality index. International Journal of Corpus Linguistics,
+volume 2, number 2, pp. 199-237.
+Walker, Marilyn; O. Rambow, and M. Rogati (2002) Training a Sen-
+tence Planner for Spoken Dialogue Using Boosting. Computer
+Speech and Language, Special Issue on Spoken Language Genera-
+tion. July.
+Weisberg, Sanford (1985) Applied Linear Regression, 2nd edition.
+John Wiley &amp; Sons.
+</reference>
+<figure confidence="0.998852416666667">
+producer
+output 1
+output 2
+output 3
+output 4
+sorter output 14 sorting dimension
+output 3
+output 10
+output m
+...
+...
+output 1
+</figure>
+<page confidence="0.9886">
+65
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.820890" no="0">
+<title confidence="0.999878">Empirically-based Control of Natural Language Generation</title>
+<author confidence="0.999965">Daniel S Paiva Roger Evans</author>
+<affiliation confidence="0.999961">Department of Informatics Information Technology Research Institute University of Sussex University of Brighton</affiliation>
+<address confidence="0.992593">Brighton, UK Brighton, UK</address>
+<email confidence="0.877763">danielpa@sussex.ac.ukRoger.Evans@itri.brighton.ac.uk</email>
+<abstract confidence="0.996716055555555">In this paper we present a new approach to controlling the behaviour of a natural language generation system by correlating internal decisions taken during free generation of a wide range of texts with the surface stylistic characteristics of the resulting outputs, and using the correlation to control the generator. This contrasts with the generate-andtest architecture adopted by most previous empirically-based generation approaches, offering a more efficient, generic and holistic method of generator control. We illustrate the approach by describing a system in which stylistic variation (in the sense of Biber (1988)) can be effectively controlled during the generation of short medical information texts.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Douglas Biber</author>
+</authors>
+<title>Variation across speech and writing.</title>
+<date>1988</date>
+<publisher>Cambridge University Press.</publisher>
+<contexts>
+<context citStr="Biber (1988)" endWordPosition="128" position="909" startWordPosition="127">er we present a new approach to controlling the behaviour of a natural language generation system by correlating internal decisions taken during free generation of a wide range of texts with the surface stylistic characteristics of the resulting outputs, and using the correlation to control the generator. This contrasts with the generate-andtest architecture adopted by most previous empirically-based generation approaches, offering a more efficient, generic and holistic method of generator control. We illustrate the approach by describing a system in which stylistic variation (in the sense of Biber (1988)) can be effectively controlled during the generation of short medical information texts. 1 Introduction This paper1 is concerned with the problem of controlling the output of natural language generation (NLG) systems. In many application scenarios the generator’s task is underspecified, resulting in multiple possible solutions (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andte</context>
+<context citStr="Biber (1988)" endWordPosition="591" position="3914" startWordPosition="590">It controls the generator internally, so that it can produce just one (locally) optimal solution; it employs a model of language variation, so that the generator can be controlled within a multidimensional space of possible variants; its view of the generator is completely holistic, so that it can accommodate any other control mechanisms intrinsic to the generation task. 58 Proceedings of the 43rd Annual Meeting of the ACL, pages 58–65, Ann Arbor, June 2005. c�2005 Association for Computational Linguistics To illustrate our approach we describe a system for controlling ‘style’ in the sense of Biber (1988) during the generation of short texts giving instructions about doses of medicine. The paper continues as follows. In §2 we describe our overall approach. We then present the implemented system (§3) and report on our experimental evaluation (§4). We end with a discussion of conclusions and future directions (§5). 2 Overview of the Approach Our overall approach has two phases: (1) offline calculation of the control parameters, and (2) online application to generation. In the first phase we determine a set of correlation equations, which capture the relationship between surface linguistic featur</context>
+<context citStr="Biber (1988)" endWordPosition="1223" position="7743" startWordPosition="1222">ic variation as characterised by a collection of shallow lexical and syntactic features. 3 An Implemented System In order to evaluate the effectiveness of this general approach, we implemented a system which attempts to control style of text generated as devariation dimensions corpus factor analysis linguistic features variation model NLG system ... input text CP1 CP2 CPn correlation analysis generator decisions at different choice points variation scores correlation equations input NLG system text in specified style CP1 CP2 CPn ... ... target variation score correlation equations 59 fined by Biber (1988) in short text (typically 2-3 sentences) describing medicine dosage instructions. 3.1 Factor Analysis Biber characterised style in terms of very shallow linguistic features, such as presence of pronouns, auxiliaries, passives etc. By using factor analysis techniques he was able to determine complex correlations between the occurrence and nonoccurrence of such features in text, which he used to characterise different styles of text.2 We adopted the same basic methodology, applied to a smaller more consistent corpus of just over 300 texts taken from proprietary patient information leaflets. Star</context>
+</contexts>
+<marker>Biber, 1988</marker>
+<rawString>Biber, Douglas (1988) Variation across speech and writing. Cambridge University Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lynne Cahill</author>
+<author>J Carroll</author>
+<author>R Evans</author>
+<author>D Paiva</author>
+<author>R Power</author>
+<author>D Scott</author>
+<author>K van</author>
+</authors>
+<title>Deemter From RAGS to RICHES: exploiting the potential of a flexible generation architecture.</title>
+<date>2001</date>
+<booktitle>Proceedings of ACL/EACL</booktitle>
+<pages>98--105</pages>
+<contexts>
+<context citStr="Cahill et al., 2001" endWordPosition="1902" position="12018" startWordPosition="1899">5 The network ordering module receives a combination of subnetworks and orders them based on the number of common elements between each subnetwork. The strategy is to try to maximise the possibility of having a smooth transition from one sentence to the next in accordance with Centering Theory (Grosz et al., 1995), and so increase the possibility of having a pronoun generated. The referring expression module receives one subnetwork at a time and decides, for each object that is of type [thing], which type of referring expression will be generated. The module is re-used from the Riches system (Cahill et al., 2001) and it generates either a definite description or a pronoun. This is the second source of non-determinism in our system, marked as choice point two in figure 3. Referring expression decisions are recorded by introducing additional nodes into the network, as shown for example in figure 5 (a fragment of the network in figure 4, with the additional nodes). NP pruning is responsible for erasing from a referring expression subnetwork all the nodes that can be transitively reached from a node marked to be pronominalised. This prevents the realiser from trying to express the information twice. In fi</context>
+</contexts>
+<marker>Cahill, Carroll, Evans, Paiva, Power, Scott, van, 2001</marker>
+<rawString>Cahill, Lynne; J. Carroll; R. Evans; D. Paiva; R. Power; D. Scott; and K. van Deemter From RAGS to RICHES: exploiting the potential of a flexible generation architecture. Proceedings of ACL/EACL 2001, pp. 98-105.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John Carroll</author>
+<author>N Nicolov</author>
+<author>O Shaumyan</author>
+<author>M Smets</author>
+<author>D Weir</author>
+</authors>
+<title>Engineering a wide-coverage lexicalized grammar.</title>
+<date>2000</date>
+<booktitle>Proceedings of the Fifth International Workshop on Tree Adjoining Grammars and Related Frameworks.</booktitle>
+<contexts>
+<context citStr="Carroll et al., 2000" endWordPosition="2095" position="13191" startWordPosition="2092">m trying to express the information twice. In figure 5, [7:dose] is marked to be pronominalised, so the concepts [11:of] and [3:medicine] do not need to be realised, so they are pruned. 5 Although some of the labels in this figure look like words, they bear no direct relation to words in the surface text — for example, ‘of’ may be realised as a genitive construction or a possessive. 22:definite arg0 Figure 5: Referring expressions and pruning The realiser is a re-implementation of Nicolov’s (1999) generator, extended to use the widecoverage lexicalised grammar developed in the LEXSYS project (Carroll et al., 2000), with further semantic extensions for the present system. It selects grammar rules by matching their semantic patterns to subnetworks of the input, and tries to generate a sentence consuming the whole input. In general there are several rules linking each piece of semantics to its possible realisation, so this is our third, and most prolific, source of non-determinism in the architecture, marked as choice point three in figure 3. A few examples of outputs for the input represented in figure 4 are: the dose of the patient 's medicine is taken twice a day. it is two grams. the two-gram dose of </context>
+</contexts>
+<marker>Carroll, Nicolov, Shaumyan, Smets, Weir, 2000</marker>
+<rawString>Carroll, John; N. Nicolov; O. Shaumyan; M. Smets; and D. Weir (2000) Engineering a wide-coverage lexicalized grammar. Proceedings of the Fifth International Workshop on Tree Adjoining Grammars and Related Frameworks.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Stephen J Green</author>
+<author>C DiMarco</author>
+</authors>
+<title>Stylistic decision-making in NLG.</title>
+<date>1993</date>
+<booktitle>In Proceedings of the 4th European Workshop on Natural Language Generation.</booktitle>
+<location>Pisa, Italy.</location>
+<contexts>
+<context citStr="Green and DiMarco (1993)" endWordPosition="267" position="1831" startWordPosition="264"> in multiple possible solutions (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andtest architecture, in which all solutions are generated, and then ranked or otherwise selected according to their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkilde-Geary (2002)). However, this approach suffers from a number of drawbacks: 1. It requires generation of all, or at least many solutions (often hundred</context>
+</contexts>
+<marker>Green, DiMarco, 1993</marker>
+<rawString>Green, Stephen J.; and C. DiMarco (1993) Stylistic decision-making in NLG. In Proceedings of the 4th European Workshop on Natural Language Generation. Pisa, Italy.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Barbara J Grosz</author>
+<author>A K Joshi</author>
+<author>S Weinstein</author>
+</authors>
+<title>Centering: A Framework for Modelling the Local Coherence of Discourse.</title>
+<date>1995</date>
+<booktitle>Institute for Research in Cognitive Science,</booktitle>
+<pages>95--01</pages>
+<institution>University of Pennsylvania.</institution>
+<contexts>
+<context citStr="Grosz et al., 1995" endWordPosition="1851" position="11713" startWordPosition="1848">ce-size networks choice point 2: type of referring expression referring expression subnetwork chosen referring expression net NP pruning pruned network split network choice point 3: choice of mapping rule realiser 60 13:value(2xday) Figure 4: Example of semantic network produced by the input constructor5 The network ordering module receives a combination of subnetworks and orders them based on the number of common elements between each subnetwork. The strategy is to try to maximise the possibility of having a smooth transition from one sentence to the next in accordance with Centering Theory (Grosz et al., 1995), and so increase the possibility of having a pronoun generated. The referring expression module receives one subnetwork at a time and decides, for each object that is of type [thing], which type of referring expression will be generated. The module is re-used from the Riches system (Cahill et al., 2001) and it generates either a definite description or a pronoun. This is the second source of non-determinism in our system, marked as choice point two in figure 3. Referring expression decisions are recorded by introducing additional nodes into the network, as shown for example in figure 5 (a fra</context>
+</contexts>
+<marker>Grosz, Joshi, Weinstein, 1995</marker>
+<rawString>Grosz, Barbara J.; A.K. Joshi; and S. Weinstein (1995) Centering: A Framework for Modelling the Local Coherence of Discourse. Institute for Research in Cognitive Science, IRCS-95-01, University of Pennsylvania.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eduard H Hovy</author>
+</authors>
+<title>Generating natural language under pragmatic constraints. Lawrence Erlbaum Associates.</title>
+<date>1988</date>
+<contexts>
+<context citStr="Hovy (1988)" endWordPosition="263" position="1805" startWordPosition="262">ed, resulting in multiple possible solutions (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andtest architecture, in which all solutions are generated, and then ranked or otherwise selected according to their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkilde-Geary (2002)). However, this approach suffers from a number of drawbacks: 1. It requires generation of all, or at least man</context>
+</contexts>
+<marker>Hovy, 1988</marker>
+<rawString>Hovy, Eduard H. (1988) Generating natural language under pragmatic constraints. Lawrence Erlbaum Associates.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Irene Langkilde-Geary</author>
+</authors>
+<title>An empirical verification of coverage and correctness for a general-purpose sentence generator.</title>
+<date>2002</date>
+<booktitle>Proceeding of INLG’02,</booktitle>
+<pages>17--24</pages>
+<contexts>
+<context citStr="Langkilde-Geary (2002)" endWordPosition="270" position="1858" startWordPosition="269">ns (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andtest architecture, in which all solutions are generated, and then ranked or otherwise selected according to their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkilde-Geary (2002)). However, this approach suffers from a number of drawbacks: 1. It requires generation of all, or at least many solutions (often hundreds of thousands), expensive </context>
+</contexts>
+<marker>Langkilde-Geary, 2002</marker>
+<rawString>Langkilde-Geary, Irene. (2002) An empirical verification of coverage and correctness for a general-purpose sentence generator. Proceeding of INLG’02, pp. 17-24.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Lee</author>
+</authors>
+<title>Modelling Variation in Spoken And Written English: the Multi-Dimensional Approach Revisited.</title>
+<date>1999</date>
+<tech>PhD thesis,</tech>
+<institution>University of Lancaster, UK.</institution>
+<contexts>
+<context citStr="Lee (1999)" endWordPosition="1509" position="9576" startWordPosition="1508">ortion of certain verbal forms (high positive score) to text that use full nominal reference (high negative score).3 3.2 Generator Architecture The generator was constructed from a mixture of existing components and new implementation, using a fairly standard overall architecture as shown in figure 3. Here, dotted lines show the control flow and the straight lines show data flow — the choice point annotations are described below. The input constructor takes an input specification and, using a background database of medicine information, creates a network of concepts and re2 Some authors (e.g. Lee (1999)) have criticised Biber for making assumptions about the validity and generalisability of his approach to English language as a whole. Here, however, we use his methodology to characterise whatever variation exists without needing to make any broader claims. 3 Full details of the factor analysis can be found in (Paiva 2000). sentence Figure 3: Generator architecture with choice points Each network is then split into subnetworks by the split network module. This partitions the network by locating ‘proposition’ objects (marked with a double-lined box in figure 4) which have no parent and tracing</context>
+</contexts>
+<marker>Lee, 1999</marker>
+<rawString>Lee, David (1999) Modelling Variation in Spoken And Written English: the Multi-Dimensional Approach Revisited. PhD thesis, University of Lancaster, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kathleen R McKeown</author>
+</authors>
+<title>Text Generation: Using Discourse Strategies and Focus Constraints to Generate Natural Language Text.</title>
+<date>1985</date>
+<publisher>Cambridge University Press.</publisher>
+<contexts>
+<context citStr="McKeown, 1985" endWordPosition="1751" position="11043" startWordPosition="1750">s of these propnets is obtained4, and one of the possible combinations is passed to the network ordering module. This is the first source of non-determinism in our system, marked as choice point one in figure 3. A combination of subnetworks will be material for the realisation of one paragraph and each subnetwork will be realised as one sentence. 4 For instance, with three propnets (A, B and C) the list of combinations would be [(A,B,C), (A,BC), (AB, C), (AC,B), (ABC)]. input constructor choice point 1: number of sentences network ordering lations (see figure 4) using a schema-based approach (McKeown, 1985). input specification initial input networks sentence-size networks choice point 2: type of referring expression referring expression subnetwork chosen referring expression net NP pruning pruned network split network choice point 3: choice of mapping rule realiser 60 13:value(2xday) Figure 4: Example of semantic network produced by the input constructor5 The network ordering module receives a combination of subnetworks and orders them based on the number of common elements between each subnetwork. The strategy is to try to maximise the possibility of having a smooth transition from one sentenc</context>
+</contexts>
+<marker>McKeown, 1985</marker>
+<rawString>McKeown, Kathleen R. (1985) Text Generation: Using Discourse Strategies and Focus Constraints to Generate Natural Language Text. Cambridge University Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nicolas Nicolov</author>
+</authors>
+<title>Approximate Text Generation from Nonhierarchical Representations in a Declarative Framework.</title>
+<date>1999</date>
+<tech>PhD Thesis,</tech>
+<institution>University of Edinburgh.</institution>
+<marker>Nicolov, 1999</marker>
+<rawString>Nicolov, Nicolas (1999) Approximate Text Generation from Nonhierarchical Representations in a Declarative Framework. PhD Thesis, University of Edinburgh.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel S Paiva</author>
+</authors>
+<title>Investigating style in a corpus of pharmaceutical leaflets: results of a factor analysis.</title>
+<date>2000</date>
+<booktitle>Proceedings of the Student Workshop of the 38th Annual Meeting of the Association for Computational Linguistics (ACL'2000),</booktitle>
+<location>Hong Kong, China.</location>
+<contexts>
+<context citStr="Paiva 2000" endWordPosition="1562" position="9901" startWordPosition="1561">ow the control flow and the straight lines show data flow — the choice point annotations are described below. The input constructor takes an input specification and, using a background database of medicine information, creates a network of concepts and re2 Some authors (e.g. Lee (1999)) have criticised Biber for making assumptions about the validity and generalisability of his approach to English language as a whole. Here, however, we use his methodology to characterise whatever variation exists without needing to make any broader claims. 3 Full details of the factor analysis can be found in (Paiva 2000). sentence Figure 3: Generator architecture with choice points Each network is then split into subnetworks by the split network module. This partitions the network by locating ‘proposition’ objects (marked with a double-lined box in figure 4) which have no parent and tracing the subnetwork reachable from each one. We call these subnetworks propnets. In figure 4, there are two propnets, rooted in [1:take] and [9:state] — proposition [15:state] is not a root as it can be reached from [1:take]. A list of all possible groupings of these propnets is obtained4, and one of the possible combinations i</context>
+</contexts>
+<marker>Paiva, 2000</marker>
+<rawString>Paiva, Daniel S. (2000) Investigating style in a corpus of pharmaceutical leaflets: results of a factor analysis. Proceedings of the Student Workshop of the 38th Annual Meeting of the Association for Computational Linguistics (ACL'2000), Hong Kong, China.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel S Paiva</author>
+</authors>
+<title>Using Stylistic Parameters to Control a Natural Language Generation System. PhD Thesis,</title>
+<date>2004</date>
+<institution>University of Brighton,</institution>
+<location>Brighton, UK.</location>
+<contexts>
+<context citStr="Paiva (2004)" endWordPosition="2371" position="14784" startWordPosition="2370">it makes at each choice point during the production of each text. Although there are only three choice points in figure 3, the control structure included two loops: an outer loop which ranges over the sequence of propnets, generating a sentence for each one, and an inner loop which ranges over subnetworks of a propnet as realisation rules are chosen. So the decision structure for even a small text may be quite complex. In the experiments reported here, the trace of the generation process is simply a record of the number of times each decision (choice point, and what choice was made) occurred. Paiva (2004) discusses more complex tracing models, where the context of each decision (for example, what the preceding decision was) is recorded and used in the correlation. However the best results were obtained using arg0 arg0 6:of 3:medicine 5:patient 2:patient 1:take arg0 arg0 tense 4:pres freq 12:freq arg0 14:pres tense 15:state arg1 7:dose arg1 8:value(2gram) 10:pres arg0 tense 9:state arg0 11:of proxy arg1 11:of arg0 refexp 7:dose refexp 3:medicine 21:pronoun 61 just the simple decision-counting model (perhaps in part due to data sparseness for more complex models). 3.4 Correlating Decisions with </context>
+<context citStr="Paiva, 2004" endWordPosition="2940" position="18320" startWordPosition="2939">t of determination (R2), which measures the proportion of the variance of the dependent variable about its mean that is explained by the independent variables, had a reasonably high value (.895)9 and the analysis of variance obtained an F test of 1701.495. One of the assumptions that this technique assumes is the linearity of the relation between the dependent and the independent variables (i.e., in our case, between the stylistic scores in a dimension and the generator decisions). The analysis of the residuals resulted in a graph that had some problems but that resembled a normal graph (see (Paiva, 2004) for more details). Regression on Stylistic Dimension 2 For the regression model on the second stylistic dimension (SS2) the variables that we used were: the number of times a network was split (SPLITNET), generation of a pronoun (RE_PRON), auxiliary verb (VAUX), noun with determiner (NOUN), transitive verb (VNP), and agentless passive (PAS_VNP) — the first type of decision happens in the split network module (our first choice point); the second, in the referring expression module (second choice point); and the rest in the realiser (third choice point). The main results for this model are as f</context>
+</contexts>
+<marker>Paiva, 2004</marker>
+<rawString>Paiva, Daniel S. (2004) Using Stylistic Parameters to Control a Natural Language Generation System. PhD Thesis, University of Brighton, Brighton, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel S Paiva</author>
+<author>R Evans</author>
+</authors>
+<title>A Framework for Stylistically Controlled Generation.</title>
+<date>2004</date>
+<booktitle>In Proceedings of the 3rd International Conference on Natural Language Generation (INLG’04).</booktitle>
+<location>New Forest, UK.</location>
+<contexts>
+<context citStr="Paiva and Evans (2004)" endWordPosition="245" position="1679" startWordPosition="242">f controlling the output of natural language generation (NLG) systems. In many application scenarios the generator’s task is underspecified, resulting in multiple possible solutions (texts expressing the desired content), all equally good to the generator, but not equally appropriate for the application. Customising the generator directly to overcome this generally leads to ad-hoc, non-reusable solutions. A more modular approach is a generate-andtest architecture, in which all solutions are generated, and then ranked or otherwise selected according to their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkil</context>
+</contexts>
+<marker>Paiva, Evans, 2004</marker>
+<rawString>Paiva, Daniel S.; R. Evans (2004) A Framework for Stylistically Controlled Generation. In Proceedings of the 3rd International Conference on Natural Language Generation (INLG’04). New Forest, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert Sigley</author>
+</authors>
+<title>Text categories and where you can stick them: a crude formality index.</title>
+<date>1997</date>
+<journal>International Journal of Corpus Linguistics,</journal>
+<volume>2</volume>
+<pages>199--237</pages>
+<contexts>
+<context citStr="Sigley (1997)" endWordPosition="3800" position="23074" startWordPosition="3799">t is to plot the resulting regression scores (see figure 7) and visually check if it mirrors the grid-shape pattern of the target points (figure 6) — this can be done by inspecting the text identifiers13. This can be a bit misleading because there will always be variation around the target point that was supposed to be achieved (i.e., there is a margin for error) and this can blur the comparison unfavourably. 10 8 6 4 2 0 -2 -4 -6 -8 -10 11 We are not dealing with external (user) evaluation of the system and of the stylistic dimensions we obtained — this was left for future work. Nonetheless, Sigley (1997) showed that the dimensions obtained with factor analysis and people’s perception have a high correlation. 12 The range for each scale comes from the maximum and minimum values for the factors obtained in the samples of generated texts. 13 Note that some texts obtained the same regression score and, in the statistical package, only one was numbered. Those instances are: 1 and 7; 18 and 24; 22 and 28. 63 72 473 75 76 77 78 79 80 61 6362 64 65 68 69 51 52 66 67 58 70 57 41 53 54 56 59 60 55 42 43 44 45 47 49 50 31 46 21 33 11 48 39 40 32 22 534 36 37 38 23 121 25 26 27 28 29 30 24 13 14 2 15 16 </context>
+</contexts>
+<marker>Sigley, 1997</marker>
+<rawString>Sigley, Robert (1997) Text categories and where you can stick them: a crude formality index. International Journal of Corpus Linguistics, volume 2, number 2, pp. 199-237.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marilyn Walker</author>
+<author>O Rambow</author>
+<author>M Rogati</author>
+</authors>
+<title>Training a Sentence Planner for Spoken Dialogue Using Boosting. Computer Speech and Language, Special Issue on Spoken Language Generation.</title>
+<date>2002</date>
+<contexts>
+<context citStr="Walker et al. (2002)" endWordPosition="324" position="2233" startWordPosition="321">o their appropriateness in a separate post1 Paiva and Evans (2004) provides an overview of our framework and detailed comparison with previous approaches to stylistic control (like Hovy (1988), Green and DiMarco (1993) and Langkilde-Geary (2002)). This paper provides a more detailed account of the system and reports additional experimental results. process. Such architectures have been particularly prominent in the recent development of empirically-based approaches to NLG, where generator outputs can be selected according to application requirements acquired directly from human subjects (e.g. Walker et al. (2002)) or statistically from a corpus (e.g. Langkilde-Geary (2002)). However, this approach suffers from a number of drawbacks: 1. It requires generation of all, or at least many solutions (often hundreds of thousands), expensive both in time and space, and liable to lead to unnecessary interactions with other components (e.g. knowledge bases) in complex systems. Recent advances in the use of packed representations ameliorate some of these issues, but the basic need to compare a large number of solutions in order to rank them remains. 2. The ‘test’ component generally does not give fine-grained con</context>
+</contexts>
+<marker>Walker, Rambow, Rogati, 2002</marker>
+<rawString>Walker, Marilyn; O. Rambow, and M. Rogati (2002) Training a Sentence Planner for Spoken Dialogue Using Boosting. Computer Speech and Language, Special Issue on Spoken Language Generation. July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sanford Weisberg</author>
+</authors>
+<title>Applied Linear Regression, 2nd edition.</title>
+<date>1985</date>
+<publisher>John Wiley &amp; Sons.</publisher>
+<contexts>
+<context citStr="Weisberg, 1985" endWordPosition="2547" position="15934" startWordPosition="2546">rseness for more complex models). 3.4 Correlating Decisions with Text Features By allowing the generator to freely generate all possible output from a single input, we recorded a set of &lt;trace, text&gt; pairs ranging across the full variation space. From these pairs we derived corresponding &lt;decision-count, factor-score&gt; pairs, to which we applied a very simple correlational technique, multivariate linear regression analysis, which is used to find an estimator function for a linear relationship (i.e., one that can be approximated by a straight line) from the data available for several variables (Weisberg, 1985). In our case we want to predict the value for a score in a stylistic dimension (SSi) based on a configuration of generator decisions (GDj) as seen in equation 1. (eq. 1) SSi = x0 + x1GD1 + ... + xnGDn + c 6 We used three randomly sampled data sets of 1400, 1400 and 5000 observations obtained from a potential base of about 1,400,000 different texts that could be produced by our generator from a single input. With each sample, we obtained a regression equation for each stylistic dimension separately. In the next subsections we will present the final results for each of the dimensions separately</context>
+</contexts>
+<marker>Weisberg, 1985</marker>
+<rawString>Weisberg, Sanford (1985) Applied Linear Regression, 2nd edition. John Wiley &amp; Sons.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

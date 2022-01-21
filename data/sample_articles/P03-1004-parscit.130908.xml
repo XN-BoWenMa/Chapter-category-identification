@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.778101">
+Fast Methods for Kernel-based Text Analysis
+</title>
+<author confidence="0.982052">
+Taku Kudo and Yuji Matsumoto
+</author>
+<affiliation confidence="0.9967945">
+Graduate School of Information Science,
+Nara Institute of Science and Technology
+</affiliation>
+<email confidence="0.998857">
+{taku-ku,matsu}@is.aist-nara.ac.jp
+</email>
+<sectionHeader confidence="0.996654" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999622875">Kernel-based learning (e.g., Support Vector Machines) has been successfully applied to many hard problems in Natural Language Processing (NLP). In NLP, although feature combinations are crucial to improving performance, they are heuristically selected. Kernel methods change this situation. The merit of the kernel methods is that effective feature combination is implicitly expanded without loss of generality and increasing the computational costs. Kernel-based text analysis shows an excellent performance in terms in accuracy; however, these methods are usually too slow to apply to large-scale text analysis. In this paper, we extend a Basket Mining algorithm to convert a kernel-based classifier into a simple and fast linear classifier. Experimental results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers.</bodyText>
+<sectionHeader confidence="0.999162" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.997820582089552">Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single set of features from either a head or its modifier. Rather, dependency relations should be determined by at least information from both of two phrases. In previous research, feature combination has been selected manually, and the performance significantly depended on these selections. This is not the case with kernel-based methodology. For instance, if we use a polynomial kernel, all feature combinations are implicitly expanded without loss of generality and increasing the computational costs. Although the mapped feature space is quite large, the maximal margin strategy (Vapnik, 1995) of SVMs gives us a good generalization performance compared to the previous manual feature selection. This is the main reason why kernel-based learning has delivered great results to the field of NLP. Kernel-based text analysis shows an excellent performance in terms in accuracy; however, its inefficiency in actual analysis limits practical application. For example, an SVM-based NE-chunker runs at a rate of only 85 byte/sec, while previous rulebased system can process several kilobytes per second (Isozaki and Kazawa, 2002). Such slow execution time is inadequate for Information Retrieval, Question Answering, or Text Mining, where fast analysis of large quantities of text is indispensable. This paper presents two novel methods that make the kernel-based text analyzers substantially faster. These methods are applicable not only to the NLP tasks but also to general machine learning tasks where training and test examples are represented in a binary vector. More specifically, we focus on a Polynomial Kernel of degree d, which can attain feature combinations that are crucial to improving the performance of tasks in NLP. Second, we introduce two fast classification algorithms for this kernel. One is PKI (Polynomial Kernel Inverted), which is an extension of Inverted Index in Information Retrieval. The other is PKE (Polynomial Kernel Expanded), where all feature combinations are explicitly expanded. By applying PKE, we can convert a kernel-based classifier into a simple and fast liner classifier. In order to build PKE, we extend the PrefixSpan (Pei et al., 2001), an efficient Basket Mining algorithm, to enumerate effective feature combinations from a set of support examples. Experiments on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that PKI and PKE perform respectively 2 to 13 times and 30 to 300 times faster than standard kernel-based systems, without a discernible change in accuracy.</bodyText>
+<sectionHeader confidence="0.816186" genericHeader="method">
+2 Kernel Method and Support Vector
+Machines
+</sectionHeader>
+<bodyText confidence="0.964033428571429">Suppose we have a set of training data for a binary classification problem: (x1, y1), . . . , (xL, yL) xj E RN, yj E {+1, −1}, where xj is a feature vector of the j-th training sample, and yj is the class label associated with this training sample. The decision function of SVMs is defined by where: (A) φ is a non-liner mapping function from RN to RH (N « H).(B) αj, b E R, αj &gt; 0.</bodyText>
+<equation confidence="0.968253">
+)
+yjαjφ(xj) · φ(x) + b , (1)
+j∈SV
+</equation>
+<bodyText confidence="0.957995125">The mapping function φ should be designed such that all training examples are linearly separable in RH space. Since H is much larger than N, it requires heavy computation to evaluate the dot products φ(xi) · φ(x) in an explicit form. This problem can be overcome by noticing that both construction of optimal parameter αi (we will omit the details of this construction here) and the calculation of the decision function only require the evaluation of dot products φ(xi)·φ(x). This is critical, since, in some cases, the dot products can be evaluated by a simple Kernel Function: K(x1, x2) = φ(x1) · φ(x2). Substituting kernel function into (1), we have the following decision function.</bodyText>
+<equation confidence="0.987845666666667">
+)
+yjαjK(xj, x) + b (2)
+j∈SV
+</equation>
+<bodyText confidence="0.99508125">One of the advantages of kernels is that they are not limited to vectorial object x, but that they are applicable to any kind of object representation, just given the dot products.</bodyText>
+<sectionHeader confidence="0.974704" genericHeader="method">
+3 Polynomial Kernel of degree d
+</sectionHeader>
+<bodyText confidence="0.88895875">For many tasks in NLP, the training and test examples are represented in binary vectors; or sets, since examples in NLP are usually represented in socalled Feature Structures. Here, we focus on such cases 1. Suppose a feature set F = {1, 2, ... , N} and training examples Xj(j = 1, 2, ... , L), all of which are subsets of F (i.e., Xj C_ F). In this case, Xj can be regarded as a binary vector xj = (xj1, xj2, ... , xjN) where xji = 1 if i E Xj, xji = 0 otherwise. The dot product of x1 and x2 is given by x1 · x2 = |X1 n X2|.</bodyText>
+<construct confidence="0.566">
+Definition 1 Polynomial Kernel of degree d
+Given sets X and Y, corresponding to binary fea-
+ture vectors x and y, Polynomial Kernel of degree d
+Kd(X, Y ) is given by
+</construct>
+<bodyText confidence="0.902828">Kd(x, y) = Kd(X, Y ) = (1 + |X n Y |)d, (3) where d = 1, 2,3, .... In this paper, (3) will be referred to as an implicit form of the Polynomial Kernel.</bodyText>
+<footnote confidence="0.983933666666667">
+1In the Maximum Entropy model widely applied in NLP, we
+usually suppose binary feature functions fi(Xj) E {0, 1}. This
+formalization is exactly same as representing an example Xj in
+</footnote>
+<equation confidence="0.9906518">
+a set {k|fk(Xj) = 1}.
+( E
+y(x) = sgn
+( E
+y(x) = sgn
+</equation>
+<bodyText confidence="0.994985611111111">It is known in NLP that a combination of features, a subset of feature set F in general, contributes to overall accuracy. In previous research, feature combination has been selected manually. The use of a polynomial kernel allows such feature expansion without loss of generality or an increase in computational costs, since the Polynomial Kernel of degree d implicitly maps the original feature space F into Fd space. (i.e., 0 : F —* Fd). This property is critical and some reports say that, in NLP, the polynomial kernel outperforms the simple linear kernel (Kudo and Matsumoto, 2000; Isozaki and Kazawa, 2002). Here, we will give an explicit form of the Polynomial Kernel to show the mapping function 0(·). Lemma 1 Explicit form ofPolynomial Kernel. The Polynomial Kernel of degree d can be rewritten as</bodyText>
+<equation confidence="0.9612065625">
+d
+Kd(X,Y) = X cd(r) · |Pr(X n Y )|, (4)
+r=0
+function PKI classify (X)
+r = 0 # an array, initialized as 0
+foreach i E X
+foreach j E h(i)
+rj = rj + 1
+end
+end
+result = 0
+foreach j E SV
+result = result + yjαj · (1 + rj)d
+end
+return sgn(result + b)
+end
+</equation>
+<figureCaption confidence="0.953011">
+Figure 1: Pseudo code for PKI
+</figureCaption>
+<equation confidence="0.75192">
+K2(X,Y ) = 1 · 1 + 3 · 3 + 2 · 3 = 16,
+K3(X,Y ) = 1 · 1 + 7 · 3 + 12 · 3 + 6 · 1 = 64.
+</equation>
+<sectionHeader confidence="0.918383" genericHeader="method">
+4 Fast Classifiers for Polynomial Kernel
+</sectionHeader>
+<bodyText confidence="0.944124">In this section, we introduce two fast classification algorithms for the Polynomial Kernel of degree d. Before describing them, we give the baseline classifier (PKB): where 3 X ´</bodyText>
+<listItem confidence="0.846449">• Pr(X) is a set of all subsets of X with exactly y(X) = sgn yjαj · (1 + |Xj n X|)d + b . (5) r elements in it, j∈SV • cd(r) = Pd ¡d ¢3Pr m=0(−1)r−m · ml¡ r ¢´.</listItem>
+<equation confidence="0.2478895">
+l=r l m
+Proof See Appendix A.
+</equation>
+<bodyText confidence="0.891424">cd(r) will be referred as a subset weight of the Polynomial Kernel of degree d. This function gives a prior weight to the subset s, where |s |= r. Example 1 Quadratic and Cubic Kernel Given sets X = {a, b, c, d} and Y = {a, b, d, e}, the Quadratic Kernel K2(X, Y ) and the Cubic Kernel K3(X, Y ) can be calculated in an implicit form as: K2(X,Y ) = (1 + |X n Y |)2 = (1 + 3)2 = 16, K3(X,Y ) = (1 + |X n Y |)3 = (1 + 3)3 = 64. Using Lemma 1, the subset weights of the Quadratic Kernel and the Cubic Kernel can be calculated as c2(0) = 1, c2(1) = 3, c2(2) = 2 and c3(0)=1, c3(1)=7, c3(2)=12, c3(3)=6. In addition, subsets Pr(X n Y ) (r = 0, 1, 2, 3) are given as follows: P0(X n Y ) = {0}, P1(X nY ) = {{a}, {b}, {d}}, P2(X nY ) =
+{{a, b}, {a, d}, {b, d}}, P3(X n Y ) = {{a, b, d}}.</bodyText>
+<construct confidence="0.68498575">K2(X, Y ) and K3(X, Y ) can similarly be calcu-
+lated in an explicit form as:</construct>
+<bodyText confidence="0.996089333333333">The complexity of PKB is O(|X |· |SV |), since it takes O(|X|) to calculate (1 + |Xj n X|)d and there are a total of |SV  |support examples.</bodyText>
+<subsectionHeader confidence="0.990406">
+4.1 PKI (Inverted Representation)
+</subsectionHeader>
+<bodyText confidence="0.999933588235294">Given an item i E F, if we know in advance the set of support examples which contain item i E F, we do not need to calculate |Xj n X |for all support examples. This is a naive extension of Inverted Indexing in Information Retrieval. Figure 1 shows the pseudo code of the algorithm PKI. The function h(i) is a pre-compiled table and returns a set of support examples which contain item i. The complexity of the PKI is O(|X |· B + |SV |), where B is an average of |h(i) |over all item i E F. The PKI can make the classification speed drastically faster when B is small, in other words, when feature space is relatively sparse (i.e., B « |SV |). The feature space is often sparse in many tasks in NLP, since lexical entries are used as features. The algorithm PKI does not change the final accuracy of the classification.</bodyText>
+<figure confidence="0.469439666666667">
+cd(r) · |Pr(Xj n X)|) +b). (6)
+d
+E
+r=0
+�
+yjαj
+</figure>
+<subsectionHeader confidence="0.8763815">
+4.2 PKE (Expanded Representation)
+4.2.1 Basic Idea of PKE
+</subsectionHeader>
+<bodyText confidence="0.9774395">Using Lemma 1, we can represent the decision function (5) in an explicit form:</bodyText>
+<equation confidence="0.99307975">
+� E
+y(X) = sgn
+j∈SV
+If we, in advance, calculate
+Ew(s) = yjαjcd(|s|)I(s E P|s|(Xj))
+jESV
+(where I(t) is an indicator function 2) for all subsets
+s E udr=0 Pr(F), (6) can be written as the following
+simple linear form:
+y(X) = sgn � E w(s) + b . (7)
+�
+sEΓd(X)
+</equation>
+<bodyText confidence="0.9441468">where Γd(X) = udr=0 Pr(X). The classification algorithm given by (7) will be referred to as PKE. The complexity of PKE is O(|Γd(X)|) = O(|X|d), independent on the number of support examples |SV |.</bodyText>
+<subsubsectionHeader confidence="0.518207">
+4.2.2 Mining Approach to PKE
+</subsubsectionHeader>
+<bodyText confidence="0.9997795">To apply the PKE, we first calculate |Γd(F) |degree of vectors</bodyText>
+<equation confidence="0.991062">
+w = (w(s1), w(s2), ... , w(s|Γd(F)|)).
+</equation>
+<bodyText confidence="0.921893777777778">This calculation is trivial only when we use a Quadratic Kernel, since we just project the original feature space F into F x F space, which is small enough to be calculated by a naive exhaustive method. However, if we, for instance, use a polynomial kernel of degree 3 or higher, this calculation becomes not trivial, since the size of feature space exponentially increases. Here we take the following strategy:</bodyText>
+<listItem confidence="0.953977">1. Instead of using the original vector w, we use w', an approximation of w. 2. We apply the Subset Mining algorithm to calculate w' efficiently. 2I(t) returns 1 if t is true,returns 0 otherwise.</listItem>
+<bodyText confidence="0.868451090909091">Definition 2 w': An approximation of w An approximation of w is given by w' = (w'(s1), w'(s2), ... , w'(s|Γd(F)|)), where w'(s) is set to 0 if w(s) is trivially close to 0. (i.e., σneg &lt; w(s) &lt; σpos (σneg &lt; 0, σpos &gt; 0), where σpos and σneg are predefined thresholds). The algorithm PKE is an approximation of the PKB, and changes the final accuracy according to the selection of thresholds σpos and σneg. The calculation of w' is formulated as the following mining problem:</bodyText>
+<subsectionHeader confidence="0.355098">
+Definition 3 Feature Combination Mining
+</subsectionHeader>
+<bodyText confidence="0.9633682">Given a set of support examples and subset weight cd(r), extract all subsets s and their weights w(s) if w(s) holds w(s) &gt; σpos or w(s) :5 σneg . In this paper, we apply a Sub-Structure Mining algorithm to the feature combination mining problem. Generally speaking, sub-structures mining algorithms efficiently extract frequent sub-structures (e.g., subsets, sub-sequences, sub-trees, or subgraphs) from a large database (set of transactions). In this context, frequent means that there are no less than ξ transactions which contain a sub-structure. The parameter ξ is usually referred to as the Minimum Support. Since we must enumerate all subsets of F, we can apply subset mining algorithm, in some times called as Basket Mining algorithm, to our task. There are many subset mining algorithms proposed, however, we will focus on the PrefixSpan algorithm, which is an efficient algorithm for sequential pattern mining, originally proposed by (Pei et al., 2001). The PrefixSpan was originally designed to extract frequent sub-sequence (not subset) patterns, however, it is a trivial difference since a set can be seen as a special case of sequences (i.e., by sorting items in a set by lexicographic order, the set becomes a sequence). The basic idea of the PrefixSpan is to divide the database by frequent sub-patterns (prefix) and to grow the prefix-spanning pattern in a depth-first search fashion. We now modify the PrefixSpan to suit to our feature combination mining.</bodyText>
+<listItem confidence="0.865029">• size constraint</listItem>
+<bodyText confidence="0.999762">We only enumerate up to subsets of size d. when we plan to apply the Polynomial Kernel of degree d.</bodyText>
+<listItem confidence="0.981255">• Subset weight cd(r)</listItem>
+<bodyText confidence="0.986049363636364">In the original PrefixSpan, the frequency of each subset does not change by its size. However, in our mining task, it changes (i.e., the frequency of subset s is weighted by cd(|s|)). Here, we process the mining algorithm by assuming that each transaction (support example Xj) has its frequency Cdyjαj, where Cd = max(cd(1), cd(2), ... , cd(d)). The weight w(s) is calculated by w(s) = ω(s) x cd(|s|)/Cd, where ω(s) is a frequency of s, given by the original PrefixSpan.</bodyText>
+<listItem confidence="0.992126">• Positive/Negative support examples</listItem>
+<bodyText confidence="0.992949">We first divide the support examples into positive (yi &gt; 0) and negative (yi &lt; 0) examples, and process mining independently. The result can be obtained by merging these two results.</bodyText>
+<listItem confidence="0.991894">• Minimum Supports σpos, σneg</listItem>
+<bodyText confidence="0.999962444444444">In the original PrefixSpan, minimum support is an integer. In our mining task, we can give a real number to minimum support, since each transaction (support example Xj) has possibly non-integer frequency Cdyjαj. Minimum supports σpos and σneg control the rate of approximation. For the sake of convenience, we just give one parameter σ, and calculate σpos and σneg as follows</bodyText>
+<equation confidence="0.7172435">
+σpos = σ
+(#of positive examples\
+#of support examples) ,
+#of negative examples
+σneg = −σ ( .
+#of support examples
+</equation>
+<bodyText confidence="0.997523111111111">After the process of mining, a set of tuples Q = {(s, w(s))I is obtained, where s is a frequent subset and w(s) is its weight. We use a TRIE to efficiently store the set Q. The example of such TRIE compression is shown in Figure 2. Although there are many implementations for TRIE, we use a Double-Array (Aoe, 1989) in our task. The actual classification of PKE can be examined by traversing the TRIE for all subsets s E Fd(X).</bodyText>
+<sectionHeader confidence="0.999045" genericHeader="evaluation">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.939859">To demonstrate performances of PKI and PKE, we examined three NLP tasks: English BaseNP Chunking (EBC), Japanese Word Segmentation (JWS) and</bodyText>
+<figureCaption confidence="0.997623">
+Figure 2: Q in TRIE representation
+</figureCaption>
+<bodyText confidence="0.999209222222222">Japanese Dependency Parsing (JDP). A more detailed description of each task, training and test data, the system parameters, and feature sets are presented in the following subsections. Table 1 summarizes the detail information of support examples (e.g., size of SVs, size of feature set etc.). Our preliminary experiments show that a Quadratic Kernel performs the best in EBC, and a Cubic Kernel performs the best in JWS and JDP. The experiments using a Cubic Kernel are suitable to evaluate the effectiveness of the basket mining approach applied in the PKE, since a Cubic Kernel projects the original feature space F into F3 space, which is too large to be handled only using a naive exhaustive method. All experiments were conducted under Linux using XEON 2.4 Ghz dual processors and 3.5 Gbyte of main memory. All systems are implemented in C++.</bodyText>
+<subsectionHeader confidence="0.966917">
+5.1 English BaseNP Chunking (EBC)
+</subsectionHeader>
+<bodyText confidence="0.996727470588236">Text Chunking is a fundamental task in NLP – dividing sentences into non-overlapping phrases. BaseNP chunking deals with a part of this task and recognizes the chunks that form noun phrases. Here is an example sentence: [He] reckons [the current account deficit] will narrow to [only $ 1.8 billion] . A BaseNP chunk is represented as sequence of words between square brackets. BaseNP chunking task is usually formulated as a simple tagging task, where we represent chunks with three types of tags: B: beginning of a chunk. I: non-initial word. O: outside of the chunk. In our experiments, we used the same settings as (Kudo and Matsumoto, 2002). We use a standard data set (Ramshaw and Marcus, 1995) consisting of sections 15-19 of the WSJ corpus as training and section 20 as testing.</bodyText>
+<subsectionHeader confidence="0.998085">
+5.2 Japanese Word Segmentation (JWS)
+</subsectionHeader>
+<bodyText confidence="0.999934476190476">Since there are no explicit spaces between words in Japanese sentences, we must first identify the word boundaries before analyzing deep structure of a sentence. Japanese word segmentation is formalized as a simple classification task. Let s = c1c2 · · · cm be a sequence of Japanese characters, t = t1t2 · · · tm be a sequence of Japanese character types 3 associated with each character, and yi ∈ {+1, −1}, (i = (1, 2,...,m− 1)) be a boundary marker. If there is a boundary between ci and ci+1, yi = 1, otherwise yi = −1. The feature set of example xi is given by all characters as well as character types in some constant window (e.g., 5): {ci−2, ci−1, ··· , ci+2, ci+3, ti−2, ti−1, ··· , ti+2, ti+3}. Note that we distinguish the relative position of each character and character type. We use the Kyoto University Corpus (Kurohashi and Nagao, 1997), 7,958 sentences in the articles on January 1st to January 7th are used as training data, and 1,246 sentences in the articles on January 9th are used as the test data.</bodyText>
+<subsectionHeader confidence="0.998972">
+5.3 Japanese Dependency Parsing (JDP)
+</subsectionHeader>
+<bodyText confidence="0.9411467">The task of Japanese dependency parsing is to identify a correct dependency of each Bunsetsu (base phrase in Japanese). In previous research, we presented a state-of-the-art SVMs-based Japanese dependency parser (Kudo and Matsumoto, 2002). We combined SVMs into an efficient parsing algorithm, Cascaded Chunking Model, which parses a sentence deterministically only by deciding whether the current chunk modifies the chunk on its immediate right hand side. The input for this algorithm consists of a set of the linguistic features related to the head and modifier (e.g., word, part-of-speech, and inflections), and the output from the algorithm is either of the value +1 (dependent) or -1 (independent). We use a standard data set, which is the same corpus described in the Japanese Word Segmentation. 3Usually, in Japanese, word boundaries are highly constrained by character types, such as hiragana and katakana (both are phonetic characters in Japanese), Chinese characters, English alphabets and numbers.</bodyText>
+<subsectionHeader confidence="0.667617">
+5.4 Results
+</subsectionHeader>
+<bodyText confidence="0.9999514">Tables 2, 3 and 4 show the execution time, accuracy4, and |Q |(size of extracted subsets), by changing σ from 0.01 to 0.0005. The PKI leads to about 2 to 12 times improvements over the PKB. In JDP, the improvement is significant. This is because B, the average of h(i) over all items i ∈ F, is relatively small in JDP. The improvement significantly depends on the sparsity of the given support examples. The improvements of the PKE are more significant than the PKI. The running time of the PKE is 30 to 300 times faster than the PKB, when we set an appropriate σ, (e.g., σ = 0.005 for EBC and JWS, σ = 0.0005 for JDP). In these settings, we could preserve the final accuracies for test data.</bodyText>
+<subsectionHeader confidence="0.925895">
+5.5 Frequency-based Pruning
+</subsectionHeader>
+<bodyText confidence="0.999478074074074">The PKE with a Cubic Kernel tends to make Q large (e.g., |Q |= 2.32 million for JWS, |Q |= 8.26 million for JDP). To reduce the size of Q, we examined simple frequency-based pruning experiments. Our extension is to simply give a prior threshold ξ(= 1, 2, 3, 4 ...), and erase all subsets which occur in less than ξ support examples. The calculation of frequency can be similarly conducted by the PrefixSpan algorithm. Tables 5 and 6 show the results of frequency-based pruning, when we fix σ=0.005 for JWS, and σ=0.0005 for JDP. In JDP, we can make the size of set Q about one third of the original size. This reduction gives us not only a slight speed increase but an improvement of accuracy (89.29%→89.34%). Frequency-based pruning allows us to remove subsets that have large weight and small frequency. Such subsets may be generated from errors or special outliers in the training examples, which sometimes cause an overfitting in training. In JWS, the frequency-based pruning does not work well. Although we can reduce the size of Q by half, the accuracy is also reduced (97.94%→97.83%). It implies that, in JWS, features even with frequency of one contribute to the final decision hyperplane.</bodyText>
+<footnote confidence="0.606369">
+4In EBC, accuracy is evaluated using F measure, harmonic
+mean between precision and recall.
+</footnote>
+<tableCaption confidence="0.997223">
+Table 1: Details of Data Set
+</tableCaption>
+<table confidence="0.958591222222222">
+Data Set EBC JWS JDP
+# of examples 135,692 265,413 110,355
+|SV |# of SVs 11,690 57,672 34,996
+# of positive SVs 5,637 28,440 17,528
+# of negative SVs 6,053 29,232 17,468
+|F |(size of feature) 17,470 11,643 28,157
+Avg. of |X; |11.90 11.73 17.63
+B (Avg. of |h(i)|)) 7.74 58.13 21.92
+(Note: In EBC, to handle K-class problems, we use a pairwise
+</table>
+<bodyText confidence="0.62324925">classification; building Kx(K−1)/2 classifiers considering all pairs of classes, and final class decision was given by majority voting. The values in this column are averages over all pairwise classifiers.)</bodyText>
+<sectionHeader confidence="0.999674" genericHeader="result">
+6 Discussion
+</sectionHeader>
+<bodyText confidence="0.999960884615385">There have been several studies for efficient classification of SVMs. Isozaki et al. propose an XQK (eXpand the Quadratic Kernel) which can make their Named-Entity recognizer drastically fast (Isozaki and Kazawa, 2002). XQK can be subsumed into PKE. Both XQK and PKE share the basic idea; all feature combinations are explicitly expanded and we convert the kernel-based classifier into a simple linear classifier. The explicit difference between XQK and PKE is that XQK is designed only for Quadratic Kernel. It implies that XQK can only deal with feature combination of size up to two. On the other hand, PKE is more general and can also be applied not only to the Quadratic Kernel but also to the general-style of polynomial kernels (1 + |X ∩ Y |)d. In PKE, there are no theoretical constrains to limit the size of combinations. In addition, Isozaki et al. did not mention how to expand the feature combinations. They seem to use a naive exhaustive method to expand them, which is not always scalable and efficient for extracting three or more feature combinations. PKE takes a basket mining approach to enumerating effective feature combinations more efficiently than their exhaustive method.</bodyText>
+<sectionHeader confidence="0.973625" genericHeader="conclusion">
+7 Conclusion and Future Works
+</sectionHeader>
+<bodyText confidence="0.9986195">We focused on a Polynomial Kernel of degree d, which has been widely applied in many tasks in NLP and can attain feature combination that is crucial to improving the performance of tasks in NLP.</bodyText>
+<tableCaption confidence="0.992145">
+Table 2: Results of EBC
+</tableCaption>
+<table confidence="0.999894375">
+PKE Time Speedup F1 |SZ|
+Q (sec./sent.) Ratio (x 1000)
+0.01 0.0016 105.2 93.79 518
+0.005 0.0016 101.3 93.85 668
+0.001 0.0017 97.7 93.84 858
+0.0005 0.0017 96.8 93.84 889
+PKI 0.020 8.3 93.84
+PKB 0.164 1.0 93.84
+</table>
+<tableCaption confidence="0.991869">
+Table 3: Results of JWS
+</tableCaption>
+<table confidence="0.999964125">
+PKE Time Speedup Acc.(%) |SZ|
+Q (sec./sent.) Ratio (x 1000)
+0.01 0.0024 358.2 97.93 1,228
+0.005 0.0028 300.1 97.95 2,327
+0.001 0.0034 242.6 97.94 4,392
+0.0005 0.0035 238.8 97.94 4,820
+PKI 0.4989 1.7 97.94
+PKB 0.8535 1.0 97.94
+</table>
+<tableCaption confidence="0.987635">
+Table 4: Results of JDP
+</tableCaption>
+<table confidence="0.99995975">
+PKE Time Speedup Acc.(%) |SZ|
+Q (sec./sent.) Ratio (x 1000)
+0.01 0.0042 66.8 88.91 73
+0.005 0.0060 47.8 89.05 1,924
+0.001 0.0086 33.3 89.26 6,686
+0.0005 0.0090 31.8 89.29 8,262
+PKI 0.0226 12.6 89.29
+PKB 0.2848 1.0 89.29
+</table>
+<tableCaption confidence="0.960495">
+Table 5: Frequency-based pruning (JWS)
+</tableCaption>
+<table confidence="0.999929666666667">
+PKE time Speedup Acc.(%) |SZ|
+ξ (sec./sent.) Ratio (x 1000)
+1 0.0028 300.1 97.95 2,327
+2 0.0025 337.3 97.83 954
+3 0.0023 367.0 97.83 591
+PKB 0.8535 1.0 97.94
+</table>
+<tableCaption confidence="0.929325">
+Table 6: Frequency-based pruning (JDP)
+</tableCaption>
+<table confidence="0.998241833333333">
+PKE time Speedup Acc.(%) |SZ|
+ξ (sec./sent.) Ratio (x 1000)
+1 0.0090 31.8 89.29 8,262
+2 0.0072 39.3 89.34 2,450
+3 0.0068 41.8 89.31 1,360
+PKB 0.2848 1.0 89.29
+</table>
+<bodyText confidence="0.999480777777778">Then, we introduced two fast classification algorithms for this kernel. One is PKI (Polynomial Kernel Inverted), which is an extension of Inverted Index. The other is PKE (Polynomial Kernel Expanded), where all feature combinations are explicitly expanded. The concept in PKE can also be applicable to kernels for discrete data structures, such as String Kernel (Lodhi et al., 2002) and Tree Kernel (Kashima and Koyanagi, 2002; Collins and Duffy, 2001). For instance, Tree Kernel gives a dot product of an ordered-tree, and maps the original ordered-tree onto its all sub-tree space. To apply the PKE, we must efficiently enumerate the effective sub-trees from a set of support examples. We can similarly apply a sub-tree mining algorithm (Zaki, 2002) to this problem.</bodyText>
+<sectionHeader confidence="0.844245" genericHeader="appendix">
+Appendix A.: Lemma 1 and its proof
+</sectionHeader>
+<bodyText confidence="0.494983">µd ¶µ cd(r) = µd¶3 Taku Kudo and Yuji Matsumoto.2001.</bodyText>
+<equation confidence="0.905397333333333">
+Xd rl− µr¶1 (r−1)l+µ2¶ (r−2)l − ...
+l=r
+µd¶3 X(−1)r−m·ml µ r¶´. ✷Y-1
+</equation>
+<sectionHeader confidence="0.98845" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.979877666666667">
+Junichi Aoe. 1989. An efficient digital search algorithm by us-
+ing a double-array structure. IEEE Transactions on Software
+Engineering, 15(9).
+Michael Collins and Nigel Duffy. 2001. Convolution kernels
+for natural language. In Advances in Neural Information
+Processing Systems 14, Vol.1 (NIPS 2001), pages 625–632.
+Hideki Isozaki and Hideto Kazawa. 2002. Efficient support
+vector classifiers for named entity recognition. In Proceed-
+ings of the COLING-2002, pages 390–396.
+Hisashi Kashima and Teruo Koyanagi. 2002. Svm kernels
+for semi-structured data. In Proceedings of the ICML-2002,
+pages 291–298.
+Taku Kudo and Yuji Matsumoto. 2000. Japanese Dependency
+Structure Analysis based on Support Vector Machines. In
+Proceedings of the EMNLP/VLC-2000, pages 18–25.
+</reference>
+<bodyText confidence="0.80896475">Chunking with support m 1 vector machines. In Proceedings of the the NAACL, pages ElX(−1)r−m · mlµ) m=0 192–199.Proof.</bodyText>
+<equation confidence="0.928907769230769">
+Let X, Y be subsets of F = {1, 2, ... , N}. In this case, |X ∩
+Y  |is same as the dot product of vector x, y, where
+x = {x1, x2, ... , xN}, y = {y1, y2, ... , yN}
+(xj, yj ∈ {0, 1})
+xj = 1 if j ∈ X, xj = 0 otherwise.
+(1 + |X ∩ Y |)d = (1 + x · y)d can be expanded as follows
+Xd µd¶3 XN ´
+xjyj
+l
+Xdµd¶
+= · τ(l)
+l
+l=0
+</equation>
+<bodyText confidence="0.879283">where τ(l) = kl+...+kN=l l!(x1y1)k1 ... (xNyN)kN Lance A. Ramshaw and Mitchell P. Marcus.1995.</bodyText>
+<reference confidence="0.9976150625">
+Taku Kudo and Yuji Matsumoto. 2002. Japanese dependency
+analyisis using cascaded chunking. In Proceedings of the
+CoNLL-2002, pages 63–69.
+Sadao Kurohashi and Makoto Nagao. 1997. Kyoto University
+text corpus project. In Proceedings of the ANLP-1997, pages
+115–118.
+Huma Lodhi, Craig Saunders, John Shawe-Taylor, Nello Cris-
+tianini, and Chris Watkins. 2002. Text classification using
+string kernels. Journal ofMachine Learning Research, 2.
+Tetsuji Nakagawa, Taku Kudo, and Yuji Matsumoto. 2002. Re-
+vision learning and its application to part-of-speech tagging.
+In Proceedings of the ACL 2002, pages 497–504.
+Jian Pei, Jiawei Han, and et al. 2001. Prefixspan: Mining
+sequential patterns by prefix-projected growth. In Proc. of
+International Conference of Data Engineering, pages 215–
+224.
+</reference>
+<equation confidence="0.975014">
+l
+(1 + x · y)d =
+l j
+=0 =1
+</equation>
+<bodyText confidence="0.781692307692308">Text chunkX k1!... kN!ing using transformation-based learning. In Proceedings of kn&gt;0 the VLC, pages 88–94. Note that xj is binary (i.e., xkj kj j ∈ {0, 1}), the number of r-size subsets can be given by a coefficient of (x1y1x2y2 ... xryr). Thus, Xd µd ¶µkl+...+kr=l l l=r kn&gt;1,n=1,2,...,r ¶ l!k1!...kr!</bodyText>
+<equation confidence="0.930272">
+cd(r) =
+X
+</equation>
+<reference confidence="0.988208">
+Vladimir N. Vapnik. 1995. The Nature of Statistical Learning
+Theory. Springer.
+Mohammed Zaki. 2002. Efficiently mining frequent trees in a
+forest. In Proceedings of the 8th International Conference
+on Knowledge Discovery and Data Mining KDD, pages 71–
+80.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.955867" no="0">
+<title confidence="0.999973">Fast Methods for Kernel-based Text Analysis</title>
+<author confidence="0.995085">Kudo Matsumoto</author>
+<affiliation confidence="0.9972795">Graduate School of Information Science, Nara Institute of Science and Technology</affiliation>
+<abstract confidence="0.99803496">Kernel-based learning (e.g., Support Vector Machines) has been successfully applied to many hard problems in Natural Language Processing (NLP). In NLP, although feature combinations are crucial to improving performance, they are heuristically selected. Kernel methods change this situation. The merit of the kernel is that feature combinaimplicitly expanded without loss of generality and increasing the computational costs. Kernel-based text analysis shows an excellent performance in terms in accuracy; however, these methods are usually too slow to apply to large-scale text analysis. In this paper, we extend Mining to convert a kernel-based classifier into a simple and fast linear classifier. Experimental results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Junichi Aoe</author>
+</authors>
+<title>An efficient digital search algorithm by using a double-array structure.</title>
+<date>1989</date>
+<journal>IEEE Transactions on Software Engineering,</journal>
+<volume>15</volume>
+<issue>9</issue>
+<contexts>
+<context citStr="Aoe, 1989" endWordPosition="2771" position="15310" startWordPosition="2770">requency Cdyjαj. Minimum supports σpos and σneg control the rate of approximation. For the sake of convenience, we just give one parameter σ, and calculate σpos and σneg as follows σpos = σ (#of positive examples\ #of support examples) , #of negative examples σneg = −σ ( . #of support examples After the process of mining, a set of tuples Q = {(s, w(s))I is obtained, where s is a frequent subset and w(s) is its weight. We use a TRIE to efficiently store the set Q. The example of such TRIE compression is shown in Figure 2. Although there are many implementations for TRIE, we use a Double-Array (Aoe, 1989) in our task. The actual classification of PKE can be examined by traversing the TRIE for all subsets s E Fd(X). 5 Experiments To demonstrate performances of PKI and PKE, we examined three NLP tasks: English BaseNP Chunking (EBC), Japanese Word Segmentation (JWS) and Figure 2: Q in TRIE representation Japanese Dependency Parsing (JDP). A more detailed description of each task, training and test data, the system parameters, and feature sets are presented in the following subsections. Table 1 summarizes the detail information of support examples (e.g., size of SVs, size of feature set etc.). Our</context>
+</contexts>
+<marker>Aoe, 1989</marker>
+<rawString>Junichi Aoe. 1989. An efficient digital search algorithm by using a double-array structure. IEEE Transactions on Software Engineering, 15(9).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+<author>Nigel Duffy</author>
+</authors>
+<title>Convolution kernels for natural language.</title>
+<date>2001</date>
+<booktitle>In Advances in Neural Information Processing Systems 14, Vol.1 (NIPS</booktitle>
+<pages>625--632</pages>
+<marker>Collins, Duffy, 2001</marker>
+<rawString>Michael Collins and Nigel Duffy. 2001. Convolution kernels for natural language. In Advances in Neural Information Processing Systems 14, Vol.1 (NIPS 2001), pages 625–632.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hideki Isozaki</author>
+<author>Hideto Kazawa</author>
+</authors>
+<title>Efficient support vector classifiers for named entity recognition.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the COLING-2002,</booktitle>
+<pages>390--396</pages>
+<contexts>
+<context citStr="Isozaki and Kazawa, 2002" endWordPosition="219" position="1515" startWordPosition="216">lassifier into a simple and fast linear classifier. Experimental results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers. 1 Introduction Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single set of features from either a head or its modifier. Rather, dependency relations should be determined by at least information from both of two phrases. In previous research, feature combination has been selected manually, and the performance significantly depended on these selections</context>
+<context citStr="Isozaki and Kazawa, 2002" endWordPosition="446" position="2951" startWordPosition="443">ts. Although the mapped feature space is quite large, the maximal margin strategy (Vapnik, 1995) of SVMs gives us a good generalization performance compared to the previous manual feature selection. This is the main reason why kernel-based learning has delivered great results to the field of NLP. Kernel-based text analysis shows an excellent performance in terms in accuracy; however, its inefficiency in actual analysis limits practical application. For example, an SVM-based NE-chunker runs at a rate of only 85 byte/sec, while previous rulebased system can process several kilobytes per second (Isozaki and Kazawa, 2002). Such slow execution time is inadequate for Information Retrieval, Question Answering, or Text Mining, where fast analysis of large quantities of text is indispensable. This paper presents two novel methods that make the kernel-based text analyzers substantially faster. These methods are applicable not only to the NLP tasks but also to general machine learning tasks where training and test examples are represented in a binary vector. More specifically, we focus on a Polynomial Kernel of degree d, which can attain feature combinations that are crucial to improving the performance of tasks in N</context>
+<context citStr="Isozaki and Kazawa, 2002" endWordPosition="1268" position="7458" startWordPosition="1265">E y(x) = sgn It is known in NLP that a combination of features, a subset of feature set F in general, contributes to overall accuracy. In previous research, feature combination has been selected manually. The use of a polynomial kernel allows such feature expansion without loss of generality or an increase in computational costs, since the Polynomial Kernel of degree d implicitly maps the original feature space F into Fd space. (i.e., 0 : F —* Fd). This property is critical and some reports say that, in NLP, the polynomial kernel outperforms the simple linear kernel (Kudo and Matsumoto, 2000; Isozaki and Kazawa, 2002). Here, we will give an explicit form of the Polynomial Kernel to show the mapping function 0(·). Lemma 1 Explicit form ofPolynomial Kernel. The Polynomial Kernel of degree d can be rewritten as d Kd(X,Y) = X cd(r) · |Pr(X n Y )|, (4) r=0 function PKI classify (X) r = 0 # an array, initialized as 0 foreach i E X foreach j E h(i) rj = rj + 1 end end result = 0 foreach j E SV result = result + yjαj · (1 + rj)d end return sgn(result + b) end Figure 1: Pseudo code for PKI K2(X,Y ) = 1 · 1 + 3 · 3 + 2 · 3 = 16, K3(X,Y ) = 1 · 1 + 7 · 3 + 12 · 3 + 6 · 1 = 64. 4 Fast Classifiers for Polynomial Kernel</context>
+<context citStr="Isozaki and Kazawa, 2002" endWordPosition="3960" position="22219" startWordPosition="3957"> 29,232 17,468 |F |(size of feature) 17,470 11,643 28,157 Avg. of |X; |11.90 11.73 17.63 B (Avg. of |h(i)|)) 7.74 58.13 21.92 (Note: In EBC, to handle K-class problems, we use a pairwise classification; building Kx(K−1)/2 classifiers considering all pairs of classes, and final class decision was given by majority voting. The values in this column are averages over all pairwise classifiers.) 6 Discussion There have been several studies for efficient classification of SVMs. Isozaki et al. propose an XQK (eXpand the Quadratic Kernel) which can make their Named-Entity recognizer drastically fast (Isozaki and Kazawa, 2002). XQK can be subsumed into PKE. Both XQK and PKE share the basic idea; all feature combinations are explicitly expanded and we convert the kernel-based classifier into a simple linear classifier. The explicit difference between XQK and PKE is that XQK is designed only for Quadratic Kernel. It implies that XQK can only deal with feature combination of size up to two. On the other hand, PKE is more general and can also be applied not only to the Quadratic Kernel but also to the general-style of polynomial kernels (1 + |X ∩ Y |)d. In PKE, there are no theoretical constrains to limit the size of c</context>
+</contexts>
+<marker>Isozaki, Kazawa, 2002</marker>
+<rawString>Hideki Isozaki and Hideto Kazawa. 2002. Efficient support vector classifiers for named entity recognition. In Proceedings of the COLING-2002, pages 390–396.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hisashi Kashima</author>
+<author>Teruo Koyanagi</author>
+</authors>
+<title>Svm kernels for semi-structured data.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the ICML-2002,</booktitle>
+<pages>291--298</pages>
+<marker>Kashima, Koyanagi, 2002</marker>
+<rawString>Hisashi Kashima and Teruo Koyanagi. 2002. Svm kernels for semi-structured data. In Proceedings of the ICML-2002, pages 291–298.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Taku Kudo</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>Japanese Dependency Structure Analysis based on Support Vector Machines.</title>
+<date>2000</date>
+<booktitle>In Proceedings of the EMNLP/VLC-2000,</booktitle>
+<pages>18--25</pages>
+<contexts>
+<context citStr="Kudo and Matsumoto, 2000" endWordPosition="227" position="1574" startWordPosition="224">ntal results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers. 1 Introduction Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single set of features from either a head or its modifier. Rather, dependency relations should be determined by at least information from both of two phrases. In previous research, feature combination has been selected manually, and the performance significantly depended on these selections. This is not the case with kernel-based methodology. For i</context>
+<context citStr="Kudo and Matsumoto, 2000" endWordPosition="1264" position="7431" startWordPosition="1261">j) = 1}. ( E y(x) = sgn ( E y(x) = sgn It is known in NLP that a combination of features, a subset of feature set F in general, contributes to overall accuracy. In previous research, feature combination has been selected manually. The use of a polynomial kernel allows such feature expansion without loss of generality or an increase in computational costs, since the Polynomial Kernel of degree d implicitly maps the original feature space F into Fd space. (i.e., 0 : F —* Fd). This property is critical and some reports say that, in NLP, the polynomial kernel outperforms the simple linear kernel (Kudo and Matsumoto, 2000; Isozaki and Kazawa, 2002). Here, we will give an explicit form of the Polynomial Kernel to show the mapping function 0(·). Lemma 1 Explicit form ofPolynomial Kernel. The Polynomial Kernel of degree d can be rewritten as d Kd(X,Y) = X cd(r) · |Pr(X n Y )|, (4) r=0 function PKI classify (X) r = 0 # an array, initialized as 0 foreach i E X foreach j E h(i) rj = rj + 1 end end result = 0 foreach j E SV result = result + yjαj · (1 + rj)d end return sgn(result + b) end Figure 1: Pseudo code for PKI K2(X,Y ) = 1 · 1 + 3 · 3 + 2 · 3 = 16, K3(X,Y ) = 1 · 1 + 7 · 3 + 12 · 3 + 6 · 1 = 64. 4 Fast Classi</context>
+</contexts>
+<marker>Kudo, Matsumoto, 2000</marker>
+<rawString>Taku Kudo and Yuji Matsumoto. 2000. Japanese Dependency Structure Analysis based on Support Vector Machines. In Proceedings of the EMNLP/VLC-2000, pages 18–25.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Taku Kudo</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>Japanese dependency analyisis using cascaded chunking.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the CoNLL-2002,</booktitle>
+<pages>63--69</pages>
+<contexts>
+<context citStr="Kudo and Matsumoto, 2002" endWordPosition="231" position="1601" startWordPosition="228">seNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers. 1 Introduction Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single set of features from either a head or its modifier. Rather, dependency relations should be determined by at least information from both of two phrases. In previous research, feature combination has been selected manually, and the performance significantly depended on these selections. This is not the case with kernel-based methodology. For instance, if we use a polyno</context>
+<context citStr="Kudo and Matsumoto, 2002" endWordPosition="3079" position="17140" startWordPosition="3076">fundamental task in NLP – dividing sentences into non-overlapping phrases. BaseNP chunking deals with a part of this task and recognizes the chunks that form noun phrases. Here is an example sentence: [He] reckons [the current account deficit] will narrow to [only $ 1.8 billion] . A BaseNP chunk is represented as sequence of words between square brackets. BaseNP chunking task is usually formulated as a simple tagging task, where we represent chunks with three types of tags: B: beginning of a chunk. I: non-initial word. O: outside of the chunk. In our experiments, we used the same settings as (Kudo and Matsumoto, 2002). We use a standard data set (Ramshaw and Marcus, 1995) consisting of sections 15-19 of the WSJ corpus as training and section 20 as testing. 5.2 Japanese Word Segmentation (JWS) Since there are no explicit spaces between words in Japanese sentences, we must first identify the word boundaries before analyzing deep structure of a sentence. Japanese word segmentation is formalized as a simple classification task. Let s = c1c2 · · · cm be a sequence of Japanese characters, t = t1t2 · · · tm be a sequence of Japanese character types 3 associated with each character, and yi ∈ {+1, −1}, (i = (1, 2,.</context>
+<context citStr="Kudo and Matsumoto, 2002" endWordPosition="3339" position="18616" startWordPosition="3336">, ti−2, ti−1, ··· , ti+2, ti+3}. Note that we distinguish the relative position of each character and character type. We use the Kyoto University Corpus (Kurohashi and Nagao, 1997), 7,958 sentences in the articles on January 1st to January 7th are used as training data, and 1,246 sentences in the articles on January 9th are used as the test data. 5.3 Japanese Dependency Parsing (JDP) The task of Japanese dependency parsing is to identify a correct dependency of each Bunsetsu (base phrase in Japanese). In previous research, we presented a state-of-the-art SVMs-based Japanese dependency parser (Kudo and Matsumoto, 2002). We combined SVMs into an efficient parsing algorithm, Cascaded Chunking Model, which parses a sentence deterministically only by deciding whether the current chunk modifies the chunk on its immediate right hand side. The input for this algorithm consists of a set of the linguistic features related to the head and modifier (e.g., word, part-of-speech, and inflections), and the output from the algorithm is either of the value +1 (dependent) or -1 (independent). We use a standard data set, which is the same corpus described in the Japanese Word Segmentation. 3Usually, in Japanese, word boundari</context>
+</contexts>
+<marker>Kudo, Matsumoto, 2002</marker>
+<rawString>Taku Kudo and Yuji Matsumoto. 2002. Japanese dependency analyisis using cascaded chunking. In Proceedings of the CoNLL-2002, pages 63–69.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sadao Kurohashi</author>
+<author>Makoto Nagao</author>
+</authors>
+<title>Kyoto University text corpus project.</title>
+<date>1997</date>
+<booktitle>In Proceedings of the ANLP-1997,</booktitle>
+<pages>115--118</pages>
+<contexts>
+<context citStr="Kurohashi and Nagao, 1997" endWordPosition="3266" position="18171" startWordPosition="3263">ion task. Let s = c1c2 · · · cm be a sequence of Japanese characters, t = t1t2 · · · tm be a sequence of Japanese character types 3 associated with each character, and yi ∈ {+1, −1}, (i = (1, 2,...,m− 1)) be a boundary marker. If there is a boundary between ci and ci+1, yi = 1, otherwise yi = −1. The feature set of example xi is given by all characters as well as character types in some constant window (e.g., 5): {ci−2, ci−1, ··· , ci+2, ci+3, ti−2, ti−1, ··· , ti+2, ti+3}. Note that we distinguish the relative position of each character and character type. We use the Kyoto University Corpus (Kurohashi and Nagao, 1997), 7,958 sentences in the articles on January 1st to January 7th are used as training data, and 1,246 sentences in the articles on January 9th are used as the test data. 5.3 Japanese Dependency Parsing (JDP) The task of Japanese dependency parsing is to identify a correct dependency of each Bunsetsu (base phrase in Japanese). In previous research, we presented a state-of-the-art SVMs-based Japanese dependency parser (Kudo and Matsumoto, 2002). We combined SVMs into an efficient parsing algorithm, Cascaded Chunking Model, which parses a sentence deterministically only by deciding whether the cur</context>
+</contexts>
+<marker>Kurohashi, Nagao, 1997</marker>
+<rawString>Sadao Kurohashi and Makoto Nagao. 1997. Kyoto University text corpus project. In Proceedings of the ANLP-1997, pages 115–118.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Huma Lodhi</author>
+<author>Craig Saunders</author>
+<author>John Shawe-Taylor</author>
+<author>Nello Cristianini</author>
+<author>Chris Watkins</author>
+</authors>
+<title>Text classification using string kernels.</title>
+<date>2002</date>
+<journal>Journal ofMachine Learning Research,</journal>
+<volume>2</volume>
+<marker>Lodhi, Saunders, Shawe-Taylor, Cristianini, Watkins, 2002</marker>
+<rawString>Huma Lodhi, Craig Saunders, John Shawe-Taylor, Nello Cristianini, and Chris Watkins. 2002. Text classification using string kernels. Journal ofMachine Learning Research, 2.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tetsuji Nakagawa</author>
+<author>Taku Kudo</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>Revision learning and its application to part-of-speech tagging.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the ACL</booktitle>
+<pages>497--504</pages>
+<contexts>
+<context citStr="Nakagawa et al., 2002" endWordPosition="206" position="1421" startWordPosition="203">xt analysis. In this paper, we extend a Basket Mining algorithm to convert a kernel-based classifier into a simple and fast linear classifier. Experimental results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers. 1 Introduction Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single set of features from either a head or its modifier. Rather, dependency relations should be determined by at least information from both of two phrases. In previous research, feature combinat</context>
+</contexts>
+<marker>Nakagawa, Kudo, Matsumoto, 2002</marker>
+<rawString>Tetsuji Nakagawa, Taku Kudo, and Yuji Matsumoto. 2002. Revision learning and its application to part-of-speech tagging. In Proceedings of the ACL 2002, pages 497–504.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jian Pei</author>
+<author>Jiawei Han</author>
+</authors>
+<title>Prefixspan: Mining sequential patterns by prefix-projected growth.</title>
+<date>2001</date>
+<booktitle>In Proc. of International Conference of Data Engineering,</booktitle>
+<pages>215--224</pages>
+<marker>Pei, Han, 2001</marker>
+<rawString>Jian Pei, Jiawei Han, and et al. 2001. Prefixspan: Mining sequential patterns by prefix-projected growth. In Proc. of International Conference of Data Engineering, pages 215– 224.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vladimir N Vapnik</author>
+</authors>
+<title>The Nature of Statistical Learning Theory.</title>
+<date>1995</date>
+<publisher>Springer.</publisher>
+<contexts>
+<context citStr="Vapnik, 1995" endWordPosition="177" position="1232" startWordPosition="176">sing the computational costs. Kernel-based text analysis shows an excellent performance in terms in accuracy; however, these methods are usually too slow to apply to large-scale text analysis. In this paper, we extend a Basket Mining algorithm to convert a kernel-based classifier into a simple and fast linear classifier. Experimental results on English BaseNP Chunking, Japanese Word Segmentation and Japanese Dependency Parsing show that our new classifiers are about 30 to 300 times faster than the standard kernel-based classifiers. 1 Introduction Kernel methods (e.g., Support Vector Machines (Vapnik, 1995)) attract a great deal of attention recently. In the field of Natural Language Processing, many successes have been reported. Examples include Part-of-Speech tagging (Nakagawa et al., 2002) Text Chunking (Kudo and Matsumoto, 2001), Named Entity Recognition (Isozaki and Kazawa, 2002), and Japanese Dependency Parsing (Kudo and Matsumoto, 2000; Kudo and Matsumoto, 2002). It is known in NLP that combination of features contributes to a significant improvement in accuracy. For instance, in the task of dependency parsing, it would be hard to confirm a correct dependency relation with only a single s</context>
+</contexts>
+<marker>Vapnik, 1995</marker>
+<rawString>Vladimir N. Vapnik. 1995. The Nature of Statistical Learning Theory. Springer.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mohammed Zaki</author>
+</authors>
+<title>Efficiently mining frequent trees in a forest.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the 8th International Conference on Knowledge Discovery and Data Mining KDD,</booktitle>
+<pages>71--80</pages>
+<marker>Zaki, 2002</marker>
+<rawString>Mohammed Zaki. 2002. Efficiently mining frequent trees in a forest. In Proceedings of the 8th International Conference on Knowledge Discovery and Data Mining KDD, pages 71– 80.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

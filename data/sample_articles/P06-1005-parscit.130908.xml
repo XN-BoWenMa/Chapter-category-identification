@@ -1,0 +1,620 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.009523" no="0">
+<title confidence="0.989734">
+Bootstrapping Path-Based Pronoun Resolution
+</title>
+<author confidence="0.998804">
+Shane Bergsma
+</author>
+<affiliation confidence="0.99817">
+Department of Computing Science
+University of Alberta
+</affiliation>
+<address confidence="0.638001">
+Edmonton, Alberta, Canada, T6G 2E8
+</address>
+<email confidence="0.998401">
+bergsma@cs.ualberta.ca
+</email>
+<author confidence="0.70095">
+Dekang Lin
+</author>
+<affiliation confidence="0.480451">
+Google, Inc.
+1600 Amphitheatre Parkway,
+</affiliation>
+<address confidence="0.940136">
+Mountain View, California, 94301
+</address>
+<email confidence="0.999281">
+lindek@google.com
+</email>
+<sectionHeader confidence="0.99391" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999902529411765">We present an approach to pronoun resolution based on syntactic paths. Through a simple bootstrapping procedure, we learn the likelihood of coreference between a pronoun and a candidate noun based on the path in the parse tree between the two entities. This path information enables us to handle previously challenging resolution instances, and also robustly addresses traditional syntactic coreference constraints. Highly coreferent paths also allow mining of precise probabilistic gender/number information. We combine statistical knowledge with well known features in a Support Vector Machine pronoun resolution classifier. Significant gains in performance are observed on several datasets.</bodyText>
+<sectionHeader confidence="0.998989" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.99962975">Pronoun resolution is a difficult but vital part of the overall coreference resolution task. In each of the following sentences, a pronoun resolution system must determine what the pronoun his refers to:</bodyText>
+<listItem confidence="0.996082">(1) John needs his friend. (2) John needs his support.</listItem>
+<bodyText confidence="0.999920261904762">In (1), John and his corefer. In (2), his refers to some other, perhaps previously evoked entity. Traditional pronoun resolution systems are not designed to distinguish between these cases. They lack the specific world knowledge required in the second instance – the knowledge that a person does not usually explicitly need his own support. We collect statistical path-coreference information from a large, automatically-parsed corpus to address this limitation. A dependency path is defined as the sequence of dependency links between two potentially coreferent entities in a parse tree. A path does not include the terminal entities; for example, “John needs his support” and “He needs their support” have the same syntactic path. Our algorithm determines that the dependency path linking the Noun and pronoun is very likely to connect coreferent entities for the path “Noun needs pronoun’s friend,” while it is rarely coreferent for the path “Noun needs pronoun’s support.” This likelihood can be learned by simply counting how often we see a given path in text with an initial Noun and a final pronoun that are from the same/different gender/number classes. Cases such as “John needs her support” or “They need his support” are much more frequent in text than cases where the subject noun and pronoun terminals agree in gender/number. When there is agreement, the terminal nouns are likely to be coreferent. When they disagree, they refer to different entities. After a sufficient number of occurrences of agreement or disagreement, there is a strong statistical indication of whether the path is coreferent (terminal nouns tend to refer to the same entity) or non-coreferent (nouns refer to different entities). We show that including path coreference information enables significant performance gains on three third-person pronoun resolution experiments. We also show that coreferent paths can provide the seed information for bootstrapping other, even more important information, such as the gender/number of noun phrases.</bodyText>
+<sectionHeader confidence="0.999845" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.997707">Coreference resolution is generally conducted as a pairwise classification task, using various constraints and preferences to determine whether two expressions corefer.</bodyText>
+<page confidence="0.986075">
+33
+</page>
+<note confidence="0.5352295">
+Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 33–40,
+Sydney, July 2006. c�2006 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999885642857143">Coreference is typically only allowed between nouns matching in gender and number, and not violating any intrasentential syntactic principles. Constraints can be applied as a preprocessing step to scoring candidates based on distance, grammatical role, etc., with scores developed either manually (Lappin and Leass, 1994), or through a machine-learning algorithm (Kehler et al., 2004). Constraints and preferences have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these difficult cases. The application of world knowledge to pronoun resolution has been limited to the semantic compatibility between a candidate noun and the pronoun’s context (Yang et al., 2005). We show semantic compatibility can be effectively combined with path coreference information in our experiments below. Our method for determining path coreference is similar to an algorithm for discovering paraphrases in text (Lin and Pantel, 2001). In that work, the beginning and end nodes in the paths are collected, and two paths are said to be similar (and thus likely paraphrases of each other) if they have similar terminals (i.e.the paths occur with a similar distribution). Our work does not need to store the terminals themselves, only whether they are from the same pronoun group. Different paths are not compared in any way; each path is individually assigned a coreference likelihood.</bodyText>
+<sectionHeader confidence="0.991118" genericHeader="method">
+3 Path Coreference
+</sectionHeader>
+<bodyText confidence="0.999114714285714">We define a dependency path as the sequence of nodes and dependency labels between two potentially coreferent entities in a dependency parse tree. We use the structure induced by the minimalist parser Minipar (Lin, 1998) on sentences from the news corpus described in Section 4. Figure 1 gives the parse tree of (2). As a short-form, we write the dependency path in this case as “Noun needs pronoun’s support.” The path itself does not include the terminal nouns “John” and “his.” Our algorithm finds the likelihood of coreference along dependency paths by counting the number of times they occur with terminals that are either likely coreferent or non-coreferent.</bodyText>
+<figureCaption confidence="0.997581">
+Figure 1: Example dependency tree.
+</figureCaption>
+<bodyText confidence="0.9999758">In the simplest version, we count paths with terminals that are both pronouns. We partition pronouns into seven groups of matching gender, number, and person; for example, the first person singular group contains I, me, my, mine, and myself. If the two terminal pronouns are from the same group, coreference along the path is likely. If they are from different groups, like I and his, then they are non-coreferent. Let NS(p) be the number of times the two terminal pronouns of a path, p, are from the same pronoun group, and let ND(p) be the number of times they are from different groups. We define the coreference of p as:</bodyText>
+<equation confidence="0.998482">
+C(p) = NS(p) + ND(p)
+</equation>
+<bodyText confidence="0.999973105263158">Our statistics indicate the example path, “Noun needs pronoun’s support,” has a low C(p) value. We could use this fact to prevent us from resolving “his” to “John” when “John needs his support” is presented to a pronoun resolution system. To mitigate data sparsity, we represent the path with the root form of the verbs and nouns. Also, we use Minipar’s named-entity recognition to replace named-entity nouns by the semantic category of their named-entity, when available. All modifiers not on the direct path, such as adjectives, determiners and adverbs, are not considered. We limit the maximum path length to eight nodes. Tables 1 and 2 give examples of coreferent and non-coreferent paths learned by our algorithm and identified in our test sets. Coreferent paths are defined as paths with a C(p) value (and overall number of occurrences) above a certain threshold, indicating the terminal entities are highly likely</bodyText>
+<equation confidence="0.87437975">
+John❑needs❑his❑support❑
+subj❑ gen❑
+obj❑
+NS(p)
+</equation>
+<page confidence="0.998428">
+34
+</page>
+<tableCaption confidence="0.999866">
+Table 1: Example coreferent paths: Italicized entities generally corefer.
+</tableCaption>
+<bodyText confidence="0.995438465116279">Pattern Example Noun left ... to pronoun’s wife Buffett will leave the stock to his wife. Noun says pronoun intends... The newspaper says it intends to file a lawsuit. Noun was punished for pronoun’s crime. The criminal was punished for his crime. ... left Noun to fend for pronoun-self They left Jane to fend for herself. Noun lost pronoun’s job. Dick lost his job. ... created Noun and populated pronoun. Nzame created the earth and populated it Noun consolidated pronoun’s power. The revolutionaries consolidated their power. Noun suffered ... in pronoun’s knee ligament. The leopard suffered pain in its knee ligament. to corefer. Non-coreferent paths have a C(p) below a certain cutoff; the terminals are highly unlikely to corefer. Especially note the challenge of resolving most of the examples in Table 2 without path coreference information. Although these paths encompass some cases previously covered by Binding Theory (e.g. “Mary suspended her,” her cannot refer to Mary by Principle B (Haegeman, 1994)), most have no syntactic justification for non-coreference per se. Likewise, although Binding Theory (Principle A) could identify the reflexive pronominal relationship of Example 4 in Table 1, most cases cannot be resolved through syntax alone. Our analysis shows that successfully handling cases that may have been handled with Binding Theory constitutes only a small portion of the total performance gain using path coreference. In any case, Binding Theory remains a challenge with a noisy parser. Consider: “Alex gave her money.” Minipar parses her as a possessive, when it is more likely an object, “Alex gave money to her.” Without a correct parse, we cannot rule out the link between her and Alex through Binding Theory. Our algorithm, however, learns that the path “Noun gave pronoun’s money,” is noncoreferent. In a sense, it corrects for parser errors by learning when coreference should be blocked, given any consistent parse of the sentence. We obtain path coreference for millions of paths from our parsed news corpus (Section 4). While Tables 1 and 2 give test set examples, many other interesting paths are obtained. We learn coreference is unlikely between the nouns in “Bob married his mother,” or “Sue wrote her obituary.” The fact you don’t marry your own mother or write your own obituary is perhaps obvious, but this is the first time this kind of knowledge has been made available computationally. Naturally, exceptions to the coreference or non-coreference of some of these paths can be found; our patterns represent general trends only. And, as mentioned above, reliable path coreference is somewhat dependent on consistent parsing. Paths connecting pronouns to pronouns are different than paths connecting both nouns and pronouns to pronouns – the case we are ultimately interested in resolving. Consider “Company A gave its data on its website.” The pronoun-pronoun path coreference algorithm described above would learn the terminals in “Noun’s data on pronoun’s website” are often coreferent. But if we see the phrase “Company A gave Company B’s data on its website,” then “its” is not likely to refer to “Company B,” even though we identified this as a coreferent path! We address this problem with a two-stage extraction procedure. We first bootstrap gender/number information using the pronounpronoun paths as described in Section 4.1. We then use this gender/number information to count paths where an initial noun (with probabilisticallyassigned gender/number) and following pronoun are connected by the dependency path, recording the agreement or disagreement of their gender/number category.' These superior paths are then used to re-bootstrap our final gender/number information used in the evaluation (Section 6). We also bootstrap paths where the nodes in the path are replaced by their grammatical category. This allows us to learn general syntactic constraints not dependent on the surface forms of the words (including, but not limited to, the Binding Theory principles). A separate set of these noncoreferent paths is also used as a feature in our sys'As desired, this modification allows the first example to provide two instances of noun-pronoun paths with terminals from the same gender/number group, linking each “its” to the subject noun “Company A”, rather than to each other.</bodyText>
+<page confidence="0.999481">
+35
+</page>
+<tableCaption confidence="0.998905">
+Table 2: Example non-coreferent paths: Italicized entities do not generally corefer
+</tableCaption>
+<bodyText confidence="0.996140230769231">Pattern Example Noun thanked ... for pronoun’s assistance John thanked him for his assistance. Noun wanted pronoun to lie. The president wanted her to lie. ... Noun into pronoun’s pool Max put the floaties into their pool. ... use Noun to pronoun’s advantage The company used the delay to its advantage. Noun suspended pronoun Mary suspended her. Noun was pronoun’s relative. The Smiths were their relatives. Noun met pronoun’s demands The players’ association met its demands. ... put Noun at the top of pronoun’s list. The government put safety at the top of its list. tem. We also tried expanding our coverage by using paths similar to paths with known path coreference (based on distributionally similar words), but this did not generally increase performance.</bodyText>
+<sectionHeader confidence="0.930802" genericHeader="method">
+4 Bootstrapping in Pronoun Resolution
+</sectionHeader>
+<bodyText confidence="0.999869125">Our determination of path coreference can be considered a bootstrapping procedure. Furthermore, the coreferent paths themselves can serve as the seed for bootstrapping additional coreference information. In this section, we sketch previous approaches to bootstrapping in coreference resolution and explain our new ideas. Coreference bootstrapping works by assuming resolutions in unlabelled text, acquiring information from the putative resolutions, and then making inferences from the aggregate statistical data. For example, we assumed two pronouns from the same pronoun group were coreferent, and deduced path coreference from the accumulated counts. The potential of the bootstrapping approach can best be appreciated by imagining millions of documents with coreference annotations. With such a set, we could extract fine-grained features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches by using coreferent paths as the assumed resolutions in the bootstrapping.</bodyText>
+<tableCaption confidence="0.994649">
+Table 3: Gender classification performance (%)
+</tableCaption>
+<table confidence="0.9989545">
+Classifier F-Score
+Bergsma (2005) Corpus-based 85.4
+Bergsma (2005) Web-based 90.4
+Bergsma (2005) Combined 92.2
+Duplicated Corpus-based 88.0
+Coreferent Path-based 90.3
+</table>
+<bodyText confidence="0.998273909090909">Because we can vary the threshold for defining a coreferent path, we can trade-off coverage for precision. We now outline two potential uses of bootstrapping with coreferent paths: learning gender/number information (Section 4.1) and augmenting a semantic compatibility model (Section 4.2). We bootstrap this data on our automatically-parsed news corpus. The corpus comprises 85 GB of news articles taken from the world wide web over a 1-year period.</bodyText>
+<subsectionHeader confidence="0.998345">
+4.1 Probabilistic Gender/Number
+</subsectionHeader>
+<bodyText confidence="0.9999874">Bergsma (2005) learns noun gender (and number) from two principal sources: 1) mining it from manually-defined lexico-syntactic patterns in parsed corpora, and 2) acquiring it on the fly by counting the number of pages returned for various gender-indicating patterns by the Google search engine. The web-based approach outperformed the corpus-based approach, while a system that combined the two sets of information resulted in the highest performance (Table 3). The combined gender-classifying system is a machine-learned classifier with 20 features. The time delay of using an Internet search engine within a large-scale anaphora resolution effort is currently impractical. Thus we attempted to duplicate Bergsma’s corpus-based extraction of gender and number, where the information can be stored in advance in a table, but using a much larger data set.</bodyText>
+<page confidence="0.998538">
+36
+</page>
+<tableCaption confidence="0.998015">
+Table 4: Example gender/number probability (%)
+</tableCaption>
+<table confidence="0.999252166666667">
+Word masc fem neut plur
+company 0.6 0.1 98.1 1.2
+condoleeza rice 4.0 92.7 0.0 3.2
+pat 58.3 30.6 6.2 4.9
+president 94.1 3.0 1.5 1.4
+wife 9.9 83.3 0.8 6.1
+</table>
+<bodyText confidence="0.995701796296297">Bergsma ran his extraction on roughly 6 GB of text; we used roughly 85 GB. Using the test set from Bergsma (2005), we were only able to boost performance from an FScore of 85.4% to one of 88.0% (Table 3). This result led us to re-examine the high performance of Bergsma’s web-based approach. We realized that the corpus-based and web-based approaches are not exactly symmetric. The corpus-based approaches, for example, would not pick out gender from a pattern such as “John and his friends...” because “Noun and pronoun’s NP” is not one of the manually-defined gender extraction patterns. The web-based approach, however, would catch this instance with the “John * his/her/its/their” template, where “*” is the Google wild-card operator. Clearly, there are patterns useful for capturing gender and number information beyond the predefined set used in the corpus-based extraction. We thus decided to capture gender/number information from coreferent paths. If a noun is connected to a pronoun of a particular gender along a coreferent path, we count this as an instance of that noun being that gender. In the end, the probability that the noun is a particular gender is the proportion of times it was connected to a pronoun of that gender along a coreferent path. Gender information becomes a single intuitive, accessible feature (i.e.the probability of the noun being that gender) rather than Bergsma’s 20-dimensional feature vector requiring search-engine queries to instantiate. We acquire gender and number data for over 3 million nouns. We use add-one smoothing for data sparsity. Some example gender/number probabilities are given in Table 4 (cf.(Ge et al., 1998; Cherry and Bergsma, 2005)). We get a performance of 90.3% (Table 3), again meeting our requirements of high performance and allowing for a fast, practical implementation. This is lower than Bergsma’s top score of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful because it allows us to rapidly prototype resolution systems without incurring the overhead of large-scale lexical databases such as WordNet (Miller et al., 1990).</bodyText>
+<subsectionHeader confidence="0.997508">
+4.2 Semantic Compatibility
+</subsectionHeader>
+<bodyText confidence="0.999607157894737">Researchers since Dagan and Itai (1990) have variously argued for and against the utility of collocation statistics between nouns and parents for improving the performance of pronoun resolution. For example, can the verb parent of a pronoun be used to select antecedents that satisfy the verb’s selectional restrictions? If the verb phrase was shatter it, we would expect it to refer to some kind of brittle entity. Like path coreference, semantic compatibility can be considered a form of world knowledge needed for more challenging pronoun resolution instances. We encode the semantic compatibility between a noun and its parse tree parent (and grammatical relationship with the parent) using mutual information (MI) (Church and Hanks, 1989). Suppose we are determining whether ham is a suitable antecedent for the pronoun it in eat it. We calculate the MI as:</bodyText>
+<equation confidence="0.998127">
+Pr(eat:obj:ham)
+MI(eat:obj, ham) = log
+Pr(eat:obj)Pr(ham)
+</equation>
+<bodyText confidence="0.999281833333334">Although semantic compatibility is usually only computed for possessive-noun, subject-verb, and verb-object relationships, we include 121 different kinds of syntactic relationships as parsed in our news corpus.3 We collected 4.88 billion parent:rel:node triples, including over 327 million possessive-noun values, 1.29 billion subject-verb and 877 million verb-direct object. We use small probability values for unseen Pr(parent:rel:node), Pr(parent:rel), and Pr(node) cases, as well as a default MI when no relationship is parsed, roughly optimized for performance on the training set. We include both the MI between the noun and the pronoun’s parent as well as the MI between the pronoun and the noun’s parent as features in our pronoun resolution classifier.</bodyText>
+<footnote confidence="0.998128666666667">
+2Available at http://www.cs.ualberta.ca/˜bergsma/Gender/
+3We convert prepositions to relationships to enhance our
+model’s semantics, e.g. Joan:of:Arc rather than Joan:prep:of
+</footnote>
+<page confidence="0.999652">
+37
+</page>
+<bodyText confidence="0.999971688888889">Kehler et al.(2004) saw no apparent gain from using semantic compatibility information, while Yang et al.(2005) saw about a 3% improvement with compatibility data acquired by searching on the world wide web. Section 6 analyzes the contribution of MI to our system. Bean and Riloff (2004) used bootstrapping to extend their semantic compatibility model, which they called contextual-role knowledge, by identifying certain cases of easily-resolved anaphors and antecedents. They give the example “Mr. Bush disclosed the policy by reading it.” Once we identify that it and policy are coreferent, we include read:obj:policy as part of the compatibility model. Rather than using manually-defined heuristics to bootstrap additional semantic compatibility information, we wanted to enhance our MI statistics automatically with coreferent paths. Consider the phrase, “Saddam’s wife got a Jordanian lawyer for her husband.” It is unlikely we would see “wife’s husband” in text; in other words, we would not know that husband:gen:wife is, in fact, semantically compatible and thereby we would discourage selection of “wife” as the antecedent at resolution time. However, because “Noun gets ... for pronoun’s husband” is a coreferent path, we could capture the above relationship by adding a parent:rel:node for every pronoun connected to a noun phrase along a coreferent path in text. We developed context models with and without these path enhancements, but ultimately we could find no subset of coreferent paths that improve the semantic compatibility’s contribution to training set accuracy. A mutual information model trained on 85 GB of text is fairly robust on its own, and any kind of bootstrapped extension seems to cause more damage by increased noise than can be compensated by increased coverage. Although we like knowing audiences have noses, e.g.“the audience turned up its nose at the performance,” such phrases are apparently quite rare in actual test sets.</bodyText>
+<sectionHeader confidence="0.996646" genericHeader="evaluation">
+5 Experimental Design
+</sectionHeader>
+<bodyText confidence="0.999963924528302">The noun-pronoun path coreference can be used directly as a feature in a pronoun resolution system. However, path coreference is undefined for cases where there is no path between the pronoun and the candidate noun – for example, when the candidate is in the previous sentence. Therefore, rather than using path coreference directly, we have features that are true if C(p) is above or below certain thresholds. The features are thus set when coreference between the pronoun and candidate noun is likely (a coreferent path) or unlikely (a non-coreferent path). We now evaluate the utility of path coreference within a state-of-the-art machine-learned resolution system for third-person pronouns with nominal antecedents. A standard set of features is used along with the bootstrapped gender/number, semantic compatibility, and path coreference information. We refer to these features as our “probabilistic features” (Prob. Features) and run experiments using the full system trained and tested with each absent, in turn (Table 5). We have 29 features in total, including measures of candidate distance, frequency, grammatical role, and different kinds of parallelism between the pronoun and the candidate noun. Several reliable features are used as hard constraints, removing candidates before consideration by the scoring algorithm. All of the parsing, noun-phrase identification, and named-entity recognition are done automatically with Minipar. Candidate antecedents are considered in the current and previous sentence only. We use SVMUght (Joachims, 1999) to learn a linear-kernel classifier on pairwise examples in the training set. When resolving pronouns, we select the candidate with the farthest positive distance from the SVM classification hyperplane. Our training set is the anaphora-annotated portion of the American National Corpus (ANC) used in Bergsma (2005), containing 1270 anaphoric pronouns4. We test on the ANC Test set (1291 instances) also used in Bergsma (2005) (highest resolution accuracy reported: 73.3%), the anaphoralabelled portion of AQUAINT used in Cherry and Bergsma (2005) (1078 instances, highest accuracy: 71.4%), and the anaphoric pronoun subset of the MUC7 (1997) coreference evaluation formal test set (169 instances, highest precision of 62.1 reported on all pronouns in (Ng and Cardie, 2002)). These particular corpora were chosen so we could test our approach using the same data as comparable machine-learned systems exploiting probabilistic information sources. Parameters were set using cross-validation on the training set; test sets were used only once to obtain the final performance values.</bodyText>
+<footnote confidence="0.989442">
+4See http://www.cs.ualberta.ca/˜bergsma/CorefTags/ for
+instructions on acquiring annotations
+</footnote>
+<page confidence="0.996975">
+38
+</page>
+<tableCaption confidence="0.980569">
+Table 5: Resolution accuracy (%)
+</tableCaption>
+<table confidence="0.816761166666666">
+Dataset ANC AQT MUC
+1 Previous noun 36.7 34.5 30.8
+2 No Prob. Features 58.1 60.9 49.7
+3 No Prob. Gender 65.8 71.0 68.6
+4 No MI 71.3 73.5 69.2
+5 No C(p) 72.3 73.7 69.8
+</table>
+<figure confidence="0.991003466666667">
+6 Full System 73.9 75.0 71.6
+7 Upper Bound 93.2 92.3 91.1
+1
+0.95
+0.9
+Precision
+0.85
+0.8
+0.75
+0.7
+Top-3
+Top-2
+Top-1
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+Recall
+</figure>
+<bodyText confidence="0.9655035">Evaluation Metric: We report results in terms of accuracy: Of all the anaphoric pronouns in the test set, the proportion we resolve correctly.</bodyText>
+<sectionHeader confidence="0.999851" genericHeader="result">
+6 Results and Discussion
+</sectionHeader>
+<bodyText confidence="0.999908966666667">We compare the accuracy of various configurations of our system on the ANC, AQT and MUC datasets (Table 5). We include the score from picking the noun immediately preceding the pronoun (after our hard filters are applied). Due to the hard filters and limited search window, it is not possible for our system to resolve every noun to a correct antecedent. We thus provide the performance upper bound (i.e. the proportion of cases with a correct answer in the filtered candidate list). On ANC and AQT, each of the probabilistic features results in a statistically significant gain in performance over a model trained and tested with that feature absent.5 On the smaller MUC set, none of the differences in 3-6 are statistically significant, however, the relative contribution of the various features remains reassuringly constant. Aside from missing antecedents due to the hard filters, the main sources of error include inaccurate statistical data and a classifier bias toward preceding pronouns of the same gender/number. It would be interesting to see whether performance could be improved by adding WordNet and web-mined features. Path coreference itself could conceivably be determined with a search engine. Gender is our most powerful probabilistic feature. In fact, inspecting our system’s decisions, gender often rules out coreference regardless of path coreference. This is not surprising, since we based the acquisition of C(p) on gender. That is, our bootstrapping assumption was that the majority of times these paths occur, gender indicates coreference or lack thereof.</bodyText>
+<footnote confidence="0.66994">
+5We calculate significance with McNemar’s test, p=0.05.
+</footnote>
+<figureCaption confidence="0.9762535">
+Figure 2: ANC pronoun resolution accuracy for
+varying SVM-thresholds.
+</figureCaption>
+<bodyText confidence="0.999906777777778">Thus when they occur in our test sets, gender should often sufficiently indicate coreference. Improving the orthogonality of our features remains a future challenge. Nevertheless, note the decrease in performance on each of the datasets when C(p) is excluded (#5). This is compelling evidence that path coreference is valuable in its own right, beyond its ability to bootstrap extensive and reliable gender data. Finally, we can add ourselves to the camp of people claiming semantic compatibility is useful for pronoun resolution. Both the MI from the pronoun in the antecedent’s context and vice-versa result in improvement. Building a model from enough text may be the key. The primary goal of our evaluation was to assess the benefit of path coreference within a competitive pronoun resolution system. Our system does, however, outperform previously published results on these datasets. Direct comparison of our scoring system to other current top approaches is made difficult by differences in preprocessing. Ideally we would assess the benefit of our probabilistic features using the same state-of-the-art preprocessing modules employed by others such as (Yang et al., 2005) (who additionally use a search engine for compatibility scoring). Clearly, promoting competitive evaluation of pronoun resolution scoring systems by giving competitors equivalent real-world preprocessing output along the lines of (Barbu and Mitkov, 2001) remains the best way to isolate areas for system improvement. Our pronoun resolution system is part of a larger information retrieval project where resolution accuracy is not necessarily the most pertinent measure of classifier performance.</bodyText>
+<page confidence="0.997897">
+39
+</page>
+<bodyText confidence="0.999975266666667">More than one candidate can be useful in ambiguous cases, and not every resolution need be used. Since the SVM ranks antecedent candidates, we can test this ranking by selecting more than the top candidate (Topn) and evaluating coverage of the true antecedents. We can also resolve only those instances where the most likely candidate is above a certain distance from the SVM threshold. Varying this distance varies the precision-recall (PR) of the overall resolution. A representative PR curve for the Top-n classifiers is provided (Figure 2). The corresponding information retrieval performance can now be evaluated along the Top-n / PR configurations.</bodyText>
+<sectionHeader confidence="0.999046" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.9999958125">We have introduced a novel feature for pronoun resolution called path coreference, and demonstrated its significant contribution to a state-of-theart pronoun resolution system. This feature aids coreference decisions in many situations not handled by traditional coreference systems. Also, by bootstrapping with the coreferent paths, we are able to build the most complete and accurate table of probabilistic gender information yet available. Preliminary experiments show path coreference bootstrapping can also provide a means of identifying pleonastic pronouns, where pleonastic neutral pronouns are often followed in a dependency path by a terminal noun of different gender, and cataphoric constructions, where the pronouns are often followed by nouns of matching gender.</bodyText>
+<sectionHeader confidence="0.999223" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.998719935064935">
+Chinatsu Aone and Scott William Bennett. 1995. Evaluating
+automated and manual acquisition of anaphora resolution
+strategies. In Proceedings of the 33rd Annual Meeting of
+the Association for Computational Linguistics, pages 122–
+129.
+Catalina Barbu and Ruslan Mitkov. 2001. Evaluation tool for
+rule-based anaphora resolution methods. In Proceedings
+of the 39th Annual Meeting of the Association for Compu-
+tational Linguistics, pages 34–41.
+David L. Bean and Ellen Riloff. 2004. Unsupervised learn-
+ing of contextual role knowledge for coreference resolu-
+tion. In HLT-NAACL, pages 297–304.
+Shane Bergsma. 2005. Automatic acquisition of gender in-
+formation for anaphora resolution. In Proceedings of the
+Eighteenth Canadian Conference on Artificial Intelligence
+(Canadian AI’2005), pages 342–353.
+Colin Cherry and Shane Bergsma. 2005. An expectation
+maximization approach to pronoun resolution. In Pro-
+ceedings of the Ninth Conference on Natural Language
+Learning (CoNLL-2005), pages 88–95.
+Kenneth Ward Church and Patrick Hanks. 1989. Word asso-
+ciation norms, mutual information, and lexicography. In
+Proceedings of the 27th Annual Meeting of the Association
+for Computational Linguistics (ACL’89), pages 76–83.
+Ido Dagan and Alan Itai. 1990. Automatic processing
+of large corpora for the resolution of anaphora refer-
+ences. In Proceedings of the 13th International Con-
+ference on Computational Linguistics (COLING-90), vol-
+ume 3, pages 330–332, Helsinki, Finland.
+Niyu Ge, John Hale, and Eugene Charniak. 1998. A statisti-
+cal approach to anaphora resolution. In Proceedings of the
+Sixth Workshop on Very Large Corpora, pages 161–171.
+Liliane Haegeman. 1994. Introduction to Government &amp;
+Binding theory: Second Edition. Basil Blackwell, Cam-
+bridge, UK.
+Thorsten Joachims. 1999. Making large-scale SVM learn-
+ing practical. In B. Sch¨olkopf and C. Burges, editors, Ad-
+vances in Kernel Methods. MIT-Press.
+Andrew Kehler, Douglas Appelt, Lara Taylor, and Aleksandr
+Simma. 2004. The (non)utility of predicate-argument fre-
+quencies for pronoun interpretation. In Proceedings of
+HLT/NAACL-04, pages 289–296.
+Shalom Lappin and Herbert J. Leass. 1994. An algorithm for
+pronominal anaphora resolution. Computational Linguis-
+tics, 20(4):535–561.
+Dekang Lin and Patrick Pantel. 2001. Discovery of infer-
+ence rules for question answering. Natural Language En-
+gineering, 7(4):343–360.
+Dekang Lin. 1998. Dependency-based evaluation of MINI-
+PAR. In Proceedings of the Workshop on the Evalua-
+tion ofParsing Systems, First International Conference on
+Language Resources and Evaluation.
+George A. Miller, Richard Beckwith, Christiane Fellbaum,
+Derek Gross, and Katherine J. Miller. 1990. Introduction
+to WordNet: an on-line lexical database. International
+Journal ofLexicography, 3(4):235–244.
+Ruslan Mitkov. 1997. Factors in anaphora resolution: they
+are not the only things that matter. a case study based on
+two different approaches. In Proceedings of the ACL ’97 /
+EACL ’97 Workshop on Operational Factors in Practical,
+Robust Anaphora Resolution, pages 14–21.
+MUC-7. 1997. Coreference task definition (v3.0, 13 Jul
+97). In Proceedings of the Seventh Message Understand-
+ing Conference (MUC-7).
+Vincent Ng and Claire Cardie. 2002. Improving machine
+learning approaches to coreference resolution. In Pro-
+ceedings of the 40th Annual Meeting of the Association
+for Computational Linguistics, pages 104–111.
+Wee Meng Soon, Hwee Tou Ng, and Daniel Chung Yong
+Lim. 2001. A machine learning approach to coreference
+resolution of noun phrases. Computational Linguistics,
+27(4):521–544.
+Xiaofeng Yang, Jian Su, and Chew Lim Tan. 2005. Im-
+proving pronoun resolution using statistics-based seman-
+tic compatibility information. In Proceedings of the 43rd
+Annual Meeting of the Association for Computational Lin-
+guistics (ACL’05), pages 165–172, June.
+</reference>
+<page confidence="0.998609">
+40
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.809358" no="0">
+<title confidence="0.999756">Bootstrapping Path-Based Pronoun Resolution</title>
+<author confidence="0.999992">Shane Bergsma</author>
+<affiliation confidence="0.999976">Department of Computing Science University of Alberta</affiliation>
+<address confidence="0.998796">Edmonton, Alberta, Canada, T6G 2E8</address>
+<email confidence="0.997223">bergsma@cs.ualberta.ca</email>
+<author confidence="0.850008">Dekang Lin</author>
+<affiliation confidence="0.944184">Google, Inc.</affiliation>
+<address confidence="0.9973745">1600 Amphitheatre Parkway, Mountain View, California, 94301</address>
+<email confidence="0.999796">lindek@google.com</email>
+<abstract confidence="0.999726444444444">We present an approach to pronoun resolution based on syntactic paths. Through a simple bootstrapping procedure, we learn the likelihood of coreference between a pronoun and a candidate noun based on the path in the parse tree between the two entities. This path information enables us to handle previously challenging resolution instances, and also robustly addresses traditional syntactic coreference constraints. Highly coreferent paths also allow mining of precise probabilistic gender/number information. We combine statistical knowledge with well known features in a Support Vector Machine pronoun resolution classifier. Significant gains in performance are observed on several datasets.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Chinatsu Aone</author>
+<author>Scott William Bennett</author>
+</authors>
+<title>Evaluating automated and manual acquisition of anaphora resolution strategies.</title>
+<date>1995</date>
+<booktitle>In Proceedings of the 33rd Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>122--129</pages>
+<contexts>
+<context citStr="Aone and Bennett, 1995" endWordPosition="631" position="4168" startWordPosition="628">g of the ACL, pages 33–40, Sydney, July 2006. c�2006 Association for Computational Linguistics expressions corefer. Coreference is typically only allowed between nouns matching in gender and number, and not violating any intrasentential syntactic principles. Constraints can be applied as a preprocessing step to scoring candidates based on distance, grammatical role, etc., with scores developed either manually (Lappin and Leass, 1994), or through a machine-learning algorithm (Kehler et al., 2004). Constraints and preferences have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these diffi</context>
+</contexts>
+<marker>Aone, Bennett, 1995</marker>
+<rawString>Chinatsu Aone and Scott William Bennett. 1995. Evaluating automated and manual acquisition of anaphora resolution strategies. In Proceedings of the 33rd Annual Meeting of the Association for Computational Linguistics, pages 122– 129.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Catalina Barbu</author>
+<author>Ruslan Mitkov</author>
+</authors>
+<title>Evaluation tool for rule-based anaphora resolution methods.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 39th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>34--41</pages>
+<contexts>
+<context citStr="Barbu and Mitkov, 2001" endWordPosition="4638" position="29358" startWordPosition="4635">stem does, however, outperform previously published results on these datasets. Direct comparison of our scoring system to other current top approaches is made difficult by differences in preprocessing. Ideally we would assess the benefit of our probabilistic features using the same state-of-the-art preprocessing modules employed by others such as (Yang et al., 2005) (who additionally use a search engine for compatibility scoring). Clearly, promoting competitive evaluation of pronoun resolution scoring systems by giving competitors equivalent real-world preprocessing output along the lines of (Barbu and Mitkov, 2001) remains the best way to isolate areas for system improvement. Our pronoun resolution system is part of a larger information retrieval project where resolution ac39 curacy is not necessarily the most pertinent measure of classifier performance. More than one candidate can be useful in ambiguous cases, and not every resolution need be used. Since the SVM ranks antecedent candidates, we can test this ranking by selecting more than the top candidate (Topn) and evaluating coverage of the true antecedents. We can also resolve only those instances where the most likely candidate is above a certain d</context>
+</contexts>
+<marker>Barbu, Mitkov, 2001</marker>
+<rawString>Catalina Barbu and Ruslan Mitkov. 2001. Evaluation tool for rule-based anaphora resolution methods. In Proceedings of the 39th Annual Meeting of the Association for Computational Linguistics, pages 34–41.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David L Bean</author>
+<author>Ellen Riloff</author>
+</authors>
+<title>Unsupervised learning of contextual role knowledge for coreference resolution. In</title>
+<date>2004</date>
+<booktitle>HLT-NAACL,</booktitle>
+<pages>297--304</pages>
+<contexts>
+<context citStr="Bean and Riloff, 2004" endWordPosition="2315" position="14651" startWordPosition="2312">llions of documents with coreference annotations. With such a set, we could extract fine-grained features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold for defining a coreferent path, we can trade-off coverage for precision. We now outline two potential uses of boot</context>
+<context citStr="Bean and Riloff (2004)" endWordPosition="3362" position="21253" startWordPosition="3359">p://www.cs.ualberta.ca/˜bergsma/Gender/ 3We convert prepositions to relationships to enhance our model’s semantics, e.g. Joan:of:Arc rather than Joan:prep:of 37 include both the MI between the noun and the pronoun’s parent as well as the MI between the pronoun and the noun’s parent as features in our pronoun resolution classifier. Kehler et al. (2004) saw no apparent gain from using semantic compatibility information, while Yang et al. (2005) saw about a 3% improvement with compatibility data acquired by searching on the world wide web. Section 6 analyzes the contribution of MI to our system. Bean and Riloff (2004) used bootstrapping to extend their semantic compatibility model, which they called contextual-role knowledge, by identifying certain cases of easily-resolved anaphors and antecedents. They give the example “Mr. Bush disclosed the policy by reading it.” Once we identify that it and policy are coreferent, we include read:obj:policy as part of the compatibility model. Rather than using manually-defined heuristics to bootstrap additional semantic compatibility information, we wanted to enhance our MI statistics automatically with coreferent paths. Consider the phrase, “Saddam’s wife got a Jordani</context>
+</contexts>
+<marker>Bean, Riloff, 2004</marker>
+<rawString>David L. Bean and Ellen Riloff. 2004. Unsupervised learning of contextual role knowledge for coreference resolution. In HLT-NAACL, pages 297–304.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shane Bergsma</author>
+</authors>
+<title>Automatic acquisition of gender information for anaphora resolution.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Eighteenth Canadian Conference on Artificial Intelligence (Canadian AI’2005),</booktitle>
+<pages>342--353</pages>
+<contexts>
+<context citStr="Bergsma, 2005" endWordPosition="2317" position="14667" startWordPosition="2316">h coreference annotations. With such a set, we could extract fine-grained features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold for defining a coreferent path, we can trade-off coverage for precision. We now outline two potential uses of bootstrapping with c</context>
+<context citStr="Bergsma (2005)" endWordPosition="2641" position="16757" startWordPosition="2640">me delay of using an Internet search engine within a large-scale anaphora resolution effort is currently impractical. Thus we attempted 36 Table 4: Example gender/number probability (%) Word masc fem neut plur company 0.6 0.1 98.1 1.2 condoleeza rice 4.0 92.7 0.0 3.2 pat 58.3 30.6 6.2 4.9 president 94.1 3.0 1.5 1.4 wife 9.9 83.3 0.8 6.1 to duplicate Bergsma’s corpus-based extraction of gender and number, where the information can be stored in advance in a table, but using a much larger data set. Bergsma ran his extraction on roughly 6 GB of text; we used roughly 85 GB. Using the test set from Bergsma (2005), we were only able to boost performance from an FScore of 85.4% to one of 88.0% (Table 3). This result led us to re-examine the high performance of Bergsma’s web-based approach. We realized that the corpus-based and web-based approaches are not exactly symmetric. The corpus-based approaches, for example, would not pick out gender from a pattern such as “John and his friends...” because “Noun and pronoun’s NP” is not one of the manually-defined gender extraction patterns. The web-based approach, however, would catch this instance with the “John * his/her/its/their” template, where “*” is the G</context>
+<context citStr="Bergsma, 2005" endWordPosition="2902" position="18341" startWordPosition="2901">being that gender. In the end, the probability that the noun is a particular gender is the proportion of times it was connected to a pronoun of that gender along a coreferent path. Gender information becomes a single intuitive, accessible feature (i.e. the probability of the noun being that gender) rather than Bergsma’s 20-dimensional feature vector requiring search-engine queries to instantiate. We acquire gender and number data for over 3 million nouns. We use add-one smoothing for data sparsity. Some example gender/number probabilities are given in Table 4 (cf. (Ge et al., 1998; Cherry and Bergsma, 2005)). We get a performance of 90.3% (Table 3), again meeting our requirements of high performance and allowing for a fast, practical implementation. This is lower than Bergsma’s top score of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful because it allows us to rapid</context>
+<context citStr="Bergsma (2005)" endWordPosition="3917" position="24825" startWordPosition="3916">aints, removing candidates before consideration by the scoring algorithm. All of the parsing, noun-phrase identification, and named-entity recognition are done automatically with Minipar. Candidate antecedents are considered in the current and previous sentence only. We use SVMUght (Joachims, 1999) to learn a linear-kernel classifier on pairwise examples in the training set. When resolving pronouns, we select the candidate with the farthest positive distance from the SVM classification hyperplane. Our training set is the anaphora-annotated portion of the American National Corpus (ANC) used in Bergsma (2005), containing 1270 anaphoric pronouns4. We test on the ANC Test set (1291 instances) also used in Bergsma (2005) (highest resolution accuracy reported: 73.3%), the anaphoralabelled portion of AQUAINT used in Cherry and Bergsma (2005) (1078 instances, highest accuracy: 71.4%), and the anaphoric pronoun subset of the MUC7 (1997) coreference evaluation formal test set (169 instances, highest precision of 62.1 reported on all pronouns in (Ng and Cardie, 2002)). These particular corpora were chosen so we could test our approach using the same data as comparable machine-learned systems exploiting pro</context>
+</contexts>
+<marker>Bergsma, 2005</marker>
+<rawString>Shane Bergsma. 2005. Automatic acquisition of gender information for anaphora resolution. In Proceedings of the Eighteenth Canadian Conference on Artificial Intelligence (Canadian AI’2005), pages 342–353.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Colin Cherry</author>
+<author>Shane Bergsma</author>
+</authors>
+<title>An expectation maximization approach to pronoun resolution.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Ninth Conference on Natural Language Learning (CoNLL-2005),</booktitle>
+<pages>88--95</pages>
+<contexts>
+<context citStr="Cherry and Bergsma, 2005" endWordPosition="2333" position="14767" startWordPosition="2330">ps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold for defining a coreferent path, we can trade-off coverage for precision. We now outline two potential uses of bootstrapping with coreferent paths: learning gender/number information (Section 4.1) and augmenting a semantic compatib</context>
+<context citStr="Cherry and Bergsma, 2005" endWordPosition="2902" position="18341" startWordPosition="2899"> that noun being that gender. In the end, the probability that the noun is a particular gender is the proportion of times it was connected to a pronoun of that gender along a coreferent path. Gender information becomes a single intuitive, accessible feature (i.e. the probability of the noun being that gender) rather than Bergsma’s 20-dimensional feature vector requiring search-engine queries to instantiate. We acquire gender and number data for over 3 million nouns. We use add-one smoothing for data sparsity. Some example gender/number probabilities are given in Table 4 (cf. (Ge et al., 1998; Cherry and Bergsma, 2005)). We get a performance of 90.3% (Table 3), again meeting our requirements of high performance and allowing for a fast, practical implementation. This is lower than Bergsma’s top score of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful because it allows us to rapid</context>
+<context citStr="Cherry and Bergsma (2005)" endWordPosition="3954" position="25057" startWordPosition="3951">red in the current and previous sentence only. We use SVMUght (Joachims, 1999) to learn a linear-kernel classifier on pairwise examples in the training set. When resolving pronouns, we select the candidate with the farthest positive distance from the SVM classification hyperplane. Our training set is the anaphora-annotated portion of the American National Corpus (ANC) used in Bergsma (2005), containing 1270 anaphoric pronouns4. We test on the ANC Test set (1291 instances) also used in Bergsma (2005) (highest resolution accuracy reported: 73.3%), the anaphoralabelled portion of AQUAINT used in Cherry and Bergsma (2005) (1078 instances, highest accuracy: 71.4%), and the anaphoric pronoun subset of the MUC7 (1997) coreference evaluation formal test set (169 instances, highest precision of 62.1 reported on all pronouns in (Ng and Cardie, 2002)). These particular corpora were chosen so we could test our approach using the same data as comparable machine-learned systems exploiting probabilistic information sources. Parameters 4See http://www.cs.ualberta.ca/˜bergsma/CorefTags/ for instructions on acquiring annotations 38 Table 5: Resolution accuracy (%) Dataset ANC AQT MUC 1 Previous noun 36.7 34.5 30.8 2 No Prob</context>
+</contexts>
+<marker>Cherry, Bergsma, 2005</marker>
+<rawString>Colin Cherry and Shane Bergsma. 2005. An expectation maximization approach to pronoun resolution. In Proceedings of the Ninth Conference on Natural Language Learning (CoNLL-2005), pages 88–95.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kenneth Ward Church</author>
+<author>Patrick Hanks</author>
+</authors>
+<title>Word association norms, mutual information, and lexicography.</title>
+<date>1989</date>
+<booktitle>In Proceedings of the 27th Annual Meeting of the Association for Computational Linguistics (ACL’89),</booktitle>
+<pages>76--83</pages>
+<contexts>
+<context citStr="Church and Hanks, 1989" endWordPosition="3150" position="19846" startWordPosition="3147">een nouns and parents for improving the performance of pronoun resolution. For example, can the verb parent of a pronoun be used to select antecedents that satisfy the verb’s selectional restrictions? If the verb phrase was shatter it, we would expect it to refer to some kind of brittle entity. Like path coreference, semantic compatibility can be considered a form of world knowledge needed for more challenging pronoun resolution instances. We encode the semantic compatibility between a noun and its parse tree parent (and grammatical relationship with the parent) using mutual information (MI) (Church and Hanks, 1989). Suppose we are determining whether ham is a suitable antecedent for the pronoun it in eat it. We calculate the MI as: Pr(eat:obj:ham) MI(eat:obj, ham) = log Pr(eat:obj)Pr(ham) Although semantic compatibility is usually only computed for possessive-noun, subject-verb, and verb-object relationships, we include 121 different kinds of syntactic relationships as parsed in our news corpus.3 We collected 4.88 billion parent:rel:node triples, including over 327 million possessive-noun values, 1.29 billion subject-verb and 877 million verb-direct object. We use small probability values for unseen Pr(</context>
+</contexts>
+<marker>Church, Hanks, 1989</marker>
+<rawString>Kenneth Ward Church and Patrick Hanks. 1989. Word association norms, mutual information, and lexicography. In Proceedings of the 27th Annual Meeting of the Association for Computational Linguistics (ACL’89), pages 76–83.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ido Dagan</author>
+<author>Alan Itai</author>
+</authors>
+<title>Automatic processing of large corpora for the resolution of anaphora references.</title>
+<date>1990</date>
+<booktitle>In Proceedings of the 13th International Conference on Computational Linguistics (COLING-90),</booktitle>
+<volume>3</volume>
+<pages>330--332</pages>
+<location>Helsinki, Finland.</location>
+<contexts>
+<context citStr="Dagan and Itai (1990)" endWordPosition="3037" position="19142" startWordPosition="3034">core of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful because it allows us to rapidly prototype resolution systems without incurring the overhead of large-scale lexical databases such as WordNet (Miller et al., 1990). 4.2 Semantic Compatibility Researchers since Dagan and Itai (1990) have variously argued for and against the utility of collocation statistics between nouns and parents for improving the performance of pronoun resolution. For example, can the verb parent of a pronoun be used to select antecedents that satisfy the verb’s selectional restrictions? If the verb phrase was shatter it, we would expect it to refer to some kind of brittle entity. Like path coreference, semantic compatibility can be considered a form of world knowledge needed for more challenging pronoun resolution instances. We encode the semantic compatibility between a noun and its parse tree pare</context>
+</contexts>
+<marker>Dagan, Itai, 1990</marker>
+<rawString>Ido Dagan and Alan Itai. 1990. Automatic processing of large corpora for the resolution of anaphora references. In Proceedings of the 13th International Conference on Computational Linguistics (COLING-90), volume 3, pages 330–332, Helsinki, Finland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Niyu Ge</author>
+<author>John Hale</author>
+<author>Eugene Charniak</author>
+</authors>
+<title>A statistical approach to anaphora resolution.</title>
+<date>1998</date>
+<booktitle>In Proceedings of the Sixth Workshop on Very Large Corpora,</booktitle>
+<pages>161--171</pages>
+<contexts>
+<context citStr="Ge et al., 1998" endWordPosition="2329" position="14740" startWordPosition="2326">d features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold for defining a coreferent path, we can trade-off coverage for precision. We now outline two potential uses of bootstrapping with coreferent paths: learning gender/number information (Section 4.1) and aug</context>
+<context citStr="Ge et al., 1998" endWordPosition="2898" position="18314" startWordPosition="2895">as an instance of that noun being that gender. In the end, the probability that the noun is a particular gender is the proportion of times it was connected to a pronoun of that gender along a coreferent path. Gender information becomes a single intuitive, accessible feature (i.e. the probability of the noun being that gender) rather than Bergsma’s 20-dimensional feature vector requiring search-engine queries to instantiate. We acquire gender and number data for over 3 million nouns. We use add-one smoothing for data sparsity. Some example gender/number probabilities are given in Table 4 (cf. (Ge et al., 1998; Cherry and Bergsma, 2005)). We get a performance of 90.3% (Table 3), again meeting our requirements of high performance and allowing for a fast, practical implementation. This is lower than Bergsma’s top score of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful be</context>
+</contexts>
+<marker>Ge, Hale, Charniak, 1998</marker>
+<rawString>Niyu Ge, John Hale, and Eugene Charniak. 1998. A statistical approach to anaphora resolution. In Proceedings of the Sixth Workshop on Very Large Corpora, pages 161–171.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liliane Haegeman</author>
+</authors>
+<title>Introduction to Government &amp; Binding theory: Second Edition. Basil Blackwell,</title>
+<date>1994</date>
+<location>Cambridge, UK.</location>
+<contexts>
+<context citStr="Haegeman, 1994" endWordPosition="1433" position="9078" startWordPosition="1431">ronoun. Nzame created the earth and populated it Noun consolidated pronoun’s power. The revolutionaries consolidated their power. Noun suffered ... in pronoun’s knee ligament. The leopard suffered pain in its knee ligament. to corefer. Non-coreferent paths have a C(p) below a certain cutoff; the terminals are highly unlikely to corefer. Especially note the challenge of resolving most of the examples in Table 2 without path coreference information. Although these paths encompass some cases previously covered by Binding Theory (e.g. “Mary suspended her,” her cannot refer to Mary by Principle B (Haegeman, 1994)), most have no syntactic justification for non-coreference per se. Likewise, although Binding Theory (Principle A) could identify the reflexive pronominal relationship of Example 4 in Table 1, most cases cannot be resolved through syntax alone. Our analysis shows that successfully handling cases that may have been handled with Binding Theory constitutes only a small portion of the total performance gain using path coreference. In any case, Binding Theory remains a challenge with a noisy parser. Consider: “Alex gave her money.” Minipar parses her as a possessive, when it is more likely an obje</context>
+</contexts>
+<marker>Haegeman, 1994</marker>
+<rawString>Liliane Haegeman. 1994. Introduction to Government &amp; Binding theory: Second Edition. Basil Blackwell, Cambridge, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Thorsten Joachims</author>
+</authors>
+<title>Making large-scale SVM learning practical.</title>
+<date>1999</date>
+<booktitle>Advances in Kernel Methods. MIT-Press.</booktitle>
+<editor>In B. Sch¨olkopf and C. Burges, editors,</editor>
+<contexts>
+<context citStr="Joachims, 1999" endWordPosition="3869" position="24510" startWordPosition="3868">eriments using the full system trained and tested with each absent, in turn (Table 5). We have 29 features in total, including measures of candidate distance, frequency, grammatical role, and different kinds of parallelism between the pronoun and the candidate noun. Several reliable features are used as hard constraints, removing candidates before consideration by the scoring algorithm. All of the parsing, noun-phrase identification, and named-entity recognition are done automatically with Minipar. Candidate antecedents are considered in the current and previous sentence only. We use SVMUght (Joachims, 1999) to learn a linear-kernel classifier on pairwise examples in the training set. When resolving pronouns, we select the candidate with the farthest positive distance from the SVM classification hyperplane. Our training set is the anaphora-annotated portion of the American National Corpus (ANC) used in Bergsma (2005), containing 1270 anaphoric pronouns4. We test on the ANC Test set (1291 instances) also used in Bergsma (2005) (highest resolution accuracy reported: 73.3%), the anaphoralabelled portion of AQUAINT used in Cherry and Bergsma (2005) (1078 instances, highest accuracy: 71.4%), and the a</context>
+</contexts>
+<marker>Joachims, 1999</marker>
+<rawString>Thorsten Joachims. 1999. Making large-scale SVM learning practical. In B. Sch¨olkopf and C. Burges, editors, Advances in Kernel Methods. MIT-Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andrew Kehler</author>
+<author>Douglas Appelt</author>
+<author>Lara Taylor</author>
+<author>Aleksandr Simma</author>
+</authors>
+<title>The (non)utility of predicate-argument frequencies for pronoun interpretation.</title>
+<date>2004</date>
+<booktitle>In Proceedings of HLT/NAACL-04,</booktitle>
+<pages>289--296</pages>
+<contexts>
+<context citStr="Kehler et al., 2004" endWordPosition="611" position="4045" startWordPosition="608">mine whether two 33 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 33–40, Sydney, July 2006. c�2006 Association for Computational Linguistics expressions corefer. Coreference is typically only allowed between nouns matching in gender and number, and not violating any intrasentential syntactic principles. Constraints can be applied as a preprocessing step to scoring candidates based on distance, grammatical role, etc., with scores developed either manually (Lappin and Leass, 1994), or through a machine-learning algorithm (Kehler et al., 2004). Constraints and preferences have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and pr</context>
+<context citStr="Kehler et al. (2004)" endWordPosition="3317" position="20984" startWordPosition="3314">and 877 million verb-direct object. We use small probability values for unseen Pr(parent:rel:node), Pr(parent:rel), and Pr(node) cases, as well as a default MI when no relationship is parsed, roughly optimized for performance on the training set. We 2Available at http://www.cs.ualberta.ca/˜bergsma/Gender/ 3We convert prepositions to relationships to enhance our model’s semantics, e.g. Joan:of:Arc rather than Joan:prep:of 37 include both the MI between the noun and the pronoun’s parent as well as the MI between the pronoun and the noun’s parent as features in our pronoun resolution classifier. Kehler et al. (2004) saw no apparent gain from using semantic compatibility information, while Yang et al. (2005) saw about a 3% improvement with compatibility data acquired by searching on the world wide web. Section 6 analyzes the contribution of MI to our system. Bean and Riloff (2004) used bootstrapping to extend their semantic compatibility model, which they called contextual-role knowledge, by identifying certain cases of easily-resolved anaphors and antecedents. They give the example “Mr. Bush disclosed the policy by reading it.” Once we identify that it and policy are coreferent, we include read:obj:polic</context>
+</contexts>
+<marker>Kehler, Appelt, Taylor, Simma, 2004</marker>
+<rawString>Andrew Kehler, Douglas Appelt, Lara Taylor, and Aleksandr Simma. 2004. The (non)utility of predicate-argument frequencies for pronoun interpretation. In Proceedings of HLT/NAACL-04, pages 289–296.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shalom Lappin</author>
+<author>Herbert J Leass</author>
+</authors>
+<title>An algorithm for pronominal anaphora resolution.</title>
+<date>1994</date>
+<journal>Computational Linguistics,</journal>
+<volume>20</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Lappin and Leass, 1994" endWordPosition="602" position="3982" startWordPosition="599">ification task, using various constraints and preferences to determine whether two 33 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 33–40, Sydney, July 2006. c�2006 Association for Computational Linguistics expressions corefer. Coreference is typically only allowed between nouns matching in gender and number, and not violating any intrasentential syntactic principles. Constraints can be applied as a preprocessing step to scoring candidates based on distance, grammatical role, etc., with scores developed either manually (Lappin and Leass, 1994), or through a machine-learning algorithm (Kehler et al., 2004). Constraints and preferences have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importa</context>
+</contexts>
+<marker>Lappin, Leass, 1994</marker>
+<rawString>Shalom Lappin and Herbert J. Leass. 1994. An algorithm for pronominal anaphora resolution. Computational Linguistics, 20(4):535–561.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dekang Lin</author>
+<author>Patrick Pantel</author>
+</authors>
+<title>Discovery of inference rules for question answering.</title>
+<date>2001</date>
+<journal>Natural Language Engineering,</journal>
+<volume>7</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Lin and Pantel, 2001" endWordPosition="790" position="5204" startWordPosition="787">ce of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these difficult cases. The application of world knowledge to pronoun resolution has been limited to the semantic compatibility between a candidate noun and the pronoun’s context (Yang et al., 2005). We show semantic compatibility can be effectively combined with path coreference information in our experiments below. Our method for determining path coreference is similar to an algorithm for discovering paraphrases in text (Lin and Pantel, 2001). In that work, the beginning and end nodes in the paths are collected, and two paths are said to be similar (and thus likely paraphrases of each other) if they have similar terminals (i.e. the paths occur with a similar distribution). Our work does not need to store the terminals themselves, only whether they are from the same pronoun group. Different paths are not compared in any way; each path is individually assigned a coreference likelihood. 3 Path Coreference We define a dependency path as the sequence of nodes and dependency labels between two potentially coreferent entities in a depend</context>
+</contexts>
+<marker>Lin, Pantel, 2001</marker>
+<rawString>Dekang Lin and Patrick Pantel. 2001. Discovery of inference rules for question answering. Natural Language Engineering, 7(4):343–360.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dekang Lin</author>
+</authors>
+<title>Dependency-based evaluation of MINIPAR.</title>
+<date>1998</date>
+<booktitle>In Proceedings of the Workshop on the Evaluation ofParsing Systems, First International Conference on Language Resources and Evaluation.</booktitle>
+<contexts>
+<context citStr="Lin, 1998" endWordPosition="907" position="5894" startWordPosition="906">paths are said to be similar (and thus likely paraphrases of each other) if they have similar terminals (i.e. the paths occur with a similar distribution). Our work does not need to store the terminals themselves, only whether they are from the same pronoun group. Different paths are not compared in any way; each path is individually assigned a coreference likelihood. 3 Path Coreference We define a dependency path as the sequence of nodes and dependency labels between two potentially coreferent entities in a dependency parse tree. We use the structure induced by the minimalist parser Minipar (Lin, 1998) on sentences from the news corpus described in Section 4. Figure 1 gives the parse tree of (2). As a short-form, we Figure 1: Example dependency tree. write the dependency path in this case as “Noun needs pronoun’s support.” The path itself does not include the terminal nouns “John” and “his.” Our algorithm finds the likelihood of coreference along dependency paths by counting the number of times they occur with terminals that are either likely coreferent or non-coreferent. In the simplest version, we count paths with terminals that are both pronouns. We partition pronouns into seven groups o</context>
+</contexts>
+<marker>Lin, 1998</marker>
+<rawString>Dekang Lin. 1998. Dependency-based evaluation of MINIPAR. In Proceedings of the Workshop on the Evaluation ofParsing Systems, First International Conference on Language Resources and Evaluation.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>George A Miller</author>
+<author>Richard Beckwith</author>
+<author>Christiane Fellbaum</author>
+<author>Derek Gross</author>
+<author>Katherine J Miller</author>
+</authors>
+<title>Introduction to WordNet: an on-line lexical database.</title>
+<date>1990</date>
+<journal>International Journal ofLexicography,</journal>
+<pages>3--4</pages>
+<contexts>
+<context citStr="Miller et al., 1990" endWordPosition="3028" position="19074" startWordPosition="3025"> fast, practical implementation. This is lower than Bergsma’s top score of 92.2% (Figure 3), but again, Bergsma’s top system relies on Google search queries for each new word, while ours are all pre-stored in a table for fast access. We are pleased to be able to share our gender and number data with the NLP community.2 In Section 6, we show the benefit of this data as a probabilistic feature in our pronoun resolution system. Probabilistic data is useful because it allows us to rapidly prototype resolution systems without incurring the overhead of large-scale lexical databases such as WordNet (Miller et al., 1990). 4.2 Semantic Compatibility Researchers since Dagan and Itai (1990) have variously argued for and against the utility of collocation statistics between nouns and parents for improving the performance of pronoun resolution. For example, can the verb parent of a pronoun be used to select antecedents that satisfy the verb’s selectional restrictions? If the verb phrase was shatter it, we would expect it to refer to some kind of brittle entity. Like path coreference, semantic compatibility can be considered a form of world knowledge needed for more challenging pronoun resolution instances. We enco</context>
+</contexts>
+<marker>Miller, Beckwith, Fellbaum, Gross, Miller, 1990</marker>
+<rawString>George A. Miller, Richard Beckwith, Christiane Fellbaum, Derek Gross, and Katherine J. Miller. 1990. Introduction to WordNet: an on-line lexical database. International Journal ofLexicography, 3(4):235–244.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ruslan Mitkov</author>
+</authors>
+<title>Factors in anaphora resolution: they are not the only things that matter. a case study based on two different approaches.</title>
+<date>1997</date>
+<booktitle>In Proceedings of the ACL ’97 / EACL ’97 Workshop on Operational Factors in Practical, Robust Anaphora Resolution,</booktitle>
+<pages>14--21</pages>
+<contexts>
+<context citStr="Mitkov, 1997" endWordPosition="706" position="4668" startWordPosition="705">ts and preferences have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these difficult cases. The application of world knowledge to pronoun resolution has been limited to the semantic compatibility between a candidate noun and the pronoun’s context (Yang et al., 2005). We show semantic compatibility can be effectively combined with path coreference information in our experiments below. Our method for determining path coreference is similar to an algorithm for discovering paraphrases in text (Lin and Pantel, 2001). In that work, the beginning and end nodes in the paths are col</context>
+</contexts>
+<marker>Mitkov, 1997</marker>
+<rawString>Ruslan Mitkov. 1997. Factors in anaphora resolution: they are not the only things that matter. a case study based on two different approaches. In Proceedings of the ACL ’97 / EACL ’97 Workshop on Operational Factors in Practical, Robust Anaphora Resolution, pages 14–21.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>MUC-7</author>
+</authors>
+<title>Coreference task definition (v3.0, 13 Jul 97).</title>
+<date>1997</date>
+<booktitle>In Proceedings of the Seventh Message Understanding Conference (MUC-7).</booktitle>
+<marker>MUC-7, 1997</marker>
+<rawString>MUC-7. 1997. Coreference task definition (v3.0, 13 Jul 97). In Proceedings of the Seventh Message Understanding Conference (MUC-7).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vincent Ng</author>
+<author>Claire Cardie</author>
+</authors>
+<title>Improving machine learning approaches to coreference resolution.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>104--111</pages>
+<contexts>
+<context citStr="Ng and Cardie, 2002" endWordPosition="710" position="4690" startWordPosition="707">nces have also been applied together as decision nodes on a decision tree (Aone and Bennett, 1995). When previous resolution systems handle cases like (1) and (2), where no disagreement or syntactic violation occurs, coreference is therefore determined by the weighting of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these difficult cases. The application of world knowledge to pronoun resolution has been limited to the semantic compatibility between a candidate noun and the pronoun’s context (Yang et al., 2005). We show semantic compatibility can be effectively combined with path coreference information in our experiments below. Our method for determining path coreference is similar to an algorithm for discovering paraphrases in text (Lin and Pantel, 2001). In that work, the beginning and end nodes in the paths are collected, and two paths </context>
+<context citStr="Ng and Cardie, 2002" endWordPosition="2301" position="14558" startWordPosition="2298"> counts. The potential of the bootstrapping approach can best be appreciated by imagining millions of documents with coreference annotations. With such a set, we could extract fine-grained features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold for defining a corefe</context>
+<context citStr="Ng and Cardie, 2002" endWordPosition="3990" position="25283" startWordPosition="3987">e distance from the SVM classification hyperplane. Our training set is the anaphora-annotated portion of the American National Corpus (ANC) used in Bergsma (2005), containing 1270 anaphoric pronouns4. We test on the ANC Test set (1291 instances) also used in Bergsma (2005) (highest resolution accuracy reported: 73.3%), the anaphoralabelled portion of AQUAINT used in Cherry and Bergsma (2005) (1078 instances, highest accuracy: 71.4%), and the anaphoric pronoun subset of the MUC7 (1997) coreference evaluation formal test set (169 instances, highest precision of 62.1 reported on all pronouns in (Ng and Cardie, 2002)). These particular corpora were chosen so we could test our approach using the same data as comparable machine-learned systems exploiting probabilistic information sources. Parameters 4See http://www.cs.ualberta.ca/˜bergsma/CorefTags/ for instructions on acquiring annotations 38 Table 5: Resolution accuracy (%) Dataset ANC AQT MUC 1 Previous noun 36.7 34.5 30.8 2 No Prob. Features 58.1 60.9 49.7 3 No Prob. Gender 65.8 71.0 68.6 4 No MI 71.3 73.5 69.2 5 No C(p) 72.3 73.7 69.8 6 Full System 73.9 75.0 71.6 7 Upper Bound 93.2 92.3 91.1 1 0.95 0.9 Precision 0.85 0.8 0.75 0.7 Top-3 Top-2 Top-1 0 0.</context>
+</contexts>
+<marker>Ng, Cardie, 2002</marker>
+<rawString>Vincent Ng and Claire Cardie. 2002. Improving machine learning approaches to coreference resolution. In Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics, pages 104–111.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wee Meng Soon</author>
+<author>Hwee Tou Ng</author>
+<author>Daniel Chung Yong Lim</author>
+</authors>
+<title>A machine learning approach to coreference resolution of noun phrases.</title>
+<date>2001</date>
+<journal>Computational Linguistics,</journal>
+<volume>27</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Soon et al., 2001" endWordPosition="2297" position="14536" startWordPosition="2294">rom the accumulated counts. The potential of the bootstrapping approach can best be appreciated by imagining millions of documents with coreference annotations. With such a set, we could extract fine-grained features, perhaps tied to individual words or paths. For example, we could estimate the likelihood each noun belongs to a particular gender/number class by the proportion of times this noun was labelled as the antecedent for a pronoun of this particular gender/number. Since no such corpus exists, researchers have used coarser features learned from smaller sets through supervised learning (Soon et al., 2001; Ng and Cardie, 2002), manually-defined coreference patterns to mine specific kinds of data (Bean and Riloff, 2004; Bergsma, 2005), or accepted the noise inherent in unsupervised schemes (Ge et al., 1998; Cherry and Bergsma, 2005). We address the drawbacks of these approaches Table 3: Gender classification performance (%) Classifier F-Score Bergsma (2005) Corpus-based 85.4 Bergsma (2005) Web-based 90.4 Bergsma (2005) Combined 92.2 Duplicated Corpus-based 88.0 Coreferent Path-based 90.3 by using coreferent paths as the assumed resolutions in the bootstrapping. Because we can vary the threshold</context>
+</contexts>
+<marker>Soon, Ng, Lim, 2001</marker>
+<rawString>Wee Meng Soon, Hwee Tou Ng, and Daniel Chung Yong Lim. 2001. A machine learning approach to coreference resolution of noun phrases. Computational Linguistics, 27(4):521–544.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiaofeng Yang</author>
+<author>Jian Su</author>
+<author>Chew Lim Tan</author>
+</authors>
+<title>Improving pronoun resolution using statistics-based semantic compatibility information.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL’05),</booktitle>
+<pages>165--172</pages>
+<contexts>
+<context citStr="Yang et al., 2005" endWordPosition="752" position="4954" startWordPosition="749">ing of features or learned decisions of the resolution classifier. Without path coreference knowledge, a resolution process would resolve the pronouns in (1) and (2) the same way. Indeed, coreference resolution research has focused on the importance of the strategy for combining well known constraints and preferences (Mitkov, 1997; Ng and Cardie, 2002), devoting little attention to the development of new features for these difficult cases. The application of world knowledge to pronoun resolution has been limited to the semantic compatibility between a candidate noun and the pronoun’s context (Yang et al., 2005). We show semantic compatibility can be effectively combined with path coreference information in our experiments below. Our method for determining path coreference is similar to an algorithm for discovering paraphrases in text (Lin and Pantel, 2001). In that work, the beginning and end nodes in the paths are collected, and two paths are said to be similar (and thus likely paraphrases of each other) if they have similar terminals (i.e. the paths occur with a similar distribution). Our work does not need to store the terminals themselves, only whether they are from the same pronoun group. Diffe</context>
+<context citStr="Yang et al. (2005)" endWordPosition="3331" position="21077" startWordPosition="3328">de), Pr(parent:rel), and Pr(node) cases, as well as a default MI when no relationship is parsed, roughly optimized for performance on the training set. We 2Available at http://www.cs.ualberta.ca/˜bergsma/Gender/ 3We convert prepositions to relationships to enhance our model’s semantics, e.g. Joan:of:Arc rather than Joan:prep:of 37 include both the MI between the noun and the pronoun’s parent as well as the MI between the pronoun and the noun’s parent as features in our pronoun resolution classifier. Kehler et al. (2004) saw no apparent gain from using semantic compatibility information, while Yang et al. (2005) saw about a 3% improvement with compatibility data acquired by searching on the world wide web. Section 6 analyzes the contribution of MI to our system. Bean and Riloff (2004) used bootstrapping to extend their semantic compatibility model, which they called contextual-role knowledge, by identifying certain cases of easily-resolved anaphors and antecedents. They give the example “Mr. Bush disclosed the policy by reading it.” Once we identify that it and policy are coreferent, we include read:obj:policy as part of the compatibility model. Rather than using manually-defined heuristics to bootst</context>
+<context citStr="Yang et al., 2005" endWordPosition="4604" position="29103" startWordPosition="4601">n the antecedent’s context and vice-versa result in improvement. Building a model from enough text may be the key. The primary goal of our evaluation was to assess the benefit of path coreference within a competitive pronoun resolution system. Our system does, however, outperform previously published results on these datasets. Direct comparison of our scoring system to other current top approaches is made difficult by differences in preprocessing. Ideally we would assess the benefit of our probabilistic features using the same state-of-the-art preprocessing modules employed by others such as (Yang et al., 2005) (who additionally use a search engine for compatibility scoring). Clearly, promoting competitive evaluation of pronoun resolution scoring systems by giving competitors equivalent real-world preprocessing output along the lines of (Barbu and Mitkov, 2001) remains the best way to isolate areas for system improvement. Our pronoun resolution system is part of a larger information retrieval project where resolution ac39 curacy is not necessarily the most pertinent measure of classifier performance. More than one candidate can be useful in ambiguous cases, and not every resolution need be used. Sin</context>
+</contexts>
+<marker>Yang, Su, Tan, 2005</marker>
+<rawString>Xiaofeng Yang, Jian Su, and Chew Lim Tan. 2005. Improving pronoun resolution using statistics-based semantic compatibility information. In Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL’05), pages 165–172, June.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

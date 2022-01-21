@@ -1,0 +1,924 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.007993" no="0">
+<title confidence="0.997931">
+Exploiting Heterogeneous Treebanks for Parsing
+</title>
+<author confidence="0.999446">
+Zheng-Yu Niu, Haifeng Wang, Hua Wu
+</author>
+<affiliation confidence="0.991293">
+Toshiba (China) Research and Development Center
+</affiliation>
+<address confidence="0.968695">
+5/F., Tower W2, Oriental Plaza, Beijing, 100738, China
+</address>
+<email confidence="0.996893">
+{niuzhengyu,wanghaifeng,wuhua}@rdc.toshiba.com.cn
+</email>
+<sectionHeader confidence="0.997354" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999994652173913">We address the issue of using heterogeneous treebanks for parsing by breaking it down into two sub-problems, converting grammar formalisms of the treebanks to the same one, and parsing on these homogeneous treebanks. First we propose to employ an iteratively trained target grammar parser to perform grammar formalism conversion, eliminating predefined heuristic rules as required in previous methods. Then we provide two strategies to refine conversion results, and adopt a corpus weighting technique for parsing on homogeneous treebanks. Results on the Penn Treebank show that our conversion method achieves 42% error reduction over the previous best result. Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result.</bodyText>
+<sectionHeader confidence="0.999471" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999688480769231">The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (PS). It is important to acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS direction for the convenience of the comparison with existing works (Xia and Palmer, 2001; Xia et al., 2008). Specifically, we assume that the source grammar formalism is dependency grammar, and the target grammar formalism is phrase structure grammar.</bodyText>
+<footnote confidence="0.989827">
+1Here we assume the existence of two treebanks.
+</footnote>
+<page confidence="0.989542">
+46
+</page>
+<note confidence="0.9996125">
+Proceedings of the 47th Annual Meeting of the ACL and the 4th IJCNLP of the AFNLP, pages 46–54,
+Suntec, Singapore, 2-7 August 2009. c�2009 ACL and AFNLP
+</note>
+<bodyText confidence="0.9993548">Previous methods for DS to PS conversion (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) often rely on predefined heuristic rules to eliminate converison ambiguity, e.g., minimal projection for dependents, lowest attachment position for dependents, and the selection of conversion rules that add fewer number of nodes to the converted tree. In addition, the validity of these heuristic rules often depends on their target grammars. To eliminate the heuristic rules as required in previous methods, we propose to use an existing target grammar parser (trained on the target treebank) to generate N-best parses for each sentence in the source treebank as conversion candidates, and then select the parse consistent with the structure of the source tree as the converted tree. Furthermore, we attempt to use converted trees as additional training data to retrain the parser for better conversion candidates. The procedure of tree conversion and parser retraining will be run iteratively until a stopping condition is satisfied. Since some converted trees might be imperfect from the perspective of the target grammar, we provide two strategies to refine conversion results: (1) pruning low-quality trees from the converted treebank, (2) interpolating the scores from the source grammar and the target grammar to select better converted trees. Finally we adopt a corpus weighting technique to get an optimal combination of the converted treebank and the existing target treebank for parser training. We have evaluated our conversion algorithm on a dependency structure treebank (produced from the Penn Treebank) for comparison with previous work (Xia et al., 2008). We also have investigated our two-step solution on two existing treebanks, the Penn Chinese Treebank (CTB) (Xue et al., 2005) and the Chinese Dependency Treebank (CDT)2 (Liu et al., 2006). Evaluation on WSJ data demonstrates that it is feasible to use a parser for grammar formalism conversion and the conversion benefits from converted trees used for parser retraining. Our conversion method achieves 93.8% f-score on dependency trees produced from WSJ section 22, resulting in 42% error reduction over the previous best result for DS to PS conversion. Results on CTB show that score interpolation is more effective than instance pruning for the use of converted treebanks for parsing and converted CDT helps parsing on CTB.</bodyText>
+<footnote confidence="0.987721">
+2Available at http://ir.hit.edu.cn/.
+</footnote>
+<bodyText confidence="0.9997305">When coupled with self-training technique, a reranking parser with CTB and converted CDT as labeled data achieves 85.2% f-score on CTB test set, an absolute 1.0% improvement (6% error reduction) over the previous best result for Chinese parsing. The rest of this paper is organized as follows. In Section 2, we first describe a parser based method for DS to PS conversion, and then we discuss possible strategies to refine conversion results, and finally we adopt the corpus weighting technique for parsing on homogeneous treebanks. Section 3 provides experimental results of grammar formalism conversion on a dependency treebank produced from the Penn Treebank. In Section 4, we evaluate our two-step solution on two existing heterogeneous Chinese treebanks. Section 5 reviews related work and Section 6 concludes this work.</bodyText>
+<sectionHeader confidence="0.991117" genericHeader="method">
+2 Our Two-Step Solution
+</sectionHeader>
+<subsectionHeader confidence="0.998558">
+2.1 Grammar Formalism Conversion
+</subsectionHeader>
+<bodyText confidence="0.999554142857143">Previous DS to PS conversion methods built a converted tree by iteratively attaching nodes and edges to the tree with the help of conversion rules and heuristic rules, based on current headdependent pair from a source dependency tree and the structure of the built tree (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008). Some observations can be made on these methods: (1) for each head-dependent pair, only one locally optimal conversion was kept during tree-building process, at the risk of pruning globally optimal conversions, (2) heuristic rules are required to deal with the problem that one head-dependent pair might have multiple conversion candidates, and these heuristic rules are usually hand-crafted to reflect the structural preference in their target grammars. To overcome these limitations, we propose to employ a parser to generate N-best parses as conversion candidates and then use the structural information of source trees to select the best parse as a converted tree. We formulate our conversion method as follows. Let CDS be a source treebank annotated with DS and CPS be a target treebank annotated with PS. Our goal is to convert the grammar formalism of CDS to that of CPS. We first train a constituency parser on CPS</bodyText>
+<page confidence="0.996099">
+47
+</page>
+<bodyText confidence="0.915391">Input: CPS, CDS, Q, and a constituency parser Output: Converted trees CDS</bodyText>
+<equation confidence="0.70926475">
+P S
+1. Initialize:
+— Set CDS,0
+P S as null, DevScore=0, q=0;
+</equation>
+<listItem confidence="0.9643335">— Split CPS into training set CPS,train and development set CPS,dev; — Train the parser on CPS,train and denote it by Pq−1; 2. Repeat: — Use Pq−1 to generate N-best PS parses for each sentence in CDS, and convert PS to DS for each parse; — For each sentence in CDS Do o i=argmaxtScore(xi,t), and select the t-th parse as a converted tree for this sentence; — Train the parser on Ctrain, and denote the updated parser by Pq; — Let DevScoreq be the f-score of Pq on CPS,dev; — If DevScoreq &gt; DevScore Then DevScore=DevScoreq, and CDS</listItem>
+<equation confidence="0.842825">
+— Let CDS,q
+P S represent these converted trees, and let Ctrain=CPS,train U CDS,q
+P S ;
+</equation>
+<equation confidence="0.9721858">
+P S =CDS,q
+P S ;
+— Else break;
+— q++;
+Until q &gt; Q
+</equation>
+<tableCaption confidence="0.983662">
+Table 1: Our algorithm for DS to PS conversion.
+</tableCaption>
+<bodyText confidence="0.997071288461539">(90% trees in CPS as training set CPS,train, and other trees as development set CPS,dev) and then let the parser generate N-best parses for each sentence in CDS. Let n be the number of sentences (or trees) in CDS and ni be the number of N-best parses generated by the parser for the i-th (1 &lt; i &lt; n) sentence in CDS. Let xi,t be the t-th (1 &lt; t &lt; ni) parse for the i-th sentence. Let yi be the tree of the i-th (1 &lt; i &lt; n) sentence in CDS. To evaluate the quality of xi,t as a conversion candidate for yi, we convert xi,t to a dependency tree (denoted as xDS i,t ) and then use unlabeled dependency f-score to measure the similarity between xDS i,t and yi. Let Score(xi,t) denote the unlabeled dependency f-score of xDS i,t against yi. Then we determine the converted tree for yi by maximizing Score(xi,t) over the N-best parses. The conversion from PS to DS works as follows: Step 1. Use a head percolation table to find the head of each constituent in xi,t. Step 2. Make the head of each non-head child depend on the head of the head child for each constituent. Unlabeled dependency f-score is a harmonic mean of unlabeled dependency precision and unlabeled dependency recall. Precision measures how many head-dependent word pairs found in xDS i,t are correct and recall is the percentage of headdependent word pairs defined in the gold-standard tree that are found in xDS i,t . Here we do not take dependency tags into consideration for evaluation since they cannot be obtained without more sophisticated rules. To improve the quality of N-best parses, we attempt to use the converted trees as additional training data to retrain the parser. The procedure of tree conversion and parser retraining can be run iteratively until a termination condition is satisfied. Here we use the parser’s f-score on CPS,dev as a termination criterion. If the update of training data hurts the performance on CPS,dev, then we stop the iteration. Table 1 shows this DS to PS conversion algorithm. Q is an upper limit of the number of loops, and Q &gt; 0.</bodyText>
+<subsectionHeader confidence="0.99919">
+2.2 Target Grammar Parsing
+</subsectionHeader>
+<bodyText confidence="0.999679307692308">Through grammar formalism conversion, we have successfully turned the problem of using heterogeneous treebanks for parsing into the problem of parsing on homogeneous treebanks. Before using converted source treebank for parsing, we present two strategies to refine conversion results. Instance Pruning For some sentences in CDS, the parser might fail to generate high quality N-best parses, resulting in inferior converted trees. To clean the converted treebank, we can remove the converted trees with low unlabeled dependency f-scores (defined in Section 2.1) before using the converted treebank for parser training because these trees are &amp;quot;misleading&amp;quot;training instances.</bodyText>
+<page confidence="0.998818">
+48
+</page>
+<figureCaption confidence="0.972053428571429">
+Figure 1: A parse tree in CTB for a sentence of
+&amp;quot; t1t A&lt;world&gt; -X &lt;every&gt; Pg&lt;country&gt; A
+V�&lt;people&gt; N&lt;all&gt; 4E&lt;with&gt; H A&lt;eyes&gt;
+R hJ&lt;cast&gt; # A&lt;Hong Kong&gt;&amp;quot;with
+&amp;quot;People from all over the world are cast-
+ing their eyes on Hong Kong&amp;quot;as its English
+translation.
+</figureCaption>
+<bodyText confidence="0.997624777777778">The number of removed trees will be determined by cross validation on development set. Score Interpolation Unlabeled dependency f-scores used in Section 2.1 measure the quality of converted trees from the perspective of the source grammar only. In extreme cases, the top best parses in the N-best list are good conversion candidates but we might select a parse ranked quite low in the N-best list since there might be conflicts of syntactic structure definition between the source grammar and the target grammar. Figure 1 shows an example for illustration of a conflict between the grammar of CDT and that of CTB. According to Chinese head percolation tables used in the PS to DS conversion tool &amp;quot;Penn2Malt&amp;quot;3 and Charniak’s parser4, the head of VP-2 is the word &amp;quot;4E&amp;quot;(a preposition, with &amp;quot;BA&amp;quot;as its POS tag in CTB), and the head of IP-OBJ is R hJ &amp;quot;. Therefore the word &amp;quot; R hJ&amp;quot;depends on the word &amp;quot;4E&amp;quot;. But according to the annotation scheme in CDT (Liu et al., 2006), the word &amp;quot;4E&amp;quot;is a dependent of the word &amp;quot;R hJ&amp;quot;. The conflicts between the two grammars may lead to the problem that the selected parses based on the information of the source grammar might not be preferred from the perspective of the target grammar.</bodyText>
+<footnote confidence="0.999963">
+3Available at http://w3.msi.vxu.se/∼nivre/.
+4Available at http://www.cs.brown.edu/∼ec/.
+</footnote>
+<bodyText confidence="0.998823333333333">Therefore we modified the selection metric in Section 2.1 by interpolating two scores, the probability of a conversion candidate from the parser and its unlabeled dependency f-score, shown as follows:</bodyText>
+<equation confidence="0.999009">
+Score(xi,t) = AxProb(xi,t)+(1—A)xScore(xi,t). (1)
+</equation>
+<bodyText confidence="0.999975904761905">The intuition behind this equation is that converted trees should be preferred from the perspective of both the source grammar and the target grammar. Here 0 &lt; A &lt; 1. Prob(xi,t) is a probability produced by the parser for xi,t (0 &lt; Prob(xi,t) &lt; 1). The value of A will be tuned by cross validation on development set. After grammar formalism conversion, the problem now we face has been limited to how to build parsing models on multiple homogeneous treebank. A possible solution is to simply concatenate the two treebanks as training data. However this method may lead to a problem that if the size of CPS is significantly less than that of converted CDS, converted CDS may weaken the effect CPS might have. One possible solution is to reduce the weight of examples from converted CDS in parser training. Corpus weighting is exactly such an approach, with the weight tuned on development set, that will be used for parsing on homogeneous treebanks in this paper.</bodyText>
+<sectionHeader confidence="0.9998955" genericHeader="evaluation and result">
+3 Experiments of Grammar Formalism
+Conversion
+</sectionHeader>
+<subsectionHeader confidence="0.999886">
+3.1 Evaluation on WSJ section 22
+</subsectionHeader>
+<bodyText confidence="0.999878928571429">Xia et al. (2008) used WSJ section 19 from the Penn Treebank to extract DS to PS conversion rules and then produced dependency trees from WSJ section 22 for evaluation of their DS to PS conversion algorithm. They showed that their conversion algorithm outperformed existing methods on the WSJ data. For comparison with their work, we conducted experiments in the same setting as theirs: using WSJ section 19 (1844 sentences) as CPS, producing dependency trees from WSJ section 22 (1700 sentences) as CDS5, and using labeled bracketing f-scores from the tool &amp;quot;EVALB&amp;quot;on WSJ section 22 for performance evaluation.</bodyText>
+<footnote confidence="0.998931666666667">
+5We used the tool &amp;quot;Penn2Malt&amp;quot;to produce dependency
+structures from the Penn Treebank, which was also used for
+PS to DS conversion in our conversion algorithm.
+</footnote>
+<page confidence="0.994866">
+49
+</page>
+<table confidence="0.999670142857143">
+DevScore All the sentences
+LR LP F
+Models (%) (%) (%) (%)
+The best result of
+Xia et al. (2008) - 90.7 88.1 89.4
+Q-0-method 86.8 92.2 92.8 92.5
+Q-10-method 88.0 93.4 94.1 93.8
+</table>
+<tableCaption confidence="0.969163">
+Table 2: Comparison with the work of Xia et al.
+</tableCaption>
+<table confidence="0.9932305">
+(2008) on WSJ section 22.
+All the sentences
+DevScore LR LP F
+Models (%) (%) (%) (%)
+Q-0-method 91.0 91.6 92.5 92.1
+Q-10-method 91.6 93.1 94.1 93.6
+</table>
+<tableCaption confidence="0.979721">
+Table 3: Results of our algorithm on WSJ section
+2∼18 and 20∼22.
+</tableCaption>
+<bodyText confidence="0.999672736842106">We employed Charniak’s maximum entropy inspired parser (Charniak, 2000) to generate N-best (N=200) parses. Xia et al. (2008) used POS tag information, dependency structures and dependency tags in test set for conversion. Similarly, we used POS tag information in the test set to restrict search space of the parser for generation of better N-best parses. We evaluated two variants of our DS to PS conversion algorithm: Q-0-method: We set the value of Q as 0 for a baseline method. Q-10-method: We set the value of Q as 10 to see whether it is helpful for conversion to retrain the parser on converted trees. Table 2 shows the results of our conversion algorithm on WSJ section 22. In the experiment of Q-10-method, DevScore reached the highest value of 88.0% when q was 1. Then we used method achieved an f-score of 93.8% on WSJ section 22, an absolute 4.4% improvement (42% error reduction) over the best result of Xia et al.(2008).</bodyText>
+<equation confidence="0.9871625">
+CDS,1
+P S as the conversion result. Finally Q-10-
+</equation>
+<bodyText confidence="0.999919375">Moreover, Q-10-method outperformed Q0-method on the same test set. These results indicate that it is feasible to use a parser for DS to PS conversion and the conversion benefits from the use of converted trees for parser retraining.</bodyText>
+<subsectionHeader confidence="0.8908145">
+3.2 Evaluation on WSJ section 2∼18 and
+20∼22
+</subsectionHeader>
+<bodyText confidence="0.9960505">In this experiment we evaluated our conversion algorithm on a larger test set, WSJ section 2∼18 and 20∼22 (totally 39688 sentences). Here we also used WSJ section 19 as CPS. Other settings for this experiment are as same as that in Section 3.1, except that here we used a larger test set.</bodyText>
+<table confidence="0.999709777777778">
+Training data All the sentences
+LR LP F
+(%) (%) (%)
+1 x CTB + CDTPS 84.7 85.1 84.9
+2 x CTB + CDTPS 85.1 85.6 85.3
+5 x CTB + CDTPS 85.0 85.5 85.3
+10 x CTB +CDTPS 85.3 85.8 85.6
+20 x CTB +CDTPS 85.1 85.3 85.2
+50 x CTB +CDTPS 84.9 85.3 85.1
+</table>
+<tableCaption confidence="0.972381333333333">
+Table 4: Results of the generative parser on the de-
+velopment set, when trained with various weight-
+ing of CTB training set and CDTPS.
+</tableCaption>
+<bodyText confidence="0.985399230769231">Table 3 provides the f-scores of our method with Q equal to 0 or 10 on WSJ section 2∼18 and 20∼22. With Q-10-method, DevScore reached the highest value of 91.6% when q was 1. Finally Q10-method achieved an f-score of 93.6% on WSJ section 2∼18 and 20∼22, better than that of Q-0method and comparable with that of Q-10-method in Section 3.1. It confirms our previous finding that the conversion benefits from the use of converted trees for parser retraining.</bodyText>
+<sectionHeader confidence="0.991113" genericHeader="evaluation and result">
+4 Experiments of Parsing
+</sectionHeader>
+<bodyText confidence="0.999953714285714">We investigated our two-step solution on two existing treebanks, CDT and CTB, and we used CDT as the source treebank and CTB as the target treebank. CDT consists of 60k Chinese sentences, annotated with POS tag information and dependency structure information (including 28 POS tags, and 24 dependency tags) (Liu et al., 2006). We did not use POS tag information as inputs to the parser in our conversion method due to the difficulty of conversion from CDT POS tags to CTB POS tags. We used a standard split of CTB for performance evaluation, articles 1-270 and 400-1151 as training set, articles 301-325 as development set, and articles 271-300 as test set. We used Charniak’s maximum entropy inspired parser and their reranker (Charniak and Johnson, 2005) for target grammar parsing, called a generative parser (GP) and a reranking parser (RP) respectively. We reported ParseVal measures from the EVALB tool.</bodyText>
+<page confidence="0.987774">
+50
+</page>
+<table confidence="0.999401">
+All the sentences
+LR LP F
+Models Training data (%) (%) (%)
+GP CTB 79.9 82.2 81.0
+RP CTB 82.0 84.6 83.3
+GP 10 x CTB + CDTPS 80.4 82.7 81.5
+RP 10 x CTB + CDTPS 82.8 84.7 83.8
+</table>
+<tableCaption confidence="0.9938715">
+Table 5: Results of the generative parser (GP) and
+the reranking parser (RP) on the test set, when
+trained on only CTB training set or an optimal
+combination of CTB training set and CDTPS.
+</tableCaption>
+<subsectionHeader confidence="0.989619">
+4.1 Results of a Baseline Method to Use CDT
+</subsectionHeader>
+<bodyText confidence="0.999979">We used our conversion algorithm6 to convert the grammar formalism of CDT to that of CTB. Let CDTPS denote the converted CDT by our method. The average unlabeled dependency f-score of trees in CDTPS was 74.4%, and their average index in 200-best list was 48. We tried the corpus weighting method when combining CDTPS with CTB training set (abbreviated as CTB for simplicity) as training data, by gradually increasing the weight (including 1, 2, 5, 10, 20, 50) of CTB to optimize parsing performance on the development set. Table 4 presents the results of the generative parser with various weights of CTB on the development set. Considering the performance on the development set, we decided to give CTB a relative weight of 10. Finally we evaluated two parsing models, the generative parser and the reranking parser, on the test set, with results shown in Table 5. When trained on CTB only, the generative parser and the reranking parser achieved f-scores of 81.0% and 83.3%. The use of CDTPS as additional training data increased f-scores of the two models to 81.5% and 83.8%.</bodyText>
+<subsectionHeader confidence="0.98771">
+4.2 Results of Two Strategies for a Better Use
+of CDT
+</subsectionHeader>
+<subsubsectionHeader confidence="0.859801">
+4.2.1 Instance Pruning
+</subsubsectionHeader>
+<bodyText confidence="0.999885857142857">We used unlabeled dependency f-score of each converted tree as the criterion to rank trees in CDTPS and then kept only the top M trees with high f-scores as training data for parsing, resulting in a corpus CDTnPS. M varied from 100%×|CDTPS |to 10%×|CDTPS| with 10%×|CDTPS |as the interval. |CDTPS| is the number of trees in CDTPS.</bodyText>
+<footnote confidence="0.99339525">
+6The setting for our conversion algorithm in this experi-
+ment was as same as that in Section 3.1. In addition, we used
+CTB training set as CPS,train, and CTB development set as
+CPS,dev.
+</footnote>
+<table confidence="0.997777428571429">
+Models Training data All the sentences
+LR LP F
+(%) (%) (%)
+GP CTB + CDTP S 81.4 82.8 82.1
+RP λ 83.0 85.4 84.2
+CTB + CDTP S
+λ
+</table>
+<tableCaption confidence="0.987727">
+Table 6: Results of the generative parser and the
+reranking parser on the test set, when trained on
+an optimal combination of CTB training set and
+converted CDT.
+</tableCaption>
+<bodyText confidence="0.9961595">Then we tuned the value of M by optimizing the parser’s performance on the development set with 10×CTB+CDTPnS as training data. Finally the optimal value of M was 100%×|CDT|. It indicates that even removing very few converted trees hurts the parsing performance. A possible reason is that most of non-perfect parses can provide useful syntactic structure information for building parsing models.</bodyText>
+<subsubsectionHeader confidence="0.90875">
+4.2.2 Score Interpolation
+</subsubsectionHeader>
+<bodyText confidence="0.9844504">We used �Score(xj,t)7 to replace Score(xj,t) in our conversion algorithm and then ran the updated algorithm on CDT. Let CDTP S � denote the converted CDT by this updated conversion algorithm. The values of A (varying from 0.0 to 1.0 with 0.1 as the interval) and the CTB weight (including 1, 2, 5, 10, 20, 50) were simultaneously tuned on the development set8. Finally we decided that the optimal value of A was 0.4 and the optimal weight of CTB was 1, which brought the best performance on the development set (an f-score of 86.1%). In comparison with the results in Section 4.1, the average index of converted trees in 200-best list increased to 2, and their average unlabeled dependency f-score dropped to 65.4%. It indicates that structures of converted trees become more consistent with the target grammar, as indicated by the increase of average index of converted trees, further away from the source grammar. Table 6 provides f-scores of the generative parser and the reranker on the test set, when trained on CTB and CDTP S � . We see that the performance of the reranking parser increased to</bodyText>
+<footnote confidence="0.996715125">
+7Before calculating Score(xi,t), we normal-
+ized the values of Prob(xi,t) for each N-best list
+by (1) Prob(xi,t)=Prob(xi,t)-Min(Prob(xi,*)),
+(2)Prob(xi,t)=Prob(xi,t)/Max(Prob(xi,*)), resulting
+in that their maximum value was 1 and their minimum value
+was 0.
+8Due to space constraint, we do not show f-scores of the
+parser with different values of A and the CTB weight.
+</footnote>
+<page confidence="0.995226">
+51
+</page>
+<table confidence="0.999326">
+All the sentences
+LR LP F
+Models Training data (%) (%) (%)
+Self-trained GP 10xT+10xD+P 83.0 84.5 83.7
+Updated RP CTB+CDT� S 84.3 86.1 85.2
+�
+</table>
+<tableCaption confidence="0.8332436">
+Table 7: Results of the self-trained gen-
+erative parser and updated reranking parser
+on the test set. 10xT+10xD+P stands for
+10xCTB+10xCDTP �
+� +PDC.
+</tableCaption>
+<bodyText confidence="0.9985566">84.2% f-score, better than the result of the reranking parser with CTB and CDTPS as training data (shown in Table 5). It indicates that the use of probability information from the parser for tree conversion helps target grammar parsing.</bodyText>
+<subsectionHeader confidence="0.999909">
+4.3 Using Unlabeled Data for Parsing
+</subsectionHeader>
+<bodyText confidence="0.994052891891892">Recent studies on parsing indicate that the use of unlabeled data by self-training can help parsing on the WSJ data, even when labeled data is relatively large (McClosky et al., 2006a; Reichart and Rappoport, 2007). It motivates us to employ self-training technique for Chinese parsing. We used the POS tagged People Daily corpus9 (Jan. 1998—Jun. 1998, and Jan. 2000—Dec. 2000) (PDC) as unlabeled data for parsing. First we removed the sentences with less than 3 words or more than 40 words from PDC to ease parsing, resulting in 820k sentences. Then we ran the reranking parser in Section 4.2.2 on PDC and used the parses on PDC as additional training data for the generative parser. Here we tried the corpus weighting technique for an optimal combination of CTB, CDTP � � and parsed PDC, and chose the relative weight of both CTB and CDTP � � as 10 by cross validation on the development set. Finally we retrained the generative parser on CTB, CDTP � � and parsed PDC. Furthermore, we used this self-trained generative parser as a base parser to retrain the reranker on CTB and CDTP � � . Table 7 shows the performance of self-trained generative parser and updated reranker on the test set, with CTB and CDTP � � as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007).</bodyText>
+<footnote confidence="0.9946">
+9Available at http://icl.pku.edu.cn/.
+</footnote>
+<subsectionHeader confidence="0.9995085">
+4.4 Comparison with Previous Studies for
+Chinese Parsing
+</subsectionHeader>
+<bodyText confidence="0.9991935">Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CDTP � � helps parsing on CTB, which brought 0.9% f-score improvement. Moreover, the use of unlabeled data further boosted the parsing performance to 85.2%, an absolute 1.0% improvement over the previous best result presented in Burkett and Klein (2008).</bodyText>
+<sectionHeader confidence="0.999946" genericHeader="related work">
+5 Related Work
+</sectionHeader>
+<bodyText confidence="0.99995928125">Recently there have been some studies addressing how to use treebanks with same grammar formalism for domain adaptation of parsers. Roark and Bachiani (2003) presented count merging and model interpolation techniques for domain adaptation of parsers. They showed that their system with count merging achieved a higher performance when in-domain data was weighted more heavily than out-of-domain data. McClosky et al. (2006b) used self-training and corpus weighting to adapt their parser trained on WSJ corpus to Brown corpus. Their results indicated that both unlabeled in-domain data and labeled out-of-domain data can help domain adaptation. In comparison with these works, we conduct our study in a different setting where we work with multiple heterogeneous treebanks. Grammar formalism conversion makes it possible to reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phrase structure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which reflected the structural preference in their target grammar.</bodyText>
+<page confidence="0.993112">
+52
+</page>
+<table confidence="0.9981784">
+&lt; 40 words All the sentences
+LR LP F LR LP F
+Models (%) (%) (%) (%) (%) (%)
+Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - -
+Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - -
+Levy &amp; Manning (2003) 79.2 78.4 78.8 - - -
+Bikel’s thesis (2004) 78.0 81.2 79.6 - - -
+Xiong et. al. (2005) 78.7 80.1 79.4 - - -
+Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7
+Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1
+</table>
+<tableCaption confidence="0.99529">
+Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data.
+</tableCaption>
+<table confidence="0.9999014">
+&lt; 40 words All the sentences
+LR LP F LR LP F
+Models (%) (%) (%) (%) (%) (%)
+Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3
+Burkett &amp; Klein (2008) - - - - - 84.2
+</table>
+<tableCaption confidence="0.999795">
+Table 9: Results of previous studies on CTB with more labeled data.
+</tableCaption>
+<bodyText confidence="0.99990112">For acquisition of better conversion rules, Xia et al.(2008) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al.(1994) and Collins et al.(1999), we went further by combining the converted treebank with the existing target treebank for parsing. In comparison with previous conversion methods (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) in which for each headdependent pair, only one locally optimal conversion was kept during tree-building process, we employed a parser to generate globally optimal syntactic structures, eliminating heuristic rules for conversion. In addition, we used converted trees to retrain the parser for better conversion candidates, while Wang et al.(1994) did not exploit the use of converted trees for parser retraining.</bodyText>
+<sectionHeader confidence="0.999595" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999983037037037">We have proposed a two-step solution to deal with the issue of using heterogeneous treebanks for parsing. First we present a parser based method to convert grammar formalisms of the treebanks to the same one, without applying predefined heuristic rules, thus turning the original problem into the problem of parsing on homogeneous treebanks. Then we present two strategies, instance pruning and score interpolation, to refine conversion results. Finally we adopt the corpus weighting technique to combine the converted source treebank with the existing target treebank for parser training. The study on the WSJ data shows the benefits of our parser based approach for grammar formalism conversion. Moreover, experimental results on the Penn Chinese Treebank indicate that a converted dependency treebank helps constituency parsing, and it is better to exploit probability information produced by the parser through score interpolation than to prune low quality trees for the use of the converted treebank. Future work includes further investigation of our conversion method for other pairs of grammar formalisms, e.g., from the grammar formalism of the Penn Treebank to more deep linguistic formalism like CCG, HPSG, or LFG.</bodyText>
+<sectionHeader confidence="0.998978" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.998761">
+Anne Abeille, Lionel Clement and Francois Toussenel. 2000.
+Building a Treebank for French. In Proceedings of LREC
+2000, pages 87-94.
+Daniel Bikel and David Chiang. 2000. Two Statistical Pars-
+ing Models Applied to the Chinese Treebank. In Proceed-
+ings of the Second SIGHAN workshop, pages 1-6.
+Daniel Bikel. 2004. On the Parameter Space of Generative
+Lexicalized Statistical Parsing Models. Ph.D. thesis, Uni-
+versity of Pennsylvania.
+Alena Bohmova, Jan Hajic, Eva Hajicova and Barbora
+Vidova-Hladka. 2003. The Prague Dependency Tree-
+bank: A Three-Level Annotation Scenario. Treebanks:
+</reference>
+<page confidence="0.986938">
+53
+</page>
+<reference confidence="0.999763800000001">
+Building and Using Annotated Corpora. Kluwer Aca-
+demic Publishers, pages 103-127.
+Thorsten Brants, Wojciech Skut and Hans Uszkoreit. 1999.
+Syntactic Annotation of a German Newspaper Corpus. In
+Proceedings of the ATALA Treebank Workshop, pages 69-
+76.
+David Burkett and Dan Klein. 2008. Two Languages are
+Better than One (for Syntactic Parsing). In Proceedings of
+EMNLP 2008, pages 877-886.
+Eugene Charniak. 2000. A Maximum Entropy Inspired
+Parser. In Proceedings of NAACL 2000, pages 132-139.
+Eugene Charniak and Mark Johnson. 2005. Coarse-to-Fine
+N-Best Parsing and MaxEnt Discriminative Reranking. In
+Proceedings of ACL 2005, pages 173-180.
+Ying Chen, Hongling Sun and Dan Jurafsky. 2005. A Cor-
+rigendum to Sun and Jurafsky (2004) Shallow Semantic
+Parsing of Chinese. University of Colorado at Boulder
+CSLR Tech Report TR-CSLR-2005-01.
+David Chiang and Daniel M. Bikel. 2002. Recovering La-
+tent Information in Treebanks. In Proceedings of COL-
+ING 2002, pages 1-7.
+Micheal Collins, Lance Ramshaw, Jan Hajic and Christoph
+Tillmann. 1999. A Statistical Parser for Czech. In Pro-
+ceedings of ACL 1999, pages 505-512.
+Micheal Covington. 1994. GB Theory as Dependency
+Grammar. Research Report AI-1992-03.
+Martin Forst. 2003. Treebank Conversion - Establishing
+a Testsuite for a Broad-Coverage LFG from the TIGER
+Treebank. In Proceedings of LINC at EACL 2003, pages
+25-32.
+Chunghye Han, Narae Han, Eonsuk Ko and Martha Palmer.
+2002. Development and Evaluation of a Korean Treebank
+and its Application to NLP. In Proceedings of LREC 2002,
+pages 1635-1642.
+Sadao Kurohashi and Makato Nagao. 1998. Building a
+Japanese Parsed Corpus While Improving the Parsing Sys-
+tem. In Proceedings of LREC 1998, pages 719-724.
+Roger Levy and Christopher Manning. 2003. Is It Harder to
+Parse Chinese, or the Chinese Treebank? In Proceedings
+of ACL 2003, pages 439-446.
+Ting Liu, Jinshan Ma and Sheng Li. 2006. Building a Depen-
+dency Treebank for Improving Chinese Parser. Journal of
+Chinese Language and Computing, 16(4):207-224.
+Mitchell P. Marcus, Beatrice Santorini and Mary Ann
+Marcinkiewicz. 1993. Building a Large Annotated Cor-
+pus of English: The Penn Treebank. Computational Lin-
+guistics, 19(2):313-330.
+David McClosky, Eugene Charniak and Mark Johnson.
+2006a. Effective Self-Training for Parsing. In Proceed-
+ings of NAACL 2006, pages 152-159.
+David McClosky, Eugene Charniak and Mark Johnson.
+2006b. Reranking and Self-Training for Parser Adapta-
+tion. In Proceedings of COLING/ACL 2006, pages 337-
+344.
+Antonio Moreno, Susana Lopez, Fernando Sanchez and
+Ralph Grishman. 2003. Developing a Syntactic Anno-
+tation Scheme and Tools for a Spanish Treebank. Tree-
+banks: Building and Using Annotated Corpora. Kluwer
+Academic Publishers, pages 149-163.
+Slav Petrov and Dan Klein. 2007. Improved Inference for
+Unlexicalized Parsing. In Proceedings of HLT/NAACL
+2007, pages 404-411.
+Roi Reichart and Ari Rappoport. 2007. Self-Training for En-
+hancement and Domain Adaptation of Statistical Parsers
+Trained on Small Datasets. In Proceedings of ACL 2007,
+pages 616-623.
+Brian Roark and Michiel Bacchiani. 2003. Supervised and
+Unsupervised PCFG Adaptation to Novel Domains. In
+Proceedings of HLT/NAACL 2003, pages 126-133.
+Jong-Nae Wang, Jing-Shin Chang and Keh-Yih Su. 1994.
+An Automatic Treebank Conversion Algorithm for Corpus
+Sharing. In Proceedings of ACL 1994, pages 248-254.
+Mengqiu Wang, Kenji Sagae and Teruko Mitamura. 2006. A
+Fast, Accurate Deterministic Parser for Chinese. In Pro-
+ceedings of COLING/ACL 2006, pages 425-432.
+Stephen Watkinson and Suresh Manandhar. 2001. Translat-
+ing Treebank Annotation for Evaluation. In Proceedings
+of ACL Workshop on Evaluation Methodologies for Lan-
+guage and Dialogue Systems, pages 1-8.
+Fei Xia and Martha Palmer. 2001. Converting Dependency
+Structures to Phrase Structures. In Proceedings of HLT
+2001, pages 1-5.
+Fei Xia, Rajesh Bhatt, Owen Rambow, Martha Palmer
+and Dipti Misra. Sharma. 2008. Towards a Multi-
+Representational Treebank. In Proceedings of the 7th In-
+ternational Workshop on Treebanks and Linguistic Theo-
+ries, pages 159-170.
+Deyi Xiong, Shuanglong Li, Qun Liu, Shouxun Lin and
+Yueliang Qian. 2005. Parsing the Penn Chinese Tree-
+bank with Semantic Knowledge. In Proceedings of IJC-
+NLP 2005, pages 70-81.
+Nianwen Xue, Fei Xia, Fu-Dong Chiou and Martha Palmer.
+2005. The Penn Chinese TreeBank: Phrase Structure An-
+notation of a Large Corpus. Natural Language Engineer-
+ing, 11(2):207-238.
+</reference>
+<page confidence="0.999023">
+54
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.930945" no="0">
+<title confidence="0.999989">Exploiting Heterogeneous Treebanks for Parsing</title>
+<author confidence="0.998186">Zheng-Yu Niu</author>
+<author confidence="0.998186">Haifeng Wang</author>
+<author confidence="0.998186">Hua Wu</author>
+<affiliation confidence="0.981428">Toshiba (China) Research and Development Center</affiliation>
+<address confidence="0.993901">5/F., Tower W2, Oriental Plaza, Beijing, 100738, China</address>
+<abstract confidence="0.99792525">We address the issue of using heterogeneous treebanks for parsing by breaking it down into two sub-problems, converting grammar formalisms of the treebanks to the same one, and parsing on these homogeneous treebanks. First we propose to employ an iteratively trained target grammar parser to perform grammar formalism conversion, eliminating predefined heuristic rules as required in previous methods. Then we provide two strategies to refine conversion results, and adopt a corpus weighting technique for parsing on homogeneous treebanks. Results on the Penn Treebank show that our conversion method achieves 42% error reduction over the previous best result. Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Anne Abeille</author>
+<author>Lionel Clement</author>
+<author>Francois Toussenel</author>
+</authors>
+<title>Building a Treebank for French.</title>
+<date>2000</date>
+<booktitle>In Proceedings of LREC</booktitle>
+<pages>87--94</pages>
+<contexts>
+<context citStr="Abeille et al., 2000" endWordPosition="213" position="1441" startWordPosition="210">t our conversion method achieves 42% error reduction over the previous best result. Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with differe</context>
+</contexts>
+<marker>Abeille, Clement, Toussenel, 2000</marker>
+<rawString>Anne Abeille, Lionel Clement and Francois Toussenel. 2000. Building a Treebank for French. In Proceedings of LREC 2000, pages 87-94.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Bikel</author>
+<author>David Chiang</author>
+</authors>
+<title>Two Statistical Parsing Models Applied to the Chinese Treebank.</title>
+<date>2000</date>
+<booktitle>In Proceedings of the Second SIGHAN workshop,</booktitle>
+<pages>1--6</pages>
+<contexts>
+<context citStr="Bikel &amp; Chiang (2000)" endWordPosition="4813" position="28198" startWordPosition="4810">e structure to a more informative phrase structure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3 Burkett &amp; Klein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more la</context>
+</contexts>
+<marker>Bikel, Chiang, 2000</marker>
+<rawString>Daniel Bikel and David Chiang. 2000. Two Statistical Parsing Models Applied to the Chinese Treebank. In Proceedings of the Second SIGHAN workshop, pages 1-6.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Bikel</author>
+</authors>
+<title>On the Parameter Space of Generative Lexicalized Statistical Parsing Models.</title>
+<date>2004</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Pennsylvania.</institution>
+<marker>Bikel, 2004</marker>
+<rawString>Daniel Bikel. 2004. On the Parameter Space of Generative Lexicalized Statistical Parsing Models. Ph.D. thesis, University of Pennsylvania.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alena Bohmova</author>
+<author>Jan Hajic</author>
+</authors>
+<title>Eva Hajicova and Barbora Vidova-Hladka.</title>
+<date>2003</date>
+<pages>103--127</pages>
+<publisher>Kluwer Academic Publishers,</publisher>
+<marker>Bohmova, Hajic, 2003</marker>
+<rawString>Alena Bohmova, Jan Hajic, Eva Hajicova and Barbora Vidova-Hladka. 2003. The Prague Dependency Treebank: A Three-Level Annotation Scenario. Treebanks: Building and Using Annotated Corpora. Kluwer Academic Publishers, pages 103-127.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Thorsten Brants</author>
+<author>Wojciech Skut</author>
+<author>Hans Uszkoreit</author>
+</authors>
+<title>Syntactic Annotation of a German Newspaper Corpus.</title>
+<date>1999</date>
+<booktitle>In Proceedings of the ATALA Treebank Workshop,</booktitle>
+<pages>69--76</pages>
+<contexts>
+<context citStr="Brants et al., 1999" endWordPosition="217" position="1462" startWordPosition="214">d achieves 42% error reduction over the previous best result. Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms</context>
+</contexts>
+<marker>Brants, Skut, Uszkoreit, 1999</marker>
+<rawString>Thorsten Brants, Wojciech Skut and Hans Uszkoreit. 1999. Syntactic Annotation of a German Newspaper Corpus. In Proceedings of the ATALA Treebank Workshop, pages 69-76.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Burkett</author>
+<author>Dan Klein</author>
+</authors>
+<title>Two Languages are Better than One (for Syntactic Parsing).</title>
+<date>2008</date>
+<booktitle>In Proceedings of EMNLP</booktitle>
+<pages>877--886</pages>
+<contexts>
+<context citStr="Burkett and Klein (2008)" endWordPosition="4463" position="26101" startWordPosition="4460">as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007). 9Available at http://icl.pku.edu.cn/. 4.4 Comparison with Previous Studies for Chinese Parsing Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CDTP � � helps parsing on CTB, which brought 0.9% f-score improvement. Moreover, the use of unlabeled data further boosted the parsing performance to 85.2%, an absolute 1.0% improvement over the previous best result presented in Burkett and Klein (2008). 5 Related Work Recently there have been some studies addressing how to use treebanks with same grammar formalism for domain </context>
+<context citStr="Burkett &amp; Klein (2008)" endWordPosition="4926" position="28726" startWordPosition="4923">0 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3 Burkett &amp; Klein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural preference in their target grammar. For acquisition of better conversion rules, Xia et al. (2008) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al</context>
+</contexts>
+<marker>Burkett, Klein, 2008</marker>
+<rawString>David Burkett and Dan Klein. 2008. Two Languages are Better than One (for Syntactic Parsing). In Proceedings of EMNLP 2008, pages 877-886.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eugene Charniak</author>
+</authors>
+<title>A Maximum Entropy Inspired Parser.</title>
+<date>2000</date>
+<booktitle>In Proceedings of NAACL</booktitle>
+<pages>132--139</pages>
+<contexts>
+<context citStr="Charniak, 2000" endWordPosition="2708" position="16190" startWordPosition="2707">ructures from the Penn Treebank, which was also used for PS to DS conversion in our conversion algorithm. 49 DevScore All the sentences LR LP F Models (%) (%) (%) (%) The best result of Xia et al. (2008) - 90.7 88.1 89.4 Q-0-method 86.8 92.2 92.8 92.5 Q-10-method 88.0 93.4 94.1 93.8 Table 2: Comparison with the work of Xia et al. (2008) on WSJ section 22. All the sentences DevScore LR LP F Models (%) (%) (%) (%) Q-0-method 91.0 91.6 92.5 92.1 Q-10-method 91.6 93.1 94.1 93.6 Table 3: Results of our algorithm on WSJ section 2∼18 and 20∼22. We employed Charniak’s maximum entropy inspired parser (Charniak, 2000) to generate N-best (N=200) parses. Xia et al. (2008) used POS tag information, dependency structures and dependency tags in test set for conversion. Similarly, we used POS tag information in the test set to restrict search space of the parser for generation of better N-best parses. We evaluated two variants of our DS to PS conversion algorithm: Q-0-method: We set the value of Q as 0 for a baseline method. Q-10-method: We set the value of Q as 10 to see whether it is helpful for conversion to retrain the parser on converted trees. Table 2 shows the results of our conversion algorithm on WSJ se</context>
+</contexts>
+<marker>Charniak, 2000</marker>
+<rawString>Eugene Charniak. 2000. A Maximum Entropy Inspired Parser. In Proceedings of NAACL 2000, pages 132-139.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Eugene Charniak</author>
+<author>Mark Johnson</author>
+</authors>
+<title>Coarse-to-Fine N-Best Parsing and MaxEnt Discriminative Reranking.</title>
+<date>2005</date>
+<booktitle>In Proceedings of ACL</booktitle>
+<pages>173--180</pages>
+<contexts>
+<context citStr="Charniak and Johnson, 2005" endWordPosition="3272" position="19283" startWordPosition="3269">e target treebank. CDT consists of 60k Chinese sentences, annotated with POS tag information and dependency structure information (including 28 POS tags, and 24 dependency tags) (Liu et al., 2006). We did not use POS tag information as inputs to the parser in our conversion method due to the difficulty of conversion from CDT POS tags to CTB POS tags. We used a standard split of CTB for performance evaluation, articles 1-270 and 400-1151 as training set, articles 301-325 as development set, and articles 271-300 as test set. We used Charniak’s maximum entropy inspired parser and their reranker (Charniak and Johnson, 2005) for target grammar parsing, called a generative parser (GP) and a reranking parser (RP) respectively. We reported ParseVal measures from the EVALB tool. 50 All the sentences LR LP F Models Training data (%) (%) (%) GP CTB 79.9 82.2 81.0 RP CTB 82.0 84.6 83.3 GP 10 x CTB + CDTPS 80.4 82.7 81.5 RP 10 x CTB + CDTPS 82.8 84.7 83.8 Table 5: Results of the generative parser (GP) and the reranking parser (RP) on the test set, when trained on only CTB training set or an optimal combination of CTB training set and CDTPS. 4.1 Results of a Baseline Method to Use CDT We used our conversion algorithm6 to </context>
+</contexts>
+<marker>Charniak, Johnson, 2005</marker>
+<rawString>Eugene Charniak and Mark Johnson. 2005. Coarse-to-Fine N-Best Parsing and MaxEnt Discriminative Reranking. In Proceedings of ACL 2005, pages 173-180.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ying Chen</author>
+<author>Hongling Sun</author>
+<author>Dan Jurafsky</author>
+</authors>
+<title>A Corrigendum to Sun and Jurafsky</title>
+<date>2005</date>
+<tech>Tech Report TR-CSLR-2005-01.</tech>
+<institution>Shallow Semantic Parsing of Chinese. University of Colorado at Boulder CSLR</institution>
+<marker>Chen, Sun, Jurafsky, 2005</marker>
+<rawString>Ying Chen, Hongling Sun and Dan Jurafsky. 2005. A Corrigendum to Sun and Jurafsky (2004) Shallow Semantic Parsing of Chinese. University of Colorado at Boulder CSLR Tech Report TR-CSLR-2005-01.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Chiang</author>
+<author>Daniel M Bikel</author>
+</authors>
+<title>Recovering Latent Information in Treebanks.</title>
+<date>2002</date>
+<booktitle>In Proceedings of COLING</booktitle>
+<pages>1--7</pages>
+<contexts>
+<context citStr="Chiang &amp; Bikel (2002)" endWordPosition="4823" position="28241" startWordPosition="4820">ructure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3 Burkett &amp; Klein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural prefer</context>
+</contexts>
+<marker>Chiang, Bikel, 2002</marker>
+<rawString>David Chiang and Daniel M. Bikel. 2002. Recovering Latent Information in Treebanks. In Proceedings of COLING 2002, pages 1-7.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Micheal Collins</author>
+<author>Lance Ramshaw</author>
+<author>Jan Hajic</author>
+<author>Christoph Tillmann</author>
+</authors>
+<title>A Statistical Parser for Czech.</title>
+<date>1999</date>
+<booktitle>In Proceedings of ACL</booktitle>
+<pages>505--512</pages>
+<contexts>
+<context citStr="Collins et al., 1999" endWordPosition="436" position="2793" startWordPosition="433">). It is important to acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS</context>
+<context citStr="Collins et al., 1999" endWordPosition="1192" position="7482" startWordPosition="1189">perimental results of grammar formalism conversion on a dependency treebank produced from the Penn Treebank. In Section 4, we evaluate our two-step solution on two existing heterogeneous Chinese treebanks. Section 5 reviews related work and Section 6 concludes this work. 2 Our Two-Step Solution 2.1 Grammar Formalism Conversion Previous DS to PS conversion methods built a converted tree by iteratively attaching nodes and edges to the tree with the help of conversion rules and heuristic rules, based on current headdependent pair from a source dependency tree and the structure of the built tree (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008). Some observations can be made on these methods: (1) for each head-dependent pair, only one locally optimal conversion was kept during tree-building process, at the risk of pruning globally optimal conversions, (2) heuristic rules are required to deal with the problem that one head-dependent pair might have multiple conversion candidates, and these heuristic rules are usually hand-crafted to reflect the structural preference in their target grammars. To overcome these limitations, we propose to employ a parser to generate N-best parses</context>
+<context citStr="Collins et al. (1999)" endWordPosition="4730" position="27710" startWordPosition="4727"> WSJ corpus to Brown corpus. Their results indicated that both unlabeled in-domain data and labeled out-of-domain data can help domain adaptation. In comparison with these works, we conduct our study in a different setting where we work with multiple heterogeneous treebanks. Grammar formalism conversion makes it possible to reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phrase structure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bike</context>
+<context citStr="Collins et al. (1999)" endWordPosition="5033" position="29360" startWordPosition="5030">.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural preference in their target grammar. For acquisition of better conversion rules, Xia et al. (2008) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al. (1994) and Collins et al. (1999), we went further by combining the converted treebank with the existing target treebank for parsing. In comparison with previous conversion methods (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) in which for each headdependent pair, only one locally optimal conversion was kept during tree-building process, we employed a parser to generate globally optimal syntactic structures, eliminating heuristic rules for conversion. In addition, we used converted trees to retrain the parser for better conversion candidates, while Wang et al. (1994) did not exploit the use o</context>
+</contexts>
+<marker>Collins, Ramshaw, Hajic, Tillmann, 1999</marker>
+<rawString>Micheal Collins, Lance Ramshaw, Jan Hajic and Christoph Tillmann. 1999. A Statistical Parser for Czech. In Proceedings of ACL 1999, pages 505-512.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Micheal Covington</author>
+</authors>
+<date>1994</date>
+<note>GB Theory as Dependency Grammar. Research Report AI-1992-03.</note>
+<contexts>
+<context citStr="Covington, 1994" endWordPosition="621" position="3930" startWordPosition="620">arget grammar parser. For grammar formalism conversion, we choose the DS to PS direction for the convenience of the comparison with existing works (Xia and Palmer, 2001; Xia et al., 2008). Specifically, we assume that the source grammar formalism is dependency 1Here we assume the existence of two treebanks. 46 Proceedings of the 47th Annual Meeting of the ACL and the 4th IJCNLP of the AFNLP, pages 46–54, Suntec, Singapore, 2-7 August 2009. c�2009 ACL and AFNLP grammar, and the target grammar formalism is phrase structure grammar. Previous methods for DS to PS conversion (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) often rely on predefined heuristic rules to eliminate converison ambiguity, e.g., minimal projection for dependents, lowest attachment position for dependents, and the selection of conversion rules that add fewer number of nodes to the converted tree. In addition, the validity of these heuristic rules often depends on their target grammars. To eliminate the heuristic rules as required in previous methods, we propose to use an existing target grammar parser (trained on the target treebank) to generate N-best parses for each sentence in the source treeba</context>
+<context citStr="Covington, 1994" endWordPosition="1194" position="7499" startWordPosition="1193">grammar formalism conversion on a dependency treebank produced from the Penn Treebank. In Section 4, we evaluate our two-step solution on two existing heterogeneous Chinese treebanks. Section 5 reviews related work and Section 6 concludes this work. 2 Our Two-Step Solution 2.1 Grammar Formalism Conversion Previous DS to PS conversion methods built a converted tree by iteratively attaching nodes and edges to the tree with the help of conversion rules and heuristic rules, based on current headdependent pair from a source dependency tree and the structure of the built tree (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008). Some observations can be made on these methods: (1) for each head-dependent pair, only one locally optimal conversion was kept during tree-building process, at the risk of pruning globally optimal conversions, (2) heuristic rules are required to deal with the problem that one head-dependent pair might have multiple conversion candidates, and these heuristic rules are usually hand-crafted to reflect the structural preference in their target grammars. To overcome these limitations, we propose to employ a parser to generate N-best parses as conversion ca</context>
+<context citStr="Covington, 1994" endWordPosition="5062" position="29546" startWordPosition="5061">) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al. (1994) and Collins et al. (1999), we went further by combining the converted treebank with the existing target treebank for parsing. In comparison with previous conversion methods (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) in which for each headdependent pair, only one locally optimal conversion was kept during tree-building process, we employed a parser to generate globally optimal syntactic structures, eliminating heuristic rules for conversion. In addition, we used converted trees to retrain the parser for better conversion candidates, while Wang et al. (1994) did not exploit the use of converted trees for parser retraining. 6 Conclusion We have proposed a two-step solution to deal with the issue of using heterogeneous treebanks for parsing. First we present a parser </context>
+</contexts>
+<marker>Covington, 1994</marker>
+<rawString>Micheal Covington. 1994. GB Theory as Dependency Grammar. Research Report AI-1992-03.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Martin Forst</author>
+</authors>
+<title>Treebank Conversion - Establishing a Testsuite for a Broad-Coverage LFG from the TIGER Treebank.</title>
+<date>2003</date>
+<booktitle>In Proceedings of LINC at EACL</booktitle>
+<pages>25--32</pages>
+<contexts>
+<context citStr="Forst, 2003" endWordPosition="438" position="2806" startWordPosition="437">acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS direction fo</context>
+</contexts>
+<marker>Forst, 2003</marker>
+<rawString>Martin Forst. 2003. Treebank Conversion - Establishing a Testsuite for a Broad-Coverage LFG from the TIGER Treebank. In Proceedings of LINC at EACL 2003, pages 25-32.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chunghye Han</author>
+<author>Narae Han</author>
+<author>Eonsuk Ko</author>
+<author>Martha Palmer</author>
+</authors>
+<title>Development and Evaluation of a Korean Treebank and its Application to NLP.</title>
+<date>2002</date>
+<booktitle>In Proceedings of LREC</booktitle>
+<pages>1635--1642</pages>
+<contexts>
+<context citStr="Han et al., 2002" endWordPosition="225" position="1502" startWordPosition="222">vious best result. Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with depe</context>
+</contexts>
+<marker>Han, Han, Ko, Palmer, 2002</marker>
+<rawString>Chunghye Han, Narae Han, Eonsuk Ko and Martha Palmer. 2002. Development and Evaluation of a Korean Treebank and its Application to NLP. In Proceedings of LREC 2002, pages 1635-1642.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sadao Kurohashi</author>
+<author>Makato Nagao</author>
+</authors>
+<title>Building a Japanese Parsed Corpus While Improving the Parsing System. In</title>
+<date>1998</date>
+<booktitle>Proceedings of LREC</booktitle>
+<pages>719--724</pages>
+<contexts>
+<context citStr="Kurohashi and Nagao, 1998" endWordPosition="229" position="1529" startWordPosition="226"> Evaluation on the Penn Chinese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and t</context>
+</contexts>
+<marker>Kurohashi, Nagao, 1998</marker>
+<rawString>Sadao Kurohashi and Makato Nagao. 1998. Building a Japanese Parsed Corpus While Improving the Parsing System. In Proceedings of LREC 1998, pages 719-724.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roger Levy</author>
+<author>Christopher Manning</author>
+</authors>
+<title>Is It Harder to Parse Chinese, or the Chinese Treebank?</title>
+<date>2003</date>
+<booktitle>In Proceedings of ACL</booktitle>
+<pages>439--446</pages>
+<contexts>
+<context citStr="Levy &amp; Manning (2003)" endWordPosition="4833" position="28284" startWordPosition="4830">nk to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3 Burkett &amp; Klein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural preference in their target grammar. For acquisiti</context>
+</contexts>
+<marker>Levy, Manning, 2003</marker>
+<rawString>Roger Levy and Christopher Manning. 2003. Is It Harder to Parse Chinese, or the Chinese Treebank? In Proceedings of ACL 2003, pages 439-446.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ting Liu</author>
+<author>Jinshan Ma</author>
+<author>Sheng Li</author>
+</authors>
+<title>Building a Dependency Treebank for Improving Chinese Parser.</title>
+<date>2006</date>
+<journal>Journal of Chinese Language and Computing,</journal>
+<pages>16--4</pages>
+<contexts>
+<context citStr="Liu et al., 2006" endWordPosition="912" position="5732" startWordPosition="909">) interpolating the scores from the source grammar and the target grammar to select better converted trees. Finally we adopt a corpus weighting technique to get an optimal combination of the converted treebank and the existing target treebank for parser training. We have evaluated our conversion algorithm on a dependency structure treebank (produced from the Penn Treebank) for comparison with previous work (Xia et al., 2008). We also have investigated our two-step solution on two existing treebanks, the Penn Chinese Treebank (CTB) (Xue et al., 2005) and the Chinese Dependency Treebank (CDT)2 (Liu et al., 2006). Evaluation on WSJ data demonstrates that it is feasible to use a parser for grammar formalism conversion and the conversion benefits from converted trees used for parser retraining. Our conversion method achieves 93.8% f-score on dependency trees produced from WSJ section 22, resulting in 42% error reduction over the previous best result for DS to PS conversion. Results on CTB show that score interpolation is 2Available at http://ir.hit.edu.cn/. more effective than instance pruning for the use of converted treebanks for parsing and converted CDT helps parsing on CTB. When coupled with self-t</context>
+<context citStr="Liu et al., 2006" endWordPosition="2219" position="13277" startWordPosition="2216">lect a parse ranked quite low in the N-best list since there might be conflicts of syntactic structure definition between the source grammar and the target grammar. Figure 1 shows an example for illustration of a conflict between the grammar of CDT and that of CTB. According to Chinese head percolation tables used in the PS to DS conversion tool &amp;quot;Penn2Malt&amp;quot;3 and Charniak’s parser4, the head of VP-2 is the word &amp;quot;4E&amp;quot;(a preposition, with &amp;quot;BA&amp;quot;as its POS tag in CTB), and the head of IP-OBJ is R hJ &amp;quot;. Therefore the word &amp;quot; R hJ&amp;quot;depends on the word &amp;quot;4E&amp;quot;. But according to the annotation scheme in CDT (Liu et al., 2006), the word &amp;quot;4E&amp;quot;is a dependent of the word &amp;quot;R hJ&amp;quot;. The conflicts between the two grammars may lead to the problem that the selected parses based on the information of the source grammar might not be preferred from the perspective of the 3Available at http://w3.msi.vxu.se/∼nivre/. 4Available at http://www.cs.brown.edu/∼ec/. target grammar. Therefore we modified the selection metric in Section 2.1 by interpolating two scores, the probability of a conversion candidate from the parser and its unlabeled dependency f-score, shown as follows: Score(xi,t) = AxProb(xi,t)+(1—A)xScore(xi,t). (1) The intui</context>
+<context citStr="Liu et al., 2006" endWordPosition="3198" position="18852" startWordPosition="3195"> achieved an f-score of 93.6% on WSJ section 2∼18 and 20∼22, better than that of Q-0- method and comparable with that of Q-10-method in Section 3.1. It confirms our previous finding that the conversion benefits from the use of converted trees for parser retraining. 4 Experiments of Parsing We investigated our two-step solution on two existing treebanks, CDT and CTB, and we used CDT as the source treebank and CTB as the target treebank. CDT consists of 60k Chinese sentences, annotated with POS tag information and dependency structure information (including 28 POS tags, and 24 dependency tags) (Liu et al., 2006). We did not use POS tag information as inputs to the parser in our conversion method due to the difficulty of conversion from CDT POS tags to CTB POS tags. We used a standard split of CTB for performance evaluation, articles 1-270 and 400-1151 as training set, articles 301-325 as development set, and articles 271-300 as test set. We used Charniak’s maximum entropy inspired parser and their reranker (Charniak and Johnson, 2005) for target grammar parsing, called a generative parser (GP) and a reranking parser (RP) respectively. We reported ParseVal measures from the EVALB tool. 50 All the sent</context>
+</contexts>
+<marker>Liu, Ma, Li, 2006</marker>
+<rawString>Ting Liu, Jinshan Ma and Sheng Li. 2006. Building a Dependency Treebank for Improving Chinese Parser. Journal of Chinese Language and Computing, 16(4):207-224.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mitchell P Marcus</author>
+<author>Beatrice Santorini</author>
+<author>Mary Ann Marcinkiewicz</author>
+</authors>
+<title>Building a Large Annotated Corpus of English: The Penn Treebank. Computational Linguistics,</title>
+<date>1993</date>
+<pages>19--2</pages>
+<contexts>
+<context citStr="Marcus et al., 1993" endWordPosition="233" position="1550" startWordPosition="230">nese Treebank indicates that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated wi</context>
+</contexts>
+<marker>Marcus, Santorini, Marcinkiewicz, 1993</marker>
+<rawString>Mitchell P. Marcus, Beatrice Santorini and Mary Ann Marcinkiewicz. 1993. Building a Large Annotated Corpus of English: The Penn Treebank. Computational Linguistics, 19(2):313-330.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David McClosky</author>
+<author>Eugene Charniak</author>
+<author>Mark Johnson</author>
+</authors>
+<title>Effective Self-Training for Parsing.</title>
+<date>2006</date>
+<booktitle>In Proceedings of NAACL</booktitle>
+<pages>152--159</pages>
+<contexts>
+<context citStr="McClosky et al., 2006" endWordPosition="406" position="2600" startWordPosition="403">ogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (PS). It is important to acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the sour</context>
+<context citStr="McClosky et al., 2006" endWordPosition="4173" position="24444" startWordPosition="4170">4.3 86.1 85.2 � Table 7: Results of the self-trained generative parser and updated reranking parser on the test set. 10xT+10xD+P stands for 10xCTB+10xCDTP � � +PDC. 84.2% f-score, better than the result of the reranking parser with CTB and CDTPS as training data (shown in Table 5). It indicates that the use of probability information from the parser for tree conversion helps target grammar parsing. 4.3 Using Unlabeled Data for Parsing Recent studies on parsing indicate that the use of unlabeled data by self-training can help parsing on the WSJ data, even when labeled data is relatively large (McClosky et al., 2006a; Reichart and Rappoport, 2007). It motivates us to employ self-training technique for Chinese parsing. We used the POS tagged People Daily corpus9 (Jan. 1998—Jun. 1998, and Jan. 2000—Dec. 2000) (PDC) as unlabeled data for parsing. First we removed the sentences with less than 3 words or more than 40 words from PDC to ease parsing, resulting in 820k sentences. Then we ran the reranking parser in Section 4.2.2 on PDC and used the parses on PDC as additional training data for the generative parser. Here we tried the corpus weighting technique for an optimal combination of CTB, CDTP � � and pars</context>
+<context citStr="McClosky et al., 2006" endWordPosition="4399" position="25724" startWordPosition="4396">� � as 10 by cross validation on the development set. Finally we retrained the generative parser on CTB, CDTP � � and parsed PDC. Furthermore, we used this self-trained generative parser as a base parser to retrain the reranker on CTB and CDTP � � . Table 7 shows the performance of self-trained generative parser and updated reranker on the test set, with CTB and CDTP � � as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007). 9Available at http://icl.pku.edu.cn/. 4.4 Comparison with Previous Studies for Chinese Parsing Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CD</context>
+<context citStr="McClosky et al. (2006" endWordPosition="4615" position="27014" startWordPosition="4612">Moreover, the use of unlabeled data further boosted the parsing performance to 85.2%, an absolute 1.0% improvement over the previous best result presented in Burkett and Klein (2008). 5 Related Work Recently there have been some studies addressing how to use treebanks with same grammar formalism for domain adaptation of parsers. Roark and Bachiani (2003) presented count merging and model interpolation techniques for domain adaptation of parsers. They showed that their system with count merging achieved a higher performance when in-domain data was weighted more heavily than out-of-domain data. McClosky et al. (2006b) used self-training and corpus weighting to adapt their parser trained on WSJ corpus to Brown corpus. Their results indicated that both unlabeled in-domain data and labeled out-of-domain data can help domain adaptation. In comparison with these works, we conduct our study in a different setting where we work with multiple heterogeneous treebanks. Grammar formalism conversion makes it possible to reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phr</context>
+</contexts>
+<marker>McClosky, Charniak, Johnson, 2006</marker>
+<rawString>David McClosky, Eugene Charniak and Mark Johnson. 2006a. Effective Self-Training for Parsing. In Proceedings of NAACL 2006, pages 152-159.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David McClosky</author>
+<author>Eugene Charniak</author>
+<author>Mark Johnson</author>
+</authors>
+<title>Reranking and Self-Training for Parser Adaptation.</title>
+<date>2006</date>
+<booktitle>In Proceedings of COLING/ACL</booktitle>
+<pages>337--344</pages>
+<contexts>
+<context citStr="McClosky et al., 2006" endWordPosition="406" position="2600" startWordPosition="403">ogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (PS). It is important to acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the sour</context>
+<context citStr="McClosky et al., 2006" endWordPosition="4173" position="24444" startWordPosition="4170">4.3 86.1 85.2 � Table 7: Results of the self-trained generative parser and updated reranking parser on the test set. 10xT+10xD+P stands for 10xCTB+10xCDTP � � +PDC. 84.2% f-score, better than the result of the reranking parser with CTB and CDTPS as training data (shown in Table 5). It indicates that the use of probability information from the parser for tree conversion helps target grammar parsing. 4.3 Using Unlabeled Data for Parsing Recent studies on parsing indicate that the use of unlabeled data by self-training can help parsing on the WSJ data, even when labeled data is relatively large (McClosky et al., 2006a; Reichart and Rappoport, 2007). It motivates us to employ self-training technique for Chinese parsing. We used the POS tagged People Daily corpus9 (Jan. 1998—Jun. 1998, and Jan. 2000—Dec. 2000) (PDC) as unlabeled data for parsing. First we removed the sentences with less than 3 words or more than 40 words from PDC to ease parsing, resulting in 820k sentences. Then we ran the reranking parser in Section 4.2.2 on PDC and used the parses on PDC as additional training data for the generative parser. Here we tried the corpus weighting technique for an optimal combination of CTB, CDTP � � and pars</context>
+<context citStr="McClosky et al., 2006" endWordPosition="4399" position="25724" startWordPosition="4396">� � as 10 by cross validation on the development set. Finally we retrained the generative parser on CTB, CDTP � � and parsed PDC. Furthermore, we used this self-trained generative parser as a base parser to retrain the reranker on CTB and CDTP � � . Table 7 shows the performance of self-trained generative parser and updated reranker on the test set, with CTB and CDTP � � as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007). 9Available at http://icl.pku.edu.cn/. 4.4 Comparison with Previous Studies for Chinese Parsing Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CD</context>
+<context citStr="McClosky et al. (2006" endWordPosition="4615" position="27014" startWordPosition="4612">Moreover, the use of unlabeled data further boosted the parsing performance to 85.2%, an absolute 1.0% improvement over the previous best result presented in Burkett and Klein (2008). 5 Related Work Recently there have been some studies addressing how to use treebanks with same grammar formalism for domain adaptation of parsers. Roark and Bachiani (2003) presented count merging and model interpolation techniques for domain adaptation of parsers. They showed that their system with count merging achieved a higher performance when in-domain data was weighted more heavily than out-of-domain data. McClosky et al. (2006b) used self-training and corpus weighting to adapt their parser trained on WSJ corpus to Brown corpus. Their results indicated that both unlabeled in-domain data and labeled out-of-domain data can help domain adaptation. In comparison with these works, we conduct our study in a different setting where we work with multiple heterogeneous treebanks. Grammar formalism conversion makes it possible to reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phr</context>
+</contexts>
+<marker>McClosky, Charniak, Johnson, 2006</marker>
+<rawString>David McClosky, Eugene Charniak and Mark Johnson. 2006b. Reranking and Self-Training for Parser Adaptation. In Proceedings of COLING/ACL 2006, pages 337-344.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antonio Moreno</author>
+<author>Susana Lopez</author>
+<author>Fernando Sanchez</author>
+<author>Ralph Grishman</author>
+</authors>
+<title>Developing a Syntactic Annotation Scheme and Tools for a Spanish Treebank. Treebanks: Building and Using Annotated Corpora.</title>
+<date>2003</date>
+<pages>149--163</pages>
+<publisher>Kluwer Academic Publishers,</publisher>
+<contexts>
+<context citStr="Moreno et al., 2003" endWordPosition="237" position="1571" startWordPosition="234">es that a converted dependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (</context>
+</contexts>
+<marker>Moreno, Lopez, Sanchez, Grishman, 2003</marker>
+<rawString>Antonio Moreno, Susana Lopez, Fernando Sanchez and Ralph Grishman. 2003. Developing a Syntactic Annotation Scheme and Tools for a Spanish Treebank. Treebanks: Building and Using Annotated Corpora. Kluwer Academic Publishers, pages 149-163.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Slav Petrov</author>
+<author>Dan Klein</author>
+</authors>
+<title>Improved Inference for Unlexicalized Parsing.</title>
+<date>2007</date>
+<booktitle>In Proceedings of HLT/NAACL</booktitle>
+<pages>404--411</pages>
+<contexts>
+<context citStr="Petrov and Klein (2007)" endWordPosition="4448" position="26016" startWordPosition="4445">ained generative parser and updated reranker on the test set, with CTB and CDTP � � as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007). 9Available at http://icl.pku.edu.cn/. 4.4 Comparison with Previous Studies for Chinese Parsing Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CDTP � � helps parsing on CTB, which brought 0.9% f-score improvement. Moreover, the use of unlabeled data further boosted the parsing performance to 85.2%, an absolute 1.0% improvement over the previous best result presented in Burkett and Klein (2008). 5 Related Work Recently there have been</context>
+<context citStr="Petrov &amp; Klein (2007)" endWordPosition="4916" position="28673" startWordPosition="4913">uristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Petrov &amp; Klein (2007) 85.7 86.9 86.3 81.9 84.8 83.3 Burkett &amp; Klein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural preference in their target grammar. For acquisition of better conversion rules, Xia et al. (2008) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subt</context>
+</contexts>
+<marker>Petrov, Klein, 2007</marker>
+<rawString>Slav Petrov and Dan Klein. 2007. Improved Inference for Unlexicalized Parsing. In Proceedings of HLT/NAACL 2007, pages 404-411.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roi Reichart</author>
+<author>Ari Rappoport</author>
+</authors>
+<title>Self-Training for Enhancement and Domain Adaptation of Statistical Parsers Trained on Small Datasets.</title>
+<date>2007</date>
+<booktitle>In Proceedings of ACL</booktitle>
+<pages>616--623</pages>
+<contexts>
+<context citStr="Reichart and Rappoport, 2007" endWordPosition="4177" position="24476" startWordPosition="4174"> Results of the self-trained generative parser and updated reranking parser on the test set. 10xT+10xD+P stands for 10xCTB+10xCDTP � � +PDC. 84.2% f-score, better than the result of the reranking parser with CTB and CDTPS as training data (shown in Table 5). It indicates that the use of probability information from the parser for tree conversion helps target grammar parsing. 4.3 Using Unlabeled Data for Parsing Recent studies on parsing indicate that the use of unlabeled data by self-training can help parsing on the WSJ data, even when labeled data is relatively large (McClosky et al., 2006a; Reichart and Rappoport, 2007). It motivates us to employ self-training technique for Chinese parsing. We used the POS tagged People Daily corpus9 (Jan. 1998—Jun. 1998, and Jan. 2000—Dec. 2000) (PDC) as unlabeled data for parsing. First we removed the sentences with less than 3 words or more than 40 words from PDC to ease parsing, resulting in 820k sentences. Then we ran the reranking parser in Section 4.2.2 on PDC and used the parses on PDC as additional training data for the generative parser. Here we tried the corpus weighting technique for an optimal combination of CTB, CDTP � � and parsed PDC, and chose the relative w</context>
+<context citStr="Reichart and Rappoport, 2007" endWordPosition="4404" position="25756" startWordPosition="4400">ation on the development set. Finally we retrained the generative parser on CTB, CDTP � � and parsed PDC. Furthermore, we used this self-trained generative parser as a base parser to retrain the reranker on CTB and CDTP � � . Table 7 shows the performance of self-trained generative parser and updated reranker on the test set, with CTB and CDTP � � as labeled data. We see that the use of unlabeled data by self-training further increased the reranking parser’s performance from 84.2% to 85.2%. Our results on Chinese data confirm previous findings on English data shown in (McClosky et al., 2006a; Reichart and Rappoport, 2007). 9Available at http://icl.pku.edu.cn/. 4.4 Comparison with Previous Studies for Chinese Parsing Table 8 and 9 present the results of previous studies on CTB. All the works in Table 8 used CTB articles 1-270 as labeled data. In Table 9, Petrov and Klein (2007) trained their model on CTB articles 1-270 and 400-1151, and Burkett and Klein (2008) used the same CTB articles and parse trees of their English translation (from the English Chinese Translation Treebank) as training data. Comparing our result in Table 6 with that of Petrov and Klein (2007), we see that CDTP � � helps parsing on CTB, whi</context>
+</contexts>
+<marker>Reichart, Rappoport, 2007</marker>
+<rawString>Roi Reichart and Ari Rappoport. 2007. Self-Training for Enhancement and Domain Adaptation of Statistical Parsers Trained on Small Datasets. In Proceedings of ACL 2007, pages 616-623.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Brian Roark</author>
+<author>Michiel Bacchiani</author>
+</authors>
+<title>Supervised and Unsupervised PCFG Adaptation to Novel Domains.</title>
+<date>2003</date>
+<booktitle>In Proceedings of HLT/NAACL</booktitle>
+<pages>126--133</pages>
+<contexts>
+<context citStr="Roark and Bacchiani, 2003" endWordPosition="410" position="2629" startWordPosition="407"> to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (PS). It is important to acquire additional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one</context>
+</contexts>
+<marker>Roark, Bacchiani, 2003</marker>
+<rawString>Brian Roark and Michiel Bacchiani. 2003. Supervised and Unsupervised PCFG Adaptation to Novel Domains. In Proceedings of HLT/NAACL 2003, pages 126-133.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jong-Nae Wang</author>
+<author>Jing-Shin Chang</author>
+<author>Keh-Yih Su</author>
+</authors>
+<title>An Automatic Treebank Conversion Algorithm for Corpus Sharing.</title>
+<date>1994</date>
+<booktitle>In Proceedings of ACL</booktitle>
+<pages>248--254</pages>
+<contexts>
+<context citStr="Wang et al., 1994" endWordPosition="442" position="2825" startWordPosition="439">ional labeled data for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS direction for the convenience o</context>
+<context citStr="Wang et al. (1994)" endWordPosition="4693" position="27506" startWordPosition="4690">ing achieved a higher performance when in-domain data was weighted more heavily than out-of-domain data. McClosky et al. (2006b) used self-training and corpus weighting to adapt their parser trained on WSJ corpus to Brown corpus. Their results indicated that both unlabeled in-domain data and labeled out-of-domain data can help domain adaptation. In comparison with these works, we conduct our study in a different setting where we work with multiple heterogeneous treebanks. Grammar formalism conversion makes it possible to reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phrase structure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 </context>
+<context citStr="Wang et al. (1994)" endWordPosition="5028" position="29334" startWordPosition="5025">ein (2008) - - - - - 84.2 Table 9: Results of previous studies on CTB with more labeled data. reflected the structural preference in their target grammar. For acquisition of better conversion rules, Xia et al. (2008) proposed to automatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al. (1994) and Collins et al. (1999), we went further by combining the converted treebank with the existing target treebank for parsing. In comparison with previous conversion methods (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) in which for each headdependent pair, only one locally optimal conversion was kept during tree-building process, we employed a parser to generate globally optimal syntactic structures, eliminating heuristic rules for conversion. In addition, we used converted trees to retrain the parser for better conversion candidates, while Wang et al. (1994)</context>
+</contexts>
+<marker>Wang, Chang, Su, 1994</marker>
+<rawString>Jong-Nae Wang, Jing-Shin Chang and Keh-Yih Su. 1994. An Automatic Treebank Conversion Algorithm for Corpus Sharing. In Proceedings of ACL 1994, pages 248-254.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mengqiu Wang</author>
+</authors>
+<title>Kenji Sagae and Teruko Mitamura.</title>
+<date>2006</date>
+<booktitle>In Proceedings of COLING/ACL</booktitle>
+<pages>425--432</pages>
+<marker>Wang, 2006</marker>
+<rawString>Mengqiu Wang, Kenji Sagae and Teruko Mitamura. 2006. A Fast, Accurate Deterministic Parser for Chinese. In Proceedings of COLING/ACL 2006, pages 425-432.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Stephen Watkinson</author>
+<author>Suresh Manandhar</author>
+</authors>
+<title>Translating Treebank Annotation for Evaluation.</title>
+<date>2001</date>
+<booktitle>In Proceedings of ACL Workshop on Evaluation Methodologies for Language and Dialogue Systems,</booktitle>
+<pages>1--8</pages>
+<contexts>
+<context citStr="Watkinson and Manandhar, 2001" endWordPosition="447" position="2857" startWordPosition="443">for the target grammar parsing through exploitation of existing source treebanks since there is often a shortage of labeled data. However, to our knowledge, there is no previous study on this issue. Recently there have been some works on using multiple treebanks for domain adaptation of parsers, where these treebanks have the same grammar formalism (McClosky et al., 2006b; Roark and Bacchiani, 2003). Other related works focus on converting one grammar formalism of a treebank to another and then conducting studies on the converted treebank (Collins et al., 1999; Forst, 2003; Wang et al., 1994; Watkinson and Manandhar, 2001). These works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS direction for the convenience of the comparison with existing w</context>
+</contexts>
+<marker>Watkinson, Manandhar, 2001</marker>
+<rawString>Stephen Watkinson and Suresh Manandhar. 2001. Translating Treebank Annotation for Evaluation. In Proceedings of ACL Workshop on Evaluation Methodologies for Language and Dialogue Systems, pages 1-8.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Fei Xia</author>
+<author>Martha Palmer</author>
+</authors>
+<title>Converting Dependency Structures to Phrase Structures.</title>
+<date>2001</date>
+<booktitle>In Proceedings of HLT</booktitle>
+<pages>1--5</pages>
+<contexts>
+<context citStr="Xia and Palmer, 2001" endWordPosition="548" position="3483" startWordPosition="545">e works were done either on multiple treebanks with the same grammar formalism or on only one converted treebank. We see that their scenarios are different from ours as we work with multiple heterogeneous treebanks. For the use of heterogeneous treebanks1, we propose a two-step solution: (1) converting the grammar formalism of the source treebank to the target one, (2) refining converted trees and using them as additional training data to build a target grammar parser. For grammar formalism conversion, we choose the DS to PS direction for the convenience of the comparison with existing works (Xia and Palmer, 2001; Xia et al., 2008). Specifically, we assume that the source grammar formalism is dependency 1Here we assume the existence of two treebanks. 46 Proceedings of the 47th Annual Meeting of the ACL and the 4th IJCNLP of the AFNLP, pages 46–54, Suntec, Singapore, 2-7 August 2009. c�2009 ACL and AFNLP grammar, and the target grammar formalism is phrase structure grammar. Previous methods for DS to PS conversion (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) often rely on predefined heuristic rules to eliminate converison ambiguity, e.g., minimal projection for depend</context>
+<context citStr="Xia and Palmer, 2001" endWordPosition="1198" position="7521" startWordPosition="1195"> conversion on a dependency treebank produced from the Penn Treebank. In Section 4, we evaluate our two-step solution on two existing heterogeneous Chinese treebanks. Section 5 reviews related work and Section 6 concludes this work. 2 Our Two-Step Solution 2.1 Grammar Formalism Conversion Previous DS to PS conversion methods built a converted tree by iteratively attaching nodes and edges to the tree with the help of conversion rules and heuristic rules, based on current headdependent pair from a source dependency tree and the structure of the built tree (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008). Some observations can be made on these methods: (1) for each head-dependent pair, only one locally optimal conversion was kept during tree-building process, at the risk of pruning globally optimal conversions, (2) heuristic rules are required to deal with the problem that one head-dependent pair might have multiple conversion candidates, and these heuristic rules are usually hand-crafted to reflect the structural preference in their target grammars. To overcome these limitations, we propose to employ a parser to generate N-best parses as conversion candidates and then use </context>
+<context citStr="Xia and Palmer (2001)" endWordPosition="4779" position="28034" startWordPosition="4776">o reuse existing source treebanks for the study of target grammar parsing. Wang et al. (1994) employed a parser to help conversion of a treebank from a simple phrase structure to a more informative phrase structure and then used this converted treebank to train their parser. Collins et al. (1999) performed statistical constituency parsing of Czech on a treebank that was converted from the Prague Dependency Treebank under the guidance of conversion rules and heuristic rules, e.g., one level of projection for any category, minimal projection for any dependents, and fixed position of attachment. Xia and Palmer (2001) adopted better heuristic rules to build converted trees, which 52 &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%) (%) (%) (%) (%) Bikel &amp; Chiang (2000) 76.8 77.8 77.3 - - - Chiang &amp; Bikel (2002) 78.8 81.1 79.9 - - - Levy &amp; Manning (2003) 79.2 78.4 78.8 - - - Bikel’s thesis (2004) 78.0 81.2 79.6 - - - Xiong et. al. (2005) 78.7 80.1 79.4 - - - Chen et. al. (2005) 81.0 81.7 81.2 76.3 79.2 77.7 Wang et. al. (2006) 79.2 81.1 80.1 76.2 78.0 77.1 Table 8: Results of previous studies on CTB with CTB articles 1-270 as labeled data. &lt; 40 words All the sentences LR LP F LR LP F Models (%) (%</context>
+<context citStr="Xia and Palmer, 2001" endWordPosition="5066" position="29568" startWordPosition="5063">omatically extract conversion rules from a target treebank. Moreover, they presented two strategies to solve the problem that there might be multiple conversion rules matching the same input dependency tree pattern: (1) choosing the most frequent rules, (2) preferring rules that add fewer number of nodes and attach the subtree lower. In comparison with the works of Wang et al. (1994) and Collins et al. (1999), we went further by combining the converted treebank with the existing target treebank for parsing. In comparison with previous conversion methods (Collins et al., 1999; Covington, 1994; Xia and Palmer, 2001; Xia et al., 2008) in which for each headdependent pair, only one locally optimal conversion was kept during tree-building process, we employed a parser to generate globally optimal syntactic structures, eliminating heuristic rules for conversion. In addition, we used converted trees to retrain the parser for better conversion candidates, while Wang et al. (1994) did not exploit the use of converted trees for parser retraining. 6 Conclusion We have proposed a two-step solution to deal with the issue of using heterogeneous treebanks for parsing. First we present a parser based method to conver</context>
+</contexts>
+<marker>Xia, Palmer, 2001</marker>
+<rawString>Fei Xia and Martha Palmer. 2001. Converting Dependency Structures to Phrase Structures. In Proceedings of HLT 2001, pages 1-5.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sharma</author>
+</authors>
+<title>Towards a MultiRepresentational Treebank.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 7th International Workshop on Treebanks and Linguistic Theories,</booktitle>
+<pages>159--170</pages>
+<marker>Sharma, 2008</marker>
+<rawString>Fei Xia, Rajesh Bhatt, Owen Rambow, Martha Palmer and Dipti Misra. Sharma. 2008. Towards a MultiRepresentational Treebank. In Proceedings of the 7th International Workshop on Treebanks and Linguistic Theories, pages 159-170.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Deyi Xiong</author>
+<author>Shuanglong Li</author>
+<author>Qun Liu</author>
+<author>Shouxun Lin</author>
+<author>Yueliang Qian</author>
+</authors>
+<title>Parsing the Penn Chinese Treebank with Semantic Knowledge.</title>
+<date>2005</date>
+<booktitle>In Proceedings of IJCNLP</booktitle>
+<pages>70--81</pages>
+<marker>Xiong, Li, Liu, Lin, Qian, 2005</marker>
+<rawString>Deyi Xiong, Shuanglong Li, Qun Liu, Shouxun Lin and Yueliang Qian. 2005. Parsing the Penn Chinese Treebank with Semantic Knowledge. In Proceedings of IJCNLP 2005, pages 70-81.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nianwen Xue</author>
+<author>Fei Xia</author>
+<author>Fu-Dong Chiou</author>
+<author>Martha Palmer</author>
+</authors>
+<title>The Penn Chinese TreeBank: Phrase Structure Annotation of a Large Corpus. Natural Language Engineering,</title>
+<date>2005</date>
+<pages>11--2</pages>
+<contexts>
+<context citStr="Xue et al., 2005" endWordPosition="241" position="1590" startWordPosition="238">ependency treebank helps constituency parsing and the use of unlabeled data by self-training further increases parsing f-score to 85.2%, resulting in 6% error reduction over the previous best result. 1 Introduction The last few decades have seen the emergence of multiple treebanks annotated with different grammar formalisms, motivated by the diversity of languages and linguistic theories, which is crucial to the success of statistical parsing (Abeille et al., 2000; Brants et al., 1999; Bohmova et al., 2003; Han et al., 2002; Kurohashi and Nagao, 1998; Marcus et al., 1993; Moreno et al., 2003; Xue et al., 2005). Availability of multiple treebanks creates a scenario where we have a treebank annotated with one grammar formalism, and another treebank annotated with another grammar formalism that we are interested in. We call the first a source treebank, and the second a target treebank. We thus encounter a problem of how to use these heterogeneous treebanks for target grammar parsing. Here heterogeneous treebanks refer to two or more treebanks with different grammar formalisms, e.g., one treebank annotated with dependency structure (DS) and the other annotated with phrase structure (PS). It is importan</context>
+<context citStr="Xue et al., 2005" endWordPosition="902" position="5670" startWordPosition="899"> (1) pruning low-quality trees from the converted treebank, (2) interpolating the scores from the source grammar and the target grammar to select better converted trees. Finally we adopt a corpus weighting technique to get an optimal combination of the converted treebank and the existing target treebank for parser training. We have evaluated our conversion algorithm on a dependency structure treebank (produced from the Penn Treebank) for comparison with previous work (Xia et al., 2008). We also have investigated our two-step solution on two existing treebanks, the Penn Chinese Treebank (CTB) (Xue et al., 2005) and the Chinese Dependency Treebank (CDT)2 (Liu et al., 2006). Evaluation on WSJ data demonstrates that it is feasible to use a parser for grammar formalism conversion and the conversion benefits from converted trees used for parser retraining. Our conversion method achieves 93.8% f-score on dependency trees produced from WSJ section 22, resulting in 42% error reduction over the previous best result for DS to PS conversion. Results on CTB show that score interpolation is 2Available at http://ir.hit.edu.cn/. more effective than instance pruning for the use of converted treebanks for parsing an</context>
+</contexts>
+<marker>Xue, Xia, Chiou, Palmer, 2005</marker>
+<rawString>Nianwen Xue, Fei Xia, Fu-Dong Chiou and Martha Palmer. 2005. The Penn Chinese TreeBank: Phrase Structure Annotation of a Large Corpus. Natural Language Engineering, 11(2):207-238.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

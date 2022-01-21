@@ -1,0 +1,957 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.681704">
+Training Nondeficient Variants of IBM-3 and IBM-4 for Word Alignment
+</title>
+<author confidence="0.583339">
+Thomas Schoenemann
+</author>
+<affiliation confidence="0.325494">
+Heinrich-Heine-Universit¨at D¨usseldorf, Germany
+</affiliation>
+<address confidence="0.364722">
+Universit¨atsstr. 1
+40225 D¨usseldorf, Germany
+</address>
+<sectionHeader confidence="0.961442" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999955210526316">We derive variants of the fertility based models IBM-3 and IBM-4 that, while maintaining their zero and first order parameters, are nondeficient. Subsequently, we proceed to derive a method to compute a likely alignment and its neighbors as well as give a solution of EM training. The arising M-step energies are non-trivial and handled via projected gradient ascent. Our evaluation on gold alignments shows substantial improvements (in weighted Fmeasure) for the IBM-3. For the IBM4 there are no consistent improvements. Training the nondeficient IBM-5 in the regular way gives surprisingly good results. Using the resulting alignments for phrasebased translation systems offers no clear insights w.r.t. BLEU scores.</bodyText>
+<sectionHeader confidence="0.998883" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999505214285714">While most people think of the translation and word alignment models IBM-3 and IBM-4 as inherently deficient models (i.e. models that assign non-zero probability mass to impossible events), in this paper we derive nondeficient variants maintaining their zero order (IBM-3) and first order (IBM-4) parameters. This is possible as IBM-3 and IBM-4 are very special cases of general loglinear models: they are properly derived by the chain rule of probabilities. Deficiency is only introduced by ignoring a part of the history to be conditioned on in the individual factors of the chain rule factorization. While at first glance this seems necessary to obtain zero and first order de-</bodyText>
+<figureCaption confidence="0.587899">
+Figure 1: Plot of the negative log. likelihoods
+</figureCaption>
+<bodyText confidence="0.996277833333333">(the quantity to be minimized) arising in training deficient and nondeficient models (for Europarl German I English, training scheme 15H53545). 1/3/4=IBM-1/3/4, H=HMM, T=Transfer iteration. The curves are identical up to iteration 11. Iteration 11 shows that merely 5.14% of the (HMM) probability mass are covered by the Viterbi alignment and its neighbors. With deficient models (and deficient empty words) the final negative log likelihood is higher than the initial HMM one, with nondeficient models it is lower than for the HMM, as it should be for a better model. pendencies, we show that with proper renormalization all factors can be made nondeficient. Having introduced the model variants, we proceed to derive a hillclimbing method to compute a likely alignment (ideally the Viterbi alignment) and its neighbors. As for the deficient models, this plays an important role in the E-step of the subsequently derived expectation maximization (EM) training scheme. As usual, expectations in EM are approximated, but we now also get non-trivial Mstep energies. We deal with these via projected gradient ascent.</bodyText>
+<page confidence="0.977921">
+22
+</page>
+<note confidence="0.913785">
+Proceedings of the 51st Annual Meeting of the Association for Computational Linguistics, pages 22–31,
+Sofia, Bulgaria, August 4-9 2013. c�2013 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.935774012987013">The downside of our method is its resource consumption, but still we present results on corpora with 100.000 sentence pairs. The source code of this project is available in our word alignment software RegAligner1, version 1.2 and later. Figure 1 gives a first demonstration of how much the proposed variants differ from the standard models by visualizing the resulting negative log likelihoods2, the quantity to be minimized in EM-training. The nondeficient IBM-4 derives a lower negative log likelihood than the HMM, the regular deficient variant only a lower one than the IBM-1. As an aside, the transfer iteration from HMM to IBM3 (iteration 11) reveals that only 5.14% of the probability mass3 are preserved when using the Viterbi alignment and its neighbors instead of all alignments. Indeed, it is widely recognized that – with proper initialization – fertility based models outperform sequence based ones. In particular, sequence based models can simply ignore a part of the sentence to be conditioned on, while fertility based models explicitly factor in a probability of words in this sentence to have no aligned words (or any other number of aligned words, called the fertility). Hence, it is encouraging to see that the nondeficient IBM-4 indeed derives a higher likelihood than the sequence based HMM. Related Work Today’s most widely used models for word alignment are still the models IBM 1-5 of Brown et al. (1993) and the HMM of Vogel et al. (1996), thoroughly evaluated in (Och and Ney, 2003). While it is known that fertilitybased models outperform sequence-based ones, the large bulk of word alignment literature following these publications has mostly ignored fertilitybased models. This is different in the present paper which deals exclusively with such models. One reason for the lack of interest is surely that computing expectations and Viterbi alignments for these models is a hard problem (Udupa and Maji, 2006). Nevertheless, computing Viterbi align1https://github.com/Thomas1205/RegAligner, for the reported results we used a slightly earlier version. 2Note that the figure slightly favors IBM-1 and HMM as for them the length J of the foreign sequence is assumed to be known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012).</bodyText>
+<sectionHeader confidence="0.752365" genericHeader="method">
+2 The models IBM-3, IBM-4 and IBM-5
+</sectionHeader>
+<bodyText confidence="0.999974363636364">We begin with a short review of fertility-based models in general and IBM-3, IBM-4 and IBM5 specifically. All are due to (Brown et al., 1993) who proposed to use the deficient models IBM-3 and IBM-4 to initialize the nondeficient IBM-5. For a foreign sentence f = fJ1 = (f1, ... , fJ) with J words and an English one e = eI1 = (e1, ... , eI) with I words, the (conditional) probability p(fJ1 |eI1) of getting the foreign sentence as a translation of the English one is modeled by introducing the word alignment a as a hidden variable:</bodyText>
+<equation confidence="0.976238">
+�p(fJ 1 |eI 1) = p(fJ 1 , a|eI1)
+a
+</equation>
+<bodyText confidence="0.999790909090909">All IBM models restrict the space of alignments to those where a foreign word can align to at most one target word. The resulting alignment is then written as a vector aJ1, where each aj takes integral values between 0 and I, with 0 indicating that fj has no English correspondence. The fertility-based models IBM-3, IBM-4 and IBM-5 factor the (conditional) probability p(fJ1 , aJ1 |eI1) of obtaining an alignment and a translation given an English sentence according to the following generative story:</bodyText>
+<page confidence="0.994674">
+23
+</page>
+<listItem confidence="0.534567">1. For i = 1, 2, ... , I, decide on the number Φi of foreign words aligned to ei. This number is called the fertility of ei. Choose with prob-</listItem>
+<equation confidence="0.4480055">
+ability p(Φi|eI1, Φi−1
+1 ) = p(Φi|ei).
+</equation>
+<bodyText confidence="0.824941857142857">2. Choose the number Φ0 of unaligned words in the (still unknown) foreign sequence. Choose with probability p(Φ0|eI1, ΦI1) = p(Φ0 |PIi=1 Φi). Since each foreign word belongs to exactly one English position (including 0), the foreign sequence is now known to be of length J = PI i=0 Φi.</bodyText>
+<listItem confidence="0.878143">3. For each i = 1, 2, ... , I, and k = 1, ... , Φi decide on (a) the identity fi,k of the next foreign word aligned to ei. Choose with probability p(fi,k|ei), where di comprises all di,k for word i (see point b) below) and fi,k comprises all foreign words known at that point.(b) the position di,k of the just generated foreign word fi,k, with probability</listItem>
+<equation confidence="0.913753">
+p(fi,k|eI 1, ΦI 0, di−1
+1 , di,1,... , di,k−1, fi,k) =
+</equation>
+<equation confidence="0.9988864">
+I I
+p(di,k  |e1, Φ0, di−1
+1 , di,1, ... , di,k−1, fi,k, fi,k)
+= p(di,k|ei, di−1
+1 , di,1, . . . , di,k−1, fi,k, J).
+</equation>
+<bodyText confidence="0.999660444444444">4. The remaining Φ0 open positions in the foreign sequence align to position 0. Decide on the corresponding foreign words with p(fd0,k|e0), where e0 is an artificial “empty word”. To model the probability for the number of unaligned words in step 2, each of the PIi=1 Φi properly aligned foreign words generates an unaligned foreign word with probability p0, resulting in with a base probability p0 and the combinatorial coefficients ( ' ) = k!(n−k)!, where n!= Qnk=1 k denotes the factorial of n. The main difference between IBM-3, IBM-4 and IBM-5 is the choice of probability model in step 3 b), called a distortion model.</bodyText>
+<equation confidence="0.997599571428571">
+⎛ ⎞
+PI
+Φi
+Φ z _ i i)−Φ0i) p� (1 p0(E
+) � �
+P0
+Φ0
+</equation>
+<bodyText confidence="0.994892666666667">The choices are now detailed.</bodyText>
+<subsectionHeader confidence="0.983735">
+2.1 IBM-3
+</subsectionHeader>
+<bodyText confidence="0.969222142857143">The IBM-3 implements a zero order distortion model, resulting in p(di,k|i, J) . Since most of the context to be conditioned on is ignored, this allows invalid configurations to occur with non-zero probability: some foreign positions can be chosen several times, while others remain empty. One says that the model is deficient. On the other hand, the model for p(Φ0 |PIi=1 Φi) is nondeficient, and in training this often results in very high probabilities p0. To prevent this it is common to make this model deficient as well (Och and Ney, 2003), which improves performance immensely and gives much better results than simply fixing p0 in the original model. As for each i the di,k can appear in any order (i.e. need not be in ascending order), there are QIi=1 Φi! ways to generate the same alignment aJ1 (where the Φi are the fertilities induced by aJ1 ). In total, the IBM-3 has the following probability model:</bodyText>
+<equation confidence="0.9994092">
+p(fJ1 , aJ1 |eI1) = J h i
+Y p(fj|eaj) · p(j|aj, J) (1)
+j=1
+�·p Φ0 |XI �Φi · YI Φi! p(Φi|ei) .
+i=1 i=1
+</equation>
+<bodyText confidence="0.9778676">Reducing the Number of Parameters While using non-parametric models p(j|i, J) is convenient for closed-form M-steps in EM training, these parameters are not very intuitive. Instead, in this paper we use the parametric model with the more intuitive parameters p(j|i).</bodyText>
+<equation confidence="0.9975745">
+p(j|i, J) = p(j|i) PJ (2)
+j=1 p(j|i)
+</equation>
+<bodyText confidence="0.999977857142857">The arising M-step energy is addressed by projected gradient ascent (see below). These parameters are also used for the nondeficient variants. Using the original non-parametric ones can be handled in a very similar manner to the methods set forth below.</bodyText>
+<subsectionHeader confidence="0.992779">
+2.2 IBM-4
+</subsectionHeader>
+<bodyText confidence="0.9999975">The distortion model of the IBM-4 is a first order one that generates the di,k of each English position i in ascending order (i.e. for 1 &lt; k ≤ Φi we have di,k &gt; di,k−1). There is then a one-to-one correspondence between alignments aJ1 and (valid) distortion parameters (di,k)i=1,...,I, k=1,...,Φi and therefore no longer a factor of QIi=1 Φi! . The IBM-4 has two sub-distortion models, one for the first aligned word (k = 1) of an English position and one for all following words (k &gt; 1, only if Φi &gt; 1).</bodyText>
+<equation confidence="0.99523875">
+XI
+i=1
+� ���
+p Φ0
+</equation>
+<page confidence="0.979387">
+24
+</page>
+<bodyText confidence="0.999554142857143">For position i, let [i]=arg max{i0|1≤ i0 &lt; i, Φi0 &gt; 0} denote4 the closest preceding English word that has aligned foreign words. The aligned foreign positions of [i] are combined into a center position (D[i], the rounded average of the positions. Now, the distortion probability for the first word (k = 1) is where A gives the word class of a foreign word and B the word class of an English word (there are typically 50 classes per language, derived by machine learning techniques).</bodyText>
+<equation confidence="0.621335">
+p=1(di,1|O[i], A(fi,1), B(e[i]), J) ,
+</equation>
+<bodyText confidence="0.978361894736842">The probability is further reduced to a dependency on the difference of the positions, i.e.p=1(di,1−0[i]  |A(fi,1),B(e[i])). For k &gt; 1 the model is p&gt;1(di,k|di,k−1, A(fi,k), J) , which is likewise reduced to p&gt;1(di,k − di,k−1  |A(fi,k)). Note that in both differencebased formulations the dependence on J has to be dropped to get closed-form solutions of the M-step in EM training, and Brown et al.note themselves that the IBM-4 can place words before the start and after the end of the sentence. Reducing Deficiency In this paper, we also investigate the effect of reducing the amount of wasted probability mass by enforcing the dependence on J by proper renormalization, i.e.using for all following words, again handling the M-step in EM training via projected gradient ascent.</bodyText>
+<equation confidence="0.939776375">
+p=1(j|j0,A(fi,1),B(e[i]),J) = (3)
+p=1(j − j0|A(fi,1), B(e[i]))
+EJ ,
+j00=1 p=1(j00 − j0|A(fi,1), B(e[i]))
+for the first aligned word and
+p&gt;1(j|j0, A(fi,k), J) = (4)
+p&gt;1(j − j0  |A(fi,k))
+EJj00=1 p&gt;1(j00 − j0  |A(fi,k))
+</equation>
+<bodyText confidence="0.9131274">With this strategy words can no longer be placed outside the sentence, but a lot of probability mass is still wasted on configurations where at least one foreign (or predicted) position j aligns to two or more positions i, i0 in the English (or given) language (and consequently there are more unaligned 4If the set is empty, instead a sentence start probability is used. Note that we differ slightly in notation compared to (Brown et al., 1993).source words than the generated Φ0). Therefore, here, too, the probability for Φ0 has to be made deficient to get good performance. In summary, the base model for the IBM-4 is:</bodyText>
+<equation confidence="0.975748142857143">
+(p(fJ 1 , aJ 1 |eI 1) = p Φ0|
+��J77
+·11
+j=1
+ri· [ p=1(di,1 − (D[i]|A(fi,1), B(e[i]))
+i:Φi&gt;0
+]p&gt;1(di,k − di,k−1|A(fi,k)) ,
+</equation>
+<bodyText confidence="0.995681">where empty products are understood to be 1.</bodyText>
+<subsectionHeader confidence="0.760226">
+2.3 IBM-5
+</subsectionHeader>
+<bodyText confidence="0.999997125">We note in passing that the distortion model of the IBM-5 is nondeficient and has parameters for filling the nth open gap in the foreign sequence given that there are N positions to choose from – see the next section for exactly what positions one can choose from. There is also a dependence on word classes for the foreign language. This is neither a zero order nor a first order dependence, and in (Och and Ney, 2003) the first order model of the IBM-4, though deficient, outperformed the IBM-5. The IBM-5 is therefore rarely used in practice. This motivated us to instead reformulate IBM-3 and IBM-4 as nondeficient models. In our results, however, the IBM-5 gave surprisingly good results and was often superior to all variants of the IBM-4.</bodyText>
+<sectionHeader confidence="0.9745115" genericHeader="method">
+3 Nondeficient Variants of IBM-3 and
+IBM-4
+</sectionHeader>
+<bodyText confidence="0.998442857142857">From now on we always enforce that for each position i the indices di,k are generated in ascending order (di,k &gt; di,k−1 for k &gt; 1). A central concept for the generation of di,k in step 3(b) is the set of positions in the foreign sequence that are still without alignment. We denote the set of these positions by where the dependence on the various di0,k0 is not made explicit in the following.</bodyText>
+<equation confidence="0.999464">
+Ji,k,J = {1, . . . , J} − {di,k0 |1 ≤ k0 &lt; k}
+− {di0,k0 |1 ≤ i0 &lt; i, 1 ≤ k0 ≤ Φi0}
+</equation>
+<bodyText confidence="0.99986025">It is tempting to think that in a nondeficient model all members of Ji,k,J can be chosen for di,k, but this holds only Φi = 1.</bodyText>
+<equation confidence="0.992117222222222">
+)
+Φi (5)
+I
+i=1
+p(fj|eaj) · riI p(Φi|ei)
+i=1
+Φi
+ri·
+k=2
+</equation>
+<page confidence="0.966826">
+25
+</page>
+<bodyText confidence="0.975156555555556">Otherwise, the requirement of generating the di,k in ascending order prevents us from choosing the (Φi−k) largest entries in `,i,k,J. For k &gt; 1 we also have to remove all positions smaller than di,k−1. Let `, Φi i,k,J denote the set where these positions have been removed. With that, we can state the nondeficient variants of IBM-3 and IBM-4.</bodyText>
+<subsectionHeader confidence="0.992056">
+3.1 Nondeficient IBM-3
+</subsectionHeader>
+<bodyText confidence="0.989557">For the IBM-3, we define the auxiliary quantity again using the -now first order -parameters of the base model.</bodyText>
+<equation confidence="0.9687954">
+q(di,k = j |i, `,i kz J) = p(j|i) if j E j ,ki,J
+0 else ,
+=
+= 13(e[i]), we define the auxil-
+iary quantity
+=
+(7)
+p=1(j
+if j E
+0 else ,
+</equation>
+<bodyText confidence="0.96175125">The nondeficient distribution = is again obtained by renormalization. For the case k &gt; 1, we abbreviate = and introduce the auxiliary quantity ll 0 else , from which the nondeficient distribution</bodyText>
+<equation confidence="0.981702833333333">
+q&gt;1(di,k =
+f P&gt;1(j
+di,k
+1
+) if j E
+i ki J
+</equation>
+<equation confidence="0.96867484">
+α
+A(fi,1)and β
+q=1(di,1
+j|(D[i],α,β,`, Φi
+i,k,J)=
+−(D[i]|α,β)
+`, Φi
+i,k,J
+p=1(di,1
+j|(D[i],α,β,`, Φi
+i,k,J)
+α
+A(fi,k)
+j|di,k−1,α,`,Φi
+i,k,J)=(8)
+−
+−
+|α
+`,
+p&gt;1(di,k=j|di,k−1,α,`, Φi
+i,k,J) is again obtained by
+renormalization.
+keli-
+hood criterion
+pθ(fs|es) (9)
+</equation>
+<sectionHeader confidence="0.997398" genericHeader="evaluation">
+4 Training the New Variants
+</sectionHeader>
+<bodyText confidence="0.995398525">for the task of word alignment, we infer the parameters of the models using the maximum li 1, ... , Here, comprises all base parameters of the respective model (e.g. for the IBM-3 all all e) and all and signifies the dependence of the model on the parameters. Note that (9) is truly a constrained optimization problem as the parameters have to satisfy a number of probability normalization constraints. When denotes a fertility based model the resulting problem is anon-concave maximization problem with many local minima and no (known) closed-form solutions. Hence, it is handled by computational methods, which typically apply the logarithm to the above function. Our method of choice to attack the maximum likelihood problem is expectation maximization (EM), the standard in the field, which we explain below. Due to non-concaveness the starting point for EM is of extreme importance. As is common, we first train an and then an HMM before proceeding to the IBM-3 and finally the IBM-4. As in the training of the deficient IBM-3 and IBM-4 models, we approximate the expectations in the E-step by a set of likely alignments, ideally centered around the Viterbi alignment, but already for the regular deficient variants computing it is NP-hard (Udupa and Maji, 2006). A first task is therefore to compute such a set. This task is also needed for the actual task of word alignment (annotating agiven sentence pair with an where we use the zero order parameters we also use for the standard (deficient) IBM-3, compare (2).</bodyText>
+<equation confidence="0.9241352">
+S).
+θ
+p(f|e),
+p(Φ,
+p(j|i))
+pθ
+θ
+pθ(�)
+IBM-1
+alignment).
+</equation>
+<bodyText confidence="0.876846">To get a nondeficient variant, it remains to renormalize, resulting in</bodyText>
+<equation confidence="0.9871519">
+i
+j
+,
+ik�`J)
+p(di,k =
+,
+i k,J)
+� 1 q(j
+, �
+,J) (6)
+</equation>
+<bodyText confidence="0.5412316">Further, note that the factors now have to be removed from (1) as the di,k are generated in ascending order. Lastly, here we use the original nondeficient empty word model resulting in a totally nondeficient model.</bodyText>
+<equation confidence="0.145096">
+p(j|i)
+Φ
+q(
+|i
+`,
+j|i
+`,
+=P
+|i
+,ki
+Φi!
+p(Φ0|PIi=1Φi),
+</equation>
+<subsectionHeader confidence="0.512979">
+3.2 Nondeficient IBM-4
+</subsectionHeader>
+<bodyText confidence="0.8818844">With the notation set up, it is rather straightforward to derive a nondeficient variant of the IBM4. Here, there are the two cases k = 1 and k &gt; 1. We begin with the case k = 1. Abbreviating on a set of training data (i.e. sentence pairs s =</bodyText>
+<subsectionHeader confidence="0.997159">
+4.1 Alignment Computation
+</subsectionHeader>
+<bodyText confidence="0.8815621875">For computing alignments, we use the common procedure of hillclimbing where we start with an alignment, then iteratively compute the probabilities of all alignments differing by a move or a swap (Brown et al., 1993) and move to the best of these if it beats the current alignment. Since we cannot ignore parts of the history and still get a nondeficient model, computing the probabilities of the neighbors cannot be handled incrementally (or rather only partially, for the dictionary and fertility models). While this does increase running times, in practice the M-steps take longer than the E-steps. YS s=1 max θ For self-containment, we recall here that for an alignment aJ1 applying the move aJ1 [j → i] results in the alignment ˆaJ1 defined by ˆaj =i and ˆaj0 =aj0 for j0 7�j. Applying the swap aJ1 [j1 ↔ j2] results in the alignment ˆaJ1 defined by ˆaj1 =aj2, ˆaj2 =aj1 and ˆaj0 = aj0 elsewhere. If aJ1 is the alignment produced by hillclimbing, the move matrix m E IRJ×I+1 is defined by mj,i being the probability of aJ1 [j → i] as long as aj =� i, otherwise 0. Likewise the swap matrix s E IRJ×J is defined as sj1,j2 being the probability of aJ1 [j1 ↔ j2] for aj1 7�aj2, 0 otherwise. The move and swap matrices are used to approximate expectations in EM training (see below).</bodyText>
+<subsectionHeader confidence="0.971705">
+4.2 Parameter Update
+</subsectionHeader>
+<bodyText confidence="0.9999681">Naive Scheme It is tempting to account for the changes in the model in hillclimbing, but to otherwise use the regular M-step procedures (closed form solution when not conditioning on J for the IBM-4 and for the non-parametric IBM-3, otherwise projected gradient ascent) for the deficient models. However, we verified that this is not a good idea: not only can the likelihood go down in the process (even if we could compute expectations exactly), but these schemes also heavily increase p0 in each iteration, i.e. the same problem Och and Ney (2003) found for the deficient models. There is therefore the need to execute the Mstep properly, and when done the problem is indeed resolved. Proper EM The expectation maximization (EM) framework (Dempster et al., 1977; Neal and Hinton, 1998) is a class of template procedures (rather than a proper algorithm) that iteratively requires solving the task by appropriate means.</bodyText>
+<equation confidence="0.8523245">
+pθk−1(as|fs, es) log (pθk(fs, as|es))
+(10)
+</equation>
+<bodyText confidence="0.99925305">Here, θk−1 are the parameters from the previous iteration, while θk are those derived in the current iteration. Of course, here and in the following the normalization constraints on θ apply, as already in (9). On explicit request of a reviewer we give a detailed account for our setting here. Readers not interested in the details can safely move on to the next section. Details on EM For the corpora occurring in practice, the function (10) has many more terms than there are atoms in the universe. The trick is that pθk(fs, as|es) is a product of factors, where each factor depends on very few components of θk only. Taking the logarithm gives a sum of logarithms, and in the end we are left with the problem of computing the weights of each factor, which turn out to be expectations. To apply this to the (deficient) IBM-3 model with parametric distortion we simplify pθk−1(as|fs, es) = p(as) and define the counts nf,e(as) = �Js and nj,i(as) = δ(asj, i).</bodyText>
+<equation confidence="0.997067">
+j=1 δ(fsj , f) ·
+δ(easj, e), nΦ,e(as) = �zs 1 δ(ez, e) ·δ(Φi(as), Φ)
+</equation>
+<bodyText confidence="0.999529">We also use short hand notations for sets, e.g.{p(f|e)} is meant as the set of all translation probabilities induced by the given corpus. With this notation, after reordering the terms problem (10) can be written as</bodyText>
+<equation confidence="0.9985922">
+max (11)
+{p(f|e)},{p(Φ|e)},{p(j|i)}
+]p(as) nf,e(as) log (p(f|e))
+]p(as) nΦ,e(as) log (p(Φ, e))
+]p(as) nj,i(as) log (p(j|i, J)) .
+</equation>
+<bodyText confidence="0.999948227272727">Indeed, the weights in each line turn out to be nothing else than expectations of the respective factor under the distribution pθk−1(as|fs, es) and will henceforth be written as wf,e, wΦ,e and wj,i,J. Therefore, executing an iteration of EM requires first calculating all expectations (E-step) and then solving the maximization problems (M-step). For models such as IBM-1 and HMM the expectations can be calculated efficiently, so the enormous sum of terms in (10) is equivalently written as a manageable one. In this case it can be shown5 that the new θk must have a higher likelihood (9) than θk−1 (unless a stationary point is reached). In fact, any θ that has a higher value in the auxiliary function (11) than θk−1 must also have a higher likelihood. This is an important background for parametric models such as (2) where the M-step cannot be solved exactly. For IBM-3/4/5 computing exact expectations is intractable (Udupa and Maji, 2006) and approximations have to be used (in fact, even computing the likelihood for a given θ is intractable). We use the common procedure based on hillclimbing and the move/swap matrices.</bodyText>
+<footnote confidence="0.876825666666667">
+5See e.g. the author’s course notes (in German), currently
+http://user.phil-fak.uni-duesseldorf.de/
+˜tosch/downloads/statmt/wordalign.pdf.
+</footnote>
+<figure confidence="0.864116789473684">
+1:
+as
+max
+θk
+1:S
+s=1
+1: S 1:
+e,f [ 1: as
+s=1
++1:
+e,Φ
++1:
+i,j
+S 1:
+[ 1: as
+s=1 1:
+S as
+[ 1:
+s=1
+</figure>
+<page confidence="0.996777">
+27
+</page>
+<bodyText confidence="0.999884941176471">The likelihood is not guaranteed to increase but it (or rather its approximation) always did in each of the five run iterations. Nevertheless, the main advantage of EM is preserved: problem (11) decomposes into several smaller problems, one for each probability distribution since the parameters are tied by the normalization constraints. The result is one problem for each e involving all p(f|e), one for each e involving all p(Φ|e) and one for each i involving all p(j|i). The problems for the translation probabilities and the fertility probabilities yield the known standard update rules. The most interesting case is the problem for the (parametric) distortion models. In the deficient setting, the problem for each i is</bodyText>
+<equation confidence="0.9690652">
+!
+X p(j|i)
+max wi,j,J log PJ
+{p(j|i)} j0=1 p(j0|i)
+J
+</equation>
+<bodyText confidence="0.99993275">In the nondeficient setting, we now drop the subscripts i, k, J and the superscript Φ from the sets defined in the previous sections, i.e. we write J instead of JΦi,k,J. The M-step problem is then where wj,i,J (with j ∈ J ) is the expectation for aligning j to i when one can choose among the positions in J , and with p(j|i, J ) as in (6).</bodyText>
+<equation confidence="0.942584">
+wj,i,J log (p(j|i, J)) ,
+</equation>
+<bodyText confidence="0.970444657894737">In principle there is an exponential number of expectations wj,i,J . However, since we approximate expectations from the move and swap matrices, and hence by O((I + J) · J) alignments per sentence pair, in the end we get a polynomial number of terms. Currently we only consider alignments with (approximated) pθk−1(as|fs, es) &gt; 10−6. Importantly, the fact that we get separate M-step problems for different i allows us to reduce memory consumption by using refined data structures when storing the expectations. For both the deficient and the nondeficient variants, the M-step problems for the distortion parameters p(j|i) are non-trivial, non-concave and have no (known) closed form solutions. We approach them via the method of projected gradient ascent (PGA), where the gradient for the nondeficient problem is When running PGA we guarantee that the resulting {p(j|i)} has a higher function value Ei than the input ones (unless a stationary point is input). We stop when a cutoff criterion indicates a local maximum or 250 iterations are used up. Projected Gradient Ascent This method is used in a couple of recent papers, notably (Schoenemann, 2011; Vaswani et al., 2012) and is briefly sketched here for self-containment (see those papers for more details). To solve a maximization problem max p(j |i)≥0,Ej p(j|i)=1 for some (differentiable) function Ei(·), one iteratively starts at the current point {pk(j|i)}, computes the gradient ∇Ei({pk(j|i)}) and goes to the point for some step-length α.</bodyText>
+<equation confidence="0.997163">
+q(j|i) = pk(j|i) + α∇Ei(pk(j|i)), j = 1,...,J
+</equation>
+<bodyText confidence="0.99412705">This point is generally not a probability distribution, so one computes the nearest probability distribution (q0(j|i) − q(j|i))2 , a step known as projection which we solve with the method of (Michelot, 1986). The new distribution {q0(j|i)} is not guaranteed to have a higher Ei(·), but (since the constraint set is a convex one) a suitable interpolation of {pk(j|i)} and {q0(j|i)} is guaranteed to have a higher value (unless {pk(j|i)} is a local maximum or minimum of Ei(·)). Such a point is computed by backtracking line search and defines the next iterate {pk+1(j|i)}. IBM-4 When moving from the IBM-3 to the IBM-4, only the last line in (11) changes. In the end one gets two new kinds of problems, for p=1(·) and p&gt;1(·). For p=1(·) we have one problem for each foreign class α and each English class β, of the form for reduced deficiency (with p=1(j|j0, α, β, J) as in (3) ) and of the form</bodyText>
+<equation confidence="0.96792025">
+X wj,j0,J,α,β logp=1(j|j0, α,β, J)~
+max
+{p=1(j|j0,α,β)}
+j,j0,J
+</equation>
+<equation confidence="0.9886305">
+X wj,j0,J ,α,β logp=1(j|j0, α, β, J )�
+max
+{p=1(j|j0,α,β)}
+j,j0,J
+max XEi = X
+{p(j|i)} j J :j∈J
+&amp;quot; = X wj,J − Pj0∈J wj0,J
+∂p(j  |i) J :j∈ J p(j|i) Pj0∈J p(j0|i)
+∂Ei
+Ei({p(j|i)})
+min
+q0(j |i)≥0,Ej q0(j|i)=1
+XJ
+j=1
+</equation>
+<page confidence="0.997196">
+28
+</page>
+<table confidence="0.999577733333333">
+Model Degree of Deficiency De|En En|De Es|En En|Es
+HMM nondeficient (our) 73.8 77.6 77.4 76.1
+IBM-3 full (GIZA++) 74.2 76.5 74.3 74.5
+IBM-3 full (our) 75.6 79.2 75.2 73.7
+IBM-3 nondeficient (our) 76.1 79.8 76.8 75.5
+IBM-4, 1 x 1 word class full (GIZA++) 77.9 79.4 78.6 78.4
+IBM-4, 1 x 1 word class full (our) 76.1 81.5 77.8 78.0
+IBM-4, 1 x 1 word class reduced (our) 77.2 80.6 77.9 78.3
+IBM-4, 1 x 1 word class nondeficient (our) 77.6 81.5 80.0 78.4
+IBM-4, 50 x 50 word classes full (GIZA++) 78.6 80.4 79.3 79.3
+IBM-4, 50 x 50 word classes full (our) 78.0 82.4 79.2 79.4
+IBM-4, 50 x 50 word classes reduced (our) 78.5 82.1 79.2 79.0
+IBM-4, 50 x 50 word classes nondeficient (our) 77.9 82.5 79.7 78.2
+IBM-5, 50 word classes nondeficient (GIZA++) 79.4 81.1 80.0 79.5
+IBM-5, 50 word classes nondeficient (our) 79.2 82.7 79.7 79.5
+</table>
+<tableCaption confidence="0.927081">
+Table 1: Alignment accuracy (weighted F-measure times 100, α = 0.1) on Europarl with 100.000
+sentence pairs. Reduced deficiency means renormalization as in (3) and (4), so that words cannot be
+placed before or after the sentence. For the IBM-3, the nondeficient variant is clearly best. For the IBM-4 it is better in roughly half the cases, both with and without word classes.</tableCaption>
+<bodyText confidence="0.900586">for the nondeficient variant, with p=1(j|j0, α, β, J ) based on (7). For p&gt;1(·) we have one problem per foreign class α, of the form wj,j0,J,α log (p&gt;1(j|j0, α, J)) for reduced deficiency, with p&gt;1(j|j0, α, J) based on (4), and for the nondeficient variant it has the with p&gt;1(j|j0, α, J ) based on (8).</bodyText>
+<equation confidence="0.6252706">
+form �
+wj,j0,J ,α log (p&gt;1(j|j0, α, J )) ,
+max
+{p&gt;1(j|j0,α)}
+j,j0,J
+</equation>
+<bodyText confidence="0.998113">Calculating the gradients is analogous to the IBM-3.</bodyText>
+<sectionHeader confidence="0.999706" genericHeader="evaluation and result">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.9998702">We test the proposed methods on subsets of the Europarl corpus for German and English as well as Spanish and English, using lower-cased corpora. We evaluate alignment accuracies on gold alignments6 in the form of weighted F-measures with α=0.1, which performed well in (Fraser and Marcu, 2007b). In addition we evaluate the effect on phrase-based translation on one of the tasks. We implement the proposed methods in our own framework RegAligner rather than GIZA++, which is only rudimentally maintained.</bodyText>
+<footnote confidence="0.937396333333333">
+6from (Lambert et al., 2005) and from
+http://user.phil-fak.uni-duesseldorf.de/
+˜tosch/downloads.html.
+</footnote>
+<bodyText confidence="0.999543615384615">Therefore, we compare to the deficient models in our own software as well as to those in GIZA++. We run 5 iterations of IBM-1, followed by 5 iterations of HMM, 5 of IBM-3 and finally 5 of IBM-4. The first iteration of the IBM-3 collects counts from the HMM, and likewise the first iteration of the IBM-4 collects counts from the IBM3 (in both cases the move and swap matrices are filled with probabilities of the former model, then theses matrices are used as in a regular model iteration). A nondeficient IBM-4 is always initialized by a nondeficient IBM-3. We did not set a fertility limit (except for GIZA++). Experiments were run on a Core i5 with 2.5 GHz and 8 GB of memory. The latter was the main reason why we did not use still larger corpora7. The running times for the entire training were half a day without word classes and a day with word classes. With 50 instead of 250 PGA iterations in all M-steps we get only half these running times, but the resulting F-measures deteriorate, especially for the IBM-4 with classes. The running times of our implementation of the IBM-5 are much more favorable: the entire training then runs in little more than an hour.</bodyText>
+<footnote confidence="0.994048333333333">
+7The main memory bottleneck is the IBM-4 (6 GB with-
+out classes, 8 GB with). Using refined data structures should
+reduce this bottleneck.
+</footnote>
+<figure confidence="0.940383333333333">
+�max
+{p&gt;1(j|j0,α)}
+j,j0,J
+</figure>
+<page confidence="0.986761">
+29
+</page>
+<subsectionHeader confidence="0.98932">
+5.1 Alignment Accuracy
+</subsectionHeader>
+<bodyText confidence="0.999990043478261">The alignment accuracies – weighted F-measures with α = 0.1 – for the tested corpora and model variants are given in Table 1. Clearly, nondeficiency greatly improves the accuracy of the IBM3, both compared to our deficient implementation and that of GIZA++. For the IBM-4 we get improvements for the nondeficient variant in roughly half the cases, both with and without word classes. We think this is an issue of local minima, inexactly solved M-steps and sensitiveness to initialization. Interestingly, also the reduced deficient IBM-4 is not always better than the fully deficient variant. Again, we think this is due to problems with the non-concave nature of the models. There is also quite some surprise regarding the IBM-5: contrary to the findings of (Och and Ney, 2003) the IBM-5 in GIZA++ performs best in three out of four cases when competing with both deficient and nondeficient variants of IBM-3 and IBM-4. Our own implementation gives slightly different results (as we do not use smoothing), but it, too, performs very well.</bodyText>
+<subsectionHeader confidence="0.997944">
+5.2 Effect on Translation Performance
+</subsectionHeader>
+<bodyText confidence="0.9999775">We also check the effect of the various alignments (all produced by RegAligner) on translation performance for phrase-based translation, randomly choosing translation from German to English. We use MOSES with a 5-gram language model (trained on 500.000 sentence pairs) and the standard setup in the MOSES Experiment Management System: training is run in both directions, the alignments are combined using diag-grow-final-and (Och and Ney, 2003) and the parameters of MOSES are optimized on 750 development sentences. The resulting BLEU-scores are shown in Table 2. However, the table shows no clear trends and even the IBM-3 is not clearly inferior to the IBM4. We think that one would need to handle larger corpora (or run multiple instances of Minimum Error Rate Training with different random seeds) to get more meaningful insights. Hence, at present our paper is primarily of theoretical value.</bodyText>
+<sectionHeader confidence="0.999328" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.9959785">We have shown that the word alignment models IBM-3 and IBM-4 can be turned into nondeficient variants, an important aim of probabilistic modeling for word alignment.</bodyText>
+<table confidence="0.999408363636364">
+Model #Classes Deficiency BLEU
+HMM - nondeficient 29.72
+IBM-3 - deficient 29.63
+IBM-3 - nondeficient 29.73
+IBM-4 1 x 1 fully deficient 29.91
+IBM-4 1 x 1 reduced deficient 29.88
+IBM-4 1 x 1 nondeficient 30.18
+IBM-4 50 x 50 fully deficient 29.86
+IBM-4 50 x 50 reduced deficient 30.14
+IBM-4 50 x 50 nondeficient 29.90
+IBM-5 50 nondeficient 29.84
+</table>
+<tableCaption confidence="0.998011">
+Table 2: Evaluation of phrase-based translation
+from German to English with the obtained alignments (for 100.000 sentence pairs). Training is run in both directions and the resulting alignments are combined via diag-grow-final-and. The table shows no clear superiority of any method. In fact, the IBM-4 is not superior to the IBM-3 and the HMM is about equal to the IBM-3. We think that one needs to handle larger corpora to get clearer insights.</tableCaption>
+<bodyText confidence="0.989326297297297">Here we have exploited that the models are proper applications of the chain rule of probabilities, where deficiency is only introduced by ignoring parts of the history for the distortion factors in the factorization. By proper renormalization the desired nondeficient variants are obtained. The arising models are trained via expectation maximization. In the E-step we use hillclimbing to get a likely alignment (ideally the Viterbi alignment). While this cannot be handled fully incrementally, it is still fast enough in practice. The M-step energies are non-concave and have no (known) closed-form solutions. They are handled via projected gradient ascent. For the IBM-3 nondeficiency clearly improves alignment accuracy. For the IBM-4 we get improved accuracies in roughly half the cases, both with and without word classes. The IBM-5 performs surprisingly well, it is often best and hence much better than its reputation. An evaluation of phrase based translation showed no clear insights. Nevertheless, we think that nondeficiency in fertility based models is an important issue, and that at the very least our paper is of theoretical value. The implementations are publicly available in RegAligner 1.2.</bodyText>
+<page confidence="0.997496">
+30
+</page>
+<sectionHeader confidence="0.993887" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.99970502020202">
+M. Bansal, C. Quirk, and R. Moore. 2011. Gappy
+phrasal alignment by agreement. In Annual Meet-
+ing of the Association for Computational Linguistics
+(ACL), Portland, Oregon, June.
+P.F. Brown, S.A. Della Pietra, V.J. Della Pietra, and
+R.L. Mercer. 1993. The mathematics of statistical
+machine translation: Parameter estimation. Compu-
+tational Linguistics, 19(2):263–311, June.
+F. Cromi`eres and S. Kurohashi. 2009. An alignment
+algorithm using Belief Propagation and a structure-
+based distortion model. In Conference of the Euro-
+pean Chapter of the Association for Computational
+Linguistics (EACL), Athens, Greece, April.
+A.P. Dempster, N.M. Laird, and D.B. Rubin. 1977.
+Maximum likelihood from incomplete data via the
+EM algorithm. Journal of the Royal Statistical So-
+ciety, Series B, 39(1):1–38.
+Y. Deng and W. Byrne. 2005. HMM word and phrase
+alignment for statistical machine translation. In
+HLT-EMNLP, Vancouver, Canada, October.
+A. Fraser and D. Marcu. 2007a. Getting the structure
+right for word alignment: LEAF. In Conference on
+Empirical Methods in Natural Language Processing
+(EMNLP), Prague, Czech Republic, June.
+A. Fraser and D. Marcu. 2007b. Measuring word
+alignment quality for statistical machine translation.
+Computational Linguistics, 33(3):293–303, Septem-
+ber.
+J. Grac¸a, K. Ganchev, and B. Taskar. 2010. Learning
+tractable word alignment models with complex con-
+straints. Computational Linguistics, 36, September.
+P. Lambert, A.D. Gispert, R. Banchs, and J.B. Marino.
+2005. Guidelines for word alignment evaluation and
+manual alignment. Language Resources and Evalu-
+ation, 39(4):267–285.
+P. Liang, B. Taskar, and D. Klein. 2006. Alignment by
+agreement. In Human Language Technology Con-
+ference of the North American Chapter of the As-
+sociation of Computational Linguistics, New York,
+New York, June.
+D. Marcu and W. Wong. 2002. A phrase-based,
+joint probability model for statistical machine trans-
+lation. In Conference on Empirical Methods in Nat-
+ural Language Processing (EMNLP), Philadelphia,
+Pennsylvania, July.
+D. Melamed. 2000. Models of translational equiv-
+alence among words. Computational Linguistics,
+26(2):221–249.
+C. Michelot. 1986. A finite algorithm for finding the
+projection of a point onto the canonical simplex of
+IR'. Journal on Optimization Theory and Applica-
+tions, 50(1), July.
+R.M. Neal and G.E. Hinton. 1998. A view of the
+EM algorithm that justifies incremental, sparse, and
+other variants. In M.I. Jordan, editor, Learning in
+Graphical Models. MIT press.
+F.J. Och and H. Ney. 2003. A systematic comparison
+of various statistical alignment models. Computa-
+tional Linguistics, 29(1):19–51.
+S. Ravi and K. Knight. 2010. Does GIZA++ make
+search errors? Computational Linguistics, 36(3).
+T. Schoenemann. 2010. Computing optimal align-
+ments for the IBM-3 translation model. In Confer-
+ence on Computational Natural Language Learning
+(CoNLL), Uppsala, Sweden, July.
+T. Schoenemann. 2011. Regularizing mono- and bi-
+word models for word alignment. In International
+Joint Conference on Natural Language Processing
+(IJCNLP), Chiang Mai, Thailand, November.
+E. Sumita, Y. Akiba, T. Doi, A. Finch, K. Imamura,
+H. Okuma, M. Paul, M. Shimohata, and T. Watan-
+abe. 2004. EBMT, SMT, Hybrid and more: ATR
+spoken language translation system. In Interna-
+tional Workshop on Spoken Language Translation
+(IWSLT), Kyoto, Japan, September.
+K. Toutanova, H.T. Ilhan, and C.D. Manning. 2002.
+Extensions to HMM-based statistical word align-
+ment models. In Conference on Empirical Meth-
+ods in Natural Language Processing (EMNLP),
+Philadelphia, Pennsylvania, July.
+R. Udupa and H.K. Maji. 2006. Computational com-
+plexity of statistical machine translation. In Con-
+ference of the European Chapter of the Association
+for Computational Linguistics (EACL), Trento, Italy,
+April.
+A. Vaswani, L. Huang, and D. Chiang. 2012. Smaller
+alignment models for better translations: Unsuper-
+vised word alignment with the to-norm. In Annual
+Meeting of the Association for Computational Lin-
+guistics (ACL), Jeju, Korea, July.
+S. Vogel, H. Ney, and C. Tillmann. 1996. HMM-based
+word alignment in statistical translation. In Inter-
+national Conference on Computational Linguistics
+(COLING), pages 836–841, Copenhagen, Denmark,
+August.
+Y.-Y. Wang and A. Waibel. 1998. Modeling with
+structures in statistical machine translation. In In-
+ternational Conference on Computational Linguis-
+tics (COLING), Montreal, Canada, August.
+</reference>
+<page confidence="0.999913">
+31
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.860987" no="0">
+<title confidence="0.999234">Training Nondeficient Variants of IBM-3 and IBM-4 for Word Alignment</title>
+<author confidence="0.934357">Thomas</author>
+<affiliation confidence="0.9670185">Heinrich-Heine-Universit¨at D¨usseldorf, Universit¨atsstr.</affiliation>
+<address confidence="0.999076">40225 D¨usseldorf, Germany</address>
+<abstract confidence="0.998694">We derive variants of the fertility based models IBM-3 and IBM-4 that, while maintaining their zero and first order parameters, are nondeficient. Subsequently, we proceed to derive a method to compute a likely alignment and its neighbors as well as give a solution of EM training. The arising M-step energies are non-trivial and handled via projected gradient ascent. Our evaluation on gold alignments shows substantial improvements (in weighted Fmeasure) for the IBM-3. For the IBM- 4 there are no consistent improvements. Training the nondeficient IBM-5 in the regular way gives surprisingly good results. Using the resulting alignments for phrasebased translation systems offers no clear insights w.r.t. BLEU scores.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>M Bansal</author>
+<author>C Quirk</author>
+<author>R Moore</author>
+</authors>
+<title>Gappy phrasal alignment by agreement.</title>
+<date>2011</date>
+<booktitle>In Annual Meeting of the Association for Computational Linguistics (ACL),</booktitle>
+<location>Portland, Oregon,</location>
+<contexts>
+<context citStr="Bansal et al., 2011" endWordPosition="1037" position="6493" startWordPosition="1034">to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with a short review of fertility-based models in general and IBM-3, IBM-4 and IBM5 specifically. All are due to (Brown et al., 1993) who proposed to use the deficient models IBM-3 and IBM-4 to initialize the nondeficient IBM-5. For a foreign sentence f = fJ1 = (f1, ... , fJ) with J words and an English one e = eI1 = (e1, ... , eI) with I words, the (conditional) probability p(fJ1 |eI1) of getting the foreign sentence as a translation of the English one is modeled by introducing the word alignme</context>
+</contexts>
+<marker>Bansal, Quirk, Moore, 2011</marker>
+<rawString>M. Bansal, C. Quirk, and R. Moore. 2011. Gappy phrasal alignment by agreement. In Annual Meeting of the Association for Computational Linguistics (ACL), Portland, Oregon, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P F Brown</author>
+<author>S A Della Pietra</author>
+<author>V J Della Pietra</author>
+<author>R L Mercer</author>
+</authors>
+<title>The mathematics of statistical machine translation: Parameter estimation.</title>
+<date>1993</date>
+<journal>Computational Linguistics,</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Brown et al. (1993)" endWordPosition="694" position="4384" startWordPosition="691"> recognized that – with proper initialization – fertility based models outperform sequence based ones. In particular, sequence based models can simply ignore a part of the sentence to be conditioned on, while fertility based models explicitly factor in a probability of words in this sentence to have no aligned words (or any other number of aligned words, called the fertility). Hence, it is encouraging to see that the nondeficient IBM-4 indeed derives a higher likelihood than the sequence based HMM. Related Work Today’s most widely used models for word alignment are still the models IBM 1-5 of Brown et al. (1993) and the HMM of Vogel et al. (1996), thoroughly evaluated in (Och and Ney, 2003). While it is known that fertilitybased models outperform sequence-based ones, the large bulk of word alignment literature following these publications has mostly ignored fertilitybased models. This is different in the present paper which deals exclusively with such models. One reason for the lack of interest is surely that computing expectations and Viterbi alignments for these models is a hard problem (Udupa and Maji, 2006). Nevertheless, computing Viterbi align1https://github.com/Thomas1205/RegAligner, for the r</context>
+<context citStr="Brown et al., 1993" endWordPosition="1080" position="6726" startWordPosition="1077">age collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with a short review of fertility-based models in general and IBM-3, IBM-4 and IBM5 specifically. All are due to (Brown et al., 1993) who proposed to use the deficient models IBM-3 and IBM-4 to initialize the nondeficient IBM-5. For a foreign sentence f = fJ1 = (f1, ... , fJ) with J words and an English one e = eI1 = (e1, ... , eI) with I words, the (conditional) probability p(fJ1 |eI1) of getting the foreign sentence as a translation of the English one is modeled by introducing the word alignment a as a hidden variable: �p(fJ 1 |eI 1) = p(fJ 1 , a|eI1) a All IBM models restrict the space of alignments to those where a foreign word can align to at most one target word. The resulting alignment is then written as a vector aJ1</context>
+<context citStr="Brown et al., 1993" endWordPosition="2301" position="13442" startWordPosition="2298">(j|j0, A(fi,k), J) = (4) p&gt;1(j − j0 |A(fi,k)) EJj00=1 p&gt;1(j00 − j0 |A(fi,k)) for all following words, again handling the M-step in EM training via projected gradient ascent. With this strategy words can no longer be placed outside the sentence, but a lot of probability mass is still wasted on configurations where at least one foreign (or predicted) position j aligns to two or more positions i, i0 in the English (or given) language (and consequently there are more unaligned 4If the set is empty, instead a sentence start probability is used. Note that we differ slightly in notation compared to (Brown et al., 1993). source words than the generated Φ0). Therefore, here, too, the probability for Φ0 has to be made deficient to get good performance. In summary, the base model for the IBM-4 is: (p(fJ 1 , aJ 1 |eI 1) = p Φ0| ��J77 ·11 j=1 ri· [ p=1(di,1 − (D[i]|A(fi,1), B(e[i])) i:Φi&gt;0 ]p&gt;1(di,k − di,k−1|A(fi,k)) , where empty products are understood to be 1. 2.3 IBM-5 We note in passing that the distortion model of the IBM-5 is nondeficient and has parameters for filling the nth open gap in the foreign sequence given that there are N positions to choose from – see the next section for exactly what positions </context>
+<context citStr="Brown et al., 1993" endWordPosition="3290" position="18864" startWordPosition="3287">mpty word model p(j|i) Φ q( |i `, j|i `, =P |i ,ki Φi! p(Φ0|PIi=1Φi), resulting in a totally nondeficient model. 3.2 Nondeficient IBM-4 With the notation set up, it is rather straightforward to derive a nondeficient variant of the IBM4. Here, there are the two cases k = 1 and k &gt; 1. We begin with the case k = 1. Abbreviating on a set of training data (i.e. sentence pairs s = 4.1 Alignment Computation For computing alignments, we use the common procedure of hillclimbing where we start with an alignment, then iteratively compute the probabilities of all alignments differing by a move or a swap (Brown et al., 1993) and move to the best of these if it beats the current alignment. Since we cannot ignore parts of the history and still get a nondeficient model, computing the probabilities of the neighbors cannot be handled incrementally (or rather only partially, for the dictionary and fertility models). While this does increase running times, in practice the M-steps take longer than the E-steps. YS s=1 max θ For self-containment, we recall here that for an alignment aJ1 applying the move aJ1 [j → i] results in the alignment ˆaJ1 defined by ˆaj =i and ˆaj0 =aj0 for j0 7�j. Applying the swap aJ1 [j1 ↔ j2] re</context>
+</contexts>
+<marker>Brown, Pietra, Pietra, Mercer, 1993</marker>
+<rawString>P.F. Brown, S.A. Della Pietra, V.J. Della Pietra, and R.L. Mercer. 1993. The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics, 19(2):263–311, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Cromi`eres</author>
+<author>S Kurohashi</author>
+</authors>
+<title>An alignment algorithm using Belief Propagation and a structurebased distortion model.</title>
+<date>2009</date>
+<booktitle>In Conference of the European Chapter of the Association for Computational Linguistics (EACL),</booktitle>
+<location>Athens, Greece,</location>
+<marker>Cromi`eres, Kurohashi, 2009</marker>
+<rawString>F. Cromi`eres and S. Kurohashi. 2009. An alignment algorithm using Belief Propagation and a structurebased distortion model. In Conference of the European Chapter of the Association for Computational Linguistics (EACL), Athens, Greece, April.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A P Dempster</author>
+<author>N M Laird</author>
+<author>D B Rubin</author>
+</authors>
+<title>Maximum likelihood from incomplete data via the EM algorithm.</title>
+<date>1977</date>
+<journal>Journal of the Royal Statistical Society, Series B,</journal>
+<volume>39</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Dempster et al., 1977" endWordPosition="3624" position="20716" startWordPosition="3621">d form solution when not conditioning on J for the IBM-4 and for the non-parametric IBM-3, otherwise projected gradient ascent) for the deficient models. However, we verified that this is not a good idea: not only can the likelihood go down in the process (even if we could compute expectations exactly), but these schemes also heavily increase p0 in each iteration, i.e. the same problem Och and Ney (2003) found for the deficient models. There is therefore the need to execute the Mstep properly, and when done the problem is indeed resolved. Proper EM The expectation maximization (EM) framework (Dempster et al., 1977; Neal and Hinton, 1998) is a class of template procedures (rather than a proper algorithm) that iteratively requires solving the task pθk−1(as|fs, es) log (pθk(fs, as|es)) (10) by appropriate means. Here, θk−1 are the parameters from the previous iteration, while θk are those derived in the current iteration. Of course, here and in the following the normalization constraints on θ apply, as already in (9). On explicit request of a reviewer we give a detailed account for our setting here. Readers not interested in the details can safely move on to the next section. Details on EM For the corpora</context>
+</contexts>
+<marker>Dempster, Laird, Rubin, 1977</marker>
+<rawString>A.P. Dempster, N.M. Laird, and D.B. Rubin. 1977. Maximum likelihood from incomplete data via the EM algorithm. Journal of the Royal Statistical Society, Series B, 39(1):1–38.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Deng</author>
+<author>W Byrne</author>
+</authors>
+<title>HMM word and phrase alignment for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In HLT-EMNLP,</booktitle>
+<location>Vancouver, Canada,</location>
+<contexts>
+<context citStr="Deng and Byrne, 2005" endWordPosition="924" position="5795" startWordPosition="921">and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, o</context>
+</contexts>
+<marker>Deng, Byrne, 2005</marker>
+<rawString>Y. Deng and W. Byrne. 2005. HMM word and phrase alignment for statistical machine translation. In HLT-EMNLP, Vancouver, Canada, October.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Fraser</author>
+<author>D Marcu</author>
+</authors>
+<title>Getting the structure right for word alignment: LEAF.</title>
+<date>2007</date>
+<booktitle>In Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<location>Prague, Czech Republic,</location>
+<contexts>
+<context citStr="Fraser and Marcu, 2007" endWordPosition="951" position="5957" startWordPosition="948">ining. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The mo</context>
+<context citStr="Fraser and Marcu, 2007" endWordPosition="5150" position="29457" startWordPosition="5147">gn class α, of the form wj,j0,J,α log (p&gt;1(j|j0, α, J)) for reduced deficiency, with p&gt;1(j|j0, α, J) based on (4), and for the nondeficient variant it has the form � wj,j0,J ,α log (p&gt;1(j|j0, α, J )) , max {p&gt;1(j|j0,α)} j,j0,J with p&gt;1(j|j0, α, J ) based on (8). Calculating the gradients is analogous to the IBM-3. 5 Experiments We test the proposed methods on subsets of the Europarl corpus for German and English as well as Spanish and English, using lower-cased corpora. We evaluate alignment accuracies on gold alignments6 in the form of weighted F-measures with α=0.1, which performed well in (Fraser and Marcu, 2007b). In addition we evaluate the effect on phrase-based translation on one of the tasks. We implement the proposed methods in our own framework RegAligner rather than GIZA++, 6from (Lambert et al., 2005) and from http://user.phil-fak.uni-duesseldorf.de/ ˜tosch/downloads.html. which is only rudimentally maintained. Therefore, we compare to the deficient models in our own software as well as to those in GIZA++. We run 5 iterations of IBM-1, followed by 5 iterations of HMM, 5 of IBM-3 and finally 5 of IBM-4. The first iteration of the IBM-3 collects counts from the HMM, and likewise the first iter</context>
+</contexts>
+<marker>Fraser, Marcu, 2007</marker>
+<rawString>A. Fraser and D. Marcu. 2007a. Getting the structure right for word alignment: LEAF. In Conference on Empirical Methods in Natural Language Processing (EMNLP), Prague, Czech Republic, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Fraser</author>
+<author>D Marcu</author>
+</authors>
+<title>Measuring word alignment quality for statistical machine translation.</title>
+<date>2007</date>
+<journal>Computational Linguistics,</journal>
+<volume>33</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Fraser and Marcu, 2007" endWordPosition="951" position="5957" startWordPosition="948">ining. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The mo</context>
+<context citStr="Fraser and Marcu, 2007" endWordPosition="5150" position="29457" startWordPosition="5147">gn class α, of the form wj,j0,J,α log (p&gt;1(j|j0, α, J)) for reduced deficiency, with p&gt;1(j|j0, α, J) based on (4), and for the nondeficient variant it has the form � wj,j0,J ,α log (p&gt;1(j|j0, α, J )) , max {p&gt;1(j|j0,α)} j,j0,J with p&gt;1(j|j0, α, J ) based on (8). Calculating the gradients is analogous to the IBM-3. 5 Experiments We test the proposed methods on subsets of the Europarl corpus for German and English as well as Spanish and English, using lower-cased corpora. We evaluate alignment accuracies on gold alignments6 in the form of weighted F-measures with α=0.1, which performed well in (Fraser and Marcu, 2007b). In addition we evaluate the effect on phrase-based translation on one of the tasks. We implement the proposed methods in our own framework RegAligner rather than GIZA++, 6from (Lambert et al., 2005) and from http://user.phil-fak.uni-duesseldorf.de/ ˜tosch/downloads.html. which is only rudimentally maintained. Therefore, we compare to the deficient models in our own software as well as to those in GIZA++. We run 5 iterations of IBM-1, followed by 5 iterations of HMM, 5 of IBM-3 and finally 5 of IBM-4. The first iteration of the IBM-3 collects counts from the HMM, and likewise the first iter</context>
+</contexts>
+<marker>Fraser, Marcu, 2007</marker>
+<rawString>A. Fraser and D. Marcu. 2007b. Measuring word alignment quality for statistical machine translation. Computational Linguistics, 33(3):293–303, September.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Grac¸a</author>
+<author>K Ganchev</author>
+<author>B Taskar</author>
+</authors>
+<title>Learning tractable word alignment models with complex constraints.</title>
+<date>2010</date>
+<journal>Computational Linguistics,</journal>
+<volume>36</volume>
+<marker>Grac¸a, Ganchev, Taskar, 2010</marker>
+<rawString>J. Grac¸a, K. Ganchev, and B. Taskar. 2010. Learning tractable word alignment models with complex constraints. Computational Linguistics, 36, September.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Lambert</author>
+<author>A D Gispert</author>
+<author>R Banchs</author>
+<author>J B Marino</author>
+</authors>
+<title>Guidelines for word alignment evaluation and manual alignment.</title>
+<date>2005</date>
+<journal>Language Resources and Evaluation,</journal>
+<volume>39</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Lambert et al., 2005" endWordPosition="5182" position="29659" startWordPosition="5179">ax {p&gt;1(j|j0,α)} j,j0,J with p&gt;1(j|j0, α, J ) based on (8). Calculating the gradients is analogous to the IBM-3. 5 Experiments We test the proposed methods on subsets of the Europarl corpus for German and English as well as Spanish and English, using lower-cased corpora. We evaluate alignment accuracies on gold alignments6 in the form of weighted F-measures with α=0.1, which performed well in (Fraser and Marcu, 2007b). In addition we evaluate the effect on phrase-based translation on one of the tasks. We implement the proposed methods in our own framework RegAligner rather than GIZA++, 6from (Lambert et al., 2005) and from http://user.phil-fak.uni-duesseldorf.de/ ˜tosch/downloads.html. which is only rudimentally maintained. Therefore, we compare to the deficient models in our own software as well as to those in GIZA++. We run 5 iterations of IBM-1, followed by 5 iterations of HMM, 5 of IBM-3 and finally 5 of IBM-4. The first iteration of the IBM-3 collects counts from the HMM, and likewise the first iteration of the IBM-4 collects counts from the IBM3 (in both cases the move and swap matrices are filled with probabilities of the former model, then theses matrices are used as in a regular model iteratio</context>
+</contexts>
+<marker>Lambert, Gispert, Banchs, Marino, 2005</marker>
+<rawString>P. Lambert, A.D. Gispert, R. Banchs, and J.B. Marino. 2005. Guidelines for word alignment evaluation and manual alignment. Language Resources and Evaluation, 39(4):267–285.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Liang</author>
+<author>B Taskar</author>
+<author>D Klein</author>
+</authors>
+<title>Alignment by agreement.</title>
+<date>2006</date>
+<booktitle>In Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics,</booktitle>
+<location>New York, New York,</location>
+<contexts>
+<context citStr="Liang et al., 2006" endWordPosition="1029" position="6449" startWordPosition="1026">odels have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with a short review of fertility-based models in general and IBM-3, IBM-4 and IBM5 specifically. All are due to (Brown et al., 1993) who proposed to use the deficient models IBM-3 and IBM-4 to initialize the nondeficient IBM-5. For a foreign sentence f = fJ1 = (f1, ... , fJ) with J words and an English one e = eI1 = (e1, ... , eI) with I words, the (conditional) probability p(fJ1 |eI1) of getting the foreign sentence as a translation of the English on</context>
+</contexts>
+<marker>Liang, Taskar, Klein, 2006</marker>
+<rawString>P. Liang, B. Taskar, and D. Klein. 2006. Alignment by agreement. In Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics, New York, New York, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Marcu</author>
+<author>W Wong</author>
+</authors>
+<title>A phrase-based, joint probability model for statistical machine translation.</title>
+<date>2002</date>
+<booktitle>In Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<location>Philadelphia, Pennsylvania,</location>
+<contexts>
+<context citStr="Marcu and Wong, 2002" endWordPosition="961" position="6020" startWordPosition="958">han half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with a short review of fer</context>
+</contexts>
+<marker>Marcu, Wong, 2002</marker>
+<rawString>D. Marcu and W. Wong. 2002. A phrase-based, joint probability model for statistical machine translation. In Conference on Empirical Methods in Natural Language Processing (EMNLP), Philadelphia, Pennsylvania, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Melamed</author>
+</authors>
+<title>Models of translational equivalence among words.</title>
+<date>2000</date>
+<journal>Computational Linguistics,</journal>
+<volume>26</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Melamed, 2000" endWordPosition="957" position="5998" startWordPosition="956">ts where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with</context>
+</contexts>
+<marker>Melamed, 2000</marker>
+<rawString>D. Melamed. 2000. Models of translational equivalence among words. Computational Linguistics, 26(2):221–249.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Michelot</author>
+</authors>
+<title>A finite algorithm for finding the projection of a point onto the canonical simplex of IR'.</title>
+<date>1986</date>
+<journal>Journal on Optimization Theory and Applications,</journal>
+<volume>50</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Michelot, 1986" endWordPosition="4626" position="26557" startWordPosition="4625">nemann, 2011; Vaswani et al., 2012) and is briefly sketched here for self-containment (see those papers for more details). To solve a maximization problem max p(j |i)≥0,Ej p(j|i)=1 for some (differentiable) function Ei(·), one iteratively starts at the current point {pk(j|i)}, computes the gradient ∇Ei({pk(j|i)}) and goes to the point q(j|i) = pk(j|i) + α∇Ei(pk(j|i)), j = 1,...,J for some step-length α. This point is generally not a probability distribution, so one computes the nearest probability distribution (q0(j|i) − q(j|i))2 , a step known as projection which we solve with the method of (Michelot, 1986). The new distribution {q0(j|i)} is not guaranteed to have a higher Ei(·), but (since the constraint set is a convex one) a suitable interpolation of {pk(j|i)} and {q0(j|i)} is guaranteed to have a higher value (unless {pk(j|i)} is a local maximum or minimum of Ei(·)). Such a point is computed by backtracking line search and defines the next iterate {pk+1(j|i)}. IBM-4 When moving from the IBM-3 to the IBM-4, only the last line in (11) changes. In the end one gets two new kinds of problems, for p=1(·) and p&gt;1(·). For p=1(·) we have one problem for each foreign class α and each English class β, </context>
+</contexts>
+<marker>Michelot, 1986</marker>
+<rawString>C. Michelot. 1986. A finite algorithm for finding the projection of a point onto the canonical simplex of IR'. Journal on Optimization Theory and Applications, 50(1), July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R M Neal</author>
+<author>G E Hinton</author>
+</authors>
+<title>A view of the EM algorithm that justifies incremental, sparse, and other variants.</title>
+<date>1998</date>
+<booktitle>Learning in Graphical Models.</booktitle>
+<editor>In M.I. Jordan, editor,</editor>
+<publisher>MIT press.</publisher>
+<contexts>
+<context citStr="Neal and Hinton, 1998" endWordPosition="3628" position="20740" startWordPosition="3625">t conditioning on J for the IBM-4 and for the non-parametric IBM-3, otherwise projected gradient ascent) for the deficient models. However, we verified that this is not a good idea: not only can the likelihood go down in the process (even if we could compute expectations exactly), but these schemes also heavily increase p0 in each iteration, i.e. the same problem Och and Ney (2003) found for the deficient models. There is therefore the need to execute the Mstep properly, and when done the problem is indeed resolved. Proper EM The expectation maximization (EM) framework (Dempster et al., 1977; Neal and Hinton, 1998) is a class of template procedures (rather than a proper algorithm) that iteratively requires solving the task pθk−1(as|fs, es) log (pθk(fs, as|es)) (10) by appropriate means. Here, θk−1 are the parameters from the previous iteration, while θk are those derived in the current iteration. Of course, here and in the following the normalization constraints on θ apply, as already in (9). On explicit request of a reviewer we give a detailed account for our setting here. Readers not interested in the details can safely move on to the next section. Details on EM For the corpora occurring in practice, </context>
+</contexts>
+<marker>Neal, Hinton, 1998</marker>
+<rawString>R.M. Neal and G.E. Hinton. 1998. A view of the EM algorithm that justifies incremental, sparse, and other variants. In M.I. Jordan, editor, Learning in Graphical Models. MIT press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F J Och</author>
+<author>H Ney</author>
+</authors>
+<title>A systematic comparison of various statistical alignment models.</title>
+<date>2003</date>
+<journal>Computational Linguistics,</journal>
+<volume>29</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Och and Ney, 2003" endWordPosition="710" position="4464" startWordPosition="707"> sequence based ones. In particular, sequence based models can simply ignore a part of the sentence to be conditioned on, while fertility based models explicitly factor in a probability of words in this sentence to have no aligned words (or any other number of aligned words, called the fertility). Hence, it is encouraging to see that the nondeficient IBM-4 indeed derives a higher likelihood than the sequence based HMM. Related Work Today’s most widely used models for word alignment are still the models IBM 1-5 of Brown et al. (1993) and the HMM of Vogel et al. (1996), thoroughly evaluated in (Och and Ney, 2003). While it is known that fertilitybased models outperform sequence-based ones, the large bulk of word alignment literature following these publications has mostly ignored fertilitybased models. This is different in the present paper which deals exclusively with such models. One reason for the lack of interest is surely that computing expectations and Viterbi alignments for these models is a hard problem (Udupa and Maji, 2006). Nevertheless, computing Viterbi align1https://github.com/Thomas1205/RegAligner, for the reported results we used a slightly earlier version. 2Note that the figure slight</context>
+<context citStr="Och and Ney, 2003" endWordPosition="1679" position="9913" startWordPosition="1676"> 3 b), called a distortion model. The choices are now detailed. 2.1 IBM-3 The IBM-3 implements a zero order distortion model, resulting in p(di,k|i, J) . Since most of the context to be conditioned on is ignored, this allows invalid configurations to occur with non-zero probability: some foreign positions can be chosen several times, while others remain empty. One says that the model is deficient. On the other hand, the model for p(Φ0 |PIi=1 Φi) is nondeficient, and in training this often results in very high probabilities p0. To prevent this it is common to make this model deficient as well (Och and Ney, 2003), which improves performance immensely and gives much better results than simply fixing p0 in the original model. As for each i the di,k can appear in any order (i.e. need not be in ascending order), there are QIi=1 Φi! ways to generate the same alignment aJ1 (where the Φi are the fertilities induced by aJ1 ). In total, the IBM-3 has the following probability model: p(fJ1 , aJ1 |eI1) = J h i Y p(fj|eaj) · p(j|aj, J) (1) j=1 �·p Φ0 |XI �Φi · YI Φi! p(Φi|ei) . i=1 i=1 Reducing the Number of Parameters While using non-parametric models p(j|i, J) is convenient for closed-form M-steps in EM trainin</context>
+<context citStr="Och and Ney, 2003" endWordPosition="2445" position="14217" startWordPosition="2442">del for the IBM-4 is: (p(fJ 1 , aJ 1 |eI 1) = p Φ0| ��J77 ·11 j=1 ri· [ p=1(di,1 − (D[i]|A(fi,1), B(e[i])) i:Φi&gt;0 ]p&gt;1(di,k − di,k−1|A(fi,k)) , where empty products are understood to be 1. 2.3 IBM-5 We note in passing that the distortion model of the IBM-5 is nondeficient and has parameters for filling the nth open gap in the foreign sequence given that there are N positions to choose from – see the next section for exactly what positions one can choose from. There is also a dependence on word classes for the foreign language. This is neither a zero order nor a first order dependence, and in (Och and Ney, 2003) the first order model of the IBM-4, though deficient, outperformed the IBM-5. The IBM-5 is therefore rarely used in practice. This motivated us to instead reformulate IBM-3 and IBM-4 as nondeficient models. In our results, however, the IBM-5 gave surprisingly good results and was often superior to all variants of the IBM-4. 3 Nondeficient Variants of IBM-3 and IBM-4 From now on we always enforce that for each position i the indices di,k are generated in ascending order (di,k &gt; di,k−1 for k &gt; 1). A central concept for the generation of di,k in step 3(b) is the set of positions in the foreign s</context>
+<context citStr="Och and Ney (2003)" endWordPosition="3587" position="20502" startWordPosition="3584">ximate expectations in EM training (see below). 4.2 Parameter Update Naive Scheme It is tempting to account for the changes in the model in hillclimbing, but to otherwise use the regular M-step procedures (closed form solution when not conditioning on J for the IBM-4 and for the non-parametric IBM-3, otherwise projected gradient ascent) for the deficient models. However, we verified that this is not a good idea: not only can the likelihood go down in the process (even if we could compute expectations exactly), but these schemes also heavily increase p0 in each iteration, i.e. the same problem Och and Ney (2003) found for the deficient models. There is therefore the need to execute the Mstep properly, and when done the problem is indeed resolved. Proper EM The expectation maximization (EM) framework (Dempster et al., 1977; Neal and Hinton, 1998) is a class of template procedures (rather than a proper algorithm) that iteratively requires solving the task pθk−1(as|fs, es) log (pθk(fs, as|es)) (10) by appropriate means. Here, θk−1 are the parameters from the previous iteration, while θk are those derived in the current iteration. Of course, here and in the following the normalization constraints on θ ap</context>
+<context citStr="Och and Ney, 2003" endWordPosition="5568" position="31908" startWordPosition="5565">proves the accuracy of the IBM3, both compared to our deficient implementation and that of GIZA++. For the IBM-4 we get improvements for the nondeficient variant in roughly half the cases, both with and without word classes. We think this is an issue of local minima, inexactly solved M-steps and sensitiveness to initialization. Interestingly, also the reduced deficient IBM-4 is not always better than the fully deficient variant. Again, we think this is due to problems with the non-concave nature of the models. There is also quite some surprise regarding the IBM-5: contrary to the findings of (Och and Ney, 2003) the IBM-5 in GIZA++ performs best in three out of four cases - when competing with both deficient and nondeficient variants of IBM-3 and IBM-4. Our own implementation gives slightly different results (as we do not use smoothing), but it, too, performs very well. 5.2 Effect on Translation Performance We also check the effect of the various alignments (all produced by RegAligner) on translation performance for phrase-based translation, randomly choosing translation from German to English. We use MOSES with a 5-gram language model (trained on 500.000 sentence pairs) and the standard setup in the</context>
+</contexts>
+<marker>Och, Ney, 2003</marker>
+<rawString>F.J. Och and H. Ney. 2003. A systematic comparison of various statistical alignment models. Computational Linguistics, 29(1):19–51.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Ravi</author>
+<author>K Knight</author>
+</authors>
+<date>2010</date>
+<booktitle>Does GIZA++ make search errors? Computational Linguistics,</booktitle>
+<volume>36</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Ravi and Knight, 2010" endWordPosition="895" position="5607" startWordPosition="892">orted results we used a slightly earlier version. 2Note that the figure slightly favors IBM-1 and HMM as for them the length J of the foreign sequence is assumed to be known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to t</context>
+</contexts>
+<marker>Ravi, Knight, 2010</marker>
+<rawString>S. Ravi and K. Knight. 2010. Does GIZA++ make search errors? Computational Linguistics, 36(3).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Schoenemann</author>
+</authors>
+<title>Computing optimal alignments for the IBM-3 translation model.</title>
+<date>2010</date>
+<booktitle>In Conference on Computational Natural Language Learning (CoNLL),</booktitle>
+<location>Uppsala, Sweden,</location>
+<contexts>
+<context citStr="Schoenemann, 2010" endWordPosition="898" position="5627" startWordPosition="896"> slightly earlier version. 2Note that the figure slightly favors IBM-1 and HMM as for them the length J of the foreign sequence is assumed to be known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the</context>
+</contexts>
+<marker>Schoenemann, 2010</marker>
+<rawString>T. Schoenemann. 2010. Computing optimal alignments for the IBM-3 translation model. In Conference on Computational Natural Language Learning (CoNLL), Uppsala, Sweden, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Schoenemann</author>
+</authors>
+<title>Regularizing mono- and biword models for word alignment.</title>
+<date>2011</date>
+<booktitle>In International Joint Conference on Natural Language Processing (IJCNLP),</booktitle>
+<location>Chiang Mai, Thailand,</location>
+<contexts>
+<context citStr="Schoenemann, 2011" endWordPosition="4530" position="25954" startWordPosition="4528">and the nondeficient variants, the M-step problems for the distortion parameters p(j|i) are non-trivial, non-concave and have no (known) closed form solutions. We approach them via the method of projected gradient ascent (PGA), where the gradient for the nondeficient problem is When running PGA we guarantee that the resulting {p(j|i)} has a higher function value Ei than the input ones (unless a stationary point is input). We stop when a cutoff criterion indicates a local maximum or 250 iterations are used up. Projected Gradient Ascent This method is used in a couple of recent papers, notably (Schoenemann, 2011; Vaswani et al., 2012) and is briefly sketched here for self-containment (see those papers for more details). To solve a maximization problem max p(j |i)≥0,Ej p(j|i)=1 for some (differentiable) function Ei(·), one iteratively starts at the current point {pk(j|i)}, computes the gradient ∇Ei({pk(j|i)}) and goes to the point q(j|i) = pk(j|i) + α∇Ei(pk(j|i)), j = 1,...,J for some step-length α. This point is generally not a probability distribution, so one computes the nearest probability distribution (q0(j|i) − q(j|i))2 , a step known as projection which we solve with the method of (Michelot, 19</context>
+</contexts>
+<marker>Schoenemann, 2011</marker>
+<rawString>T. Schoenemann. 2011. Regularizing mono- and biword models for word alignment. In International Joint Conference on Natural Language Processing (IJCNLP), Chiang Mai, Thailand, November.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Sumita</author>
+<author>Y Akiba</author>
+<author>T Doi</author>
+<author>A Finch</author>
+<author>K Imamura</author>
+<author>H Okuma</author>
+<author>M Paul</author>
+<author>M Shimohata</author>
+<author>T Watanabe</author>
+</authors>
+<title>EBMT, SMT, Hybrid and more: ATR spoken language translation system.</title>
+<date>2004</date>
+<booktitle>In International Workshop on Spoken Language Translation (IWSLT),</booktitle>
+<location>Kyoto, Japan,</location>
+<contexts>
+<context citStr="Sumita et al., 2004" endWordPosition="920" position="5772" startWordPosition="917"> known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms</context>
+</contexts>
+<marker>Sumita, Akiba, Doi, Finch, Imamura, Okuma, Paul, Shimohata, Watanabe, 2004</marker>
+<rawString>E. Sumita, Y. Akiba, T. Doi, A. Finch, K. Imamura, H. Okuma, M. Paul, M. Shimohata, and T. Watanabe. 2004. EBMT, SMT, Hybrid and more: ATR spoken language translation system. In International Workshop on Spoken Language Translation (IWSLT), Kyoto, Japan, September.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Toutanova</author>
+<author>H T Ilhan</author>
+<author>C D Manning</author>
+</authors>
+<title>Extensions to HMM-based statistical word alignment models.</title>
+<date>2002</date>
+<booktitle>In Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<location>Philadelphia, Pennsylvania,</location>
+<contexts>
+<context citStr="Toutanova et al., 2002" endWordPosition="916" position="5751" startWordPosition="913">equence is assumed to be known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work int</context>
+</contexts>
+<marker>Toutanova, Ilhan, Manning, 2002</marker>
+<rawString>K. Toutanova, H.T. Ilhan, and C.D. Manning. 2002. Extensions to HMM-based statistical word alignment models. In Conference on Empirical Methods in Natural Language Processing (EMNLP), Philadelphia, Pennsylvania, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Udupa</author>
+<author>H K Maji</author>
+</authors>
+<title>Computational complexity of statistical machine translation.</title>
+<date>2006</date>
+<booktitle>In Conference of the European Chapter of the Association for Computational Linguistics (EACL),</booktitle>
+<location>Trento, Italy,</location>
+<contexts>
+<context citStr="Udupa and Maji, 2006" endWordPosition="777" position="4893" startWordPosition="774">ated Work Today’s most widely used models for word alignment are still the models IBM 1-5 of Brown et al. (1993) and the HMM of Vogel et al. (1996), thoroughly evaluated in (Och and Ney, 2003). While it is known that fertilitybased models outperform sequence-based ones, the large bulk of word alignment literature following these publications has mostly ignored fertilitybased models. This is different in the present paper which deals exclusively with such models. One reason for the lack of interest is surely that computing expectations and Viterbi alignments for these models is a hard problem (Udupa and Maji, 2006). Nevertheless, computing Viterbi align1https://github.com/Thomas1205/RegAligner, for the reported results we used a slightly earlier version. 2Note that the figure slightly favors IBM-1 and HMM as for them the length J of the foreign sequence is assumed to be known whereas IBM-3 and IBM-4 explicitly predict it. 3This number regards the corpus probability as in (9) to the power of 1/S, i.e. the objective function in maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an</context>
+<context citStr="Udupa and Maji, 2006" endWordPosition="3064" position="17656" startWordPosition="3061">the above function. Our method of choice to attack the maximum likelihood problem is expectation maximization (EM), the standard in the field, which we explain below. Due to non-concaveness the starting point for EM is of extreme importance. As is common, we first train an and then an HMM before proceeding to the IBM-3 and finally the IBM-4. As in the training of the deficient IBM-3 and IBM-4 models, we approximate the expectations in the E-step by a set of likely alignments, ideally centered around the Viterbi alignment, but already for the regular deficient variants computing it is NP-hard (Udupa and Maji, 2006). A first task is therefore to compute such a set. This task is also needed for the actual task of word alignment (annotating agiven sentence pair with an S). θ p(f|e), p(Φ, p(j|i)) pθ θ pθ(�) IBM-1 alignment). where we use the zero order parameters we also use for the standard (deficient) IBM-3, compare (2). To get a nondeficient variant, it remains to renormalize, resulting in i j , ik�`J) p(di,k = , i k,J) � 1 q(j , � ,J) (6) Further, note that the factors now have to be removed from (1) as the di,k are generated in ascending order. Lastly, here we use the original nondeficient empty word m</context>
+<context citStr="Udupa and Maji, 2006" endWordPosition="4054" position="23235" startWordPosition="4051">ion problems (M-step). For models such as IBM-1 and HMM the expectations can be calculated efficiently, so the enormous sum of terms in (10) is equivalently written as a manageable one. In this case it can be shown5 that the new θk must have a higher likelihood (9) than θk−1 (unless a stationary point is reached). In fact, any θ that has a higher value in the auxiliary function (11) than θk−1 must also have a higher likelihood. This is an important background for parametric models such as (2) where the M-step cannot be solved exactly. For IBM-3/4/5 computing exact expectations is intractable (Udupa and Maji, 2006) and approximations have to be used (in fact, even computing the likelihood for a given θ is intractable). We 5See e.g. the author’s course notes (in German), currently http://user.phil-fak.uni-duesseldorf.de/ ˜tosch/downloads/statmt/wordalign.pdf. 1: as max θk 1:S s=1 1: S 1: e,f [ 1: as s=1 +1: e,Φ +1: i,j S 1: [ 1: as s=1 1: S as [ 1: s=1 27 use the common procedure based on hillclimbing and the move/swap matrices. The likelihood is not guaranteed to increase but it (or rather its approximation) always did in each of the five run iterations. Nevertheless, the main advantage of EM is preserv</context>
+</contexts>
+<marker>Udupa, Maji, 2006</marker>
+<rawString>R. Udupa and H.K. Maji. 2006. Computational complexity of statistical machine translation. In Conference of the European Chapter of the Association for Computational Linguistics (EACL), Trento, Italy, April.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Vaswani</author>
+<author>L Huang</author>
+<author>D Chiang</author>
+</authors>
+<title>Smaller alignment models for better translations: Unsupervised word alignment with the to-norm.</title>
+<date>2012</date>
+<booktitle>In Annual Meeting of the Association for Computational Linguistics (ACL),</booktitle>
+<location>Jeju, Korea,</location>
+<contexts>
+<context citStr="Vaswani et al., 2012" endWordPosition="1047" position="6547" startWordPosition="1044">l, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani et al., 2012). 2 The models IBM-3, IBM-4 and IBM-5 We begin with a short review of fertility-based models in general and IBM-3, IBM-4 and IBM5 specifically. All are due to (Brown et al., 1993) who proposed to use the deficient models IBM-3 and IBM-4 to initialize the nondeficient IBM-5. For a foreign sentence f = fJ1 = (f1, ... , fJ) with J words and an English one e = eI1 = (e1, ... , eI) with I words, the (conditional) probability p(fJ1 |eI1) of getting the foreign sentence as a translation of the English one is modeled by introducing the word alignment a as a hidden variable: �p(fJ 1 |eI 1) = p(fJ 1 , a</context>
+<context citStr="Vaswani et al., 2012" endWordPosition="4534" position="25977" startWordPosition="4531">t variants, the M-step problems for the distortion parameters p(j|i) are non-trivial, non-concave and have no (known) closed form solutions. We approach them via the method of projected gradient ascent (PGA), where the gradient for the nondeficient problem is When running PGA we guarantee that the resulting {p(j|i)} has a higher function value Ei than the input ones (unless a stationary point is input). We stop when a cutoff criterion indicates a local maximum or 250 iterations are used up. Projected Gradient Ascent This method is used in a couple of recent papers, notably (Schoenemann, 2011; Vaswani et al., 2012) and is briefly sketched here for self-containment (see those papers for more details). To solve a maximization problem max p(j |i)≥0,Ej p(j|i)=1 for some (differentiable) function Ei(·), one iteratively starts at the current point {pk(j|i)}, computes the gradient ∇Ei({pk(j|i)}) and goes to the point q(j|i) = pk(j|i) + α∇Ei(pk(j|i)), j = 1,...,J for some step-length α. This point is generally not a probability distribution, so one computes the nearest probability distribution (q0(j|i) − q(j|i))2 , a step known as projection which we solve with the method of (Michelot, 1986). The new distributi</context>
+</contexts>
+<marker>Vaswani, Huang, Chiang, 2012</marker>
+<rawString>A. Vaswani, L. Huang, and D. Chiang. 2012. Smaller alignment models for better translations: Unsupervised word alignment with the to-norm. In Annual Meeting of the Association for Computational Linguistics (ACL), Jeju, Korea, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Vogel</author>
+<author>H Ney</author>
+<author>C Tillmann</author>
+</authors>
+<title>HMM-based word alignment in statistical translation.</title>
+<date>1996</date>
+<booktitle>In International Conference on Computational Linguistics (COLING),</booktitle>
+<pages>836--841</pages>
+<location>Copenhagen, Denmark,</location>
+<contexts>
+<context citStr="Vogel et al. (1996)" endWordPosition="703" position="4419" startWordPosition="699">ialization – fertility based models outperform sequence based ones. In particular, sequence based models can simply ignore a part of the sentence to be conditioned on, while fertility based models explicitly factor in a probability of words in this sentence to have no aligned words (or any other number of aligned words, called the fertility). Hence, it is encouraging to see that the nondeficient IBM-4 indeed derives a higher likelihood than the sequence based HMM. Related Work Today’s most widely used models for word alignment are still the models IBM 1-5 of Brown et al. (1993) and the HMM of Vogel et al. (1996), thoroughly evaluated in (Och and Ney, 2003). While it is known that fertilitybased models outperform sequence-based ones, the large bulk of word alignment literature following these publications has mostly ignored fertilitybased models. This is different in the present paper which deals exclusively with such models. One reason for the lack of interest is surely that computing expectations and Viterbi alignments for these models is a hard problem (Udupa and Maji, 2006). Nevertheless, computing Viterbi align1https://github.com/Thomas1205/RegAligner, for the reported results we used a slightly </context>
+</contexts>
+<marker>Vogel, Ney, Tillmann, 1996</marker>
+<rawString>S. Vogel, H. Ney, and C. Tillmann. 1996. HMM-based word alignment in statistical translation. In International Conference on Computational Linguistics (COLING), pages 836–841, Copenhagen, Denmark, August.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y-Y Wang</author>
+<author>A Waibel</author>
+</authors>
+<title>Modeling with structures in statistical machine translation.</title>
+<date>1998</date>
+<booktitle>In International Conference on Computational Linguistics (COLING),</booktitle>
+<location>Montreal, Canada,</location>
+<contexts>
+<context citStr="Wang and Waibel, 1998" endWordPosition="947" position="5933" startWordPosition="944"> maximum likelihood training. The number is not entirely fair as alignments where more than half the words align to the empty word are assigned a probability of 0. Still, this is an issue only for short sentences. ments for the IBM-3 has been shown to often be practicable (Ravi and Knight, 2010; Schoenemann, 2010). Much work has been spent on HMM-based formulations, focusing on the computationally tractable side (Toutanova et al., 2002; Sumita et al., 2004; Deng and Byrne, 2005). In addition, some rather complex models have been proposed that usually aim to replace the fertility based models (Wang and Waibel, 1998; Fraser and Marcu, 2007a). Another line of models (Melamed, 2000; Marcu and Wong, 2002; Cromi`eres and Kurohashi, 2009) focuses on joint probabilities to get around the garbage collection effect (i.e. that for conditional models, rare words in the given language align to too many words in the predicted language). The downside is that these models are computationally harder to handle. A more recent line of work introduces various forms of regularity terms, often in the form of symmetrization (Liang et al., 2006; Crrac¸a et al., 2010; Bansal et al., 2011) and recently by using L0 norms (Vaswani</context>
+</contexts>
+<marker>Wang, Waibel, 1998</marker>
+<rawString>Y.-Y. Wang and A. Waibel. 1998. Modeling with structures in statistical machine translation. In International Conference on Computational Linguistics (COLING), Montreal, Canada, August.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

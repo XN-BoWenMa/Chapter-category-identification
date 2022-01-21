@@ -1,0 +1,1233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.962821">
+Semantically Smooth Knowledge Graph Embedding
+</title>
+<author confidence="0.934869">
+Shu Guo†, Quan Wang†∗, Bin Wang†, Lihong Wang‡, Li Guo††Institute of Information Engineering, Chinese Academy of Sciences, Beijing 100093, China
+</author>
+<email confidence="0.710847">
+{guoshu,wangquan,wangbin,guoli}@iie.ac.cn
+</email>
+<affiliation confidence="0.6679785">
+‡National Computer Network Emergency Response Technical Team
+Coordination Center of China, Beijing 100029, China
+</affiliation>
+<email confidence="0.991135">
+wlh@isc.org.cn
+</email>
+<sectionHeader confidence="0.99731" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.998713352941176">This paper considers the problem of embedding Knowledge Graphs (KGs) consisting of entities and relations into lowdimensional vector spaces. Most of the existing methods perform this task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. In this paper, aiming at further discovering the intrinsic geometric structure of the embedding space, we propose Semantically Smooth Embedding (SSE). The key idea of SSE is to take full advantage of additional semantic information and enforce the embedding space to be semantically smooth, i.e., entities belonging to the same semantic category will lie close to each other in the embedding space. Two manifold learning algorithms Laplacian Eigenmaps and Locally Linear Embedding are used to model the smoothness assumption. Both are formulated as geometrically based regularization terms to constrain the embedding task. We empirically evaluate SSE in two benchmark tasks of link prediction and triple classification, and achieve significant and consistent improvements over state-of-the-art methods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories.</bodyText>
+<sectionHeader confidence="0.999184" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.825076">Knowledge Graphs (KGs) like WordNet (Miller, 1995), Freebase (Bollacker et al., 2008), and DBpedia (Lehmann et al., 2014) have become extremely useful resources for many NLP related applications, such as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011).</bodyText>
+<note confidence="0.446456">
+∗ Corresponding author: Quan Wang.
+</note>
+<bodyText confidence="0.999910073170732">A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed components of a KG into continuous vector spaces, so as to simplify the manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e.embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can further be used to benefit all kinds of tasks, such as KG completion (Socher et al., 2013; Bordes et al., 2013), relation extraction (Riedel et al., 2013; Weston et al., 2013), and entity resolution (Bordes et al., 2014). To our knowledge, most of existing KG embedding methods perform the embedding task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. In this paper we propose Semantically Smooth Embedding (SSE), a new approach which further imposes constraints on the geometric structure of the embedding space. The key idea of SSE is to make full use of additional semantic information (i.e.semantic categories of entities) and enforce the embedding space to be semantically smooth—entities belonging to the same semantic category should lie close to each other in the embedding space.</bodyText>
+<page confidence="0.986094">
+84
+</page>
+<note confidence="0.978408">
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics
+and the 7th International Joint Conference on Natural Language Processing, pages 84–94,
+Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999693261538462">This smoothness assumption is closely related to the local invariance assumption exploited in manifold learning theory, which requires nearby points to have similar embeddings or labels (Belkin and Niyogi, 2001). Thus we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model the smoothness assumption. The former requires an entity to lie close to every other entity in the same category, while the latter represents that entity as a linear combination of its nearest neighbors (i.e.entities within the same category). Both are formulated as manifold regularization terms to constrain the KG embedding objective function. As such, SSE obtains an embedding space which is semantically smooth and at the same time compatible with observed facts. The advantages of SSE are two-fold: 1) By imposing the smoothness assumption, SSE successfully captures the semantic correlation between entities, which exists intrinsically but is overlooked in previous work on KG embedding.2) KGs are typically very sparse, containing a relatively small number of facts compared to the large number of entities and relations. SSE can effectively deal with data sparsity by leveraging additional semantic information. Both aspects lead to more accurate embeddings in SSE. Moreover, our approach is quite general. The smoothness assumption can actually be imposed to a wide variety of KG embedding models. Besides semantic categories, other information (e.g.entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. And besides KG embedding, similar smoothness assumptions can also be applied in other embedding tasks (e.g.word embedding and sentence embedding). Our main contributions can be summarized as follows. First, we devise a novel KG embedding framework that naturally requires the embedding space to be semantically smooth. As far as we know, it is the first work that imposes constraints on the geometric structure of the embedding space during KG embedding. By leveraging additional semantic information, our approach can also deal with the data sparsity issue that commonly exists in typical KGs. Second, we evaluate our approach in two benchmark tasks of link prediction and triple classification, and achieve significant and consistent improvements over state-ofthe-art models. In the remainder of this paper, we first provide a brief review of existing KG embedding models in Section 2, and then detail the proposed SSE framework in Section 3. Experiments and results are reported in Section 4. Then in Section 5 we discuss related work, followed by the conclusion and future work in Section 6.</bodyText>
+<sectionHeader confidence="0.970282" genericHeader="method">
+2 A Brief Review of KG Embedding
+</sectionHeader>
+<bodyText confidence="0.99988795">KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., is minimized.</bodyText>
+<equation confidence="0.982337">
+[ ]
+y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1)
+</equation>
+<bodyText confidence="0.936574384615384">Here, O is the set of observed (i.e.positive) triples, and t+ = (ei, rk, ej) E O; Nt+ denotes the set of negative triples constructed by replacing entities in t+, and t� = (e', rk, e') E Nt+; y &gt; 0 is a margin separating positive and negative triples; and [x]+ = max(0, x). The ranking loss favors lower energies for positive triples than for negative ones. Stochastic gradient descent (in mini-batch mode) is adopted to solve the minimization problem. For details please refer to (Bordes et al., 2013) and references therein. Different embedding models differ in the first two steps: entity/relation representation and energy function definition.</bodyText>
+<equation confidence="0.991262">
+E E
+L=
+t+EOt−EIVt+
+</equation>
+<page confidence="0.996112">
+85
+</page>
+<table confidence="0.377075">
+Method Entity/Relation embeddings Energy function
+</table>
+<tableCaption confidence="0.999791">
+Table 1: Existing KG embedding models.
+</tableCaption>
+<note confidence="0.99759975">
+TransE (Bordes et al., 2013)
+SME (lin) (Bordes et al., 2014)
+SME (bilin) (Bordes et al., 2014)
+SE (Bordes et al., 2011)
+</note>
+<equation confidence="0.9744682">
+e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 )
+e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv
+(( ) )T (( ) )
+e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv
+e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ,
+</equation>
+<bodyText confidence="0.999675647058823">Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej), it first employs a function gu (·, ·) to combine rk and ei, and gv (·, ·) to combine rk and ej. Then, the energy function is defined as matching gu (·, ·) and gv (·, ·) by their dot product, i.e., f(ei, rk, ej) = gu(rk, ei)Tgv(rk, ej). There are two versions of SME, linear and bilinear (denoted as SME (lin) and SME (bilin) respectively), obtained by defining different gu (·, ·) and gv (·, ·). SE (Bordes et al., 2011) represents entities as vectors but relations as matrices. Each relation is modeled by a left matrix Ruk and a right matrix Rvk, acting as independent projections to head and tail entities respectively. If a triple (ei, rk, ej) holds, Rukei and Rvkej should be close to each other. The energy function is f(ei, rk, ej) = llRukei − Rvkejllℓ1. Table 1 summarizes the entity/relation representations and energy functions used in these models.</bodyText>
+<sectionHeader confidence="0.976206" genericHeader="method">
+3 Semantically Smooth Embedding
+</sectionHeader>
+<bodyText confidence="0.999953">The methods introduced above perform the embedding task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. However, they fail to discover the intrinsic geometric structure of the embedding space. To deal with this limitation, we introduce Semantically Smooth Embedding (SSE) which constrains the embedding task by incorporating geometrically based regularization terms, constructed by using additional semantic categories of entities.</bodyText>
+<subsectionHeader confidence="0.999363">
+3.1 Problem Formulation
+</subsectionHeader>
+<bodyText confidence="0.9948705">Suppose we are given a KG consisting of n entities and m relations. The facts observed are stored as a set of triples O = (ei, rk, ej) .</bodyText>
+<equation confidence="0.550694">
+{ �
+</equation>
+<bodyText confidence="0.999970258064516">A triple (ei, rk, ej) indicates that entity ei and entity ej are connected by relation rk. In addition, the entities are classified into multiple semantic categories. Each entity e is associated with a label ce indicating the category to which it belongs. SSE aims to embed the entities and relations into a continuous vector space which is compatible with the observed facts, and at the same time semantically smooth. To make the embedding space compatible with the observed facts, we make use of the triple set O and follow the same strategy adopted in previous methods. That is, we define an energy function on each candidate triple (e.g.the energy functions listed in Table 1), and require observed triples to have lower energies than unobserved ones (i.e.the margin-based ranking loss defined in Eq.(1)). To make the embedding space semantically smooth, we further leverage the entity category information {cel, and assume that entities within the same semantic category should lie close to each other in the embedding space. This smoothness assumption is similar to the local invariance assumption exploited in manifold learning theory (i.e.nearby points are likely to have similar embeddings or labels). So we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model such semantic smoothness, termed as LE and LLE for short respectively.</bodyText>
+<subsectionHeader confidence="0.99996">
+3.2 Modeling Semantic Smoothness by LE
+</subsectionHeader>
+<bodyText confidence="0.998298">Laplacian Eigenmaps (LE) is a manifold learning algorithm that preserves local invariance between each two data points (Belkin and Niyogi, 2001).</bodyText>
+<page confidence="0.979985">
+86
+</page>
+<bodyText confidence="0.999301">We borrow the idea of LE and enforce semantic smoothness by assuming: Smoothness Assumption 1 If two entities ei and ej belong to the same semantic category, they will have embeddings ei and ej close to each other. To encode the semantic information, we construct an adjacency matrix W1 E Rn×n among the entities, with the i j-th entry defined as:</bodyText>
+<equation confidence="0.5649595">
+w(1) =  1, if cei = cej,
+ij  0, otherwise,
+</equation>
+<bodyText confidence="0.999974">where cei/cej is the category label of entity ei/ej. Then, we use the following term to measure the smoothness of the embedding space:</bodyText>
+<equation confidence="0.998880444444444">
+1
+∑n
+i=1
+n
+∑
+j=1
+Ilei − ejIl2 2w(1)
+i j ,
+R1 = 2
+</equation>
+<bodyText confidence="0.9999285">where ei and ej are the embeddings of entities ei and ej respectively. By minimizing R1, we expect Smoothness Assumption 1: if two entities ei and ej belong to the same semantic category (i.e. w(1)</bodyText>
+<equation confidence="0.5830055">
+i j
+=
+</equation>
+<bodyText confidence="0.914458923076923">1), the distance between ei and ej (i.e. Ilei − ejIl22) should be small. We further incorporate R1 as a regularization term into the margin-based ranking loss (i.e. Eq. (1)) adopted in previous KG embedding methods, and propose our first SSE model. The new model performs the embedding task by minimizing the following objective function: is the ranking loss on the positive-negative triple pair (t+, and N is the total number of such triple pairs. The first term in embedding space compatible with all the observed triples, and the second term further requires that space to be semantically smooth.</bodyText>
+<subsectionHeader confidence="0.653336">
+enforces the resultant
+</subsectionHeader>
+<bodyText confidence="0.967667545454545">Hyperparameter makes a trade-off between the two cases. The minimization is carried out by stochastic gradient descent. Given a randomly sampled positive triple t+ (ei, rk, ej) and the associated negative triple rk, the stochastic gradient sisting of entity embeddings; D E is a matrix with the i-th entry on the diagonal</bodyText>
+<equation confidence="0.878073533333333">
+w.r.t. es (s E {i, j,
+can
+]where ℓ (t+, t−) = [γ+ f (ei, rk, ej)− f (e′ i, rk, e′ j) +
+t−),
+L1
+λ1
+=
+t−=(e′i,
+e′j),1
+i′,j′})
+be calculated as:
+where E
+e2,
+, en] E
+is a matrix con-
+</equation>
+<figure confidence="0.533871625">
+being dii
+and
+E
+is a column
+vector where the s-th entry is 1 and the others are
+0. Other parameters are not included in
+an
+ei ­z�
+</figure>
+<bodyText confidence="0.964941">Here nearest neighbors refer to entities belonging to the same semantic category with ei. To model this assumption, for each entity ei, we randomly sample K entities uniformly from the category to which ei belongs, denoted as the nearest neighbor set N (ei</bodyText>
+<equation confidence="0.762648">
+∑ej∈N(ei)αjej.
+). We construct a weight
+matrix W2 E Rn×n by defining:
+</equation>
+<bodyText confidence="0.823469666666667">1, if ej E N (ei) , 0, otherwise, and normalize the rows so that each row i.</bodyText>
+<equation confidence="0.911290666666667">
+n
+1 w
+(2) = 1 for
+</equation>
+<bodyText confidence="0.97549075">Note that is no longer a symmetric matrix. The smoothness of the embedding space ∑</bodyText>
+<equation confidence="0.914893857142857">
+=
+j
+j
+W2
+be measured by the reconstruction error:
+R2 = ∑n ������� ei −∑ w(2) ������� 2 .
+i=1 ej∈N(ei) i j ej II 2
+</equation>
+<bodyText confidence="0.998981142857143">Minimizing R2 results in Smoothness Assumption 2: each entity can be linearly reconstructed from its nearest neighbors with low error. By incorporating R2 as a regularization term into the margin-based ranking loss defined in Eq. (1), we obtain our second SSE model, which performs the embedding task by minimizing:</bodyText>
+<equation confidence="0.99347736">
+L1 = N∑
+t+∈Ot
+∑ ∑n
+ℓ (t+, t−) + λ1
+2
+−∈Nt+
+=1
+ 
+
+wij
+2) =
+=
+(t+,
++
+(D
+W1) 1s,
+VesL1
+Vesℓ
+t−)
+2λ1E
+−
+ve triple.
+1
+∑L2 = N
+t+∈Ot−∈Nt+
+</equation>
+<footnote confidence="0.82883825">
+∑n − ∑ej∈N(ei) 2 ������� 2 j
+i=1 w ej II 2 ∑n
+i =1
+j Ilei
+−ejIl2 2w(1)
+i j ,
+'The negative triple is constructed by replacing one of the
+entities in the positi
+</footnote>
+<page confidence="0.516692">
+87
+=[e1,
+</page>
+<table confidence="0.7887415">
+···
+Ra×n
+Rn×n
+di-
+agonal
+=∑nj=1w(1)
+i j
+1s
+Rn
+R1,
+d
+their gradients remain the same as defined in pre-
+vious work.
+3.3 Modeling Semantic Smoothness by LLE
+As opposed to LE which preserves local invari-
+ance within data pairs, Locally Linear Embedding
+(LLE) expects each data point to be roughly re-
+constructed by a linear combination of its nearest
+neighbors (Roweis and Saul, 2000). We borrow
+the idea of LLE and enforce semantic smoothness
+by assuming:
+Smoothness Assumption 2 Each entity ei can be
+roughly reconstructed by a linear combination of
+its nearest neighbors in the embedding space, i.e.,
+(
+can
+II�������
+ei
+.
+∑ ℓ (t+, t−)+λ2
+</table>
+<bodyText confidence="0.999402888888889">The resultant embedding space is also semantically smooth and compatible with the observed triples. Hyperparameter A2 makes a trade-off between the two cases. Similar to the first model, stochastic gradient descent is used to solve the minimization problem. Given a positive triple t+ = (ei, rk, ej) and the associated negative triple t− = (e′i, rk, e′j), the gradient w.r.t. es (s E {i, j, i′, j′j) is calculated as:</bodyText>
+<equation confidence="0.949385">
+VesL2 = Vest W, t−)+2A2E (I − W2)T (I − W2) 1s,
+</equation>
+<bodyText confidence="0.999943714285714">where I E Rn×n is the identity matrix. Other parameters are not included in R2, and their gradients remain the same as defined in previous work. To better capture the cohesion within each category, during each stochastic step we resample the nearest neighbors for each entity, uniformly from the category to which it belongs.</bodyText>
+<subsectionHeader confidence="0.92397">
+3.4 Advantages and Extensions
+</subsectionHeader>
+<bodyText confidence="0.99985690625">The advantages of our approach can be summarized as follows: 1) By incorporating geometrically based regularization terms, the SSE models are able to capture the semantic correlation between entities, which exists intrinsically but is overlooked in previous work. 2) By leveraging additional entity category information, the SSE models can deal with the data sparsity issue that commonly exists in most KGs. Both aspects lead to more accurate embeddings. Entity category information has also been investigated in (Nickel et al., 2012; Chang et al., 2014; Wang et al., 2015), but in different manners. Nickel et al. (2012) take categories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones introduced in Section 2, but also those based on matrix/tensor factorization (Nickel et al., 2011; Chang et al., 2013). 2) Besides semantic categories, other information (e.g. entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. 3) Besides KG embedding, similar smoothness assumptions can also be applied in other embedding tasks (e.g.word embedding and sentence embedding).</bodyText>
+<equation confidence="0.23767">
+L S
+</equation>
+<tableCaption confidence="0.997845">
+Table 2: Relations in L and S .
+</tableCaption>
+<sectionHeader confidence="0.999435" genericHeader="evaluation and result">
+4 Experiments
+</sectionHeader>
+<bodyText confidence="0.999941333333333">We empirically evaluate the proposed SSE models in two tasks: link prediction (Bordes et al., 2013) and triple classification (Socher et al., 2013).</bodyText>
+<subsectionHeader confidence="0.985114">
+4.1 Data Sets
+</subsectionHeader>
+<bodyText confidence="0.999021387096774">We create three data sets with different sizes using NELL (Carlson et al., 2010): L , S , and N 186. L and S are two small-scale data sets, both containing 8 relations on the topics of “location” and “sport” respectively. The corresponding relations are listed in Table 2. N 186 is a larger data set containing the most frequent 186 relations. On all the data sets, entities appearing only once are removed. We extract the entity category information from a specific relation called Generalization, and keep non-overlapping categories.2 Categories containing less than 5 entities on L and S as well as categories containing less than 50 entities on N 186 are further removed. Table 3 gives some statistics of the three data sets, where # Rel./# Ent./# Trip./# Cat. denotes the number of relations/entities/observed triples/categories respectively, and # c-Ent. denotes the number of entities that have category labels. Note that our SSE models do not require every entity to have a category label. From the statistics, we can see that all the three data sets suffer from the data sparsity issue, containing a relatively small number of observed triples compared to the number of entities. On the two small-scale data sets L and S , triples are split into training/validation/test sets, with the ratio of 3:1:1. The first set is used for modeling training, the second for hyperparameter tuning, and the third for evaluation. All experiments are repeated 5 times by drawing new training/validation/test splits, and results averaged over the 5 rounds are reported.</bodyText>
+<figure confidence="0.9766088125">
+2If two categories overlap, the smaller one is discarded.
+AthletePlaysSport
+CityLocatedInState
+CityCapitalOfCountry
+CityLocatedInCountry
+AthleteLedSportTeam
+AthletePlaysForTeam
+CityLocatedInGeopoliticallocation
+AthletePlaysInLeague
+CountryLocatedInGeopoliticallocation CoachesInLeague
+StateHasCapital
+StateLocatedInCountry
+StateLocatedInGeopoliticallocation
+CoachesTeam
+TeamPlaysInLeague
+TeamPlaysSport
+</figure>
+<page confidence="0.995669">
+88
+</page>
+<table confidence="0.9994665">
+# Rel. # Ent. # Trip. # Cat. # c-Ent.
+L 8 380 718 5 358
+S 8 1,520 3,826 4 1,506
+N 186 186 14,463 41,134 35 8,590
+</table>
+<tableCaption confidence="0.999854">
+Table 3: Statistics of data sets.
+</tableCaption>
+<bodyText confidence="0.998749166666666">On N 186 experiments are conducted only once, using a training/validation/test split with 31,134/5,000/5,000 triples respectively. We will release the data upon request.</bodyText>
+<subsectionHeader confidence="0.994414">
+4.2 Link Prediction
+</subsectionHeader>
+<bodyText confidence="0.998593472222222">This task is to complete a triple (ei, rk, ej) with ei or ej missing, i.e., predict ei given (rk, ej) or predict ej given (ei, rk). Baseline methods. We take TransE, SME (lin), SME (bilin), and SE as our baselines. We then incorporate manifold regularization terms into these methods to obtain the SSE models. A model with the LE/LLE regularization term is denoted as TransE-LE/TransE-LLE for example. We further compare our SSE models with the setting proposed by Nickel et al. (2012), which also takes into account the entity category information, but in a more direct manner. That is, given an entity e with its category label ce, we create a new triple (e, Generalization, ce) and add it into the training set. Such a method is denoted as TransE-Cat for example. Evaluation protocol. For evaluation, we adopt the same ranking procedure proposed by Bordes et al. (2013). For each test triple (ei, rk, ej), the head entity ei is replaced by every entity e' in the KG, and the energy is calculated for the corrupted triple (e', rk, ej). Ranking the energies in ascending order, we get the rank of the correct entity ei. Similarly, we can get another rank by corrupting the tail entity ej. Aggregated over all test triples, we report three metrics: 1) the averaged rank, denoted as Mean (the smaller, the better); 2) the median of the ranks, denoted as Median (the smaller, the better); and 3) the proportion of ranks no larger than 10, denoted as Hits@10 (the higher, the better). Implementation details. We implement the methods based on the code provided by Bordes et al. (2013)3. For all the methods, we create 100 mini-batches on each data set. On L and S , the dimension of the embedding space d is set in the range of 110, 20,50, 1001, the margin y is set in the range of 11, 2,5, 101, and the learning rate is fixed to 0.1.</bodyText>
+<footnote confidence="0.579464">
+3https://github.com/glorotxa/SME
+</footnote>
+<bodyText confidence="0.999969">On N 186, the hyperparameters d and y are fixed to 50 and 1 respectively, and the learning rate is fixed to 10. In LE and LLE, the regularization hyperparameters A1 and A2 are tuned in 110−4,10−5,10−6,10−7,10−81. And the number of nearest neighbors K in LLE is tuned in 15,10,15, 201. The best model is selected by early stopping on the validation sets (by monitoring Mean), with a total of at most 1000 iterations over the training sets.Results. Table 4 reports the results on the test sets of L , S , and N 186. From the results, we can see that: 1) SSE (regularized via either LE or LLE) outperforms all the baselines on all the data sets and with all the metrics. The improvements are usually quite significant. The metric Mean drops by about 10% to 65%, Median drops by about 5% to 75%, and Hits@10 rises by about 5% to 190%. This observation demonstrates the superiority and generality of our approach.2) Even if encoded in a direct way (e.g. TransE-Cat), the entity category information can still help the baseline methods in the link prediction task. This observation indicates that leveraging additional information is indeed useful in dealing with the data sparsity issue and hence leads to better performance.3) Compared to the strategy which incorporates the entity category information directly, formulating such information as manifold regularization terms results in better and more stable results. The *-Cat models sometimes perform even worse than the baselines (e.g. TransE-Cat on S data), while the SSE models consistently achieve better results. This observation further demonstrates the superiority of constraining the geometric structure of the embedding space. We further visualize and compare the geometric structures of the embedding spaces learned by traditional embedding and semantically smooth embedding. We select the 10 largest semantic categories in N 186 (specified in Figure 1) and the 5,740 entities therein. We take the embeddings of these entities learned by TransE, TransE-Cat, TransE-LE, and TransE-LLE, with the optimal hyperparameter settings determined in the link prediction task. Then we create 2D plots using tSNE (Van der Maaten and Hinton, 2008)4. The results are shown in Figure 1, where a different color is used for each category.</bodyText>
+<footnote confidence="0.97057">
+4http://lvdmaaten.github.io/tsne/
+</footnote>
+<page confidence="0.999072">
+89
+</page>
+<table confidence="0.9999340625">
+TransE 30.94 10.70 50.56 362.66 62.90 43.86 924.37 94.00 16.95
+TransE-Cat 28.48 8.90 52.43 320.30 86.40 37.46 657.53 80.50 19.14
+TransE-LE 28.59 8.90 53.06 183.10 23.20 45.83 573.55 79.00 20.26
+TransE-LLE 28.03 9.20 52.36 231.67 52.40 43.18 535.32 95.00 20.02
+SME (lin) 63.01 24.10 40.90 266.50 87.10 32.34 427.86 26.00 35.97
+SME (lin)-Cat 41.12 18.30 42.43 263.88 70.80 35.03 309.60 25.00 36.22
+SME (lin)-LE 36.19 16.10 43.75 237.38 50.80 38.35 276.94 25.00 37.14
+SME (lin)-LLE 38.22 15.60 43.96 241.70 63.70 36.54 252.87 25.00 37.14
+SME (bilin) 47.66 20.90 37.85 314.49 124.00 33.83 848.39 28.00 35.71
+SME (bilin)-Cat 40.75 16.20 42.71 298.09 103.80 35.86 560.76 24.00 37.83
+SME (bilin)-LE 33.41 14.00 44.24 297.90 116.10 38.95 448.31 24.00 37.80
+SME (bilin)-LLE 32.84 13.60 46.25 286.63 110.10 35.67 452.43 28.00 36.51
+SE 108.15 69.90 14.72 426.70 242.60 24.72 904.84 44.00 27.81
+SE-Cat 88.36 48.20 20.76 435.44 231.00 35.39 529.38 40.00 28.68
+SE-LE 36.43 16.00 42.92 252.30 90.50 37.19 456.20 43.00 30.89
+SE-LLE 38.47 17.50 42.08 235.44 105.40 37.83 447.05 37.00 31.55
+</table>
+<tableCaption confidence="0.999486">
+Table 4: Link prediction results on the test sets of L , S , and N 186.
+</tableCaption>
+<figure confidence="0.994073">
+L
+Mean Median Hits@10 (%)
+S
+Mean Median Hits@10 (%)
+N 186
+Mean Median Hits@10(%)
+Athlete Politicianus Chemical City Clothing Country Sportsteam Journalist Televisionstation Room
+(a) TransE. (b) TransE-Cat. (c) TransE-LE. (d) TransE-LLE.
+</figure>
+<figureCaption confidence="0.999996">
+Figure 1: Embeddings of entities belonging to the 10 largest categories in N 186 (best viewed in color).
+</figureCaption>
+<bodyText confidence="0.999834571428571">It is easy to see that imposing the semantic smoothness assumptions helps in capturing the semantic correlation between entities in the embedding space. Entities within the same category lie closer to each other, while entities belonging to different categories are easily distinguished (see Figure 1(c) and Figure 1(d)). Incorporating the entity category information directly could also helps. But it fails on some “hard” entities (i.e., those belonging to different categories but mixed together in the center of Figure 1(b)). We have conducted the same experiments with the other methods and observed similar phenomena.</bodyText>
+<subsectionHeader confidence="0.999123">
+4.3 Triple Classification
+</subsectionHeader>
+<bodyText confidence="0.998306566666667">This task is to verify whether a given triple ⟨ei, rk, ej⟩ is correct or not. We test our SSE models in this task, with the same comparison settings as used in the link prediction task. Evaluation protocol. We follow the same evaluation protocol used in (Socher et al., 2013; Wang et al., 2014b). To create labeled data for classification, for each triple in the test and validation sets, we construct a negative triple for it by randomly corrupting the entities. To corrupt a position (head or tail), only entities that have appeared in that position are allowed. During triple classification, a triple is predicted as positive if the energy is below a relation-specific threshold Sr; otherwise as negative. We report two metrics on the test sets: micro-averaged accuracy and macro-averaged accuracy, denoted as Micro-ACC and Macro-ACC respectively. The former is a per-triple average, while the latter is a per-relation average. Implementation details. We use the same hyperparameter settings as in the link prediction task. The relation-specific threshold Sr is determined by maximizing Micro-ACC on the validation sets. Again, training is limited to at most 1000 iterations, and the best model is selected by early stopping on the validation sets (by monitoring Micro-ACC). Results. Table 5 reports the results on the test sets of L , S , and N 186. The results indicate that: 1) SSE (regularized via either LE or LLE) performs consistently better than the baseline methods on all the data sets in both metrics.</bodyText>
+<page confidence="0.994684">
+90
+</page>
+<table confidence="0.99997175">
+TransE 86.11 81.66 72.52 73.78 84.21 77.86
+TransE-Cat 82.50 77.81 75.09 74.23 87.34 81.27
+TransE-LE 86.39 81.50 79.88 77.34 90.32 84.61
+TransE-LLE 87.01 83.03 80.29 77.71 90.08 84.50
+SME (lin) 75.90 71.82 72.61 71.24 88.54 84.17
+SME (lin)-Cat 83.33 80.90 73.52 72.28 91.00 86.20
+SME (lin)-LE 84.65 79.33 79.25 74.95 92.44 88.07
+SME (lin)-LLE 84.58 79.60 79.45 75.61 92.99 88.68
+SME (bilin) 73.06 67.26 71.33 67.78 88.78 84.79
+SME (bilin)-Cat 79.38 74.35 75.12 72.41 91.67 86.48
+SME (bilin)-LE 83.75 79.66 79.23 76.18 93.37 89.29
+SME (bilin)-LLE 83.54 80.36 79.33 75.35 93.64 89.39
+SE 65.14 60.01 68.61 63.71 90.18 83.93
+SE-Cat 68.61 62.82 67.62 62.17 92.87 87.72
+SE-LE 81.67 77.52 81.46 74.72 93.94 88.62
+SE-LLE 82.01 77.45 80.25 76.07 93.95 88.54
+</table>
+<tableCaption confidence="0.999214">
+Table 5: Triple classification results (%) on the test sets of L , S , and N 186.
+</tableCaption>
+<figure confidence="0.621058666666667">
+L
+Micro-ACC Macro-ACC
+S
+Micro-ACC Macro-ACC
+N 186
+Micro-ACC Macro-ACC
+</figure>
+<bodyText confidence="0.997377157894737">The improvements are usually quite substantial. The metric Micro-ACC rises by about 1% to 25%, and Macro-ACC by about 2% to 30%.2) Incorporating the entity category information directly can also improve the baselines in the triple classification task, again demonstrating the effectiveness of leveraging additional information to deal with the data sparsity issue.3) It is a better choice to incorporate the entity category information as manifold regularization terms as opposed to encoding it directly. The *-Cat models sometimes perform even worse than the baselines (e.g. TransECat on L data and SE-Cat on S data), while the SSE models consistently achieve better results. The observations are similar to those observed during the link prediction task, and further demonstrate the superiority and generality of our approach.</bodyText>
+<sectionHeader confidence="0.999925" genericHeader="related work">
+5 Related Work
+</sectionHeader>
+<bodyText confidence="0.999920574468085">This section reviews two lines of related work: KG embedding and manifold learning. KG embedding aims to embed a KG composed of entities and relations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyogi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a).</bodyText>
+<page confidence="0.995994">
+91
+</page>
+<bodyText confidence="0.985455714285714">This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding.</bodyText>
+<sectionHeader confidence="0.998066" genericHeader="conclusion">
+6 Conclusion and Future Work
+</sectionHeader>
+<bodyText confidence="0.999977916666667">In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions are constructed by using entities’ category information, and then formulated as geometrically based regularization terms to constrain the embedding task. The embeddings learned in this way are capable of capturing the semantic correlation between entities. By leveraging additional information besides observed triples, SSE can also deal with the data sparsity issue that commonly exists in most KGs. We empirically evaluate SSE in two benchmark tasks of link prediction and triple classification. Experimental results show that by incorporating the semantic smoothness assumptions, SSE significantly and consistently outperforms state-of-the-art embedding methods, demonstrating the superiority of our approach. In addition, our approach is quite general. The smoothness assumptions can actually be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories. As future work, we would like to: 1) Construct the manifold regularization terms using other data sources. The only information required to construct the manifold regularization terms is the similarity between entities (used to define the adjacency matrix in LE and to select nearest neighbors for each entity in LLE). We would try entity similarities derived in different ways, e.g., specified by users or calculated from entities’ textual descriptions. 2) Enhance the efficiency and scalability of SSE. Processing the manifold regularization terms can be timeand space-consuming (especially the one induced by the LE algorithm). We would investigate how to address this problem, e.g., via the efficient iterative algorithms introduced in (Saul and Roweis, 2003) or via parallel/distributed computing. 3) Impose the semantic smoothness assumptions on other KG embedding methods (e.g. those based on matrix/tensor factorization or Bayesian clustering), and even on other embedding tasks (e.g. word embedding or sentence embedding).</bodyText>
+<sectionHeader confidence="0.99809" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.9999125">We would like to thank the anonymous reviewers for their valuable comments and suggestions. This work is supported by the National Natural Science Foundation of China (grant No. 61402465), the Strategic Priority Research Program of the Chinese Academy of Sciences (grant No. XDA06030200), and the National Key Technology R&amp;D Program (grant No. 2012BAH46B03).</bodyText>
+<sectionHeader confidence="0.999398" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.998540818181818">
+Eneko Agirre, Oier Lopez de Lacalle, and Aitor Soroa.
+2014. Random walks for knowledge-based word
+sense disambiguation. Computational Linguistics,
+40(1):57–84.
+Mikhail Belkin and Partha Niyogi. 2001. Laplacian
+eigenmaps and spectral techniques for embedding
+and clustering. In Advances in Neural Information
+Processing Systems, pages 585–591.
+Mikhail Belkin, Partha Niyogi, and Vikas Sindhwani.
+2006. Manifold regularization: A geometric frame-
+work for learning from labeled and unlabeled ex-
+amples. Journal of Machine Learning Research,
+7:2399–2434.
+Kurt Bollacker, Colin Evans, Praveen Paritosh, Tim S-
+turge, and Jamie Taylor. 2008. Freebase: A collab-
+oratively created graph database for structuring hu-
+man knowledge. In Proceedings of the 2008 ACM
+SIGMOD International Conference on Management
+of Data, pages 1247–1250.
+Antoine Bordes, Jason Weston, Ronan Collobert, and
+Yoshua Bengio. 2011. Learning structured em-
+beddings of knowledge bases. In Proceedings of
+the 25th AAAI Conference on Artificial Intelligence,
+pages 301–306.
+Antoine Bordes, Nicolas Usunier, Alberto Garcia-
+Dur´an, Jason Weston, and Oksana Yakhnenko.
+2013. Translating embeddings for modeling multi-
+relational data. In Advances in Neural Information
+Processing Systems, pages 2787–2795.
+Antoine Bordes, Xavier Glorot, Jason Weston, and
+Yoshua Bengio. 2014. A semantic matching en-
+ergy function for learning with multi-relational data.
+Machine Learning, 94(2):233–259.
+</reference>
+<page confidence="0.971333">
+92
+</page>
+<reference confidence="0.999660666666666">
+Deng Cai, Xiaofei He, Xiaoyun Wu, and Jiawei Han.
+2008. Non-negative matrix factorization on mani-
+fold. In Proceedings of the 8th IEEE International
+Conference on Data Mining, pages 63–72.
+Andrew Carlson, Justin Betteridge, Bryan Kisiel, Bur-
+r Settles, Estevam R. Hruschka Jr, and Tom M.
+Mitchell. 2010. Toward an architecture for never-
+ending language learning. In Proceedings of the
+24th AAAI Conference on Artificial Intelligence,
+pages 1306–1313.
+Kai-Wei Chang, Wen-tau Yih, and Christopher Meek.
+2013. Multi-relational latent semantic analysis. In
+Proceedings of the 2013 Conference on Empirical
+Methods in Natural Language Processing, pages
+1602–1612.
+Kai-Wei Chang, Wen-tau Yih, Bishan Yang, and
+Christopher Meek. 2014. Typed tensor decom-
+position of knowledge bases for relation extraction.
+In Proceedings of the 2014 Conference on Empiri-
+cal Methods in Natural Language Processing, pages
+1568–1579.
+Raphael Hoffmann, Congle Zhang, Xiao Ling,
+Luke Zettlemoyer, and Daniel S. Weld. 2011.
+Knowledge-based weak supervision for information
+extraction of overlapping relations. In Proceedings
+of the 49th Annual Meeting of the Association for
+Computational Linguistics: Human Language Tech-
+nologies, pages 541–550.
+Rodolphe Jenatton, Nicolas L. Roux, Antoine Bordes,
+and Guillaume R. Obozinski. 2012. A latent fac-
+tor model for highly multi-relational data. In Ad-
+vances in Neural Information Processing Systems,
+pages 3167–3175.
+Charles Kemp, Joshua B. Tenenbaum, Thomas L. Grif-
+fiths, Takeshi Yamada, and Naonori Ueda. 2006.
+Learning systems of concepts with an infinite rela-
+tional model. In Proceedings of the 21st AAAI Con-
+ference on Artificial Intelligence, pages 381–388.
+Jens Lehmann, Robert Isele, Max Jakob, Anja
+Jentzsch, Dimitris Kontokostas, Pablo N. Mendes,
+Sebastian Hellmann, Mohamed Morsey, Patrick van
+Kleef, S¨oren Auer, et al. 2014. Dbpedia: A large-
+scale, multilingual knowledge base extracted from
+wikipedia. Semantic Web Journal.
+Yankai Lin, Zhiyuan Liu, Maosong Sun, Yang Liu, and
+Xuan Zhu. 2015. Learning entity and relation em-
+beddings for knowledge graph completion. In Pro-
+ceedings of the 29th AAAI Conference on Artificial
+Intelligence, pages 2181–2187.
+Hao Ma, Dengyong Zhou, Chao Liu, Michael R. Lyu,
+and Irwin King. 2011. Recommender systems with
+social regularization. In Proceedings of the 4th ACM
+International Conference on Web Search and Data
+Mining, pages 287–296.
+Bernardo Magnini, Matteo Negri, Roberto Prevete, and
+Hristo Tanev. 2002. A wordnet-based approach
+to named entities recognition. In Proceedings of
+the 2002 Workshop on Building and Using Seman-
+tic Networks, pages 1–7.
+George A. Miller. 1995. Wordnet: A lexical
+database for english. Communications of the ACM,
+38(11):39–41.
+Maximilian Nickel, Volker Tresp, and Hans-Peter
+Kriegel. 2011. A three-way model for collective
+learning on multi-relational data. In Proceedings
+of the 28th International Conference on Machine
+Learning, pages 809–816.
+Maximilian Nickel, Volker Tresp, and Hans-Peter
+Kriegel. 2012. Factorizing yago: Scalable machine
+learning for linked data. In Proceedings of the 21st
+International Conference on World Wide Web, pages
+271–280.
+Sebastian Riedel, Limin Yao, Andrew McCallum, and
+Benjamin M. Marlin. 2013. Relation extraction
+with matrix factorization and universal schemas. In
+Proceedings of the 2013 Conference on North Amer-
+ican Chapter of the Association for Computational
+Linguistics: Human Language Technologies, pages
+74–84.
+Sam T. Roweis and Lawrence K. Saul. 2000. Nonlin-
+ear dimensionality reduction by locally linear em-
+bedding. Science, 290(5500):2323–2326.
+Lawrence K. Saul and Sam T. Roweis. 2003. Think
+globally, fit locally: Unsupervised learning of low
+dimensional manifolds. Journal of Machine Learn-
+ing Research, 4:119–155.
+Geoffrey J. Singh and Ajit P. Gordon. 2008. Relational
+learning via collective matrix factorization. In Pro-
+ceedings of the 14th ACM SIGKDD International
+Conference on Knowledge Discovery and Data Min-
+ing, pages 650–658.
+Richard Socher, Danqi Chen, Christopher D. Manning,
+and Andrew Y. Ng. 2013. Reasoning with neural
+tensor networks for knowledge base completion. In
+Advances in Neural Information Processing System-
+s, pages 926–934.
+Ilya Sutskever, Joshua B. Tenenbaum, and Ruslan R.
+Salakhutdinov. 2009. Modelling relational data us-
+ing bayesian clustered tensor factorization. In Ad-
+vances in Neural Information Processing Systems,
+pages 1821–1828.
+Joshua B. Tenenbaum, Vin De Silva, and John C.
+Langford. 2000. A global geometric framework
+for nonlinear dimensionality reduction. Science,
+290(5500):2319–2323.
+Laurens Van der Maaten and Geoffrey Hinton. 2008.
+Visualizing data using t-sne. Journal of Machine
+Learning Research, 9(85):2579–2605.
+</reference>
+<page confidence="0.982912">
+93
+</page>
+<reference confidence="0.999698138888889">
+Quan Wang, Jing Liu, Bin Wang, and Li Guo. 2014a.
+A regularized competition model for question diffi-
+culty estimation in community question answering
+services. In Proceedings of the 2014 Conference on
+Empirical Methods in Natural Language Process-
+ing, pages 1115–1126.
+Zhen Wang, Jianwen Zhang, Jianlin Feng, and Zheng
+Chen. 2014b. Knowledge graph embedding by
+translating on hyperplanes. In Proceedings of the
+28th AAAI Conference on Artificial Intelligence,
+pages 1112–1119.
+Quan Wang, Bin Wang, and Li Guo. 2015. Knowl-
+edge base completion using embeddings and rules.
+In Proceedings of the 24th International Joint Con-
+ference on Artificial Intelligence.
+Jason Weston, Antoine Bordes, Oksana Yakhnenko,
+and Nicolas Usunier. 2013. Connecting language
+and knowledge bases with embedding models for re-
+lation extraction. In Proceedings of the 2013 Con-
+ference on Empirical Methods in Natural Language
+Processing, pages 1366–1371.
+Bishan Yang, Wen-tau Yih, Xiaodong He, Jianfeng
+Gao, and Li Deng. 2014. Learning multi-relational
+semantics using neural-embedding models. arXiv
+preprint arXiv:1411.4072.
+Dengyong Zhou, Olivier Bousquet, Thomas Navin
+Lal, Jason Weston, and Bernhard Sch¨olkopf. 2004.
+Learning with local and global consistency. In Ad-
+vances in Neural Information Processing Systems,
+pages 321–328.
+Xiaojin Zhu and Partha Niyogi. 2005. Harmonic mix-
+tures: combining mixture models and graph-based
+methods for inductive and scalable semi-supervised
+learning. In Proceedings of the 22nd Internation-
+al Conference on Machine Learning, pages 1052–
+1059.
+</reference>
+<page confidence="0.999551">
+94
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.842934" no="0">
+<title confidence="0.998515">Semantically Smooth Knowledge Graph Embedding</title>
+<author confidence="0.921125">Quan Bin Lihong Li of Information Engineering</author>
+<author confidence="0.921125">Chinese Academy of Sciences</author>
+<author confidence="0.921125">Beijing</author>
+<affiliation confidence="0.927953">Computer Network Emergency Response Technical</affiliation>
+<address confidence="0.983578">Coordination Center of China, Beijing 100029,</address>
+<email confidence="0.970552">wlh@isc.org.cn</email>
+<abstract confidence="0.999331028571429">This paper considers the problem of embedding Knowledge Graphs (KGs) consisting of entities and relations into lowdimensional vector spaces. Most of the existing methods perform this task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. In this paper, aiming at further discovering the intrinsic geometric structure of the embedding space, we propose Smooth Embedding The key idea of SSE is to take full advantage of additional semantic information and enforce the embedding space to be semantically smooth, i.e., entities belonging to the same semantic category will lie close to each other in the embedding space. Two manifold learning algorithms Laplacian Eigenmaps and Locally Linear Embedding are used to model the smoothness assumption. Both are formulated as geometrically based regularization terms to constrain the embedding task. We empirically evaluate SSE in two benchmark tasks of link prediction and triple classification, and achieve significant and consistent improvements over state-of-the-art methods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Eneko Agirre</author>
+</authors>
+<title>Oier Lopez de Lacalle, and Aitor Soroa.</title>
+<date>2014</date>
+<journal>Computational Linguistics,</journal>
+<volume>40</volume>
+<issue>1</issue>
+<marker>Agirre, 2014</marker>
+<rawString>Eneko Agirre, Oier Lopez de Lacalle, and Aitor Soroa. 2014. Random walks for knowledge-based word sense disambiguation. Computational Linguistics, 40(1):57–84.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mikhail Belkin</author>
+<author>Partha Niyogi</author>
+</authors>
+<title>Laplacian eigenmaps and spectral techniques for embedding and clustering.</title>
+<date>2001</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>585--591</pages>
+<contexts>
+<context citStr="Belkin and Niyogi, 2001" endWordPosition="708" position="4524" startWordPosition="705">and the 7th International Joint Conference on Natural Language Processing, pages 84–94, Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics l use of additional semantic information (i.e. semantic categories of entities) and enforce the embedding space to be semantically smooth—entities belonging to the same semantic category should lie close to each other in the embedding space. This smoothness assumption is closely related to the local invariance assumption exploited in manifold learning theory, which requires nearby points to have similar embeddings or labels (Belkin and Niyogi, 2001). Thus we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model the smoothness assumption. The former requires an entity to lie close to every other entity in the same category, while the latter represents that entity as a linear combination of its nearest neighbors (i.e. entities within the same category). Both are formulated as manifold regularization terms to constrain the KG embedding objective function. As such, SSE obtains an embedding space which is semantically smooth and at the same time comp</context>
+<context citStr="Belkin and Niyogi, 2001" endWordPosition="2167" position="13015" startWordPosition="2164"> and require observed triples to have lower energies than unobserved ones (i.e. the margin-based ranking loss defined in Eq. (1)). To make the embedding space semantically smooth, we further leverage the entity category information {cel, and assume that entities within the same semantic category should lie close to each other in the embedding space. This smoothness assumption is similar to the local invariance assumption exploited in manifold learning theory (i.e. nearby points are likely to have similar embeddings or labels). So we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model such semantic smoothness, termed as LE and LLE for short respectively. 3.2 Modeling Semantic Smoothness by LE Laplacian Eigenmaps (LE) is a manifold learning algorithm that preserves local invariance between 86 each two data points (Belkin and Niyogi, 2001). We borrow the idea of LE and enforce semantic smoothness by assuming: Smoothness Assumption 1 If two entities ei and ej belong to the same semantic category, they will have embeddings ei and ej close to each other. To encode the semantic information, we construct an adjacency m</context>
+<context citStr="Belkin and Niyogi, 2001" endWordPosition="5669" position="33732" startWordPosition="5666"> the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assump</context>
+</contexts>
+<marker>Belkin, Niyogi, 2001</marker>
+<rawString>Mikhail Belkin and Partha Niyogi. 2001. Laplacian eigenmaps and spectral techniques for embedding and clustering. In Advances in Neural Information Processing Systems, pages 585–591.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mikhail Belkin</author>
+<author>Partha Niyogi</author>
+<author>Vikas Sindhwani</author>
+</authors>
+<title>Manifold regularization: A geometric framework for learning from labeled and unlabeled examples.</title>
+<date>2006</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>7--2399</pages>
+<contexts>
+<context citStr="Belkin et al., 2006" endWordPosition="5644" position="33564" startWordPosition="5641">s (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender </context>
+</contexts>
+<marker>Belkin, Niyogi, Sindhwani, 2006</marker>
+<rawString>Mikhail Belkin, Partha Niyogi, and Vikas Sindhwani. 2006. Manifold regularization: A geometric framework for learning from labeled and unlabeled examples. Journal of Machine Learning Research, 7:2399–2434.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kurt Bollacker</author>
+<author>Colin Evans</author>
+<author>Praveen Paritosh</author>
+<author>Tim Sturge</author>
+<author>Jamie Taylor</author>
+</authors>
+<title>Freebase: A collaboratively created graph database for structuring human knowledge.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data,</booktitle>
+<pages>1247--1250</pages>
+<contexts>
+<context citStr="Bollacker et al., 2008" endWordPosition="265" position="1810" startWordPosition="262">del the smoothness assumption. Both are formulated as geometrically based regularization terms to constrain the embedding task. We empirically evaluate SSE in two benchmark tasks of link prediction and triple classification, and achieve significant and consistent improvements over state-of-the-art methods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories. 1 Introduction Knowledge Graphs (KGs) like WordNet (Miller, 1995), Freebase (Bollacker et al., 2008), and DB∗ Corresponding author: Quan Wang. pedia (Lehmann et al., 2014) have become extremely useful resources for many NLP related applications, such as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underly</context>
+</contexts>
+<marker>Bollacker, Evans, Paritosh, Sturge, Taylor, 2008</marker>
+<rawString>Kurt Bollacker, Colin Evans, Praveen Paritosh, Tim Sturge, and Jamie Taylor. 2008. Freebase: A collaboratively created graph database for structuring human knowledge. In Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data, pages 1247–1250.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Jason Weston</author>
+<author>Ronan Collobert</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>Learning structured embeddings of knowledge bases.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the 25th AAAI Conference on Artificial Intelligence,</booktitle>
+<pages>301--306</pages>
+<contexts>
+<context citStr="Bordes et al., 2011" endWordPosition="1226" position="7697" startWordPosition="1223">tion 6. 2 A Brief Review of KG Embedding KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) triples, and t+ = (ei, rk, ej) E O; Nt+ denotes the set o</context>
+<context citStr="Bordes et al., 2011" endWordPosition="1464" position="9051" startWordPosition="1461">ative triples; and [x]+ = max(0, x). The ranking loss favors lower energies for positive triples than for negative ones. Stochastic gradient descent (in mini-batch mode) is adopted to solve the minimization problem. For details please refer to (Bordes et al., 2013) and references therein. Different embedding models differ in the first two steps: entity/relation representation and energy E E L= t+EOt−EIVt+ 85 Method Entity/Relation embeddings Energy function Table 1: Existing KG embedding models. TransE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and re</context>
+<context citStr="Bordes et al., 2011" endWordPosition="1764" position="10554" startWordPosition="1761">where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej), it first employs a function gu (·, ·) to combine rk and ei, and gv (·, ·) to combine rk and ej. Then, the energy function is defined as matching gu (·, ·) and gv (·, ·) by their dot product, i.e., f(ei, rk, ej) = gu(rk, ei)Tgv(rk, ej). There are two versions of SME, linear and bilinear (denoted as SME (lin) and SME (bilin) respectively), obtained by defining different gu (·, ·) and gv (·, ·). SE (Bordes et al., 2011) represents entities as vectors but relations as matrices. Each relation is modeled by a left matrix Ruk and a right matrix Rvk, acting as independent projections to head and tail entities respectively. If a triple (ei, rk, ej) holds, Rukei and Rvkej should be close to each other. The energy function is f(ei, rk, ej) = llRukei − Rvkejllℓ1. Table 1 summarizes the entity/relation representations and energy functions used in these models. 3 Semantically Smooth Embedding The methods introduced above perform the embedding task based solely on observed facts. The only requirement is that the learned</context>
+</contexts>
+<marker>Bordes, Weston, Collobert, Bengio, 2011</marker>
+<rawString>Antoine Bordes, Jason Weston, Ronan Collobert, and Yoshua Bengio. 2011. Learning structured embeddings of knowledge bases. In Proceedings of the 25th AAAI Conference on Artificial Intelligence, pages 301–306.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Nicolas Usunier</author>
+<author>Alberto GarciaDur´an</author>
+<author>Jason Weston</author>
+<author>Oksana Yakhnenko</author>
+</authors>
+<title>Translating embeddings for modeling multirelational data.</title>
+<date>2013</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>2787--2795</pages>
+<marker>Bordes, Usunier, GarciaDur´an, Weston, Yakhnenko, 2013</marker>
+<rawString>Antoine Bordes, Nicolas Usunier, Alberto GarciaDur´an, Jason Weston, and Oksana Yakhnenko. 2013. Translating embeddings for modeling multirelational data. In Advances in Neural Information Processing Systems, pages 2787–2795.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Xavier Glorot</author>
+<author>Jason Weston</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>A semantic matching energy function for learning with multi-relational data.</title>
+<date>2014</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>94</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Bordes et al., 2014" endWordPosition="404" position="2618" startWordPosition="400">t al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed components of a KG into continuous vector spaces, so as to simplify the manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e. embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can further be used to benefit all kinds of task</context>
+<context citStr="Bordes et al., 2014" endWordPosition="1217" position="7645" startWordPosition="1214">k, followed by the conclusion and future work in Section 6. 2 A Brief Review of KG Embedding KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) tripl</context>
+<context citStr="Bordes et al., 2014" endWordPosition="1453" position="8992" startWordPosition="1450">k, e') E Nt+; y &gt; 0 is a margin separating positive and negative triples; and [x]+ = max(0, x). The ranking loss favors lower energies for positive triples than for negative ones. Stochastic gradient descent (in mini-batch mode) is adopted to solve the minimization problem. For details please refer to (Bordes et al., 2013) and references therein. Different embedding models differ in the first two steps: entity/relation representation and energy E E L= t+EOt−EIVt+ 85 Method Entity/Relation embeddings Energy function Table 1: Existing KG embedding models. TransE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. T</context>
+<context citStr="Bordes et al., 2014" endWordPosition="5456" position="32338" startWordPosition="5453">iority and generality of our approach. 5 Related Work This section reviews two lines of related work: KG embedding and manifold learning. KG embedding aims to embed a KG composed of entities and relations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable emb</context>
+</contexts>
+<marker>Bordes, Glorot, Weston, Bengio, 2014</marker>
+<rawString>Antoine Bordes, Xavier Glorot, Jason Weston, and Yoshua Bengio. 2014. A semantic matching energy function for learning with multi-relational data. Machine Learning, 94(2):233–259.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Deng Cai</author>
+<author>Xiaofei He</author>
+<author>Xiaoyun Wu</author>
+<author>Jiawei Han</author>
+</authors>
+<title>Non-negative matrix factorization on manifold.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 8th IEEE International Conference on Data Mining,</booktitle>
+<pages>63--72</pages>
+<contexts>
+<context citStr="Cai et al., 2008" endWordPosition="5724" position="34077" startWordPosition="5721">, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions ar</context>
+</contexts>
+<marker>Cai, He, Wu, Han, 2008</marker>
+<rawString>Deng Cai, Xiaofei He, Xiaoyun Wu, and Jiawei Han. 2008. Non-negative matrix factorization on manifold. In Proceedings of the 8th IEEE International Conference on Data Mining, pages 63–72.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andrew Carlson</author>
+<author>Justin Betteridge</author>
+<author>Bryan Kisiel</author>
+<author>Burr Settles</author>
+<author>Estevam R Hruschka Jr</author>
+<author>Tom M Mitchell</author>
+</authors>
+<title>Toward an architecture for neverending language learning.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 24th AAAI Conference on Artificial Intelligence,</booktitle>
+<pages>1306--1313</pages>
+<contexts>
+<context citStr="Carlson et al., 2010" endWordPosition="3413" position="19961" startWordPosition="3410"> categories, other information (e.g. entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. 3) Besides KG embedding, similar smoothness assumptions can also be L S Table 2: Relations in L and S . applied in other embedding tasks (e.g. word embedding and sentence embedding). 4 Experiments We empirically evaluate the proposed SSE models in two tasks: link prediction (Bordes et al., 2013) and triple classification (Socher et al., 2013). 4.1 Data Sets We create three data sets with different sizes using NELL (Carlson et al., 2010): L , S , and N 186. L and S are two small-scale data sets, both containing 8 relations on the topics of “location” and “sport” respectively. The corresponding relations are listed in Table 2. N 186 is a larger data set containing the most frequent 186 relations. On all the data sets, entities appearing only once are removed. We extract the entity category information from a specific relation called Generalization, and keep non-overlapping categories.2 Categories containing less than 5 entities on L and S as well as categories containing less than 50 entities on N 186 are further removed. Tabl</context>
+</contexts>
+<marker>Carlson, Betteridge, Kisiel, Settles, Jr, Mitchell, 2010</marker>
+<rawString>Andrew Carlson, Justin Betteridge, Bryan Kisiel, Burr Settles, Estevam R. Hruschka Jr, and Tom M. Mitchell. 2010. Toward an architecture for neverending language learning. In Proceedings of the 24th AAAI Conference on Artificial Intelligence, pages 1306–1313.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kai-Wei Chang</author>
+<author>Wen-tau Yih</author>
+<author>Christopher Meek</author>
+</authors>
+<title>Multi-relational latent semantic analysis.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1602--1612</pages>
+<contexts>
+<context citStr="Chang et al., 2013" endWordPosition="3308" position="19319" startWordPosition="3305">ategories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones introduced in Section 2, but also those based on matrix/tensor factorization (Nickel et al., 2011; Chang et al., 2013). 2) Besides semantic categories, other information (e.g. entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. 3) Besides KG embedding, similar smoothness assumptions can also be L S Table 2: Relations in L and S . applied in other embedding tasks (e.g. word embedding and sentence embedding). 4 Experiments We empirically evaluate the proposed SSE models in two tasks: link prediction (Bordes et al., 2013) and triple classification (Socher et al., 2013). 4.1 Data Sets We create three data sets with differe</context>
+</contexts>
+<marker>Chang, Yih, Meek, 2013</marker>
+<rawString>Kai-Wei Chang, Wen-tau Yih, and Christopher Meek. 2013. Multi-relational latent semantic analysis. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, pages 1602–1612.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kai-Wei Chang</author>
+<author>Wen-tau Yih</author>
+<author>Bishan Yang</author>
+<author>Christopher Meek</author>
+</authors>
+<title>Typed tensor decomposition of knowledge bases for relation extraction.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1568--1579</pages>
+<contexts>
+<context citStr="Chang et al., 2014" endWordPosition="3198" position="18625" startWordPosition="3195"> the category to which it belongs. 3.4 Advantages and Extensions The advantages of our approach can be summarized as follows: 1) By incorporating geometrically based regularization terms, the SSE models are able to capture the semantic correlation between entities, which exists intrinsically but is overlooked in previous work. 2) By leveraging additional entity category information, the SSE models can deal with the data sparsity issue that commonly exists in most KGs. Both aspects lead to more accurate embeddings. Entity category information has also been investigated in (Nickel et al., 2012; Chang et al., 2014; Wang et al., 2015), but in different manners. Nickel et al. (2012) take categories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones introduced in Section 2,</context>
+<context citStr="Chang et al., 2014" endWordPosition="5526" position="32770" startWordPosition="5523">tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization</context>
+</contexts>
+<marker>Chang, Yih, Yang, Meek, 2014</marker>
+<rawString>Kai-Wei Chang, Wen-tau Yih, Bishan Yang, and Christopher Meek. 2014. Typed tensor decomposition of knowledge bases for relation extraction. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing, pages 1568–1579.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Raphael Hoffmann</author>
+<author>Congle Zhang</author>
+<author>Xiao Ling</author>
+<author>Luke Zettlemoyer</author>
+<author>Daniel S Weld</author>
+</authors>
+<title>Knowledge-based weak supervision for information extraction of overlapping relations.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>541--550</pages>
+<contexts>
+<context citStr="Hoffmann et al., 2011" endWordPosition="315" position="2112" startWordPosition="312">ods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories. 1 Introduction Knowledge Graphs (KGs) like WordNet (Miller, 1995), Freebase (Bollacker et al., 2008), and DB∗ Corresponding author: Quan Wang. pedia (Lehmann et al., 2014) have become extremely useful resources for many NLP related applications, such as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed components of a KG into continuous vector spaces, so</context>
+</contexts>
+<marker>Hoffmann, Zhang, Ling, Zettlemoyer, Weld, 2011</marker>
+<rawString>Raphael Hoffmann, Congle Zhang, Xiao Ling, Luke Zettlemoyer, and Daniel S. Weld. 2011. Knowledge-based weak supervision for information extraction of overlapping relations. In Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies, pages 541–550.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rodolphe Jenatton</author>
+<author>Nicolas L Roux</author>
+<author>Antoine Bordes</author>
+<author>Guillaume R Obozinski</author>
+</authors>
+<title>A latent factor model for highly multi-relational data.</title>
+<date>2012</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>3167--3175</pages>
+<contexts>
+<context citStr="Jenatton et al., 2012" endWordPosition="1230" position="7721" startWordPosition="1227">iew of KG Embedding KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) triples, and t+ = (ei, rk, ej) E O; Nt+ denotes the set of negative triples const</context>
+<context citStr="Jenatton et al., 2012" endWordPosition="1567" position="9511" startWordPosition="1563">on Table 1: Existing KG embedding models. TransE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given </context>
+<context citStr="Jenatton et al., 2012" endWordPosition="5483" position="32513" startWordPosition="5480">posed of entities and relations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the </context>
+</contexts>
+<marker>Jenatton, Roux, Bordes, Obozinski, 2012</marker>
+<rawString>Rodolphe Jenatton, Nicolas L. Roux, Antoine Bordes, and Guillaume R. Obozinski. 2012. A latent factor model for highly multi-relational data. In Advances in Neural Information Processing Systems, pages 3167–3175.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Charles Kemp</author>
+<author>Joshua B Tenenbaum</author>
+<author>Thomas L Griffiths</author>
+<author>Takeshi Yamada</author>
+<author>Naonori Ueda</author>
+</authors>
+<title>Learning systems of concepts with an infinite relational model.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 21st AAAI Conference on Artificial Intelligence,</booktitle>
+<pages>381--388</pages>
+<contexts>
+<context citStr="Kemp et al., 2006" endWordPosition="5555" position="32964" startWordPosition="5552">et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006)</context>
+</contexts>
+<marker>Kemp, Tenenbaum, Griffiths, Yamada, Ueda, 2006</marker>
+<rawString>Charles Kemp, Joshua B. Tenenbaum, Thomas L. Griffiths, Takeshi Yamada, and Naonori Ueda. 2006. Learning systems of concepts with an infinite relational model. In Proceedings of the 21st AAAI Conference on Artificial Intelligence, pages 381–388.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jens Lehmann</author>
+<author>Robert Isele</author>
+<author>Max Jakob</author>
+<author>Anja Jentzsch</author>
+<author>Dimitris Kontokostas</author>
+<author>Pablo N Mendes</author>
+<author>Sebastian Hellmann</author>
+<author>Mohamed Morsey</author>
+<author>Patrick van Kleef</author>
+<author>S¨oren Auer</author>
+</authors>
+<title>Dbpedia: A largescale, multilingual knowledge base extracted from wikipedia. Semantic Web Journal.</title>
+<date>2014</date>
+<marker>Lehmann, Isele, Jakob, Jentzsch, Kontokostas, Mendes, Hellmann, Morsey, van Kleef, Auer, 2014</marker>
+<rawString>Jens Lehmann, Robert Isele, Max Jakob, Anja Jentzsch, Dimitris Kontokostas, Pablo N. Mendes, Sebastian Hellmann, Mohamed Morsey, Patrick van Kleef, S¨oren Auer, et al. 2014. Dbpedia: A largescale, multilingual knowledge base extracted from wikipedia. Semantic Web Journal.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yankai Lin</author>
+<author>Zhiyuan Liu</author>
+<author>Maosong Sun</author>
+<author>Yang Liu</author>
+<author>Xuan Zhu</author>
+</authors>
+<title>Learning entity and relation embeddings for knowledge graph completion.</title>
+<date>2015</date>
+<booktitle>In Proceedings of the 29th AAAI Conference on Artificial Intelligence,</booktitle>
+<pages>2181--2187</pages>
+<contexts>
+<context citStr="Lin et al., 2015" endWordPosition="408" position="2637" startWordPosition="405">ntity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed components of a KG into continuous vector spaces, so as to simplify the manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e. embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can further be used to benefit all kinds of tasks, such as KG compl</context>
+<context citStr="Lin et al., 2015" endWordPosition="1579" position="9571" startWordPosition="1576"> 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej), it first employs a function gu (·, ·)</context>
+<context citStr="Lin et al., 2015" endWordPosition="5491" position="32552" startWordPosition="5488">dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsic</context>
+</contexts>
+<marker>Lin, Liu, Sun, Liu, Zhu, 2015</marker>
+<rawString>Yankai Lin, Zhiyuan Liu, Maosong Sun, Yang Liu, and Xuan Zhu. 2015. Learning entity and relation embeddings for knowledge graph completion. In Proceedings of the 29th AAAI Conference on Artificial Intelligence, pages 2181–2187.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hao Ma</author>
+<author>Dengyong Zhou</author>
+<author>Chao Liu</author>
+<author>Michael R Lyu</author>
+<author>Irwin King</author>
+</authors>
+<title>Recommender systems with social regularization.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the 4th ACM International Conference on Web Search and Data Mining,</booktitle>
+<pages>287--296</pages>
+<contexts>
+<context citStr="Ma et al., 2011" endWordPosition="5742" position="34189" startWordPosition="5739">this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions are constructed by using entities’ category information, and then formulated as geometrically based regularization</context>
+</contexts>
+<marker>Ma, Zhou, Liu, Lyu, King, 2011</marker>
+<rawString>Hao Ma, Dengyong Zhou, Chao Liu, Michael R. Lyu, and Irwin King. 2011. Recommender systems with social regularization. In Proceedings of the 4th ACM International Conference on Web Search and Data Mining, pages 287–296.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bernardo Magnini</author>
+<author>Matteo Negri</author>
+<author>Roberto Prevete</author>
+<author>Hristo Tanev</author>
+</authors>
+<title>A wordnet-based approach to named entities recognition.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the 2002 Workshop on Building and Using Semantic Networks,</booktitle>
+<pages>1--7</pages>
+<contexts>
+<context citStr="Magnini et al., 2002" endWordPosition="307" position="2060" startWordPosition="304"> consistent improvements over state-of-the-art methods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories. 1 Introduction Knowledge Graphs (KGs) like WordNet (Miller, 1995), Freebase (Bollacker et al., 2008), and DB∗ Corresponding author: Quan Wang. pedia (Lehmann et al., 2014) have become extremely useful resources for many NLP related applications, such as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed </context>
+</contexts>
+<marker>Magnini, Negri, Prevete, Tanev, 2002</marker>
+<rawString>Bernardo Magnini, Matteo Negri, Roberto Prevete, and Hristo Tanev. 2002. A wordnet-based approach to named entities recognition. In Proceedings of the 2002 Workshop on Building and Using Semantic Networks, pages 1–7.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>George A Miller</author>
+</authors>
+<title>Wordnet: A lexical database for english.</title>
+<date>1995</date>
+<journal>Communications of the ACM,</journal>
+<volume>38</volume>
+<issue>11</issue>
+<contexts>
+<context citStr="Miller, 1995" endWordPosition="260" position="1775" startWordPosition="259"> Embedding are used to model the smoothness assumption. Both are formulated as geometrically based regularization terms to constrain the embedding task. We empirically evaluate SSE in two benchmark tasks of link prediction and triple classification, and achieve significant and consistent improvements over state-of-the-art methods. Furthermore, SSE is a general framework. The smoothness assumption can be imposed to a wide variety of embedding models, and it can also be constructed using other information besides entities’ semantic categories. 1 Introduction Knowledge Graphs (KGs) like WordNet (Miller, 1995), Freebase (Bollacker et al., 2008), and DB∗ Corresponding author: Quan Wang. pedia (Lehmann et al., 2014) have become extremely useful resources for many NLP related applications, such as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in repres</context>
+</contexts>
+<marker>Miller, 1995</marker>
+<rawString>George A. Miller. 1995. Wordnet: A lexical database for english. Communications of the ACM, 38(11):39–41.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Maximilian Nickel</author>
+<author>Volker Tresp</author>
+<author>Hans-Peter Kriegel</author>
+</authors>
+<title>A three-way model for collective learning on multi-relational data.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the 28th International Conference on Machine Learning,</booktitle>
+<pages>809--816</pages>
+<contexts>
+<context citStr="Nickel et al., 2011" endWordPosition="3304" position="19298" startWordPosition="3301"> et al. (2012) take categories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones introduced in Section 2, but also those based on matrix/tensor factorization (Nickel et al., 2011; Chang et al., 2013). 2) Besides semantic categories, other information (e.g. entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. 3) Besides KG embedding, similar smoothness assumptions can also be L S Table 2: Relations in L and S . applied in other embedding tasks (e.g. word embedding and sentence embedding). 4 Experiments We empirically evaluate the proposed SSE models in two tasks: link prediction (Bordes et al., 2013) and triple classification (Socher et al., 2013). 4.1 Data Sets We create three d</context>
+<context citStr="Nickel et al., 2011" endWordPosition="5522" position="32749" startWordPosition="5519">hods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix</context>
+</contexts>
+<marker>Nickel, Tresp, Kriegel, 2011</marker>
+<rawString>Maximilian Nickel, Volker Tresp, and Hans-Peter Kriegel. 2011. A three-way model for collective learning on multi-relational data. In Proceedings of the 28th International Conference on Machine Learning, pages 809–816.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Maximilian Nickel</author>
+<author>Volker Tresp</author>
+<author>Hans-Peter Kriegel</author>
+</authors>
+<title>Factorizing yago: Scalable machine learning for linked data.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 21st International Conference on World Wide Web,</booktitle>
+<pages>271--280</pages>
+<contexts>
+<context citStr="Nickel et al., 2012" endWordPosition="3194" position="18605" startWordPosition="3191">ntity, uniformly from the category to which it belongs. 3.4 Advantages and Extensions The advantages of our approach can be summarized as follows: 1) By incorporating geometrically based regularization terms, the SSE models are able to capture the semantic correlation between entities, which exists intrinsically but is overlooked in previous work. 2) By leveraging additional entity category information, the SSE models can deal with the data sparsity issue that commonly exists in most KGs. Both aspects lead to more accurate embeddings. Entity category information has also been investigated in (Nickel et al., 2012; Chang et al., 2014; Wang et al., 2015), but in different manners. Nickel et al. (2012) take categories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones intr</context>
+<context citStr="Nickel et al. (2012)" endWordPosition="3843" position="22671" startWordPosition="3840">raining/validation/test split with 31,134/5,000/5,000 triples respectively. We will release the data upon request. 4.2 Link Prediction This task is to complete a triple (ei, rk, ej) with ei or ej missing, i.e., predict ei given (rk, ej) or predict ej given (ei, rk). Baseline methods. We take TransE, SME (lin), SME (bilin), and SE as our baselines. We then incorporate manifold regularization terms into these methods to obtain the SSE models. A model with the LE/LLE regularization term is denoted as TransE-LE/TransE-LLE for example. We further compare our SSE models with the setting proposed by Nickel et al. (2012), which also takes into account the entity category information, but in a more direct manner. That is, given an entity e with its category label ce, we create a new triple (e, Generalization, ce) and add it into the training set. Such a method is denoted as TransE-Cat for example. Evaluation protocol. For evaluation, we adopt the same ranking procedure proposed by Bordes et al. (2013). For each test triple (ei, rk, ej), the head entity ei is replaced by every entity e' in the KG, and the energy is calculated for the corrupted triple (e', rk, ej). Ranking the energies in ascending order, we get</context>
+</contexts>
+<marker>Nickel, Tresp, Kriegel, 2012</marker>
+<rawString>Maximilian Nickel, Volker Tresp, and Hans-Peter Kriegel. 2012. Factorizing yago: Scalable machine learning for linked data. In Proceedings of the 21st International Conference on World Wide Web, pages 271–280.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sebastian Riedel</author>
+<author>Limin Yao</author>
+<author>Andrew McCallum</author>
+<author>Benjamin M Marlin</author>
+</authors>
+<title>Relation extraction with matrix factorization and universal schemas.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on North American Chapter of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>74--84</pages>
+<contexts>
+<context citStr="Riedel et al., 2013" endWordPosition="521" position="3327" startWordPosition="518">, so as to simplify the manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e. embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can further be used to benefit all kinds of tasks, such as KG completion (Socher et al., 2013; Bordes et al., 2013), relation extraction (Riedel et al., 2013; Weston et al., 2013), and entity resolution (Bordes et al., 2014). To our knowledge, most of existing KG embedding methods perform the embedding task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. In this paper we propose Semantically Smooth Embedding (SSE), a new approach which further imposes constraints on the geometric structure of the embedding space. The key idea of SSE is to make ful84 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International J</context>
+</contexts>
+<marker>Riedel, Yao, McCallum, Marlin, 2013</marker>
+<rawString>Sebastian Riedel, Limin Yao, Andrew McCallum, and Benjamin M. Marlin. 2013. Relation extraction with matrix factorization and universal schemas. In Proceedings of the 2013 Conference on North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 74–84.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sam T Roweis</author>
+<author>Lawrence K Saul</author>
+</authors>
+<title>Nonlinear dimensionality reduction by locally linear embedding.</title>
+<date>2000</date>
+<journal>Science,</journal>
+<volume>290</volume>
+<issue>5500</issue>
+<contexts>
+<context citStr="Roweis and Saul, 2000" endWordPosition="730" position="4672" startWordPosition="727">tational Linguistics l use of additional semantic information (i.e. semantic categories of entities) and enforce the embedding space to be semantically smooth—entities belonging to the same semantic category should lie close to each other in the embedding space. This smoothness assumption is closely related to the local invariance assumption exploited in manifold learning theory, which requires nearby points to have similar embeddings or labels (Belkin and Niyogi, 2001). Thus we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model the smoothness assumption. The former requires an entity to lie close to every other entity in the same category, while the latter represents that entity as a linear combination of its nearest neighbors (i.e. entities within the same category). Both are formulated as manifold regularization terms to constrain the KG embedding objective function. As such, SSE obtains an embedding space which is semantically smooth and at the same time compatible with observed facts. The advantages of SSE are two-fold: 1) By imposing the smoothness assumption, SSE successfully captures the semantic cor</context>
+<context citStr="Roweis and Saul, 2000" endWordPosition="2176" position="13068" startWordPosition="2173">an unobserved ones (i.e. the margin-based ranking loss defined in Eq. (1)). To make the embedding space semantically smooth, we further leverage the entity category information {cel, and assume that entities within the same semantic category should lie close to each other in the embedding space. This smoothness assumption is similar to the local invariance assumption exploited in manifold learning theory (i.e. nearby points are likely to have similar embeddings or labels). So we employ two manifold learning algorithms Laplacian Eigenmaps (Belkin and Niyogi, 2001) and Locally Linear Embedding (Roweis and Saul, 2000) to model such semantic smoothness, termed as LE and LLE for short respectively. 3.2 Modeling Semantic Smoothness by LE Laplacian Eigenmaps (LE) is a manifold learning algorithm that preserves local invariance between 86 each two data points (Belkin and Niyogi, 2001). We borrow the idea of LE and enforce semantic smoothness by assuming: Smoothness Assumption 1 If two entities ei and ej belong to the same semantic category, they will have embeddings ei and ej close to each other. To encode the semantic information, we construct an adjacency matrix W1 E Rn×n among the entities, with the i j-th e</context>
+<context citStr="Roweis and Saul, 2000" endWordPosition="2916" position="16993" startWordPosition="2913">) = = (t+, + (D W1) 1s, VesL1 Vesℓ t−) 2λ1E − ve triple. 1 ∑L2 = N t+∈Ot−∈Nt+ ∑n − ∑ej∈N(ei) 2 ������� 2 j i=1 w ej II 2 ∑n i =1 j Ilei −ejIl2 2w(1) i j , 'The negative triple is constructed by replacing one of the entities in the positi 87 =[e1, ··· Ra×n Rn×n diagonal =∑nj=1w(1) i j 1s Rn R1, d their gradients remain the same as defined in previous work. 3.3 Modeling Semantic Smoothness by LLE As opposed to LE which preserves local invariance within data pairs, Locally Linear Embedding (LLE) expects each data point to be roughly reconstructed by a linear combination of its nearest neighbors (Roweis and Saul, 2000). We borrow the idea of LLE and enforce semantic smoothness by assuming: Smoothness Assumption 2 Each entity ei can be roughly reconstructed by a linear combination of its nearest neighbors in the embedding space, i.e., ( can II������� ei . ∑ ℓ (t+, t−)+λ2 The resultant embedding space is also semantically smooth and compatible with the observed triples. Hyperparameter A2 makes a trade-off between the two cases. Similar to the first model, stochastic gradient descent is used to solve the minimization problem. Given a positive triple t+ = (ei, rk, ej) and the associated negative triple t− = (e′</context>
+<context citStr="Roweis and Saul, 2000" endWordPosition="5678" position="33786" startWordPosition="5675">overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In</context>
+</contexts>
+<marker>Roweis, Saul, 2000</marker>
+<rawString>Sam T. Roweis and Lawrence K. Saul. 2000. Nonlinear dimensionality reduction by locally linear embedding. Science, 290(5500):2323–2326.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lawrence K Saul</author>
+<author>Sam T Roweis</author>
+</authors>
+<title>Think globally, fit locally: Unsupervised learning of low dimensional manifolds.</title>
+<date>2003</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>4--119</pages>
+<contexts>
+<context citStr="Saul and Roweis, 2003" endWordPosition="6087" position="36381" startWordPosition="6084">struct the manifold regularization terms is the similarity between entities (used to define the adjacency matrix in LE and to select nearest neighbors for each entity in LLE). We would try entity similarities derived in different ways, e.g., specified by users or calculated from entities’ textual descriptions. 2) Enhance the efficiency and scalability of SSE. Processing the manifold regularization terms can be time- and space-consuming (especially the one induced by the LE algorithm). We would investigate how to address this problem, e.g., via the efficient iterative algorithms introduced in (Saul and Roweis, 2003) or via parallel/distributed computing. 3) Impose the semantic smoothness assumptions on other KG embedding methods (e.g. those based on matrix/tensor factorization or Bayesian clustering), and even on other embedding tasks (e.g. word embedding or sentence embedding). Acknowledgments We would like to thank the anonymous reviewers for their valuable comments and suggestions. This work is supported by the National Natural Science Foundation of China (grant No. 61402465), the Strategic Priority Research Program of the Chinese Academy of Sciences (grant No. XDA06030200), and the National Key Techn</context>
+</contexts>
+<marker>Saul, Roweis, 2003</marker>
+<rawString>Lawrence K. Saul and Sam T. Roweis. 2003. Think globally, fit locally: Unsupervised learning of low dimensional manifolds. Journal of Machine Learning Research, 4:119–155.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Geoffrey J Singh</author>
+<author>Ajit P Gordon</author>
+</authors>
+<title>Relational learning via collective matrix factorization.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 14th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining,</booktitle>
+<pages>650--658</pages>
+<contexts>
+<context citStr="Singh and Gordon, 2008" endWordPosition="5518" position="32728" startWordPosition="5515"> neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easi</context>
+</contexts>
+<marker>Singh, Gordon, 2008</marker>
+<rawString>Geoffrey J. Singh and Ajit P. Gordon. 2008. Relational learning via collective matrix factorization. In Proceedings of the 14th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, pages 650–658.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Richard Socher</author>
+<author>Danqi Chen</author>
+<author>Christopher D Manning</author>
+<author>Andrew Y Ng</author>
+</authors>
+<title>Reasoning with neural tensor networks for knowledge base completion.</title>
+<date>2013</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>926--934</pages>
+<contexts>
+<context citStr="Socher et al., 2013" endWordPosition="395" position="2576" startWordPosition="392">uch as word sense disambiguation (Agirre et al., 2014), named entity recognition (Magnini et al., 2002), and information extraction (Hoffmann et al., 2011). A KG is a multirelational directed graph composed of entities as nodes and relations as edges. Each edge is represented as a triple of fact ⟨ei, rk, ej⟩, indicating that head entity ei and tail entity ej are connected by relation rk. Although powerful in representing structured data, the underlying symbolic nature makes KGs hard to manipulate. Recently a new research direction called knowledge graph embedding has attracted much attention (Socher et al., 2013; Bordes et al., 2013; Bordes et al., 2014; Lin et al., 2015). It attempts to embed components of a KG into continuous vector spaces, so as to simplify the manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e. embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can fu</context>
+<context citStr="Socher et al., 2013" endWordPosition="1236" position="7755" startWordPosition="1233">s to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) triples, and t+ = (ei, rk, ej) E O; Nt+ denotes the set of negative triples constructed by replacing entities in t+</context>
+<context citStr="Socher et al., 2013" endWordPosition="1571" position="9532" startWordPosition="1568"> embedding models. TransE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej)</context>
+<context citStr="Socher et al., 2013" endWordPosition="3396" position="19865" startWordPosition="3393">d on matrix/tensor factorization (Nickel et al., 2011; Chang et al., 2013). 2) Besides semantic categories, other information (e.g. entity similarities specified by users or derived from auxiliary data sources) can also be used to construct the manifold regularization terms. 3) Besides KG embedding, similar smoothness assumptions can also be L S Table 2: Relations in L and S . applied in other embedding tasks (e.g. word embedding and sentence embedding). 4 Experiments We empirically evaluate the proposed SSE models in two tasks: link prediction (Bordes et al., 2013) and triple classification (Socher et al., 2013). 4.1 Data Sets We create three data sets with different sizes using NELL (Carlson et al., 2010): L , S , and N 186. L and S are two small-scale data sets, both containing 8 relations on the topics of “location” and “sport” respectively. The corresponding relations are listed in Table 2. N 186 is a larger data set containing the most frequent 186 relations. On all the data sets, entities appearing only once are removed. We extract the entity category information from a specific relation called Generalization, and keep non-overlapping categories.2 Categories containing less than 5 entities on L</context>
+<context citStr="Socher et al., 2013" endWordPosition="4873" position="28782" startWordPosition="4870">and Figure 1(d)). Incorporating the entity category information directly could also helps. But it fails on some “hard” entities (i.e., those belonging to different categories but mixed together in the center of Figure 1(b)). We have conducted the same experiments with the other methods and observed similar phenomena. 4.3 Triple Classification This task is to verify whether a given triple ⟨ei, rk, ej⟩ is correct or not. We test our SSE models in this task, with the same comparison settings as used in the link prediction task. Evaluation protocol. We follow the same evaluation protocol used in (Socher et al., 2013; Wang et al., 2014b). To create labeled data for classification, for each triple in the test and validation sets, we construct a negative triple for it by randomly corrupting the entities. To corrupt a position (head or tail), only entities that have appeared in that position are allowed. During triple classification, a triple is predicted as positive if the energy is below a relation-specific threshold Sr; otherwise as negative. We report two metrics on the test sets: micro-averaged accuracy and macro-averaged accuracy, denoted as Micro-ACC and Macro-ACC respectively. The former is a per-tri</context>
+<context citStr="Socher et al., 2013" endWordPosition="5460" position="32360" startWordPosition="5457"> of our approach. 5 Related Work This section reviews two lines of related work: KG embedding and manifold learning. KG embedding aims to embed a KG composed of entities and relations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., </context>
+</contexts>
+<marker>Socher, Chen, Manning, Ng, 2013</marker>
+<rawString>Richard Socher, Danqi Chen, Christopher D. Manning, and Andrew Y. Ng. 2013. Reasoning with neural tensor networks for knowledge base completion. In Advances in Neural Information Processing Systems, pages 926–934.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ilya Sutskever</author>
+<author>Joshua B Tenenbaum</author>
+<author>Ruslan R Salakhutdinov</author>
+</authors>
+<title>Modelling relational data using bayesian clustered tensor factorization.</title>
+<date>2009</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>1821--1828</pages>
+<contexts>
+<context citStr="Sutskever et al., 2009" endWordPosition="5559" position="32989" startWordPosition="5556">ral state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, which exists intrinsically but is overlooked in previous work. Although this paper focuses on incorporating geometrically based regularization terms into neural network architectures, it can be easily extended to matrix/tensor factorization techniques. Manifold learning is a geometrically motivated framework for machine learning, enforcing the learning model to be smooth w.r.t. the geometric structure of data (Belkin et al., 2006). Within this framework, </context>
+</contexts>
+<marker>Sutskever, Tenenbaum, Salakhutdinov, 2009</marker>
+<rawString>Ilya Sutskever, Joshua B. Tenenbaum, and Ruslan R. Salakhutdinov. 2009. Modelling relational data using bayesian clustered tensor factorization. In Advances in Neural Information Processing Systems, pages 1821–1828.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joshua B Tenenbaum</author>
+<author>Vin De Silva</author>
+<author>John C Langford</author>
+</authors>
+<title>A global geometric framework for nonlinear dimensionality reduction.</title>
+<date>2000</date>
+<journal>Science,</journal>
+<volume>290</volume>
+<issue>5500</issue>
+<marker>Tenenbaum, De Silva, Langford, 2000</marker>
+<rawString>Joshua B. Tenenbaum, Vin De Silva, and John C. Langford. 2000. A global geometric framework for nonlinear dimensionality reduction. Science, 290(5500):2319–2323.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Laurens Van der Maaten</author>
+<author>Geoffrey Hinton</author>
+</authors>
+<title>Visualizing data using t-sne.</title>
+<date>2008</date>
+<journal>Journal of Machine Learning Research,</journal>
+<volume>9</volume>
+<issue>85</issue>
+<marker>Van der Maaten, Hinton, 2008</marker>
+<rawString>Laurens Van der Maaten and Geoffrey Hinton. 2008. Visualizing data using t-sne. Journal of Machine Learning Research, 9(85):2579–2605.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Quan Wang</author>
+<author>Jing Liu</author>
+<author>Bin Wang</author>
+<author>Li Guo</author>
+</authors>
+<title>A regularized competition model for question difficulty estimation in community question answering services.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1115--1126</pages>
+<contexts>
+<context citStr="Wang et al., 2014" endWordPosition="1221" position="7664" startWordPosition="1218">nclusion and future work in Section 6. 2 A Brief Review of KG Embedding KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) triples, and t+ = (ei, r</context>
+<context citStr="Wang et al., 2014" endWordPosition="1575" position="9551" startWordPosition="1572">ansE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej), it first employs </context>
+<context citStr="Wang et al., 2014" endWordPosition="4877" position="28801" startWordPosition="4874">orporating the entity category information directly could also helps. But it fails on some “hard” entities (i.e., those belonging to different categories but mixed together in the center of Figure 1(b)). We have conducted the same experiments with the other methods and observed similar phenomena. 4.3 Triple Classification This task is to verify whether a given triple ⟨ei, rk, ej⟩ is correct or not. We test our SSE models in this task, with the same comparison settings as used in the link prediction task. Evaluation protocol. We follow the same evaluation protocol used in (Socher et al., 2013; Wang et al., 2014b). To create labeled data for classification, for each triple in the test and validation sets, we construct a negative triple for it by randomly corrupting the entities. To corrupt a position (head or tail), only entities that have appeared in that position are allowed. During triple classification, a triple is predicted as positive if the energy is below a relation-specific threshold Sr; otherwise as negative. We report two metrics on the test sets: micro-averaged accuracy and macro-averaged accuracy, denoted as Micro-ACC and Macro-ACC respectively. The former is a per-triple average, while </context>
+<context citStr="Wang et al., 2014" endWordPosition="5487" position="32532" startWordPosition="5484">elations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, wh</context>
+<context citStr="Wang et al., 2014" endWordPosition="5750" position="34241" startWordPosition="5747">s have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions are constructed by using entities’ category information, and then formulated as geometrically based regularization terms to constrain the embedding task. The embeddin</context>
+</contexts>
+<marker>Wang, Liu, Wang, Guo, 2014</marker>
+<rawString>Quan Wang, Jing Liu, Bin Wang, and Li Guo. 2014a. A regularized competition model for question difficulty estimation in community question answering services. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing, pages 1115–1126.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Zhen Wang</author>
+<author>Jianwen Zhang</author>
+<author>Jianlin Feng</author>
+<author>Zheng Chen</author>
+</authors>
+<title>Knowledge graph embedding by translating on hyperplanes.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 28th AAAI Conference on Artificial Intelligence,</booktitle>
+<pages>1112--1119</pages>
+<contexts>
+<context citStr="Wang et al., 2014" endWordPosition="1221" position="7664" startWordPosition="1218">nclusion and future work in Section 6. 2 A Brief Review of KG Embedding KG embedding aims to embed entities and relations into a continuous vector space and model the plausibility of each fact in that space. In general, it consists of three steps: 1) representing entities and relations, 2) specifying a scoring function, and 3) learning the latent representations. In the first step, given a KG, entities are represented as points (i.e. vectors) in a continuous vector space, and relations as operators in that space, which can be characterized by vectors (Bordes et al., 2013; Bordes et al., 2014; Wang et al., 2014b), matrices (Bordes et al., 2011; Jenatton et al., 2012), or tensors (Socher et al., 2013). In the second step, for each candidate fact (ei, rk, ej), an energy function f (ei, rk, ej) is further defined to measure its plausibility, with the corresponding entity and relation representations as variables. Plausible triples are assumed to have low energies. Then in the third step, to obtain the entity and relation representations, a marginbased ranking loss, i.e., [ ] y+ f(ei, rk, ej)− f(e� i, rk, e� j) + , (1) is minimized. Here, O is the set of observed (i.e. positive) triples, and t+ = (ei, r</context>
+<context citStr="Wang et al., 2014" endWordPosition="1575" position="9551" startWordPosition="1572">ansE (Bordes et al., 2013) SME (lin) (Bordes et al., 2014) SME (bilin) (Bordes et al., 2014) SE (Bordes et al., 2011) e,r ∈ Rd f(ei, rk, ej) = ∥ei + rk − ej∥ℓ,/ℓ2 ) e, r ∈ Rd f(ei, rk, ej) = (Wu1rk + Wu2ei + bu)T (Wv1rk + Wv2ej + bv (( ) )T (( ) ) e,r ∈ Rd f(ei, rk, ej) = Wu ¯×3rk ei + bu Wv ¯×3rk ej + bv e ∈ Rd, Ru, Rv ∈ Rd×d f(ei, rk, ej) = ∥Rukei − Rvkej∥ℓ, function definition. Three state-of-the-art embedding models, namely TransE (Bordes et al., 2013), SME (Bordes et al., 2014), and SE (Bordes et al., 2011), are detailed below. Please refer to (Jenatton et al., 2012; Socher et al., 2013; Wang et al., 2014b; Lin et al., 2015) for other methods. TransE (Bordes et al., 2013) represents both entities and relations as vectors in the embedding space. For a given triple (ei, rk, ej), the relation is interpreted as a translation vector rk so that the embedded entities ei and ej can be connected by rk with low error. The energy function is defined as f(ei, rk, ej) = llei + rk − ejllℓ1/ℓ2, where ll·llℓ1/ℓ2 denotes the ℓ1-norm or ℓ2-norm. SME (Bordes et al., 2014) also represents entities and relations as vectors, but models triples in a more expressive way. Given a triple (ei, rk, ej), it first employs </context>
+<context citStr="Wang et al., 2014" endWordPosition="4877" position="28801" startWordPosition="4874">orporating the entity category information directly could also helps. But it fails on some “hard” entities (i.e., those belonging to different categories but mixed together in the center of Figure 1(b)). We have conducted the same experiments with the other methods and observed similar phenomena. 4.3 Triple Classification This task is to verify whether a given triple ⟨ei, rk, ej⟩ is correct or not. We test our SSE models in this task, with the same comparison settings as used in the link prediction task. Evaluation protocol. We follow the same evaluation protocol used in (Socher et al., 2013; Wang et al., 2014b). To create labeled data for classification, for each triple in the test and validation sets, we construct a negative triple for it by randomly corrupting the entities. To corrupt a position (head or tail), only entities that have appeared in that position are allowed. During triple classification, a triple is predicted as positive if the energy is below a relation-specific threshold Sr; otherwise as negative. We report two metrics on the test sets: micro-averaged accuracy and macro-averaged accuracy, denoted as Micro-ACC and Macro-ACC respectively. The former is a per-triple average, while </context>
+<context citStr="Wang et al., 2014" endWordPosition="5487" position="32532" startWordPosition="5484">elations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed via tensor factorization or collective matrix factorization techniques (Singh and Gordon, 2008; Nickel et al., 2011; Chang et al., 2014). The third group embeds factorized representations of entities and relations into a nonparametric Bayesian clustering framework, so as to obtain more interpretable embeddings (Kemp et al., 2006; Sutskever et al., 2009). Our work falls into the first group, but differs in that it further imposes constraints on the geometric structure of the embedding space, wh</context>
+<context citStr="Wang et al., 2014" endWordPosition="5750" position="34241" startWordPosition="5747">s have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions are constructed by using entities’ category information, and then formulated as geometrically based regularization terms to constrain the embedding task. The embeddin</context>
+</contexts>
+<marker>Wang, Zhang, Feng, Chen, 2014</marker>
+<rawString>Zhen Wang, Jianwen Zhang, Jianlin Feng, and Zheng Chen. 2014b. Knowledge graph embedding by translating on hyperplanes. In Proceedings of the 28th AAAI Conference on Artificial Intelligence, pages 1112–1119.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Quan Wang</author>
+<author>Bin Wang</author>
+<author>Li Guo</author>
+</authors>
+<title>Knowledge base completion using embeddings and rules.</title>
+<date>2015</date>
+<booktitle>In Proceedings of the 24th International Joint Conference on Artificial Intelligence.</booktitle>
+<contexts>
+<context citStr="Wang et al., 2015" endWordPosition="3202" position="18645" startWordPosition="3199">ch it belongs. 3.4 Advantages and Extensions The advantages of our approach can be summarized as follows: 1) By incorporating geometrically based regularization terms, the SSE models are able to capture the semantic correlation between entities, which exists intrinsically but is overlooked in previous work. 2) By leveraging additional entity category information, the SSE models can deal with the data sparsity issue that commonly exists in most KGs. Both aspects lead to more accurate embeddings. Entity category information has also been investigated in (Nickel et al., 2012; Chang et al., 2014; Wang et al., 2015), but in different manners. Nickel et al. (2012) take categories as pseudo entities and introduce a specific relation to link entities to categories. Chang et al. (2014) and Wang et al. (2015) use entity categories to specify relations’ argument expectations, removing invalid triples during training and reasoning respectively. None of them considers the intrinsic geometric structure of the embedding space. Actually, our approach is quite general. 1) The smoothness assumptions can be imposed to a wide variety of KG embedding models, not only the ones introduced in Section 2, but also those base</context>
+</contexts>
+<marker>Wang, Wang, Guo, 2015</marker>
+<rawString>Quan Wang, Bin Wang, and Li Guo. 2015. Knowledge base completion using embeddings and rules. In Proceedings of the 24th International Joint Conference on Artificial Intelligence.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jason Weston</author>
+<author>Antoine Bordes</author>
+<author>Oksana Yakhnenko</author>
+<author>Nicolas Usunier</author>
+</authors>
+<title>Connecting language and knowledge bases with embedding models for relation extraction.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1366--1371</pages>
+<contexts>
+<context citStr="Weston et al., 2013" endWordPosition="525" position="3349" startWordPosition="522">he manipulation while preserving the inherent structure of the original graph. Specifically, given a KG, entities and relations are first represented in a low-dimensional vector space, and for each triple, a scoring function is defined to measure its plausibility in that space. Then the representations of entities and relations (i.e. embeddings) are learned by maximizing the total plausibility of observed triples. The learned embeddings can further be used to benefit all kinds of tasks, such as KG completion (Socher et al., 2013; Bordes et al., 2013), relation extraction (Riedel et al., 2013; Weston et al., 2013), and entity resolution (Bordes et al., 2014). To our knowledge, most of existing KG embedding methods perform the embedding task based solely on observed facts. The only requirement is that the learned embeddings should be compatible within each individual fact. In this paper we propose Semantically Smooth Embedding (SSE), a new approach which further imposes constraints on the geometric structure of the embedding space. The key idea of SSE is to make ful84 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Nat</context>
+</contexts>
+<marker>Weston, Bordes, Yakhnenko, Usunier, 2013</marker>
+<rawString>Jason Weston, Antoine Bordes, Oksana Yakhnenko, and Nicolas Usunier. 2013. Connecting language and knowledge bases with embedding models for relation extraction. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, pages 1366–1371.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bishan Yang</author>
+<author>Wen-tau Yih</author>
+<author>Xiaodong He</author>
+<author>Jianfeng Gao</author>
+<author>Li Deng</author>
+</authors>
+<title>Learning multi-relational semantics using neural-embedding models. arXiv preprint arXiv:1411.4072.</title>
+<date>2014</date>
+<contexts>
+<context citStr="Yang et al. (2014)" endWordPosition="5408" position="32034" startWordPosition="5405">ding it directly. The *-Cat models sometimes perform even worse than the baselines (e.g. TransECat on L data and SE-Cat on S data), while the SSE models consistently achieve better results. The observations are similar to those observed during the link prediction task, and further demonstrate the superiority and generality of our approach. 5 Related Work This section reviews two lines of related work: KG embedding and manifold learning. KG embedding aims to embed a KG composed of entities and relations into a low-dimensional vector space, and model the plausibility of each fact in that space. Yang et al. (2014) categorized the literature into three major groups: 1) methods based on neural networks, 2) methods based on matrix/tensor factorization, and 3) methods based on Bayesian clustering. The first group performs the embedding task using neural network architectures (Bordes et al., 2013; Bordes et al., 2014; Socher et al., 2013). Several state-of-the-art neural network-based embedding models have been introduced in Section 2. For other work please refer to (Jenatton et al., 2012; Wang et al., 2014b; Lin et al., 2015). In the second group, KGs are represented as tensors, and embedding is performed </context>
+</contexts>
+<marker>Yang, Yih, He, Gao, Deng, 2014</marker>
+<rawString>Bishan Yang, Wen-tau Yih, Xiaodong He, Jianfeng Gao, and Li Deng. 2014. Learning multi-relational semantics using neural-embedding models. arXiv preprint arXiv:1411.4072.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dengyong Zhou</author>
+<author>Olivier Bousquet</author>
+<author>Thomas Navin Lal</author>
+<author>Jason Weston</author>
+<author>Bernhard Sch¨olkopf</author>
+</authors>
+<title>Learning with local and global consistency.</title>
+<date>2004</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>321--328</pages>
+<marker>Zhou, Bousquet, Lal, Weston, Sch¨olkopf, 2004</marker>
+<rawString>Dengyong Zhou, Olivier Bousquet, Thomas Navin Lal, Jason Weston, and Bernhard Sch¨olkopf. 2004. Learning with local and global consistency. In Advances in Neural Information Processing Systems, pages 321–328.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xiaojin Zhu</author>
+<author>Partha Niyogi</author>
+</authors>
+<title>Harmonic mixtures: combining mixture models and graph-based methods for inductive and scalable semi-supervised learning.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the 22nd International Conference on Machine Learning,</booktitle>
+<pages>1052--1059</pages>
+<contexts>
+<context citStr="Zhu and Niyogi, 2005" endWordPosition="5735" position="34148" startWordPosition="5732">ructure of data (Belkin et al., 2006). Within this framework, various manifold learning algorithms have been proposed, such as ISOMAP (Tenenbaum et al., 2000), Laplacian Eigenmaps (Belkin and Niyogi, 2001), and Locally Linear Embedding (Roweis and Saul, 2000). All these algorithms are based on the so-called local invariance assumption, i.e., nearby points are likely to have similar embeddings or labels. Manifold learning has been widely applied in many different areas, from dimensionality reduction (Belkin and Niyo91 gi, 2001; Cai et al., 2008) and semi-supervised learning (Zhou et al., 2004; Zhu and Niyogi, 2005) to recommender systems (Ma et al., 2011) and community question answering (Wang et al., 2014a). This paper employs manifold learning algorithms to model the semantic smoothness assumptions in KG embedding. 6 Conclusion and Future Work In this paper, we have proposed a novel approach to KG embedding, referred to as Semantically Smooth Embedding (SSE). The key idea of SSE is to impose constraints on the geometric structure of the embedding space and enforce it to be semantically smooth. The semantic smoothness assumptions are constructed by using entities’ category information, and then formula</context>
+</contexts>
+<marker>Zhu, Niyogi, 2005</marker>
+<rawString>Xiaojin Zhu and Partha Niyogi. 2005. Harmonic mixtures: combining mixture models and graph-based methods for inductive and scalable semi-supervised learning. In Proceedings of the 22nd International Conference on Machine Learning, pages 1052– 1059.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

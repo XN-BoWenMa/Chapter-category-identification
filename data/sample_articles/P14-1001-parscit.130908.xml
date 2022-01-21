@@ -1,0 +1,1288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.429951">
+Learning Ensembles of Structured Prediction Rules
+</title>
+<author confidence="0.499617">
+Corinna Cortes
+</author>
+<affiliation confidence="0.492818">
+Google Research
+</affiliation>
+<address confidence="0.8648475">
+111 8th Avenue,
+New York, NY 10011
+</address>
+<email confidence="0.996942">
+corinna@google.com
+</email>
+<author confidence="0.901519">
+Vitaly Kuznetsov
+</author>
+<affiliation confidence="0.903135">
+Courant Institute
+</affiliation>
+<address confidence="0.9192865">
+251 Mercer Street,
+New York, NY 10012
+</address>
+<email confidence="0.999174">
+vitaly@cims.nyu.edu
+</email>
+<author confidence="0.727474">
+Mehryar Mohri
+</author>
+<affiliation confidence="0.736193">
+Courant Institute and Google Research
+</affiliation>
+<address confidence="0.8306005">
+251 Mercer Street,
+New York, NY 10012
+</address>
+<email confidence="0.999199">
+mohri@cims.nyu.edu
+</email>
+<sectionHeader confidence="0.994811" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999972916666667">We present a series of algorithms with theoretical guarantees for learning accurate ensembles of several structured prediction rules for which no prior knowledge is assumed. This includes a number of randomized and deterministic algorithms devised by converting on-line learning algorithms to batch ones, and a boostingstyle algorithm applicable in the context of structured prediction with a large number of labels. We also report the results of extensive experiments with these algorithms.</bodyText>
+<sectionHeader confidence="0.99843" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999880640625">We study the problem of learning accurate ensembles of structured prediction experts. Ensemble methods are widely used in machine learning and have been shown to be often very effective (Breiman, 1996; Freund and Schapire, 1997; Smyth and Wolpert, 1999; MacKay, 1991; Freund et al., 2004). However, ensemble methods and their theory have been developed primarily for binary classification or regression tasks. Their techniques do not readily apply to structured prediction problems. While it is straightforward to combine scalar outputs for a classification or regression problem, it is less clear how to combine structured predictions such as phonemic pronunciation hypotheses, speech recognition lattices, parse trees, or alternative machine translations. Consider for example the problem of devising an ensemble method for pronunciation, a critical component of modern speech recognition (Ghoshal et al., 2009). Often, several pronunciation models or experts are available for transcribing words into sequences of phonemes. These models may have been derived using other machine learning algorithms or they may be based on carefully hand-crafted rules. In general, none of these pronunciation experts is fully accurate and each expert may be making mistakes at different positions along the output sequence. One can hope that a model that patches together the pronunciation of different experts could achieve a superior performance. Similar ensemble structured prediction problems arise in other tasks, including machine translation, part-of-speech tagging, optical character recognition and computer vision, with structures or substructures varying with each task. We seek to tackle all of these problems simultaneously and consider the general setting where the label or output associated to an input x E X is a structure y E Y that can be decomposed and represented by l substructures yi, ... , yl. For the pronunciation example just discussed, x is a specific word or word sequence and y its phonemic transcription. A natural choice for the substructures yk is then the individual phonemes forming y. Other possible choices include n-grams of consecutive phonemes or more general subsequences. We will assume that the loss function considered admits an additive decomposition over the substructures, as is common in structured prediction. We also assume access to a set of structured prediction experts hi, ... , hp that we treat as black boxes. Given an input x E X, each expert predicts a structure hj(x) = (h1j(x), ... , hlj(x)). The hypotheses hj may be the output of a structured prediction algorithm such as Conditional Random Fields (Lafferty et al., 2001), Averaged Perceptron (Collins, 2002), StructSVM (Tsochantaridis et al., 2005), Max Margin Markov Networks (Taskar et al., 2004) or the Regression Technique for Learning Transductions (Cortes et al., 2005), or some other algorithmic or human expert. Given a labeled training sample (xi, yi), ... , (xm, ym), our objective is to use the predictions of these experts to form an accurate ensemble.</bodyText>
+<page confidence="0.821845">
+1
+</page>
+<note confidence="0.865974">
+Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 1–12,
+Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.994542095238096">Variants of the ensemble problem just formulated have been studied in the past in the natural language processing and machine learning literature. One of the most recent, and possibly most relevant studies for sequence data is that of (Nguyen and Guo, 2007), which is based on the forward stepwise selection introduced by (Caruana et al., 2004). However, one disadvantage of this greedy approach is that it can be proven to fail to select an optimal ensemble of experts even in favorable cases where a specialized expert is available for each local prediction (Cortes et al., 2014a). Ensemble methods for structured prediction based on bagging, random forests and random subspaces have also been proposed in (Kocev et al., 2013). One of the limitations of this work is that it is applicable only to a very specific class of treebased experts introduced in that paper. Similarly, a boosting approach was developed in (Wang et al., 2007) but it applies only to local experts. In the context of natural language processing, a variety of different re-ranking techniques have been proposed for somewhat related problems (Collins and Koo, 2005; Zeman and ˇZabokrtsk´y, 2005; Sagae and Lavie, 2006; Zhang et al., 2009). But, reranking methods do not combine predictions at the level of substructures, thus the final prediction of the ensemble coincides with the prediction made by one of the experts, which can be shown to be suboptimal in many cases. Furthermore, these methods typically assume the use of probabilistic models, which is not a requirement in our learning scenario. Other ensembles of probabilistic models have also been considered in text and speech processing by forming a product of probabilistic models via the intersection of lattices (Mohri et al., 2008), or a straightforward combination of the posteriors from probabilistic grammars trained using EM with different starting points (Petrov, 2010), or some other rather intricate techniques in speech recognition (Fiscus, 1997). Finally, an algorithm of (MacKay, 1997) is another example of an ensemble method for structured prediction though it is not addressing directly the problem we are considering. Most of the references just mentioned do not give a rigorous theoretical justification for the techniques proposed. We are not aware of any prior theoretical analysis for the ensemble structured prediction problem we consider. Here, we present two families of algorithms for learning ensembles of structured prediction rules that both perform well in practice and enjoy strong theoretical guarantees. In Section 3, we develop ensemble methods based on on-line algorithms. To do so, we extend existing on-line-to-batch conversions to our more general setting. In Section 4, we present a new boosting-style algorithm which is applicable even with a large set of classes as in the problem we consider, and for which we present margin-based learning guarantees. Section 5 reports the results of our extensive experiments.1</bodyText>
+<sectionHeader confidence="0.831747" genericHeader="method">
+2 Learning scenario
+</sectionHeader>
+<bodyText confidence="0.99929744">As in standard supervised learning problems, we assume that the learner receives a training sample 5 = ((x1, y1), ... , (xm, ym)) E X x Y of m labeled points drawn i.i.d. according to the some distribution D used both for training and testing. We also assume that the learner has access to a set of p predictors h1, ... , hp mapping X to Y to devise an accurate ensemble prediction. Thus, for any input x E X, he can use the prediction of the p experts h1(x), ... , hp(x). No other information is available to the learner about these p experts, in particular the way they have been trained or derived is not known to the learner. But, we will assume that the training sample 5 is distinct from what may have been used for training the algorithms that generated h1(x),. . . , hp(x). To simplify our analysis, we assume that the number of substructures l ≥ 1 is fixed. This does not cause any loss of generality so long as the maximum number of substructures is bounded, which is the case in all the applications we consider. The quality of the predictions is measured by a loss function L: Y x Y → R+ that can be decomposed as a sum of loss functions Ek : Yk → R+ over the substructure sets Yk, that is, for all</bodyText>
+<equation confidence="0.98947575">
+y = (y1, ... , yl) E Y with yk E Yk and y0 =
+(y01,...,y0l)
+L(y, y0) = �l Ek(yk,y0k). (1)
+k=1
+</equation>
+<bodyText confidence="0.9940655">We will assume in all that follows that the loss function Lis bounded: L(y, y0) G M for all</bodyText>
+<footnote confidence="0.894818">
+1This paper is a modified version of (Cortes et al., 2014a)
+to which we refer the reader for the proofs of the theorems
+stated and a more detailed discussion of our algorithms.
+</footnote>
+<equation confidence="0.457801">
+E Y with y0k E Yk,
+</equation>
+<page confidence="0.952378">
+2
+</page>
+<bodyText confidence="0.994907">(y, y') for some M &gt; 0. A prototypical example of such loss functions is the normalized Hamming loss LHam, which is the fraction of substructures for which two labels y and y' disagree, thus in that case Qk(yk, y'k) = 1l Iyk=,,4y'k and M = 1.</bodyText>
+<sectionHeader confidence="0.985607" genericHeader="method">
+3 On-line learning approach
+</sectionHeader>
+<bodyText confidence="0.9997706">In this section, we present an on-line learning solution to the ensemble structured prediction problem just discussed. We first give a new formulation of the problem as that of on-line learning with expert advice, where the experts correspond to the paths of an acyclic automaton. The on-line algorithm generates at each iteration a distribution over the path-experts. A critical component of our approach consists of using these distributions to define a prediction algorithm with favorable generalization guarantees. This requires an extension of the existing on-line-to-batch conversion techniques to the more general case of combining distributions over path-experts, as opposed to combining single hypotheses.</bodyText>
+<subsectionHeader confidence="0.999599">
+3.1 Path experts
+</subsectionHeader>
+<bodyText confidence="0.99994804">Each expert hj induces a set of substructure hypotheses h1j, ... , hlj. As already discussed, one particular expert may be better at predicting the kth substructure while some other expert may be more accurate at predicting another substructure. Therefore, it is desirable to combine the substructure predictions of all experts to derive a more accurate prediction. This leads us to considering an acyclic finite automaton G such as that of Figure 1 which admits all possible sequences of substructure hypotheses, or, more generally, a finite automaton such as that of Figure 2 which only allows a subset of these sequences. An automaton such as G compactly represents a set of path experts: each path from the initial vertex 0 to the final vertex l is labeled with a sequence of substructure hypotheses h1j1, ... , hljl and defines a hypothesis which associates to input x the output h1j1(x) · · · hljl(x). We will denote by H the set of all path experts. We also denote by h each path expert defined by h1j1, ... , hljl, with jk E {1, ... , p}, and denote by hk its kth substructure hypothesis hkjk. Our ensemble structure prediction problem can then be formulated as that of selecting the best path expert (or collection of path experts) in G. Note that, in general, the path expert selected does not coincide with any of the original experts h1, ... , hp.</bodyText>
+<figureCaption confidence="0.994384">
+Figure 1: Finite automaton G of path experts.
+</figureCaption>
+<subsectionHeader confidence="0.996307">
+3.2 On-line algorithm
+</subsectionHeader>
+<bodyText confidence="0.9819595">Using an automaton G, the size of the pool of experts H we consider can be very large. For example, in the case of the automaton of Figure 1, the size of the pool of experts is pl, and thus is exponentially large with respect to p. But, since learning guarantees in on-line learning admit only a logarithmic dependence on that size, they remain informative in this context. Nevertheless, the computational complexity of most on-line algorithms also directly depends on that size, which could make them impractical in this context. But, there exist several on-line solutions precisely designed to address this issue by exploiting the structure of the experts as in the case of our path experts. These include the algorithm of (Takimoto and Warmuth, 2003) denoted by WMWP, which is an extension of the (randomized) weightedmajority (WM) algorithm of (Littlestone and Warmuth, 1994) to more general bounded loss functions combined with the Weight Pushing (WP) algorithm of (Mohri, 1997); and the Follow the Perturbed Leader (FPL) algorithm of (Kalai and Vempala, 2005). The WMWP algorithm admits a more favorable regret guarantee than the FPL algorithm in our context and our discussion will focus on the use of WMWP for the design of our batch algorithm. However, we have also fully analyzed and implemented a batch algorithm based on FPL (Cortes et al., 2014a). As in the standard WM algorithm (Littlestone and Warmuth, 1994), WMWP maintains at each round t E [1, T], a distribution pt over the set of all experts, which in this context are the path experts h E H. At each round t E [1, T], the algorithm receives an input sequence xt, incurs the loss Eh—pt[L(h(xt),yt)] = Eh pt(h)L(h(xt),yt) and multiplicatively updates the distribution weight per expert:</bodyText>
+<equation confidence="0.916583">
+bh E H,pt+1(h)= Fh/EH pt(h')βL(h'(Xt),Yt), (2)
+h„
+���
+���
+h12
+h11
+p ... �
+hP,
+���
+hp2
+2
+���
+���
+���
+���
+���
+I-1
+hPI
+���
+�
+pt(h)βL(h(Xt),Yt)
+</equation>
+<page confidence="0.944618">
+3
+</page>
+<figureCaption confidence="0.998039">
+Figure 2: Alternative experts automaton.
+</figureCaption>
+<bodyText confidence="0.999515428571428">where β ∈ (0, 1) is some fixed parameter. The number of paths is exponentially large in p and the cost of updating all paths is therefore prohibitive. However, since the loss function is additive in the substructures and the updates are multiplicative, it suffices to maintain instead a weight wt(e) per transition e, following the update where Ee(xt, yt) denotes the loss incurred by the substructure predictor labeling e for the input xt and output yt, and orig(e0) denotes the origin state of a transition e0 (Takimoto and Warmuth, 2003).</bodyText>
+<equation confidence="0.996363666666667">
+__ wt(e)β`e(xt,yt)
+wt+1(e) �(�)β` (xt,yt) (3)
+orig(el)=orig(e) wt E
+</equation>
+<bodyText confidence="0.9999744">Thus, the cost of the update is then linear in the size of the automaton. To use the resulting weighted automaton for sampling, the weight pushing algorithm is used, whose complexity is also linear in the size of the automaton (Mohri, 1997).</bodyText>
+<subsectionHeader confidence="0.997659">
+3.3 On-line-to-batch conversion
+</subsectionHeader>
+<bodyText confidence="0.999988666666667">The WMWP algorithm does not produce a sequence of path experts, rather, a sequence of distributions p1, ... , pT over path experts. Thus, the on-line-to-batch conversion techniques described in (Littlestone, 1989; Cesa-Bianchi et al., 2004; Dekel and Singer, 2005) do not readily apply. Instead, we propose a generalization of the techniques of (Dekel and Singer, 2005). The conversion consists of two steps: extract a good collection of distributions P ⊆ {p1, ... , pT }; next use P to define an accurate hypothesis for prediction. For a subset P ⊆ {p1, ... , pT}, we define where S &gt; 0 is a fixed parameter.</bodyText>
+<equation confidence="0.9889435">
+pt(h)L(h(xt), yt) +M �19
+δ
+1
+wt (We (xt),yt)+M l|9|δ,
+</equation>
+<bodyText confidence="0.99952475">With this definition, we choose Pδ as a minimizer of Γ(P) over some collection P of subsets of {p1, ... , pT}: Pδ ∈ argminT∈P Γ(P). The choice of P is restricted by computational considerations. One natural option is to let P be the union of the suffix sets {pt, ... , pT}, t = 1, ... , T. We will assume in what follows that P includes the set {p1, ... , pT}. Next, we define a randomized algorithm based on Pδ. Given an input x, the algorithm consists of randomly selecting a path h according to and returning the prediction h(x).</bodyText>
+<equation confidence="0.999468">
+1 �
+p(h) = |Pδ|
+</equation>
+<bodyText confidence="0.999655304347826">Note that computing and storing p directly is not efficient. To sample from p, we first choose pt ∈ Pδ uniformly at random and then sample a path h according to that pt. Sampling a path according to pt can be done efficiently using the weight pushing algorithm. Note that once an input x is received, the distribution p over the path experts h induces a probability distribution px over the output space Y. It is not hard to see that sampling a prediction y according to px is statistically equivalent to first sampling h according to p and then predicting h(x). We will denote by HRand the randomized hypothesis thereby generated. An inherent drawback of randomized solutions such as the one just described is that for the same input x the user can receive different predictions over time. Randomized solutions are also typically more costly to store. A collection of distributions P can also be used to define a deterministic prediction rule based on the scoring function approach. The majority vote scoring function is defined by</bodyText>
+<equation confidence="0.997866333333333">
+�hMVote(x, y) =
+l
+wt,kj 1 hjk (x)=yk ) . (5)
+</equation>
+<bodyText confidence="0.999818888888889">The majority vote algorithm denoted by HMVote is then defined for all x ∈ X, by HMVote(x) = argmaxy∈Y �hMVote(x, y). For an expert automaton accepting all path experts such as that of Figure 1, the maximizer of hMV te can be found very efficiently by choosing y such that yk has the maximum weight in position k. In the next section, we present learning guarantees for HRand and HMVote. For a more extensive discussion of alternative prediction rules, see (Cortes et al., 2014a).</bodyText>
+<figure confidence="0.996200525">
+h11
+2
+���
+1
+���
+h1E
+hp2
+h12
+~
+h1i
+hp1
+11
+���
+���
+���
+���
+���
+I ~ 1
+���
+hp1
+I
+hp2 12
+1 �
+Γ(P)= |P|
+pt∈T
+1 Y_
+|P|
+pt∈T
+�
+h∈H
+�
+e
+pt(h), (4)
+pt∈Ta
+H
+k=1
+�1
+|Pδ |p�a
+� p
+j=1
+</figure>
+<page confidence="0.971243">
+4
+</page>
+<subsectionHeader confidence="0.999378">
+3.4 Batch learning guarantees
+</subsectionHeader>
+<bodyText confidence="0.998206125">We first present learning bounds for the randomized prediction rule HRand. Next, we upper bound the generalization error of HMVote in terms of that of HRand. Theorem 1. For any S &gt; 0, with probability at least 1 — S over the choice of the sample ((x1, y1), ... , (xT, yT)) drawn i.i.d. according to D, the following inequalities hold:</bodyText>
+<equation confidence="0.987205">
+E[L(HRand(x), y)]:5 inf
+h∈H
+2
++ 2M l lTp+ 2M lTδ.
+</equation>
+<bodyText confidence="0.999932555555555">as in all structured prediction problems, since it is exponential in the number of substructures l. For example, in the case of the pronunciation problem where the number of phonemes for English is in the order of 50, the number of classes is 50l. But, the objective function for AdaBoost.MH or AdaBoost.MR as well as the main steps of the algorithms include a sum over all possible labels, whose computational cost in this context would be prohibitive. Second, the loss function we consider is the normalized Hamming loss over the substructures predictions, which does not match the multiclass losses for the variants of AdaBoost.2 Finally, the natural base hypotheses for this problem admit a structure that can be exploited to devise a more efficient solution, which of course was not part of the original considerations for the design of these variants of AdaBoost.</bodyText>
+<equation confidence="0.655399">
+E[L(h(x), y)]
+</equation>
+<bodyText confidence="0.99474225">For the normalized Hamming loss LHam, the bound of Theorem 1 holds with M = 1. We now upper bound the generalization error of the majority-vote algorithm HMVote in terms of that of the randomized algorithm HRand, which, combined with Theorem 1, immediately yields generalization bounds for the majority-vote algorithm HMVote.</bodyText>
+<figureCaption confidence="0.717542666666667">
+Proposition 2. The following inequality relates
+the generalization error of the majority-vote algo-
+rithm to that of the randomized one:
+</figureCaption>
+<bodyText confidence="0.998920625">E[LHam(HMVote(x),y)]:52E[LHam(HRand(x),y)], where the expectations are taken over (x, y) ti D and h—p. Proposition 2 suggests that the price to pay for derandomization is a factor of 2. More refined and more favorable guarantees can be proven for the majority-vote algorithm (Cortes et al., 2014a).</bodyText>
+<sectionHeader confidence="0.997111" genericHeader="method">
+4 Boosting-style algorithm
+</sectionHeader>
+<bodyText confidence="0.999976">In this section, we devise a boosting-style algorithm for our ensemble structured prediction problem. The variants of AdaBoost for multiclass classification such as AdaBoost.MH or AdaBoost.MR (Freund and Schapire, 1997; Schapire and Singer, 1999; Schapire and Singer, 2000) cannot be readily applied in this context. First, the number of classes to consider here is quite large,</bodyText>
+<subsectionHeader confidence="0.996334">
+4.1 Hypothesis sets
+</subsectionHeader>
+<bodyText confidence="0.9963575">The predictor HBoost returned by our boosting algorithm is based on a scoring function h: X x Y —* R, which, as for standard ensemble algorithms such as AdaBoost, is a convex combination αt &gt; 0.</bodyText>
+<equation confidence="0.9982475">
+h = ET
+t=1 αt�ht, with
+</equation>
+<bodyText confidence="0.9973835">The base scoring functions used in our algorithm have the form</bodyText>
+<equation confidence="0.982916666666667">
+l
+b(x, y) E X x Y, ht(x, y) = �hkt (x, y).
+k=1
+</equation>
+<bodyText confidence="0.999417857142857">In particular, these can be derived from the path experts in H by letting hkt (x, y) = 1hkt (X)=yk. Thus, the score assigned to y by the base scoring function ht is the number of positions at which y matches the prediction of path expert ht given input x. HBoost is defined as follows in terms of h or hts:</bodyText>
+<equation confidence="0.79742">
+bx E X, HBoost(x) = argmax �h(x, y)
+Y∈Y
+</equation>
+<bodyText confidence="0.9848245">We remark that the analysis and algorithm presented in this section are also applicable with a scoring function that is the product of the scores 2(Schapire and Singer, 1999) also present an algorithm using the Hamming loss for multi-class classification, but that is a Hamming loss over the set of classes and differs from the loss function relevant to our problem. Additionally, the main steps of that algorithm are also based on a sum over all classes.</bodyText>
+<page confidence="0.691537">
+5
+</page>
+<equation confidence="0.886120666666667">
+at each substructure k as opposed to a sum, that
+is,
+�αt�hk t (x, y) .
+</equation>
+<bodyText confidence="0.995263">This can be used for example in the case where the experts are derived from probabilistic models.</bodyText>
+<subsectionHeader confidence="0.98921">
+4.2 ESPBoost algorithm
+</subsectionHeader>
+<bodyText confidence="0.867542133333333">To simplify our exposition, the algorithm that we now present uses base learners of the form hkt (x, y) = 1hkt (x)=yk. The general case can be handled in the same fashion with the only difference being the definition of the direction and step of the optimization procedure described below. For any i ∈ [1, m] and k ∈ [1, l], we define the margin of hk for point (xi, yi) by hk, xi,yi) = hk(xi, yki )−maxyk6=yk hk(xi, yk). We first derive an upper bound on the empirical normalized Hamming loss of a hypothesis HBoost, with h = ETt= 1 αt�ht. Lemma 3. The following upper bound holds for the empirical normalized Hamming loss of the hypothesis HBoost:</bodyText>
+<equation confidence="0.72089058974359">
+ρ
+(
+Inputs:
+=
+, (xm,
+set of
+experts
+... ,
+for i =
+k =
+k)
+ml
+end for
+fort = 1 to T do
+ht
+]
+Et
+]
+S
+((x1,y1),. .
+ym));
+{h1,
+hp}
+1 to m and
+1 to l doD1(i,
+←
+1
+←argminh∈HE(i,k)∼Dt[1hk(xi)6=yki
+←E(i,k)∼Dt[1hkt(xi)6=yki
+αt←2 1 log 1−�t
+~t
+�
+Zt ← 2 ~t(1 − Et)
+fori= 1 to m and k = 1 to l do
+Dt+1(i, k) ← exp(−αtρ(ehk t ,xi,yi))Dt(i,k) Zt
+Let
+denote the vector obtained after
+t
+1 iterations and et the tth unit vector in
+</equation>
+<bodyText confidence="0.750257">We denote by Dt the distri ml Eim=1 Ek=1 exp (− Eu 1 αuρ(�hu,xi,yi)).</bodyText>
+<equation confidence="0.974943157894737">
+αt−1∈RN
+−
+RN.
+bution over [1, m]×[1, l]
+defined by
+exp (
+t-1
+1 au
+(
+hu,
+ml
+−
+ρ
+�
+xis yi))
+Algorithm 1 ESPBoost Algori
+At−1
+where At−1 is a normalization factor, At−1 =
+k
+</equation>
+<bodyText confidence="0.994888">The direction et selected at the tth round is the one minimizing the directional derivative, that is where ... , denote the set of all path experts in H. F is a convex and differentiable function of Our algorithm, ESPBoost (Ensemble Structured Prediction Boosting), is defined by the application of coordinate descent to the objective F. Algori</bodyText>
+<equation confidence="0.959361310344827">
++
+dF(αt−1
+ηet)
+dη
+, xi,
+ρ(�hkt
+yi)Dt(i, k)At−1
+l T
+�h(x, y) =
+k=1 t=1
+E [LHam(xBoost(x),
+y)](x,y)∼S
+1 �m l �exp − T
+≤ i=1 k=1 t=1
+ml
+end for
+end for
+Return
+Dt(i, k) =
+����η=0
+�l
+k=1
+�m
+i=1
+=[2 � Dt(i, k) − 1�At−1
+jective function F :
+RN→ R defined for all α =
+(α1, . . . , αN) ∈ RN by
+�αjρ(�hk j , xi, yi),
+</equation>
+<equation confidence="0.86658125">
+h1,
+hN
+α.
+thm 1 shows the pseudocode of the ESP-
+Boost.
+i,k:hk t (xi)6=yk i
+=(2Et − 1)At−1,
+where Et is the average error of ht given by
+Dt(i,k)1hkt(xi)6=yki
+= E [1hk t (xi)6=yk i ].
+(i,k)∼Dt
+�αtρ(�hk t , xi, yi) .
+</equation>
+<bodyText confidence="0.9896955">The proof of this lemma as well as that of several other theorems related to this algorithm can be found in (Cortes et al., 2014a). In view of this upper bound, we consider the ob-</bodyText>
+<equation confidence="0.985485428571429">
+N
+j=1
+thm
+h =
+ETt=1 αt�ht
+l
+k=1
+</equation>
+<bodyText confidence="0.997236333333333">The remaining steps of our algorithm can be determined as in the case of AdaBoost. In particular, given the direction et, the best step</bodyText>
+<equation confidence="0.9486329">
+is ob-
+tained by solving the equation
+αt
+dF(αt−1+αtet) =
+dαt
+1 �m l �exp −
+F(α) = ml i=1 k=1
+�m
+i=1
+Et =
+</equation>
+<page confidence="0.74277">
+6
+</page>
+<bodyText confidence="0.637988">0, which admits the closed-form solution αt = pressed in terms of Dt with the normalization factor Zt = 2pEt(1 − Ct).</bodyText>
+<equation confidence="0.9608195">
+2 log 1−�t
+1 ~t . The distribution Dt+1 can be ex-
+</equation>
+<bodyText confidence="0.989824">Our weak learning assumption in this context is that there exists γ &gt; 0 such that at each round, Et verifies Et &lt; 21 − γ. Note that, at each round, the path expert ht with the smallest error Et can be determined easily and efficiently by first finding for each substructure k, the hkt that is the best with respect to the distribution weights Dt(i, k). Observe that, while the steps of our algorithm are syntactically close to those of AdaBoost and its multi-class variants, our algorithm is distinct and does not require sums over the exponential number of all possible labelings of the substructures and is quite efficient.</bodyText>
+<subsectionHeader confidence="0.999331">
+4.3 Learning guarantees
+</subsectionHeader>
+<bodyText confidence="0.9995864">We have derived both a margin-based generalization bound in support of the ESPBoost algorithm and a bound on the empirical margin loss. For any ρ &gt; 0, define the empirical margin loss of HBoost by the following:</bodyText>
+<equation confidence="0.995170333333333">
+l m l
+Rρ \ IlαIl 1 l 11 X X1ρ(e k,Xi,yi)≤ρkαk1,
+i=1 k=1
+</equation>
+<bodyText confidence="0.9998719">where eh is the corresponding scoring function. The following theorem can be proven using the multi-class classification bounds of (Koltchinskii and Panchenko, 2002; Mohri et al., 2012) as can be shown in (Cortes et al., 2014a). Theorem 4. Let eF denote the set of functions HBoost with h = PT t=1 αteht for some α1, ... , αt &gt; 0 and ht E H for all t E [1,T]. Fix ρ &gt; 0. Then, for any δ &gt; 0, with probability at least 1−δ, the following holds for all HBoost E F:</bodyText>
+<equation confidence="0.9756538">
+E [LHam(HBoost(x), y)] &lt;
+(X,y)∼D
+l
+|Yk|29im(Hk) +sl2m,
+δ
+</equation>
+<bodyText confidence="0.9991515">where 9im(Hk) denotes the Rademacher complexity of the class offunctions</bodyText>
+<equation confidence="0.69174">
+Hk = {x H ehkt : j E [1, p], y E Yk}.
+</equation>
+<tableCaption confidence="0.969734">
+Table 1: Average Normalized Hamming Loss,
+</tableCaption>
+<table confidence="0.977209454545455">
+ADS1 and ADS2. βADS1 = 0.95, βADS2 = 0.95,
+TSLE = 100, δ = 0.05.
+ADS1, m = 200 ADS2, m = 200
+HMVote 0.0197 f 0.00002 0.2172 f 0.00983
+HFPL 0.0228 f 0.00947 0.2517 f 0.05322
+HCV 0.0197 f 0.00002 0.2385 f 0.00002
+HFPL-CV 0.0741 f 0.04087 0.4001 f 0.00028
+HESPBoost 0.0197 f 0.00002 0.2267 f 0.00834
+HSLE 0.5641 f 0.00044 0.2500 f 0.05003
+HRand 0.1112 f 0.00540 0.4000 f 0.00018
+Best hj 0.5635 f 0.00004 0.4000
+</table>
+<bodyText confidence="0.998986">This theorem provides a margin-based guarantee for convex ensembles such as those returned by ESPBoost. The following theorem further provides an upper bound on the empirical margin loss for ESPBoost.</bodyText>
+<equation confidence="0.919819833333333">
+Theorem 5. Let e
+turned by ESPBoost after T &gt; 1 rounds. Then, for
+any ρ &gt; 0, the following inequality holds:
+hIll &lt; 2T qEt-ρ(1 − Et)1+ρ.
+α
+t=1
+</equation>
+<bodyText confidence="0.9975925">As in the case of AdaBoost (Schapire et al., 1997), it can be shown that for ρ &lt; γ, �1−ρ side of this bound decreases exponentially with T.</bodyText>
+<equation confidence="0.9964115">
+t (1 − Et)1+ρ &lt;
+(1 − 2γ)1−ρ(1 + 2γ)1+ρ &lt; 1 and the right-hand
+</equation>
+<sectionHeader confidence="0.999297" genericHeader="evaluation and result">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.999918285714286">We used a number of artificial and real-world data sets for our experiments. For each data set, we performed 10-fold cross-validation with disjoint training sets.3 We report the average error for each task. In addition to the HMVote, HRand and HESPBoost hypotheses, we experimented with two algorithms discussed in more detail in (Cortes et al., 2014a): a cross-validation on-line-tobatch conversion of the WMWP algorithm, HCV, a majority-vote on-line-to-batch conversion with FPL, HFPL, and a cross-validation on-line-tobatch conversion with FPL, HFPL-CV. Finally, we compare with the HSLE algorithm of (Nguyen and Guo, 2007).</bodyText>
+<subsectionHeader confidence="0.997149">
+5.1 Artificial data sets
+</subsectionHeader>
+<bodyText confidence="0.9391135">Our artificial data set, ADS1 and ADS2 simulate the scenarios described in Section 1. In ADS1 the</bodyText>
+<footnote confidence="0.839411">
+3For the OCR data set, these subsets are predefined.
+</footnote>
+<figure confidence="0.984189888888889">
+h l
+IlαIl1l
+�bRρ
+Xl
++ 2
+ρl
+k=1
+h denote the scoring function re-
+�bRρ
+</figure>
+<page confidence="0.987946">
+7
+</page>
+<tableCaption confidence="0.902906">
+Table 2: Average Normalized Hamming Loss for
+</tableCaption>
+<equation confidence="0.389985">
+ADS3. QADS1 = 0.95, QADS2 = 0.95, TSLE =
+100, S = 0.05.
+</equation>
+<bodyText confidence="0.94488524">HMVote 0.1788 f 0.00004 kth expert has a high accuracy on the kth position, in ADS2 an expert has low accuracy in a fixed set of positions. For the first artificial data set, ADS1, we used local experts h1, ... , hp with p = 5. To generate the data we chose an arbitrary Markov chain over the English alphabet and sampled 40,000 random sequences each consisting of 10 symbols. Each of the five experts was designed to have a certain probability of making a mistake at each position in the sequence. Expert hj correctly predicted positions 2j −1 and 2j with probability 0.97 and other positions with probability 0.5. We forced experts to make similar mistakes by making them select an adjacent alphabet symbol in case of an error. For example, when a mistake was made on a symbol b, the expert prediction was forced to be either a or c. The second artificial data set, ADS2, modeled the case of rather poor experts. ADS2 was generated in the same way as ADS1, but the expert predictions were different. This time each expert made mistakes at four out of the ten distinct random positions in each sequence. Table 1 reports the results of our experiments. For all experiments with the algorithms HRand, HMVote, and HCV, we ran the WMWP algorithm for T = m rounds with the Q values listed in the caption of Table 1, generating distributions P C_ {p1, ... , pTI. For P we used the collection of all suffix sets Ipt, ... , pTI and S = 0.05. For the algorithms based on FPL, we used E = 0.5/pl. The same parameter choices were used for the subsequent experiments. As can be seen from Table 1, in both cases, HMVote, our majority-vote algorithm based on our on-line-to-batch conversion using the WMWP algorithm (together with most of the other on-line based algorithms), yields a significant improvement over the best expert. It also outperforms HSLE, which in the case of ADS1 even fails to outperform the best hj. After 100 iterations on ADS1, the ensemble learned by HSLE consists of a single expert, which is why it leads to such a poor performance. It is also worth pointing out that HFPL-CV and HRand fail to outperform the best model on ADS2 set. This is in total agreement with our theoretical analysis since, in this case, any path expert has exactly the same performance and the error of the best path expert is an asymptotic upper bound on the errors of these algorithms.</bodyText>
+<table confidence="0.988390142857143">
+HFPL 0.2189 f 0.04097
+HCV 0.1788 f 0.00004
+HFPL-CV 0.3148 f 0.00387
+HESPBoost 0.1831 f 0.00240
+HSLE 0.1954 f 0.00185
+HRand 0.3196 f 0.00018
+Best hj 0.2957 f 0.00005
+</table>
+<tableCaption confidence="0.993874">
+Table 3: Average Normalized Hamming Loss,
+</tableCaption>
+<table confidence="0.831162">
+PDS1 and PDS2. QPDS1 = 0.85, QPDS2 = 0.97,
+TSLE = 100, S = 0.05.
+PDS1, m = 130 PDS2, m = 400
+HMVote 0.2225 f 0.00301 0.2323 f 0.00069
+HFPL 0.2657 f 0.07947 0.2337 f 0.00229
+HCV 0.2316 f 0.00189 0.2364 f 0.00080
+HFPL-CV 0.4451 f 0.02743 0.4090 f 0.01388
+HESPBoost 0.3625 f 0.01054 0.3499 f 0.00509
+HSLE 0.3130 f 0.05137 0.3308 f 0.03182
+HRand 0.4713 f 0.00360 0.4607 f 0.00131
+Best hj 0.3449 f 0.00368 0.3413 f 0.00067
+</table>
+<bodyText confidence="0.998748076923077">The superior performance of the majority-vote-based algorithms suggests that these algorithms may have an advantage over other prediction rules beyond what is suggested by our learning bounds. We also synthesized a third data set, ADS3. Here, we simulated the case where each expert specialized in predicting some subset of the labels. In particular, we generated 40,000 random sequences over the English alphabet in the same way as for ADS1 and ADS2. To generate expert predictions, we partitioned the alphabet into 5 disjoint subsets Aj. Expert j always correctly predicted the label in Aj and the probability of correctly predicting the label not in Aj was set to 0.7. To train the ensemble algorithms, we used a training set of size m = 200. The results are presented in Table 2. HMVote, HCV and HESPBoost achieve the best performance on this data set with a considerable improvement in accuracy over the best expert hj. We also observe as for the ADS2 experiment that HRand and HFPL-CV fail to outperform the best model and approach the accuracy of the best path expert only asymptotically.</bodyText>
+<page confidence="0.999309">
+8
+</page>
+<tableCaption confidence="0.99863">
+Table 4: Average edit distance, PDS1 and PDS2.
+</tableCaption>
+<equation confidence="0.5868035">
+QPDS1 = 0.85, QPDS2 = 0.97, TSLE = 100,
+6 = 0.05.
+</equation>
+<table confidence="0.979312">
+PDS1, m = 130 PDS2, m = 400
+HMVote 0.8395 f 0.01076 0.9626 f 0.00341
+HFPL 1.0158 f 0.34379 0.9744 f 0.01277
+HCV 0.8668 f 0.00553 0.9840 f 0.00364
+HFPL-CV 1.8044 f 0.09315 1.8625 f 0.06016
+HESPBoost 1.3977 f 0.06017 1.4092 f 0.04352
+HSLE 1.1762 f 0.12530 1.2477 f 0.12267
+HRand 1.8962 f 0.01064 2.0838 f 0.00518
+Best hj 1.2163 f 0.00619 1.2883 f 0.00219
+</table>
+<subsectionHeader confidence="0.999411">
+5.2 Pronunciation data sets
+</subsectionHeader>
+<bodyText confidence="0.99998248">We had access to two proprietary pronunciation data sets, PDS1 and PDS2. In both sets, each example is an English word, typically a proper name. For each word, 20 possible phonemic sequences are available, ranked by some pronunciation model. Since the true pronunciation was not available, we set the top sequence to be the target label and used the remaining as the predictions made by the experts. The only difference between PDS1 and PDS2 is their size: 1,313 words for PDS1 and 6,354 for PDS2. In both cases, on-line based algorithms, specifically XMVote, significantly outperform the best model as well as XSLE, see Table 3. The poor performance of XESPBoost is due to the fact that the weak learning assumption is violated after 5-8 iterations and hence the algorithm terminates. It can be argued that for this task the edit-distance is a more suitable measure of performance than the average Hamming loss. Thus, we also report the results of our experiments in terms of the edit-distance in Table 4. Remarkably, our on-line based algorithms achieve a comparable improvement over the performance of the best model in the case of edit-distance as well.</bodyText>
+<subsectionHeader confidence="0.998199">
+5.3 OCR data set
+</subsectionHeader>
+<bodyText confidence="0.995950444444444">Rob Kassel’s OCR data set is available for download from http://ai.stanford.edu/˜btaskar/ ocr/. It contains 6,877 word instances with a total of 52,152 characters. Each character is represented by 16 × 8 = 128 binary pixels. The task is to predict a word given its sequence of pixel vectors. To generate experts, we used several software packages: CRFsuite (Okazaki, 2007) and SVMstruct, SVMmulticlass (Joachims, 2008), and the Stanford Classifier (Rafferty et al., 2014).</bodyText>
+<tableCaption confidence="0.996039">
+Table 5: Average Normalized Hamming Loss,
+</tableCaption>
+<table confidence="0.997614545454546">
+TR1 and TR2. QTR1 = 0.95, QTR2 = 0.98,
+TSLE = 100, 6 = 0.05.
+TR1, m = 800 TR2, m = 1000
+HMVote 0.0850 f 0.00096 0.0746 f 0.00014
+HFPL 0.0859 f 0.00110 0.0769 f 0.00218
+HCV 0.0843 f 0.00006 0.0741 f 0.00011
+HFPL-CV 0.1093 f 0.00129 0.1550 f 0.00182
+HESPBoost 0.1041 f 0.00056 0.1414 f 0.00233
+HSLE 0.0778 f 0.00934 0.0814 f 0.02558
+HRand 0.1128 f 0.00048 0.1652 f 0.00077
+Best hj 0.1032 f 0.00007 0.1415 f 0.00005
+</table>
+<bodyText confidence="0.9908131">We trained these algorithms on each of the predefined folds of the data set and generated predictions on the test fold using the resulting models. Our results (see (Cortes et al., 2014a)) show that ensemble methods lead only to a small improvement in performance over the best hj. This is because here the best model hj dominates all other experts and ensemble methods cannot benefit from patching together different outputs.</bodyText>
+<subsectionHeader confidence="0.999576">
+5.4 Penn Treebank data set
+</subsectionHeader>
+<bodyText confidence="0.999898192307693">The part-of-speech task, POS, consists of labeling each word of a sentence with its correct part-of-speech tag. The Penn Treebank 2 data set is available through LDC license at http: //www.cis.upenn.edu/˜treebank/ and contains 251,854 sentences with a total of 6,080,493 tokens and 45 different parts-of-speech. For the first experiment, TR1, we used 4 disjoint training sets to produce 4 SVM multiclass models and 4 maximum entropy models using the Stanford Classifier. We also used the union of these training sets to devise one CRFsuite model. For the second experiment, TR2, we trained 5 SVMstruct models. The same features were used for both experiments. For the SVM algorithms, we generated 267,214 bag-of-word binary features. The Stanford Classifier and CRFsuite packages use internal routines to generate features. The results of the experiments are summarized in Table 5. For TR1, our on-line ensemble methods improve over the best model. Note that XSLE has the best average loss over 10 runs for this experiment. This comes at a price of much higher standard deviation which does not allow us to conclude that the difference in performance between our methods and XSLE is statistically significant.</bodyText>
+<page confidence="0.998064">
+9
+</page>
+<tableCaption confidence="0.750402">
+Table 6: Average Normalized Hamming Loss,
+SDS. l &gt; 4, Q = 0.97, δ = 0.05, TSLE = 100.
+</tableCaption>
+<table confidence="0.998900444444444">
+p = 5, m = 1500 p = 10, m = 1200
+HMVote 0.2465 f 0.00248 0.2606 f 0.00320
+HFPL 0.2500 f 0.00248 0.2622 f 0.00316
+HCV 0.2504 f 0.00576 0.2755 f 0.00212
+HFPL-CV 0.2726 f 0.00839 0.3219 f 0.01176
+HESPBoost 0.2572 f 0.00062 0.2864 f 0.00103
+HSLE 0.2572 f 0.00061 0.2864 f 0.00102
+HRand 0.2877 f 0.00480 0.3430 f 0.00468
+Best hj 0.2573 f 0.00060 0.2865 f 0.00101
+</table>
+<bodyText confidence="0.998121666666667">In fact, on two runs, HSLE chooses an ensemble consisting of a single expert and fails to outperform the best model.</bodyText>
+<subsectionHeader confidence="0.998032">
+5.5 Speech recognition data set
+</subsectionHeader>
+<bodyText confidence="0.999946352941177">For our last set of experiments, we used another proprietary speech recognition data set, SDS. Each example in this data set is represented by a sequence of length l E [2,15]. Therefore, for training we padded the true labels and the expert predictions to normalize the sequence lengths. For each of the 22,298 examples, there are between 2 and 251 expert predictions available. Since the ensemble methods we presented assume that the predictions of all p experts are available for each example in the training and test sets, we needed to restrict ourselves to the subsets of the data where at least some fixed number of expert predictions were available. In particular, we considered p = 5, 10, 20 and 50. For each value of p we used only the top p experts in our ensembles. Our initial experiments showed that, as in the case of OCR data set, ensemble methods offer only a modest increase in performance over the best hj. This is again largely due to the dominant performance of the best expert hj. However, it was observed that the accuracy of the best model is a decreasing function of l, suggesting that ensemble algorithm may be used to improve performance for longer sequences. Subsequent experiments show that this is indeed the case: when training and testing with l &gt; 4, ensemble algorithms outperform the best model. Table 6 and Table 7 summarize these results for p = 5, 10, 20, 50. Our results suggest that the following simple scheme can be used: for short sequences use the best expert model and for longer sequences, use the ensemble model. A more elaborate variant of this algorithm can be derived based on the observation that the improvement in accuracy of the ensemble model over the best expert increases with the number of experts available.</bodyText>
+<tableCaption confidence="0.838871">
+Table 7: Average Normalized Hamming Loss,
+</tableCaption>
+<table confidence="0.9831376">
+SDS. l &gt; 4, Q = 0.97,δ = 0.05, TSLE = 100.
+p = 20, m = 900 p = 50, m = 700
+HMVote 0.2773 f 0.00139 0.3217 f 0.00375
+HFPL 0.2797 f 0.00154 0.3189 f 0.00344
+HCV 0.2986 f 0.00075 0.3401 f 0.00054
+HFPL-CV 0.3816 f 0.01457 0.4451 f 0.01360
+HESPBoost 0.3115 f 0.00089 0.3426 f 0.00071
+HSLE 0.3114 f 0.00087 0.3425 f 0.00076
+HRand 0.3977 f 0.00302 0.4608 f 0.00303
+Best hj 0.3116 f 0.00087 0.3427 f 0.00077
+</table>
+<sectionHeader confidence="0.999437" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999970954545454">We presented a broad analysis of the problem of ensemble structured prediction, including a series of algorithms with learning guarantees and extensive experiments. Our results show that our algorithms, most notably HMVote, can result in significant benefits in several tasks, which can be of a critical practical importance. We also reported very favorable results for HMVote when used with the edit-distance, which is the standard loss used in many applications. A natural extension of this work consists of devising new algorithms and providing learning guarantees specific to other loss functions such as the edit-distance. While we aimed for an exhaustive study, including multiple on-learning algorithms, different conversions to batch and derandomizations, we are aware that the problem we studied is very rich and admits many more facets and scenarios that we plan to investigate in the future. Finally, the boosting-style algorithm we presented can be enhanced using recent theoretical and algorithmic results on deep boosting (Cortes et al., 2014b).</bodyText>
+<sectionHeader confidence="0.998237" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.99996125">We warmly thank our colleagues Francoise Beaufays and Fuchun Peng for kindly extracting and making available to us the pronunciation data sets, Cyril Allauzen for providing us with the speech recognition data, and Richard Sproat and Brian Roark for help with other data sets. This work was partly funded by the NSF award IIS-1117591 and the NSERC PGS D3 award.</bodyText>
+<page confidence="0.997952">
+10
+</page>
+<sectionHeader confidence="0.993884" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999939298076924">
+[Breiman1996] Leo Breiman. 1996. Bagging predic-
+tors. Machine Learning, 24(2):123–140.
+[Caruana et al.2004] R. Caruana, A. Niculescu-Mizil,
+G. Crew, and A. Ksikes. 2004. Ensemble selection
+from libraries of models. In Proceedings of ICML,
+pages 18–.
+[Cesa-Bianchi et al.2004] N. Cesa-Bianchi, A. Con-
+coni, and C. Gentile. 2004. On the generalization abil-
+ity of on-line learning algorithms. IEEE Transactions
+on Information Theory, 50(9):2050–2057.
+[Collins and Koo2005] Michael Collins and Terry Koo.
+2005. Discriminative reranking for natural language
+parsing. Computational Linguistics, 31(1):25–70.
+[Collins2002] M. Collins. 2002. Discriminative train-
+ing methods for hidden Markov models: theory and ex-
+periments with perceptron algorithms. In Proceedings
+of ACL, pages 1–8.
+[Cortes et al.2005] C. Cortes, M. Mohri, and J. Weston.
+2005. A general regression technique for learning
+transductions. In Proceedings of ICML 2005, pages
+153–160, New York, NY, USA. ACM.
+[Cortes et al.2014a] Corinna Cortes, Vitaly Kuznetsov,
+and Mehryar Mohri. 2014a. Ensemble methods for
+structured prediction. In Proceedings of ICML.
+[Cortes et al.2014b] Corinna Cortes, Mehryar Mohri,
+and Umar Syed. 2014b. Deep boosting. In Proceed-
+ings of the Fourteenth International Conference on Ma-
+chine Learning (ICML 2014).
+[Dekel and Singer2005] O. Dekel and Y. Singer. 2005.
+Data-driven online to batch conversion. In Advances in
+NIPS 18, pages 1207–1216.
+[Fiscus1997] Jonathan G Fiscus. 1997. Post-
+processing system to yield reduced word error rates:
+Recognizer output voting error reduction (rover). In
+Proceedings of the 1997 IEEE ASRU Workshop, pages
+347–354, Santa Barbara, CA.
+[Freund and Schapire1997] Y. Freund and R. Schapire.
+1997. A decision-theoretic generalization of on-line
+learning and application to boosting. Journal of Com-
+puter and System Sciences, 55(1):119–139.
+[Freund et al.2004] Yoav Freund, Yishay Mansour, and
+Robert E. Schapire. 2004. Generalization bounds for
+averaged classifiers. The Annals of Statistics, 32:1698–
+1722.
+[Ghoshal et al.2009] Arnab Ghoshal, Martin Jansche,
+Sanjeev Khudanpur, Michael Riley, and Morgan Ulin-
+ski. 2009. Web-derived pronunciations. In Proceed-
+ings of ICASSP, pages 4289–4292.
+[Joachims2008] T. Joachims. 2008. Support vector
+machines for complex outputs.
+[Kalai and Vempala2005] A. Kalai and S. Vempala.
+2005. Efficient algorithms for online decision prob-
+lems. Journal of Computer and System Sciences,
+71(3):291–307.
+[Kocev et al.2013] D. Kocev, C. Vens, J. Struyf, and
+S. Deroski. 2013. Tree ensembles for predicting struc-
+tured outputs. Pattern Recognition, 46(3):817–833,
+March.
+[Koltchinskii and Panchenko2002] Vladmir Koltchin-
+skii and Dmitry Panchenko. 2002. Empirical margin
+distributions and bounding the generalization error of
+combined classifiers. Annals of Statistics, 30.
+[Lafferty et al.2001] J. Lafferty, A. McCallum, and
+F. Pereira. 2001. Conditional random fields: Proba-
+bilistic models for segmenting and labeling sequence
+data. In Proceedings of ICML, pages 282–289.
+[Littlestone and Warmuth1994] N. Littlestone and
+M. Warmuth. 1994. The weighted majority algorithm.
+Information and Computation, 108(2):212–261.
+[Littlestone1989] N. Littlestone. 1989. From on-line
+to batch learning. In Proceedings of COLT 2, pages
+269–284.
+[MacKay1991] David J. C. MacKay. 1991. Bayesian
+methods for adaptive models. Ph.D. thesis, California
+Institute of Technology.
+[MacKay1997] David J.C. MacKay. 1997. Ensemble
+learning for hidden markov models. Technical report,
+Cavendish Laboratory, Cambridge UK.
+[Mohri et al.2008] Mehryar Mohri, Fernando C. N.
+Pereira, and Michael Riley. 2008. Speech recognition
+with weighted finite-state transducers. In Handbook on
+Speech Processing and Speech Communication, Part
+E: Speech recognition. Springer-Verlag.
+[Mohri et al.2012] Mehryar Mohri, Afshin Ros-
+tamizadeh, and Ameet Talwalkar. 2012. Foundations
+of Machine Learning. The MIT Press.
+[Mohri1997] Mehryar Mohri. 1997. Finite-state trans-
+ducers in language and speech processing. Computa-
+tional Linguistics, 23(2):269–311.
+[Nguyen and Guo2007] N. Nguyen and Y. Guo. 2007.
+Comparison of sequence labeling algorithms and ex-
+tensions. In Proceedings of ICML, pages 681–688.
+[Okazaki2007] N. Okazaki. 2007. CRFsuite: a fast im-
+plementation of conditional random fields (crfs).
+[Petrov2010] Slav Petrov. 2010. Products of random
+latent variable grammars. In HLT-NAACL, pages 19–
+27.
+[Rafferty et al.2014] A. Rafferty, A. Kleeman, J. Finkel,
+and C. Manning. 2014. Stanford classifer.
+[Sagae and Lavie2006] K. Sagae and A. Lavie. 2006.
+Parser combination by reparsing. In Proceedings of
+HLT/NAACL, pages 129–132.
+[Schapire and Singer1999] Robert E. Schapire and
+Yoram Singer. 1999. Improved boosting algorithms
+</reference>
+<page confidence="0.989813">
+11
+</page>
+<reference confidence="0.999869416666667">
+using confidence-rated predictions. Machine Learning,
+37(3):297–336.
+[Schapire and Singer2000] Robert E. Schapire and
+Yoram Singer. 2000. Boostexter: A boosting-based
+system for text categorization. Machine Learning,
+39(2-3):135–168.
+[Schapire et al.1997] Robert E. Schapire, Yoav Freund,
+Peter Bartlett, and Wee Sun Lee. 1997. Boosting the
+margin: A new explanation for the effectiveness of vot-
+ing methods. In ICML, pages 322–330.
+[Smyth and Wolpert1999] Padhraic Smyth and David
+Wolpert. 1999. Linearly combining density estimators
+via stacking. Machine Learning, 36:59–83, July.
+[Takimoto and Warmuth2003] E. Takimoto and M. K.
+Warmuth. 2003. Path kernels and multiplicative up-
+dates. JMLR, 4:773–818.
+[Taskar et al.2004] B. Taskar, C. Guestrin, and
+D. Koller. 2004. Max-margin Markov networks. In
+Advances in NIPS 16. MIT Press, Cambridge, MA.
+[Tsochantaridis et al.2005] I. Tsochantaridis,
+T. Joachims, T. Hofmann, and Y. Altun. 2005.
+Large margin methods for structured and interde-
+pendent output variables. JMLR, 6:1453–1484,
+December.
+[Wang et al.2007] Q. Wang, D. Lin, and D. Schuur-
+mans. 2007. Simple training of dependency parsers
+via structured boosting. In Proceedings of IJCAI 20,
+pages 1756–1762.
+[Zeman and ˇZabokrtsk´y2005] D. Zeman and
+Z. ˇZabokrtsk´y. 2005. Improving parsing accu-
+racy by combining diverse dependency parsers. In
+Proceedings of IWPT 9, pages 171–178.
+[Zhang et al.2009] H. Zhang, M. Zhang, C. Tan, and
+H. Li. 2009. K-best combination of syntactic parsers.
+In Proceedings of EMNLP: Volume 3, pages 1552–
+1560.
+</reference>
+<page confidence="0.998456">
+12
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.329103" no="0">
+<title confidence="0.999711">Learning Ensembles of Structured Prediction Rules</title>
+<author confidence="0.831473">Corinna Cortes</author>
+<affiliation confidence="0.992723">Google Research</affiliation>
+<address confidence="0.995604">111 8th Avenue, New York, NY 10011</address>
+<email confidence="0.999187">corinna@google.com</email>
+<author confidence="0.807241">Vitaly</author>
+<affiliation confidence="0.89274">Courant</affiliation>
+<address confidence="0.992988">251 Mercer New York, NY 10012</address>
+<email confidence="0.999013">vitaly@cims.nyu.edu</email>
+<author confidence="0.535559">Mehryar</author>
+<affiliation confidence="0.991102">Courant Institute and Google</affiliation>
+<address confidence="0.997388">251 Mercer New York, NY 10012</address>
+<email confidence="0.999683">mohri@cims.nyu.edu</email>
+<abstract confidence="0.998604153846154">We present a series of algorithms with theoretical guarantees for learning accurate ensembles of several structured prediction rules for which no prior knowledge is assumed. This includes a number of randomized and deterministic algorithms devised by converting on-line learning algorithms to batch ones, and a boostingstyle algorithm applicable in the context of structured prediction with a large number of labels. We also report the results of extensive experiments with these algorithms.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Leo Breiman</author>
+</authors>
+<title>Bagging predictors.</title>
+<date>1996</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>24</volume>
+<issue>2</issue>
+<marker>[Breiman1996]</marker>
+<rawString>Leo Breiman. 1996. Bagging predictors. Machine Learning, 24(2):123–140.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Caruana</author>
+<author>A Niculescu-Mizil</author>
+<author>G Crew</author>
+<author>A Ksikes</author>
+</authors>
+<title>Ensemble selection from libraries of models.</title>
+<date>2004</date>
+<booktitle>In Proceedings of ICML,</booktitle>
+<pages>18</pages>
+<marker>[Caruana et al.2004]</marker>
+<rawString>R. Caruana, A. Niculescu-Mizil, G. Crew, and A. Ksikes. 2004. Ensemble selection from libraries of models. In Proceedings of ICML, pages 18–.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Cesa-Bianchi</author>
+<author>A Conconi</author>
+<author>C Gentile</author>
+</authors>
+<title>On the generalization ability of on-line learning algorithms.</title>
+<date>2004</date>
+<journal>IEEE Transactions on Information Theory,</journal>
+<volume>50</volume>
+<issue>9</issue>
+<marker>[Cesa-Bianchi et al.2004]</marker>
+<rawString>N. Cesa-Bianchi, A. Conconi, and C. Gentile. 2004. On the generalization ability of on-line learning algorithms. IEEE Transactions on Information Theory, 50(9):2050–2057.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+<author>Terry Koo</author>
+</authors>
+<title>Discriminative reranking for natural language parsing.</title>
+<date>2005</date>
+<journal>Computational Linguistics,</journal>
+<volume>31</volume>
+<issue>1</issue>
+<marker>[Collins and Koo2005]</marker>
+<rawString>Michael Collins and Terry Koo. 2005. Discriminative reranking for natural language parsing. Computational Linguistics, 31(1):25–70.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+</authors>
+<title>Discriminative training methods for hidden Markov models: theory and experiments with perceptron algorithms.</title>
+<date>2002</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>1--8</pages>
+<marker>[Collins2002]</marker>
+<rawString>M. Collins. 2002. Discriminative training methods for hidden Markov models: theory and experiments with perceptron algorithms. In Proceedings of ACL, pages 1–8.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Cortes</author>
+<author>M Mohri</author>
+<author>J Weston</author>
+</authors>
+<title>A general regression technique for learning transductions.</title>
+<date>2005</date>
+<booktitle>In Proceedings of ICML 2005,</booktitle>
+<pages>153--160</pages>
+<publisher>ACM.</publisher>
+<location>New York, NY, USA.</location>
+<marker>[Cortes et al.2005]</marker>
+<rawString>C. Cortes, M. Mohri, and J. Weston. 2005. A general regression technique for learning transductions. In Proceedings of ICML 2005, pages 153–160, New York, NY, USA. ACM.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Corinna Cortes</author>
+</authors>
+<title>Vitaly Kuznetsov, and Mehryar Mohri. 2014a. Ensemble methods for structured prediction.</title>
+<booktitle>In Proceedings of ICML.</booktitle>
+<marker>[Cortes et al.2014a]</marker>
+<rawString>Corinna Cortes, Vitaly Kuznetsov, and Mehryar Mohri. 2014a. Ensemble methods for structured prediction. In Proceedings of ICML.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Corinna Cortes</author>
+<author>Mehryar Mohri</author>
+<author>Umar Syed</author>
+</authors>
+<title>Deep boosting.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the Fourteenth International Conference on Machine Learning (ICML</booktitle>
+<marker>[Cortes et al.2014b]</marker>
+<rawString>Corinna Cortes, Mehryar Mohri, and Umar Syed. 2014b. Deep boosting. In Proceedings of the Fourteenth International Conference on Machine Learning (ICML 2014).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>O Dekel</author>
+<author>Y Singer</author>
+</authors>
+<title>Data-driven online to batch conversion.</title>
+<date>2005</date>
+<booktitle>In Advances in NIPS 18,</booktitle>
+<pages>1207--1216</pages>
+<marker>[Dekel and Singer2005]</marker>
+<rawString>O. Dekel and Y. Singer. 2005. Data-driven online to batch conversion. In Advances in NIPS 18, pages 1207–1216.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jonathan G Fiscus</author>
+</authors>
+<title>Postprocessing system to yield reduced word error rates: Recognizer output voting error reduction (rover).</title>
+<date>1997</date>
+<journal>IEEE ASRU Workshop,</journal>
+<booktitle>In Proceedings of the</booktitle>
+<pages>347--354</pages>
+<location>Santa Barbara, CA.</location>
+<marker>[Fiscus1997]</marker>
+<rawString>Jonathan G Fiscus. 1997. Postprocessing system to yield reduced word error rates: Recognizer output voting error reduction (rover). In Proceedings of the 1997 IEEE ASRU Workshop, pages 347–354, Santa Barbara, CA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Freund</author>
+<author>R Schapire</author>
+</authors>
+<title>A decision-theoretic generalization of on-line learning and application to boosting.</title>
+<date>1997</date>
+<journal>Journal of Computer and System Sciences,</journal>
+<volume>55</volume>
+<issue>1</issue>
+<marker>[Freund and Schapire1997]</marker>
+<rawString>Y. Freund and R. Schapire. 1997. A decision-theoretic generalization of on-line learning and application to boosting. Journal of Computer and System Sciences, 55(1):119–139.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yoav Freund</author>
+<author>Yishay Mansour</author>
+<author>Robert E Schapire</author>
+</authors>
+<title>Generalization bounds for averaged classifiers. The Annals of Statistics,</title>
+<date>2004</date>
+<volume>32</volume>
+<pages>1722</pages>
+<marker>[Freund et al.2004]</marker>
+<rawString>Yoav Freund, Yishay Mansour, and Robert E. Schapire. 2004. Generalization bounds for averaged classifiers. The Annals of Statistics, 32:1698– 1722.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arnab Ghoshal</author>
+<author>Martin Jansche</author>
+<author>Sanjeev Khudanpur</author>
+<author>Michael Riley</author>
+<author>Morgan Ulinski</author>
+</authors>
+<title>Web-derived pronunciations.</title>
+<date>2009</date>
+<booktitle>In Proceedings of ICASSP,</booktitle>
+<pages>4289--4292</pages>
+<marker>[Ghoshal et al.2009]</marker>
+<rawString>Arnab Ghoshal, Martin Jansche, Sanjeev Khudanpur, Michael Riley, and Morgan Ulinski. 2009. Web-derived pronunciations. In Proceedings of ICASSP, pages 4289–4292.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Joachims</author>
+</authors>
+<title>Support vector machines for complex outputs.</title>
+<date>2008</date>
+<marker>[Joachims2008]</marker>
+<rawString>T. Joachims. 2008. Support vector machines for complex outputs.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Kalai</author>
+<author>S Vempala</author>
+</authors>
+<title>Efficient algorithms for online decision problems.</title>
+<date>2005</date>
+<journal>Journal of Computer and System Sciences,</journal>
+<volume>71</volume>
+<issue>3</issue>
+<marker>[Kalai and Vempala2005]</marker>
+<rawString>A. Kalai and S. Vempala. 2005. Efficient algorithms for online decision problems. Journal of Computer and System Sciences, 71(3):291–307.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Kocev</author>
+<author>C Vens</author>
+<author>J Struyf</author>
+<author>S Deroski</author>
+</authors>
+<title>Tree ensembles for predicting structured outputs.</title>
+<date>2013</date>
+<journal>Pattern Recognition,</journal>
+<volume>46</volume>
+<issue>3</issue>
+<marker>[Kocev et al.2013]</marker>
+<rawString>D. Kocev, C. Vens, J. Struyf, and S. Deroski. 2013. Tree ensembles for predicting structured outputs. Pattern Recognition, 46(3):817–833, March.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vladmir Koltchinskii</author>
+<author>Dmitry Panchenko</author>
+</authors>
+<title>Empirical margin distributions and bounding the generalization error of combined classifiers.</title>
+<date>2002</date>
+<journal>Annals of Statistics,</journal>
+<volume>30</volume>
+<marker>[Koltchinskii and Panchenko2002]</marker>
+<rawString>Vladmir Koltchinskii and Dmitry Panchenko. 2002. Empirical margin distributions and bounding the generalization error of combined classifiers. Annals of Statistics, 30.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Lafferty</author>
+<author>A McCallum</author>
+<author>F Pereira</author>
+</authors>
+<title>Conditional random fields: Probabilistic models for segmenting and labeling sequence data.</title>
+<date>2001</date>
+<booktitle>In Proceedings of ICML,</booktitle>
+<pages>282--289</pages>
+<marker>[Lafferty et al.2001]</marker>
+<rawString>J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional random fields: Probabilistic models for segmenting and labeling sequence data. In Proceedings of ICML, pages 282–289.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Littlestone</author>
+<author>M Warmuth</author>
+</authors>
+<title>The weighted majority algorithm.</title>
+<date>1994</date>
+<journal>Information and Computation,</journal>
+<volume>108</volume>
+<issue>2</issue>
+<marker>[Littlestone and Warmuth1994]</marker>
+<rawString>N. Littlestone and M. Warmuth. 1994. The weighted majority algorithm. Information and Computation, 108(2):212–261.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Littlestone</author>
+</authors>
+<title>From on-line to batch learning.</title>
+<date>1989</date>
+<booktitle>In Proceedings of COLT 2,</booktitle>
+<pages>269--284</pages>
+<marker>[Littlestone1989]</marker>
+<rawString>N. Littlestone. 1989. From on-line to batch learning. In Proceedings of COLT 2, pages 269–284.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David J C MacKay</author>
+</authors>
+<title>Bayesian methods for adaptive models.</title>
+<date>1991</date>
+<tech>Ph.D. thesis,</tech>
+<institution>California Institute of Technology.</institution>
+<marker>[MacKay1991]</marker>
+<rawString>David J. C. MacKay. 1991. Bayesian methods for adaptive models. Ph.D. thesis, California Institute of Technology.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David J C MacKay</author>
+</authors>
+<title>Ensemble learning for hidden markov models.</title>
+<date>1997</date>
+<tech>Technical report,</tech>
+<institution>Cavendish Laboratory,</institution>
+<location>Cambridge UK.</location>
+<marker>[MacKay1997]</marker>
+<rawString>David J.C. MacKay. 1997. Ensemble learning for hidden markov models. Technical report, Cavendish Laboratory, Cambridge UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mehryar Mohri</author>
+<author>Fernando C N Pereira</author>
+<author>Michael Riley</author>
+</authors>
+<title>Speech recognition with weighted finite-state transducers.</title>
+<date>2008</date>
+<booktitle>In Handbook on Speech Processing and Speech Communication,</booktitle>
+<publisher>Springer-Verlag.</publisher>
+<location>Part</location>
+<marker>[Mohri et al.2008]</marker>
+<rawString>Mehryar Mohri, Fernando C. N. Pereira, and Michael Riley. 2008. Speech recognition with weighted finite-state transducers. In Handbook on Speech Processing and Speech Communication, Part E: Speech recognition. Springer-Verlag.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mehryar Mohri</author>
+</authors>
+<title>Afshin Rostamizadeh, and Ameet Talwalkar.</title>
+<date>2012</date>
+<booktitle>Foundations of Machine Learning.</booktitle>
+<publisher>The MIT Press.</publisher>
+<marker>[Mohri et al.2012]</marker>
+<rawString>Mehryar Mohri, Afshin Rostamizadeh, and Ameet Talwalkar. 2012. Foundations of Machine Learning. The MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mehryar Mohri</author>
+</authors>
+<title>Finite-state transducers in language and speech processing.</title>
+<date>1997</date>
+<journal>Computational Linguistics,</journal>
+<volume>23</volume>
+<issue>2</issue>
+<marker>[Mohri1997]</marker>
+<rawString>Mehryar Mohri. 1997. Finite-state transducers in language and speech processing. Computational Linguistics, 23(2):269–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Nguyen</author>
+<author>Y Guo</author>
+</authors>
+<title>Comparison of sequence labeling algorithms and extensions.</title>
+<date>2007</date>
+<booktitle>In Proceedings of ICML,</booktitle>
+<pages>681--688</pages>
+<marker>[Nguyen and Guo2007]</marker>
+<rawString>N. Nguyen and Y. Guo. 2007. Comparison of sequence labeling algorithms and extensions. In Proceedings of ICML, pages 681–688.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Okazaki</author>
+</authors>
+<title>CRFsuite: a fast implementation of conditional random fields (crfs).</title>
+<date>2007</date>
+<marker>[Okazaki2007]</marker>
+<rawString>N. Okazaki. 2007. CRFsuite: a fast implementation of conditional random fields (crfs).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Slav Petrov</author>
+</authors>
+<title>Products of random latent variable grammars.</title>
+<date>2010</date>
+<booktitle>In HLT-NAACL,</booktitle>
+<pages>19--27</pages>
+<marker>[Petrov2010]</marker>
+<rawString>Slav Petrov. 2010. Products of random latent variable grammars. In HLT-NAACL, pages 19– 27.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Rafferty</author>
+<author>A Kleeman</author>
+<author>J Finkel</author>
+<author>C Manning</author>
+</authors>
+<date>2014</date>
+<note>Stanford classifer.</note>
+<marker>[Rafferty et al.2014]</marker>
+<rawString>A. Rafferty, A. Kleeman, J. Finkel, and C. Manning. 2014. Stanford classifer.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Sagae</author>
+<author>A Lavie</author>
+</authors>
+<title>Parser combination by reparsing.</title>
+<date>2006</date>
+<booktitle>In Proceedings of HLT/NAACL,</booktitle>
+<pages>129--132</pages>
+<marker>[Sagae and Lavie2006]</marker>
+<rawString>K. Sagae and A. Lavie. 2006. Parser combination by reparsing. In Proceedings of HLT/NAACL, pages 129–132.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert E Schapire</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Improved boosting algorithms using confidence-rated predictions.</title>
+<date>1999</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>37</volume>
+<issue>3</issue>
+<marker>[Schapire and Singer1999]</marker>
+<rawString>Robert E. Schapire and Yoram Singer. 1999. Improved boosting algorithms using confidence-rated predictions. Machine Learning, 37(3):297–336.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert E Schapire</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Boostexter: A boosting-based system for text categorization.</title>
+<date>2000</date>
+<booktitle>Machine Learning,</booktitle>
+<pages>39--2</pages>
+<marker>[Schapire and Singer2000]</marker>
+<rawString>Robert E. Schapire and Yoram Singer. 2000. Boostexter: A boosting-based system for text categorization. Machine Learning, 39(2-3):135–168.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert E Schapire</author>
+<author>Yoav Freund</author>
+<author>Peter Bartlett</author>
+<author>Wee Sun Lee</author>
+</authors>
+<title>Boosting the margin: A new explanation for the effectiveness of voting methods.</title>
+<date>1997</date>
+<booktitle>In ICML,</booktitle>
+<pages>322--330</pages>
+<marker>[Schapire et al.1997]</marker>
+<rawString>Robert E. Schapire, Yoav Freund, Peter Bartlett, and Wee Sun Lee. 1997. Boosting the margin: A new explanation for the effectiveness of voting methods. In ICML, pages 322–330.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Padhraic Smyth</author>
+<author>David Wolpert</author>
+</authors>
+<title>Linearly combining density estimators via stacking.</title>
+<date>1999</date>
+<booktitle>Machine Learning,</booktitle>
+<pages>36--59</pages>
+<marker>[Smyth and Wolpert1999]</marker>
+<rawString>Padhraic Smyth and David Wolpert. 1999. Linearly combining density estimators via stacking. Machine Learning, 36:59–83, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Takimoto</author>
+<author>M K Warmuth</author>
+</authors>
+<title>Path kernels and multiplicative updates.</title>
+<date>2003</date>
+<journal>JMLR,</journal>
+<pages>4--773</pages>
+<marker>[Takimoto and Warmuth2003]</marker>
+<rawString>E. Takimoto and M. K. Warmuth. 2003. Path kernels and multiplicative updates. JMLR, 4:773–818.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Taskar</author>
+<author>C Guestrin</author>
+<author>D Koller</author>
+</authors>
+<title>Max-margin Markov networks.</title>
+<date>2004</date>
+<booktitle>In Advances in NIPS 16.</booktitle>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, MA.</location>
+<marker>[Taskar et al.2004]</marker>
+<rawString>B. Taskar, C. Guestrin, and D. Koller. 2004. Max-margin Markov networks. In Advances in NIPS 16. MIT Press, Cambridge, MA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>I Tsochantaridis</author>
+<author>T Joachims</author>
+<author>T Hofmann</author>
+<author>Y Altun</author>
+</authors>
+<title>Large margin methods for structured and interdependent output variables.</title>
+<date>2005</date>
+<journal>JMLR,</journal>
+<pages>6--1453</pages>
+<marker>[Tsochantaridis et al.2005]</marker>
+<rawString>I. Tsochantaridis, T. Joachims, T. Hofmann, and Y. Altun. 2005. Large margin methods for structured and interdependent output variables. JMLR, 6:1453–1484, December.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Q Wang</author>
+<author>D Lin</author>
+<author>D Schuurmans</author>
+</authors>
+<title>Simple training of dependency parsers via structured boosting.</title>
+<date>2007</date>
+<booktitle>In Proceedings of IJCAI 20,</booktitle>
+<pages>1756--1762</pages>
+<marker>[Wang et al.2007]</marker>
+<rawString>Q. Wang, D. Lin, and D. Schuurmans. 2007. Simple training of dependency parsers via structured boosting. In Proceedings of IJCAI 20, pages 1756–1762.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Zeman</author>
+<author>Z ˇZabokrtsk´y</author>
+</authors>
+<title>Improving parsing accuracy by combining diverse dependency parsers.</title>
+<date>2005</date>
+<booktitle>In Proceedings of IWPT 9,</booktitle>
+<pages>171--178</pages>
+<marker>[Zeman and ˇZabokrtsk´y2005]</marker>
+<rawString>D. Zeman and Z. ˇZabokrtsk´y. 2005. Improving parsing accuracy by combining diverse dependency parsers. In Proceedings of IWPT 9, pages 171–178.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Zhang</author>
+<author>M Zhang</author>
+<author>C Tan</author>
+<author>H Li</author>
+</authors>
+<title>K-best combination of syntactic parsers.</title>
+<date>2009</date>
+<booktitle>In Proceedings of EMNLP:</booktitle>
+<volume>3</volume>
+<pages>1552--1560</pages>
+<marker>[Zhang et al.2009]</marker>
+<rawString>H. Zhang, M. Zhang, C. Tan, and H. Li. 2009. K-best combination of syntactic parsers. In Proceedings of EMNLP: Volume 3, pages 1552– 1560.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

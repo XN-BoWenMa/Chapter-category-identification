@@ -1,0 +1,971 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000003" no="0">
+<title confidence="0.982149">
+Extracting Narrative Timelines as Temporal Dependency Structures
+</title>
+<author confidence="0.534931">
+Oleksandr Kolomiyets
+</author>
+<affiliation confidence="0.219037">
+KU Leuven
+</affiliation>
+<address confidence="0.343787666666667">
+Celestijnenlaan 200A
+B-3001 Heverlee, Belgium
+Oleksandr.Kolomiyets@
+</address>
+<email confidence="0.599498">
+cs.kuleuven.be
+</email>
+<author confidence="0.996672">
+Steven Bethard
+</author>
+<affiliation confidence="0.998795">
+University of Colorado
+</affiliation>
+<address confidence="0.864501">
+Campus Box 594
+Boulder, CO 80309, USA
+Steven.Bethard@
+</address>
+<email confidence="0.873453">
+colorado.edu
+</email>
+<note confidence="0.698092">
+Marie-Francine Moens
+KU Leuven
+Celestijnenlaan 200A
+</note>
+<address confidence="0.445949">
+B-3001 Heverlee, Belgium
+Sien.Moens@
+</address>
+<email confidence="0.655763">
+cs.kuleuven.be
+</email>
+<sectionHeader confidence="0.98819" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999724473684211">We propose a new approach to characterizing the timeline of a text: temporal dependency structures, where all the events of a narrative are linked via partial ordering relations like BEFORE, AFTER, OVERLAP and IDENTITY. We annotate a corpus of children’s stories with temporal dependency trees, achieving agreement (Krippendorff’s Alpha) of 0.856 on the event words, 0.822 on the links between events, and of 0.700 on the ordering relation labels. We compare two parsing models for temporal dependency structures, and show that a deterministic non-projective dependency parser outperforms a graph-based maximum spanning tree parser, achieving labeled attachment accuracy of 0.647 and labeled tree edit distance of 0.596. Our analysis of the dependency parser errors gives some insights into future research directions.</bodyText>
+<sectionHeader confidence="0.999135" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999887657142857">There has been much recent interest in identifying events, times and their relations along the timeline, from event and time ordering problems in the TempEval shared tasks (Verhagen et al., 2007; Verhagen et al., 2010), to identifying time arguments of event structures in the Automated Content Extraction program (Linguistic Data Consortium, 2005; Gupta and Ji, 2009), to timestamping event intervals in the Knowledge Base Population shared task (Artiles et al., 2011; Amig´o et al., 2011). However, to date, this research has produced fragmented document timelines, because only specific types of temporal relations in specific contexts have been targeted. For example, the TempEval tasks only looked at relations between events in the same or adjacent sentences (Verhagen et al., 2007; Verhagen et al., 2010), and the Automated Content Extraction program only looked at time arguments for specific types of events, like being born or transferring money. In this article, we propose an approach to temporal information extraction that identifies a single connected timeline for a text. The temporal language in a text often fails to specify a total ordering over all the events, so we annotate the timelines as temporal dependency structures, where each event is a node in the dependency tree, and each edge between nodes represents a temporal ordering relation such as BEFORE, AFTER, OVERLAP or IDENTITY. We construct an evaluation corpus by annotating such temporal dependency trees over a set of children’s stories. We then demonstrate how to train a timeline extraction system based on dependency parsing techniques instead of the pair-wise classification approaches typical of prior work. The main contributions of this article are:</bodyText>
+<listItem confidence="0.947253">• We propose a new approach to characterizing temporal structure via dependency trees. • We produce an annotated corpus of temporal dependency trees in children’s stories. • We design a non-projective dependency parser for inferring timelines from text.</listItem>
+<bodyText confidence="0.9992285">The following sections first review some relevant prior work, then describe the corpus annotation and the dependency parsing algorithm, and finally present our evaluation results.</bodyText>
+<page confidence="0.989047">
+88
+</page>
+<note confidence="0.986071">
+Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 88–97,
+Jeju, Republic of Korea, 8-14 July 2012. c�2012 Association for Computational Linguistics
+</note>
+<sectionHeader confidence="0.997306" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.999954396825397">Much prior work on the annotation of temporal information has constructed corpora with incomplete timelines. The TimeBank (Pustejovsky et al., 2003b; Pustejovsky et al., 2003a) provided a corpus annotated for all events and times, but temporal relations were only annotated when the relation was judged to be salient by the annotator. In the TempEval competitions (Verhagen et al., 2007; Verhagen et al., 2010), annotated texts were provided for a few different event and time configurations, for example, an event and a time in the same sentence, or two main-clause events from adjacent sentences. Bethard et al. (2007) proposed to annotate temporal relations one syntactic construction at a time, producing an initial corpus of only verbal events linked to events in subordinated clauses. One notable exception to this pattern of incomplete timelines is the work of Bramsen et al. (2006) where temporal structures were annotated as directed acyclic graphs. However they worked on a much coarser granularity, annotating not the ordering between individual events, but between multisentence segments of text. In part because of the structure of the available training corpora, most existing temporal information extraction models formulate temporal linking as a pair-wise classification task, where each pair of events and/or times is examined and classified as having a temporal relation or not. Early work on the TimeBank took this approach (Boguraev and Ando, 2005), classifying relations between all events and times within 64 tokens of each other. Most of the topperforming systems in the TempEval competitions also took this pair-wise classification approach for both event-time and event-event temporal relations (Bethard and Martin, 2007; Cheng et al., 2007; UzZaman and Allen, 2010; Llorens et al., 2010). Systems have also tried to take advantage of more global information to ensure that the pair-wise classifications satisfy temporal logic transitivity constraints, using frameworks such as integer linear programming and Markov logic networks (Bramsen et al., 2006; Chambers and Jurafsky, 2008; Yoshikawa et al., 2009; UzZaman and Allen, 2010). Yet the basic approach is still centered around pair-wise classifications, not the complete temporal structure of a document. Our work builds upon this prior research, both improving the annotation approach to generate the fully connected timeline of a story, and improving the models for timeline extraction using dependency parsing techniques. We use the annotation scheme introduced in more detail in Bethard et. al. (2012), which proposes to annotate temporal relations as dependency links between head events and dependent events. This annotation scheme addresses the issues of incoherent and incomplete annotations by guaranteeing that all events in a plot are connected along a single timeline. These connected timelines allow us to design new models for timeline extraction in which we jointly infer the temporal structure of the text and the labeled temporal relations. We employ methods from syntactic dependency parsing, adapting them to our task by including features typical of temporal relation labeling models.</bodyText>
+<sectionHeader confidence="0.98871" genericHeader="method">
+3 Corpus Annotation
+</sectionHeader>
+<bodyText confidence="0.995883166666667">The corpus of stories for children was drawn from the fables collection of (McIntyre and Lapata, 2009)1 and annotated as described in (Bethard et al., 2012). In this section we illustrate the main annotation principles for coherent temporal annotation. As an example story, consider: Two Travellers were on the road together, when a Bear suddenly appeared on the scene. Before he observed them, one made for a tree at the side of the road, and climbed up into the branches and hid there. The other was not so nimble as his companion; and, as he could not escape, he threw himself on the ground and pretended to be dead... [37.txt] Figure 1 shows the temporal dependency structure that we expect our annotators to identify in this story. The annotators were provided with guidelines both for which kinds of words should be identified as events, and for which kinds of events should be linked by temporal relations. For identifying event words, the standard TimeML guidelines for annotating events (Pustejovsky et al., 2003a) were augmented with two additional guidelines:</bodyText>
+<footnote confidence="0.994282">
+1Data available at http://homepages.inf.ed.ac.
+uk/s0233364/McIntyreLapata09/
+</footnote>
+<page confidence="0.999662">
+89
+</page>
+<figureCaption confidence="0.994064333333333">
+Figure 1: Event timeline for the story of the Travellers and the Bear. Nodes are events and edges are temporal relations.
+Edges denote temporal relations signaled by linguistic cues in the text. Temporal relations that can be inferred via
+transitivity are not shown.
+</figureCaption>
+<listItem confidence="0.974491666666667">• Skip negated, modal or hypothetical events (e.g. could not escape, dead in pretended to be dead). • For phrasal events, select the single word that best paraphrases the meaning (e.g.in used to snap the event should be snap, in kept perfectly still the event should be still).</listItem>
+<bodyText confidence="0.985304111111111">For identifying the temporal dependencies (i.e.the ordering relations between event words), the annotators were instructed to link each event in the story to a single nearby event, similar to what has been observed in reading comprehension studies (JohnsonLaird, 1980; Brewer and Lichtenstein, 1982). When there were several reasonable nearby events to choose from, the annotators were instructed to choose the temporal relation that was easiest to infer from the text (e.g.preferring relations with explicit cue words like before). A set of six temporal relations was used: BEFORE, AFTER, INCLUDES, IS-INCLUDED, IDENTITY or OVERLAP. Two annotators annotated temporal dependency structures in the first 100 fables of the McIntyreLapata collection and measured inter-annotator agreement by Krippendorff’s Alpha for nominal data (Krippendorff, 2004; Hayes and Krippendorff, 2007). For the resulting annotated corpus annotators achieved Alpha of 0.856 on the event words, 0.822 on the links between events, and of 0.700 on the ordering relation labels. Thus, we concluded that the temporal dependency annotation paradigm was reliable, and the resulting corpus of 100 fables2 could be used to train a temporal dependency parsing model.</bodyText>
+<footnote confidence="0.9738995">
+2Available from http://www.bethard.info/data/
+fables-100-temporal-dependency.xml
+</footnote>
+<sectionHeader confidence="0.987703" genericHeader="method">
+4 Parsing Models
+</sectionHeader>
+<bodyText confidence="0.9996787">We consider two different approaches to learning a temporal dependency parser: a shift-reduce model (Nivre, 2008) and a graph-based model (McDonald et al., 2005). Both models take as input a sequence of event words and produce as output a tree structure where the events are linked via temporal relations. Formally, a parsing model is a function (W —* Π) where W = w1w2 ... wn is a sequence of event words, and 7r E Π is a dependency tree 7r = (V, E) where:</bodyText>
+<listItem confidence="0.995345882352941">• V = W U {Root}, that is, the vertex set of the graph is the set of words in W plus an artificial root node. • E = {(wh, r, wd) : wh E V, wd E V, r E R = {BEFORE, AFTER, INCLUDES, IS INCLUDED, IDENTITY, OVERLAP}}, that is, in the edge set of the graph, each edge is a link between a dependent word and its head word, labeled with a temporal relation. • (wh, r, wd) E E ==�' wd =� Root, that is, the artificial root node has no head. • (wh, r, wd) E E =� ((w'h, r', wd) E E =� wh = w'h ∧ r = r'), that is, for every node there is at most one head and one relation label. • E contains no (non-empty) subset of arcs (wh, ri, wi), (wi, rj, wj), ... , (wk, rl, wh), that is, there are no cycles in the graph.</listItem>
+<page confidence="0.966803">
+90
+</page>
+<figure confidence="0.4098812">
+SHIFT Move all of L2 and the head of Q onto L1
+([a1 ... ai], [b1 ... bj], [wkwk+1 ...], E) → ([a1 ... aib1 ... bjwk], [], [wk+1 ...], E)
+NO-ARC Move the head of L1 to the head of L2
+([a1 ... aiai+1], [b1 ... bj], Q, E) → ([a1 ... ai], [ai+1b1 ... bj], Q, E)
+LEFT-ARC Create a relation where the head of L1 depends on the head of Q
+Not applicable if ai+1 is the root or already has a head, or if there is a path connecting wk and ai+1
+([a1 ... aiai+1], [b1 ... bj], [wk ...], E) → ([a1 ... ai], [ai+1b1 ... bj], [wk ...], E ∪ (wk, r, ai+1)
+RIGHT-ARC Create a relation where the head of Q depends on the head of L1
+Not applicable if wk is the root or already has a head, or if there is a path connecting wk and ai+1
+([a1 ... aiai+1], [b1 ... bj], [wk ...], E) → ([a1 ... ai], [ai+1b1 ... bj], [wk ...], E ∪ (ai+1, r, wk)
+</figure>
+<tableCaption confidence="0.999039">
+Table 1: Transition system for Covington-style shift-reduce dependency parsers.
+</tableCaption>
+<subsectionHeader confidence="0.996669">
+4.1 Shift-Reduce Parsing Model
+</subsectionHeader>
+<bodyText confidence="0.999781636363636">Shift-reduce dependency parsers start with an input queue of unlinked words, and link them into a tree by repeatedly choosing and performing actions like shifting a node to a stack, or popping two nodes from the stack and linking them. Shift-reduce parsers are typically defined in terms of configurations and a transition system, where the configurations describe the current internal state of the parser, and the transition system describes how to get from one state to another. Formally, a deterministic shift-reduce dependency parser is defined as (C, T, CF, INIT, TREE) where:</bodyText>
+<listItem confidence="0.9996442">• C is the set of possible parser configurations ci • T ⊆ (C → C) is the set of transitions ti from one configuration cj to another cj+1 allowed by the parser • INIT ∈ (W → C) is a function from the input words to an initial parser configuration • CF ⊆ C are the set of final parser configurations cF where the parser is allowed to terminate • TREE ∈ (CF → II) is a function that extracts a dependency tree 7r from a final parser state cF</listItem>
+<bodyText confidence="0.961814">Given this formalism and an oracle o ∈ (C → T), which can choose a transition given the current configuration of the parser, dependency parsing can be accomplished by Algorithm 1. For temporal dependency parsing, we adopt the Covington set of transitions (Covington, 2001) as it allows for parsing the non-projective trees, which may also contain “crossing” edges, that occasionally occur in our annotated corpus. Our parser is therefore defined as: Algorithm 1 Deterministic parsing with an oracle.</bodyText>
+<equation confidence="0.677269">
+c ← INIT(W)
+while c ∈� CF do
+t ← o(c)
+c ← t(c)
+end while
+return TREE(c)
+</equation>
+<listItem confidence="0.845804066666667">• c = (L1, L2, Q, E) is a parser configuration, where L1 and L2 are lists for temporary storage, Q is the queue of input words, and E is the set of identified edges of the dependency tree. • T = {SHIFT,NO-ARC,LEFT-ARC,RIGHT-ARC} is the set of transitions described in Table 1. • INIT(W) = ([Root],[], [w1, w2,... , wn], ∅) puts all input words on the queue and the artificial root on L1. • CF = {(L1, L2, Q, E) ∈ C : L1 = {W ∪ {Root}}, L2 = Q = ∅} accepts final states where the input words have been moved off of the queue and lists and into the edges in E. • TREE((L1, L2, Q, E)) = (W ∪ {Root}, E) extracts the final dependency tree.</listItem>
+<bodyText confidence="0.999932333333333">The oracle o is typically defined as a machine learning classifier, which characterizes a parser configuration c in terms of a set of features. For temporal dependency parsing, we learn a Support Vector Machine classifier (Yamada and Matsumoto, 2003) using the features described in Section 5.</bodyText>
+<subsectionHeader confidence="0.941241">
+4.2 Graph-Based Parsing Model
+</subsectionHeader>
+<bodyText confidence="0.9964025">One shortcoming of the shift-reduce dependency parsing approach is that each transition decision made by the model is final, and cannot be revisited to search for more globally optimal trees.</bodyText>
+<page confidence="0.996644">
+91
+</page>
+<figureCaption confidence="0.9936955">
+Figure 2: A setting for the graph-based parsing model: an initial dense graph G (left) with edge scores SCORE(e). The
+resulting dependency tree as a spanning tree with the highest score over the edges (right).
+</figureCaption>
+<bodyText confidence="0.9614705">Graph-based models are an alternative dependency parsing model, which assembles a graph with weighted edges between all pairs of words, and selects the tree-shaped subset of this graph that gives the highest total score (Fig.2). Formally, a graph-based parser follows Algorithm 2, where:</bodyText>
+<listItem confidence="0.988234333333333">• W' = W U {Root} • SCORE E ((W' xRxW) —* fit) is a function for scoring edges • SPANNINGTREE is a function for selecting a subset of edges that is a tree that spans over all the nodes of the graph.</listItem>
+<equation confidence="0.8725455">
+Algorithm 2 Graph-based dependency parsing
+E {(e, SCORE(e)) : e E (W'xRxW))}
+G (W', E)
+return SPANNINGTREE(G)
+</equation>
+<bodyText confidence="0.999844235294118">The SPANNINGTREE function is usually defined using one of the efficient search techniques for finding a maximum spanning tree. For temporal dependency parsing, we use the Chu-Liu-Edmonds algorithm (Chu and Liu, 1965; Edmonds, 1967) which solves this problem by iteratively selecting the edge with the highest weight and removing edges that would create cycles. The result is the globally optimal maximum spanning tree for the graph (Georgiadis, 2003). The SCORE function is typically defined as a machine learning model that scores an edge based on a set of features. For temporal dependency parsing, we learn a model to predict edge scores via the Margin Infused Relaxed Algorithm (MIRA) (Crammer and Singer, 2003; Crammer et al., 2006) using the set of features defined in Section 5.</bodyText>
+<sectionHeader confidence="0.996451" genericHeader="method">
+5 Feature Design
+</sectionHeader>
+<bodyText confidence="0.999951176470588">The proposed parsing algorithms both rely on machine learning methods. The shift-reduce parser (SRP) trains a machine learning classifier as the oracle o E (C —* T) to predict a transition t from a parser configuration c = (L1, L2, Q, E), using node features such as the heads of L1, L2 and Q, and edge features from the already predicted temporal relations in E. The graph-based maximum spanning tree (MST) parser trains a machine learning model to predict SCORE(e) for an edge e = (wi, ri, wk), using features of the nodes wi and wk. The full set of features proposed for both parsing models, derived from the state-of-the-art systems for temporal relation labeling, is presented in Table 2. Note that both models share features that look at the nodes, while only the shift-reduce parser has features for previously classified edges.</bodyText>
+<sectionHeader confidence="0.999297" genericHeader="evaluation and result">
+6 Evaluations
+</sectionHeader>
+<bodyText confidence="0.99987">Evaluations were performed using 10-fold crossvalidation on the fables annotated in Section 3. The corpus contains 100 fables, a total of 14,279 tokens and a total of 1136 annotated temporal relations. As only 40 instances of OVERLAP relations were annotated when neither INCLUDES nor IS INCLUDED label matched, for evaluation purposes all instances of these relations were merged into the temporally coarse OVERLAP relation.</bodyText>
+<page confidence="0.949216">
+92
+</page>
+<table confidence="0.99994495">
+Feature SRP MST
+Word �� ��
+Lemma �� ��
+Part of speech (POS) tag �� ��
+Suffixes �� ��
+Syntactically governing verb �� ��
+Governing verb lemma �� ��
+Governing verb POS tag �� ��
+Governing verb POS suffixes �� ��
+Prepositional phrase occurrence �� ��
+Dominated by auxiliary verb? �� ��
+Dominated by modal verb? �� ��
+Temporal signal word is nearby? �� ��
+Head word lemma �� ��
+Temporal relation labels of ai and its �
+leftmost and rightmost dependents
+Temporal relation labels of ai_1’s �
+leftmost and rightmost dependents
+Temporal relation labels of b1 and its �
+leftmost and rightmost dependents
+</table>
+<tableCaption confidence="0.95112">
+Table 2: Features for the shift-reduce parser (SRP) and the
+graph-based maximum spanning tree (MST) parser. The
+N/* features are extracted from the heads of L1, L2 and Q
+for SRP and from each node of the edge for MST.
+</tableCaption>
+<bodyText confidence="0.999951538461539">Thus, the total number of OVERLAP relations in the corpus grew from 40 to 258 annotations in total. To evaluate the parsing models (SRP and MST) we proposed two baselines. Both are based on the assumption of linear temporal structures of narratives as the temporal ordering process that was evidenced by studies in human text rewriting (Hickmann, 2003).The proposed baselines are:</bodyText>
+<listItem confidence="0.976771857142857">• LinearSeq: A model that assumes all events occur in the order they are written, adding links between each pair of adjacent events, and labeling all links with the relation BEFORE. • ClassifySeq: A model that links each pair of adjacent events, but trains a pair-wise classifier to predict the relation label for each pair. The classifier is a support vector machine trained using the same features as the MST parser.</listItem>
+<bodyText confidence="0.999245666666667">This is an approximation of prior work, where the pairs of events to classify with a temporal relation were given as an input to the system.(Note that Section 6.2 will show that for our corpus, applying the model only to adjacent pairs of events is quite competitive for just getting the basic unlabeled link structure right.) The Shift-Reduce parser (SRP; Section 4.1) and the graph-based, maximum spanning tree parser (MST; Section 4.2) are compared to these baselines.</bodyText>
+<subsectionHeader confidence="0.99877">
+6.1 Evaluation Criteria and Metrics
+</subsectionHeader>
+<bodyText confidence="0.994894166666667">Model performance was evaluated using standard evaluation criteria for parser evaluations: Unlabeled Attachment Score (UAS) The fraction of events whose head events were correctly predicted. This measures whether the correct pairs of events were linked, but not if they were linked by the correct relations. Labeled Attachment Score (LAS) The fraction of events whose head events were correctly predicted with the correct relations. This measures both whether the correct pairs of events were linked and whether their temporal ordering is correct. Tree Edit Distance In addition to the UAS and LAS the tree edit distance score has been recently introduced for evaluating dependency structures (Tsarfaty et al., 2011). The tree edit distance score for a tree 7r is based on the following operations A E A : A = {DELETE, INSERT, RELABEL}:</bodyText>
+<listItem confidence="0.999637625">• A =DELETE delete a non-root node v in 7r with parent u, making the children of v the children of u, inserted in the place of v as a subsequence in the left-to-right order of the children of u. • A =INSERT insert a node v as a child of u in 7r making it the parent of a consecutive subsequence of the children of u. • A =RELABEL change the label of node v in 7r</listItem>
+<bodyText confidence="0.759023">Any two trees 7r1 and 7r2 can be turned one into another by a sequence of edit operations {A1, ..., A�}.</bodyText>
+<page confidence="0.996011">
+93
+</page>
+<table confidence="0.999751">
+UAS LAS UTEDS LTEDS
+LinearSeq 0.830 0.581 0.689 0.549
+ClassifySeq 0.830 0.581 0.689 0.549
+MST 0.837 0.614* 0.710 0.571
+SRP 0.830 0.647*† 0.712 0.596*
+</table>
+<tableCaption confidence="0.97816975">
+Table 3: Performance levels of temporal structure pars-
+ing methods. A * indicates that the model outperforms
+LinearSeq and ClassifiedSeq at p &lt; 0.01 and a † indicates
+that the model outperforms MST at p &lt; 0.05.
+</tableCaption>
+<bodyText confidence="0.999775818181818">Taking the shortest such sequence, the tree edit distance is calculated as the sum of the edit operation costs divided by the size of the tree (i.e. the number of words in the sentence). For temporal dependency trees, we assume each operation costs 1.0. The final score subtracts the edit distance from 1 so that a perfect tree has score 1.0. The labeled tree edit distance score (LTEDS) calculates sequences over the tree with all its labeled temporal relations, while the unlabeled tree edit distance score (UTEDS) treats all edges as if they had the same label.</bodyText>
+<subsectionHeader confidence="0.821145">
+6.2 Results
+</subsectionHeader>
+<bodyText confidence="0.999904541666667">Table 3 shows the results of the evaluation. The unlabeled attachment score for the LinearSeq baseline was 0.830, suggesting that annotators were most often linking adjacent events. At the same time, the labeled attachment score was 0.581, indicating that even in fables, the stories are not simply linear, that is, there are many relations other than BEFORE. The ClassifySeq baseline performs identically to the LinearSeq baseline, which shows that the simple pairwise classifier was unable to learn anything beyond predicting all relations as BEFORE. In terms of labeled attachment score, both dependency parsing models outperformed the baseline models – the maximum spanning tree parser achieved 0.614 LAS, and the shift-reduce parser achieved 0.647 LAS. The shift-reduce parser also outperformed the baseline models in terms of labeled tree edit distance, achieving 0.596 LTEDS vs. the baseline 0.549 LTEDS. These results indicate that dependency parsing models are a good fit to our wholestory timeline extraction task. Finally, in comparing the two different dependency parsing models, we observe that the shiftreduce parser outperforms the maximum spanning tree parser in terms of labeled attachment score (0.647 vs. 0.614).</bodyText>
+<table confidence="0.997560833333333">
+Error Type Num. %
+OVERLAP → BEFORE 24 43.7
+Attach to further head 18 32.7
+Attach to nearer head 6 11.0
+Other types of errors 7 12.6
+Total 55 100
+</table>
+<tableCaption confidence="0.93899">
+Table 4: Error distribution from the analysis of 55 errors
+of the Shift-Reduce parsing model.
+</tableCaption>
+<bodyText confidence="0.999171272727273">It has been argued that graphbased models like the maximum spanning tree parser should be able to produce more globally consistent and correct dependency trees, yet we do not observe that here. A likely explanation for this phenomenon is that the shift-reduce parsing model allows for features describing previous parse decisions (similar to the incremental nature of human parse decisions), while the joint nature of the maximum spanning tree parser does not.</bodyText>
+<subsectionHeader confidence="0.992311">
+6.3 Error Analysis
+</subsectionHeader>
+<bodyText confidence="0.99740325">To better understand the errors our model is still making, we examined two folds (55 errors in total in 20% of the evaluation data) and identified the major categories of errors:</bodyText>
+<listItem confidence="0.970371666666667">• OVERLAP → BEFORE: The model predicts the correct head, but predicts its label as BEFORE, while the correct label is OVERLAP. • Attach to further head: The model predicts the wrong head, and predicts as the head an event that is further away than the true head. • Attach to nearer head: The model predicts the wrong head, and predicts as the head an event that is closer than the true head.</listItem>
+<bodyText confidence="0.9996129">Table 4 shows the distribution of the errors over these categories. The two most common types of errors, OVERLAP → BEFORE and Attach to further head, account for 76.4% of all the errors. The most common type of error is predicting a BEFORE relation when the correct answer is an OVERLAP relation. Figure 3 shows an example of such an error, where the model predicts that the Spendthrift stood before he saw, while the annotator indicates that the seeing happened during the time in which he was standing.</bodyText>
+<page confidence="0.998948">
+94
+</page>
+<figureCaption confidence="0.995097">
+Figure 3: An OVERLAP --+ BEFORE parser error. True
+links are solid lines; the parser error is the dotted line.
+Figure 4: Parser errors attaching to further away heads.
+True links are solid lines; parser errors are dotted lines.
+</figureCaption>
+<bodyText confidence="0.9999876">An analysis of these OVERLAP —* BEFORE errors suggests that they occur in scenarios like this one, where the duration of one event is significantly longer than the duration of another, but there are no direct cues for these duration differences. We also observe these types of errors when one event has many sub-events, and therefore the duration of the main event typically includes the durations of all the sub-events. It might be possible to address these kinds of errors by incorporating automatically extracted event duration information (Pan et al., 2006; Gusev et al., 2011). The second most common error type of the model is the prediction of a head event that is further away than the head identified by the annotators. Figure 4 gives an example of such an error, where the model predicts that the gathering includes the smarting, instead of that the gathering includes the stung. The second error in the figure is also of the same type. In 65% of the cases where this type of error occurs, it occurs after the parser had already made a label classification error such as BEFORE —* OVERLAP. So these errors may be in part due to the sequential nature of shift-reduce parsing, where early errors propagate and cause later errors.</bodyText>
+<sectionHeader confidence="0.984245" genericHeader="other">
+7 Discussion and Conclusions
+</sectionHeader>
+<bodyText confidence="0.999975523809524">In this article, we have presented an approach to temporal information extraction that represents the timeline of a story as a temporal dependency tree. We have constructed an evaluation corpus where such temporal dependencies have been annotated over a set of 100 children’s stories. We have introduced two dependency parsing techniques for extracting story timelines and have shown that both outperform a rulebased baseline and a prior-work-inspired pair-wise classification baseline. Comparing the two dependency parsing models, we have found that a shiftreduce parser, which more closely mirrors the incremental processing of our human annotators, outperforms a graph-based maximum spanning tree parser. Our error analysis of the shift-reduce parser revealed that being able to estimate differences in event durations may play a key role in improving parse quality. We have focused on children’s stories in this study, in part because they typically have simpler temporal structures (though not so simple that our rule-based baseline could parse them accurately). In most of our fables, there were only one or two characters with at most one or two simultaneous sequences of actions. In other domains, the timeline of a text is likely to be more complex. For example, in clinical records, descriptions of patients may jump back and forth between the patient history, the current examination, and procedures that have not yet happened. In future work, we plan to investigate how to best apply the dependency structure approach to such domains. One approach might be to first group events into their narrative containers (Pustejovsky and Stubbs, 2011), for example, grouping together all events linked to the time of a patient’s examination. Then within each narrative container, our dependency parsing approach could be applied. Another approach might be to join the individual timeline trees into a document-wide tree via discourse relations or relations to the document creation time. Work on how humans incrementally process such timelines in text may help to decide which of these approaches holds the most promise.</bodyText>
+<sectionHeader confidence="0.996513" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.99993425">We would like to thank the anonymous reviewers for their constructive comments. This research was partially funded by the TERENCE project (EU FP7257410) and the PARIS project (IWT SBO 110067).</bodyText>
+<page confidence="0.998065">
+95
+</page>
+<sectionHeader confidence="0.952432" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.990591123809524">
+[Amig´o et al.2011] Enrique Amig´o, Javier Artiles, Qi Li,
+and Heng Ji. 2011. An evaluation framework for aggre-
+gated temporal information extraction. In SIGIR-2011
+Workshop on Entity-Oriented Search.
+[Artiles et al.2011] Javier Artiles, Qi Li, Taylor Cas-
+sidy, Suzanne Tamang, and Heng Ji. 2011.
+CUNY BLENDER TAC-KBP2011 temporal slot fill-
+ing system description. In TextAnalytics Conference
+(TAC2011).
+[Bethard and Martin2007] Steven Bethard and James H.
+Martin. 2007. CU-TMP: Temporal relation classifica-
+tion using syntactic and semantic features. In Proceed-
+ings of the Fourth International Workshop on Semantic
+Evaluations (SemEval-2007), pages 129–132, Prague,
+Czech Republic, June. ACL.
+[Bethard et al.2007] Steven Bethard, James H. Martin, and
+Sara Klingenstein. 2007. Finding temporal structure in
+text: Machine learning of syntactic temporal relations.
+International Journal of Semantic Computing (IJSC),
+1(4):441–458, 12.
+[Bethard et al.2012] Steven Bethard, Oleksandr
+Kolomiyets, and Marie-Francine Moens. 2012.
+Annotating narrative timelines as temporal dependency
+structures. In Proceedings of the International
+Conference on Linguistic Resources and Evaluation,
+Istanbul, Turkey, May. ELRA.
+[Boguraev and Ando2005] Branimir Boguraev and
+Rie Kubota Ando. 2005. TimeBank-driven TimeML
+analysis. In Annotating, Extracting and Reasoning
+about Time and Events. Springer.
+[Bramsen et al.2006] P. Bramsen, P. Deshpande, Y.K. Lee,
+and R. Barzilay. 2006. Inducing temporal graphs.
+In Proceedings of the 2006 Conference on Empirical
+Methods in Natural Language Processing, pages 189–
+198. ACL.
+[Brewer and Lichtenstein1982] William F. Brewer and Ed-
+ward H. Lichtenstein. 1982. Stories are to entertain: A
+structural-affect theory of stories. Journal of Pragmat-
+ics, 6(5-6):473 – 486.
+[Chambers and Jurafsky2008] N. Chambers and D. Juraf-
+sky. 2008. Jointly combining implicit constraints im-
+proves temporal ordering. In Proceedings of the Con-
+ference on Empirical Methods in Natural Language
+Processing, pages 698–706. ACL.
+[Cheng et al.2007] Yuchang Cheng, Masayuki Asahara,
+and Yuji Matsumoto. 2007. NAIST.Japan: Tempo-
+ral relation identification using dependency parsed tree.
+In Proceedings of the Fourth International Workshop on
+Semantic Evaluations (SemEval-2007), pages 245–248,
+Prague, Czech Republic, June. ACL.
+[Chu and Liu1965] Y. J. Chu and T.H. Liu. 1965. On
+the shortest arborescence of a directed graph. Science
+Sinica, pages 1396–1400.
+[Covington2001] M.A. Covington. 2001. A fundamental
+algorithm for dependency parsing. In Proceedings of
+the 39th Annual ACM Southeast Conference, pages
+95–102.
+[Crammer and Singer2003] K. Crammer and Y. Singer.
+2003. Ultraconservative online algorithms for multi-
+class problems. Journal ofMachine Learning Research,
+3:951–991.
+[Crammer et al.2006] K. Crammer, O. Dekel, J. Keshet,
+S. Shalev-Shwartz, and Y. Singer. 2006. Online
+passive-aggressive algorithms. Journal of Machine
+Learning Research, 7:551–585.
+[Edmonds1967] J. Edmonds. 1967. Optimum branchings.
+Journal of Research of the National Bureau of Stan-
+dards, pages 233–240.
+[Georgiadis2003] L. Georgiadis. 2003. Arborescence op-
+timization problems solvable by Edmonds’ algorithm.
+Theoretical Computer Science, 301(1-3):427–437.
+[Gupta and Ji2009] Prashant Gupta and Heng Ji. 2009.
+Predicting unknown time arguments based on cross-
+event propagation. In Proceedings of the ACL-IJCNLP
+2009 Conference Short Papers, ACLShort ’09, pages
+369–372, Stroudsburg, PA, USA. ACL.
+[Gusev et al.2011] Andrey Gusev, Nathanael Chambers,
+Divye Raj Khilnani, Pranav Khaitan, Steven Bethard,
+and Dan Jurafsky. 2011. Using query patterns to learn
+the duration of events. In Proceedings of the Interna-
+tional Conference on Computational Semantics, pages
+145–154.
+[Hayes and Krippendorff2007] A.F. Hayes and K. Krip-
+pendorff. 2007. Answering the call for a standard
+reliability measure for coding data. Communication
+Methods and Measures, 1(1):77–89.
+[Hickmann2003] Maya Hickmann. 2003. Children’s Dis-
+course: Person, Space and Time Across Languages.
+Cambridge University Press, Cambridge, UK.
+[Johnson-Laird1980] P.N. Johnson-Laird. 1980. Men-
+tal models in cognitive science. Cognitive Science,
+4(1):71–115.
+[Krippendorff2004] K. Krippendorff. 2004. Content anal-
+ysis: An introduction to its methodology. Sage Publica-
+tions, Inc.
+[Linguistic Data Consortium2005] Linguistic Data Con-
+sortium. 2005. ACE (Automatic Content Extraction)
+English annotation guidelines for events version 5.4.3
+2005.07.01.
+[Llorens et al.2010] Hector Llorens, Estela Saquete, and
+Borja Navarro. 2010. TIPSem (English and Spanish):
+Evaluating CRFs and semantic roles in TempEval-2. In
+Proceedings of the 5th International Workshop on Se-
+mantic Evaluation, pages 284–291, Uppsala, Sweden,
+July. ACL.
+</reference>
+<page confidence="0.972051">
+96
+</page>
+<reference confidence="0.999788785714285">
+[McDonald et al.2005] R. McDonald, F. Pereira, K. Rib-
+arov, and J. Hajiˇc. 2005. Non-projective dependency
+parsing using spanning tree algorithms. In Proceedings
+of the Conference on Human Language Technology and
+Empirical Methods in Natural Language Processing,
+pages 523–530. ACL.
+[McIntyre and Lapata2009] N. McIntyre and M. Lapata.
+2009. Learning to tell tales: A data-driven approach to
+story generation. In Proceedings of the Joint Confer-
+ence of the 47th Annual Meeting of the ACL and the 4th
+International Joint Conference on Natural Language
+Processing of the AFNLP: Volume 1-Volume 1, pages
+217–225. ACL.
+[Nivre2008] J. Nivre. 2008. Algorithms for determinis-
+tic incremental dependency parsing. Computational
+Linguistics, 34(4):513–553.
+[Pan et al.2006] Feng Pan, Rutu Mulkar, and Jerry R.
+Hobbs. 2006. Learning event durations from event
+descriptions. In Proceedings of the 21st International
+Conference on Computational Linguistics and 44th An-
+nual Meeting of the Association for Computational Lin-
+guistics, pages 393–400, Sydney, Australia, July. ACL.
+[Pustejovsky and Stubbs2011] J. Pustejovsky and
+A. Stubbs. 2011. Increasing informativeness in
+temporal annotation. In Proceedings of the 5th
+Linguistic Annotation Workshop, pages 152–160. ACL.
+[Pustejovsky et al.2003a] James Pustejovsky, Jos´e
+Casta˜no, Robert Ingria, Roser Saur´y, Robert
+Gaizauskas, Andrea Setzer, and Graham Katz. 2003a.
+TimeML: Robust specification of event and temporal
+expressions in text. In Proceedings of the Fifth
+International Workshop on Computational Semantics
+(IWCS-5), Tilburg.
+[Pustejovsky et al.2003b] James Pustejovsky, Patrick
+Hanks, Roser Saur´y, Andrew See, Robert Gaizauskas,
+Andrea Setzer, Dragomir Radev, Beth Sundheim,
+David Day, Lisa Ferro, and Marcia Lazo. 2003b.
+The TimeBank corpus. In Proceedings of Corpus
+Linguistics, pages 647–656.
+[Tsarfaty et al.2011] R. Tsarfaty, J. Nivre, and E. Ander-
+sson. 2011. Evaluating dependency parsing: Robust
+and heuristics-free cross-annotation evaluation. In Pro-
+ceedings of the Conference on Empirical Methods in
+Natural Language Processing, pages 385–396. ACL.
+[UzZaman and Allen2010] Naushad UzZaman and James
+Allen. 2010. TRIPS and TRIOS system for TempEval-
+2: Extracting temporal information from text. In Pro-
+ceedings of the 5th International Workshop on Seman-
+tic Evaluation, pages 276–283, Uppsala, Sweden, July.
+ACL.
+[Verhagen et al.2007] Marc Verhagen, Robert Gaizauskas,
+Frank Schilder, Graham Katz, and James Pustejovsky.
+2007. SemEval2007 Task 15: TempEval temporal rela-
+tion identification. In SemEval-2007: 4th International
+Workshop on Semantic Evaluations.
+[Verhagen et al.2010] Marc Verhagen, Roser Sauri, Tom-
+maso Caselli, and James Pustejovsky. 2010. SemEval-
+2010 Task 13: TempEval-2. In Proceedings of the 5th
+International Workshop on Semantic Evaluation, Se-
+mEval ’10, pages 57–62, Stroudsburg, PA, USA. ACL.
+[Yamada and Matsumoto2003] H. Yamada and Y. Mat-
+sumoto. 2003. Statistical dependency analysis with
+support vector machines. In Proceedings of IWPT.
+[Yoshikawa et al.2009] K. Yoshikawa, S. Riedel, M. Asa-
+hara, and Y. Matsumoto. 2009. Jointly identifying
+temporal relations with Markov Logic. In Proceedings
+of the Joint Conference of the 47th Annual Meeting of
+the ACL and the 4th International Joint Conference
+on Natural Language Processing of the AFNLP, pages
+405–413. ACL.
+</reference>
+<page confidence="0.999693">
+97
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.055350" no="0">
+<title confidence="0.834">Extracting Narrative Timelines as Temporal Dependency Structures Oleksandr</title>
+<author confidence="0.243138">KU</author>
+<affiliation confidence="0.611775">Celestijnenlaan</affiliation>
+<address confidence="0.62437">B-3001 Heverlee,</address>
+<email confidence="0.933224">cs.kuleuven.be</email>
+<author confidence="0.999719">Steven Bethard</author>
+<affiliation confidence="0.999987">University of Colorado</affiliation>
+<address confidence="0.999857">Campus Box 594 Boulder, CO 80309, USA</address>
+<email confidence="0.999037">colorado.edu</email>
+<author confidence="0.632518">Marie-Francine</author>
+<affiliation confidence="0.610488">KU Celestijnenlaan</affiliation>
+<address confidence="0.694807">B-3001 Heverlee,</address>
+<email confidence="0.935242">cs.kuleuven.be</email>
+<abstract confidence="0.9934233">We propose a new approach to characterizing the timeline of a text: temporal dependency structures, where all the events of a narrative linked via partial ordering relations like We annotate a corpus of children’s stories with temporal dependency trees, achieving agreement (Krippendorff’s Alpha) of 0.856 on the event words, 0.822 on the links between events, and of 0.700 on the ordering relation labels. We compare two parsing models for temporal dependency structures, and show that a deterministic non-projective dependency parser outperforms a graph-based maximum spanning tree parser, achieving labeled attachment accuracy of 0.647 and labeled tree edit distance of 0.596. Our analysis of the dependency parser errors gives some insights into future research directions.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Enrique Amig´o</author>
+<author>Javier Artiles</author>
+<author>Qi Li</author>
+<author>Heng Ji</author>
+</authors>
+<title>An evaluation framework for aggregated temporal information extraction.</title>
+<date>2011</date>
+<booktitle>In SIGIR-2011 Workshop on Entity-Oriented Search.</booktitle>
+<marker>[Amig´o et al.2011]</marker>
+<rawString>Enrique Amig´o, Javier Artiles, Qi Li, and Heng Ji. 2011. An evaluation framework for aggregated temporal information extraction. In SIGIR-2011 Workshop on Entity-Oriented Search.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Javier Artiles</author>
+<author>Qi Li</author>
+<author>Taylor Cassidy</author>
+<author>Suzanne Tamang</author>
+<author>Heng Ji</author>
+</authors>
+<title>CUNY BLENDER TAC-KBP2011 temporal slot filling system description.</title>
+<date>2011</date>
+<booktitle>In TextAnalytics Conference (TAC2011).</booktitle>
+<marker>[Artiles et al.2011]</marker>
+<rawString>Javier Artiles, Qi Li, Taylor Cassidy, Suzanne Tamang, and Heng Ji. 2011. CUNY BLENDER TAC-KBP2011 temporal slot filling system description. In TextAnalytics Conference (TAC2011).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven Bethard</author>
+<author>James H Martin</author>
+</authors>
+<title>CU-TMP: Temporal relation classification using syntactic and semantic features.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the Fourth International Workshop on Semantic Evaluations (SemEval-2007),</booktitle>
+<pages>129--132</pages>
+<publisher>ACL.</publisher>
+<location>Prague, Czech Republic,</location>
+<marker>[Bethard and Martin2007]</marker>
+<rawString>Steven Bethard and James H. Martin. 2007. CU-TMP: Temporal relation classification using syntactic and semantic features. In Proceedings of the Fourth International Workshop on Semantic Evaluations (SemEval-2007), pages 129–132, Prague, Czech Republic, June. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven Bethard</author>
+<author>James H Martin</author>
+<author>Sara Klingenstein</author>
+</authors>
+<title>Finding temporal structure in text: Machine learning of syntactic temporal relations.</title>
+<date>2007</date>
+<journal>International Journal of Semantic Computing (IJSC),</journal>
+<volume>1</volume>
+<issue>4</issue>
+<pages>12</pages>
+<marker>[Bethard et al.2007]</marker>
+<rawString>Steven Bethard, James H. Martin, and Sara Klingenstein. 2007. Finding temporal structure in text: Machine learning of syntactic temporal relations. International Journal of Semantic Computing (IJSC), 1(4):441–458, 12.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven Bethard</author>
+<author>Oleksandr Kolomiyets</author>
+<author>Marie-Francine Moens</author>
+</authors>
+<title>Annotating narrative timelines as temporal dependency structures.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the International Conference on Linguistic Resources and Evaluation,</booktitle>
+<publisher>ELRA.</publisher>
+<location>Istanbul, Turkey,</location>
+<marker>[Bethard et al.2012]</marker>
+<rawString>Steven Bethard, Oleksandr Kolomiyets, and Marie-Francine Moens. 2012. Annotating narrative timelines as temporal dependency structures. In Proceedings of the International Conference on Linguistic Resources and Evaluation, Istanbul, Turkey, May. ELRA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Branimir Boguraev</author>
+<author>Rie Kubota Ando</author>
+</authors>
+<title>TimeBank-driven TimeML analysis.</title>
+<date>2005</date>
+<booktitle>In Annotating, Extracting and Reasoning about Time and Events.</booktitle>
+<publisher>Springer.</publisher>
+<marker>[Boguraev and Ando2005]</marker>
+<rawString>Branimir Boguraev and Rie Kubota Ando. 2005. TimeBank-driven TimeML analysis. In Annotating, Extracting and Reasoning about Time and Events. Springer.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Bramsen</author>
+<author>P Deshpande</author>
+<author>Y K Lee</author>
+<author>R Barzilay</author>
+</authors>
+<title>Inducing temporal graphs.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>189--198</pages>
+<publisher>ACL.</publisher>
+<marker>[Bramsen et al.2006]</marker>
+<rawString>P. Bramsen, P. Deshpande, Y.K. Lee, and R. Barzilay. 2006. Inducing temporal graphs. In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing, pages 189– 198. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>William F Brewer</author>
+<author>Edward H Lichtenstein</author>
+</authors>
+<title>Stories are to entertain: A structural-affect theory of stories.</title>
+<date>1982</date>
+<journal>Journal of Pragmatics,</journal>
+<pages>6--5</pages>
+<marker>[Brewer and Lichtenstein1982]</marker>
+<rawString>William F. Brewer and Edward H. Lichtenstein. 1982. Stories are to entertain: A structural-affect theory of stories. Journal of Pragmatics, 6(5-6):473 – 486.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Chambers</author>
+<author>D Jurafsky</author>
+</authors>
+<title>Jointly combining implicit constraints improves temporal ordering.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>698--706</pages>
+<publisher>ACL.</publisher>
+<marker>[Chambers and Jurafsky2008]</marker>
+<rawString>N. Chambers and D. Jurafsky. 2008. Jointly combining implicit constraints improves temporal ordering. In Proceedings of the Conference on Empirical Methods in Natural Language Processing, pages 698–706. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yuchang Cheng</author>
+<author>Masayuki Asahara</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>NAIST.Japan: Temporal relation identification using dependency parsed tree.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the Fourth International Workshop on Semantic Evaluations (SemEval-2007),</booktitle>
+<pages>245--248</pages>
+<publisher>ACL.</publisher>
+<location>Prague, Czech Republic,</location>
+<marker>[Cheng et al.2007]</marker>
+<rawString>Yuchang Cheng, Masayuki Asahara, and Yuji Matsumoto. 2007. NAIST.Japan: Temporal relation identification using dependency parsed tree. In Proceedings of the Fourth International Workshop on Semantic Evaluations (SemEval-2007), pages 245–248, Prague, Czech Republic, June. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y J Chu</author>
+<author>T H Liu</author>
+</authors>
+<title>On the shortest arborescence of a directed graph. Science Sinica,</title>
+<date>1965</date>
+<pages>1396--1400</pages>
+<marker>[Chu and Liu1965]</marker>
+<rawString>Y. J. Chu and T.H. Liu. 1965. On the shortest arborescence of a directed graph. Science Sinica, pages 1396–1400.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M A Covington</author>
+</authors>
+<title>A fundamental algorithm for dependency parsing.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 39th Annual ACM Southeast Conference,</booktitle>
+<pages>95--102</pages>
+<marker>[Covington2001]</marker>
+<rawString>M.A. Covington. 2001. A fundamental algorithm for dependency parsing. In Proceedings of the 39th Annual ACM Southeast Conference, pages 95–102.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Crammer</author>
+<author>Y Singer</author>
+</authors>
+<title>Ultraconservative online algorithms for multiclass problems.</title>
+<date>2003</date>
+<journal>Journal ofMachine Learning Research,</journal>
+<pages>3--951</pages>
+<marker>[Crammer and Singer2003]</marker>
+<rawString>K. Crammer and Y. Singer. 2003. Ultraconservative online algorithms for multiclass problems. Journal ofMachine Learning Research, 3:951–991.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Crammer</author>
+<author>O Dekel</author>
+<author>J Keshet</author>
+<author>S Shalev-Shwartz</author>
+<author>Y Singer</author>
+</authors>
+<title>Online passive-aggressive algorithms.</title>
+<date>2006</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>7--551</pages>
+<marker>[Crammer et al.2006]</marker>
+<rawString>K. Crammer, O. Dekel, J. Keshet, S. Shalev-Shwartz, and Y. Singer. 2006. Online passive-aggressive algorithms. Journal of Machine Learning Research, 7:551–585.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Edmonds</author>
+</authors>
+<title>Optimum branchings.</title>
+<date>1967</date>
+<journal>Journal of Research of the National Bureau of Standards,</journal>
+<pages>233--240</pages>
+<marker>[Edmonds1967]</marker>
+<rawString>J. Edmonds. 1967. Optimum branchings. Journal of Research of the National Bureau of Standards, pages 233–240.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L Georgiadis</author>
+</authors>
+<title>Arborescence optimization problems solvable by Edmonds’ algorithm.</title>
+<date>2003</date>
+<journal>Theoretical Computer Science,</journal>
+<pages>301--1</pages>
+<marker>[Georgiadis2003]</marker>
+<rawString>L. Georgiadis. 2003. Arborescence optimization problems solvable by Edmonds’ algorithm. Theoretical Computer Science, 301(1-3):427–437.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Prashant Gupta</author>
+<author>Heng Ji</author>
+</authors>
+<title>Predicting unknown time arguments based on crossevent propagation.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the ACL-IJCNLP 2009 Conference Short Papers, ACLShort ’09,</booktitle>
+<pages>369--372</pages>
+<publisher>ACL.</publisher>
+<location>Stroudsburg, PA, USA.</location>
+<marker>[Gupta and Ji2009]</marker>
+<rawString>Prashant Gupta and Heng Ji. 2009. Predicting unknown time arguments based on crossevent propagation. In Proceedings of the ACL-IJCNLP 2009 Conference Short Papers, ACLShort ’09, pages 369–372, Stroudsburg, PA, USA. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andrey Gusev</author>
+<author>Nathanael Chambers</author>
+<author>Divye Raj Khilnani</author>
+<author>Pranav Khaitan</author>
+<author>Steven Bethard</author>
+<author>Dan Jurafsky</author>
+</authors>
+<title>Using query patterns to learn the duration of events.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the International Conference on Computational Semantics,</booktitle>
+<pages>145--154</pages>
+<marker>[Gusev et al.2011]</marker>
+<rawString>Andrey Gusev, Nathanael Chambers, Divye Raj Khilnani, Pranav Khaitan, Steven Bethard, and Dan Jurafsky. 2011. Using query patterns to learn the duration of events. In Proceedings of the International Conference on Computational Semantics, pages 145–154.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A F Hayes</author>
+<author>K Krippendorff</author>
+</authors>
+<title>Answering the call for a standard reliability measure for coding data.</title>
+<date>2007</date>
+<journal>Communication Methods and Measures,</journal>
+<volume>1</volume>
+<issue>1</issue>
+<marker>[Hayes and Krippendorff2007]</marker>
+<rawString>A.F. Hayes and K. Krippendorff. 2007. Answering the call for a standard reliability measure for coding data. Communication Methods and Measures, 1(1):77–89.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Maya Hickmann</author>
+</authors>
+<title>Children’s Discourse: Person, Space and Time Across Languages.</title>
+<date>2003</date>
+<publisher>Cambridge University Press,</publisher>
+<location>Cambridge, UK.</location>
+<marker>[Hickmann2003]</marker>
+<rawString>Maya Hickmann. 2003. Children’s Discourse: Person, Space and Time Across Languages. Cambridge University Press, Cambridge, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P N Johnson-Laird</author>
+</authors>
+<title>Mental models in cognitive science.</title>
+<date>1980</date>
+<journal>Cognitive Science,</journal>
+<volume>4</volume>
+<issue>1</issue>
+<marker>[Johnson-Laird1980]</marker>
+<rawString>P.N. Johnson-Laird. 1980. Mental models in cognitive science. Cognitive Science, 4(1):71–115.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Krippendorff</author>
+</authors>
+<title>Content analysis: An introduction to its methodology.</title>
+<date>2004</date>
+<publisher>Sage Publications, Inc.</publisher>
+<marker>[Krippendorff2004]</marker>
+<rawString>K. Krippendorff. 2004. Content analysis: An introduction to its methodology. Sage Publications, Inc.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Linguistic Data Consortium</author>
+</authors>
+<title>ACE (Automatic Content Extraction) English annotation guidelines for events version</title>
+<date>2005</date>
+<volume>5</volume>
+<pages>2005--07</pages>
+<marker>[Linguistic Data Consortium2005]</marker>
+<rawString>Linguistic Data Consortium. 2005. ACE (Automatic Content Extraction) English annotation guidelines for events version 5.4.3 2005.07.01.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hector Llorens</author>
+<author>Estela Saquete</author>
+<author>Borja Navarro</author>
+</authors>
+<title>TIPSem (English and Spanish): Evaluating CRFs and semantic roles in TempEval-2.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 5th International Workshop on Semantic Evaluation,</booktitle>
+<pages>284--291</pages>
+<publisher>ACL.</publisher>
+<location>Uppsala, Sweden,</location>
+<marker>[Llorens et al.2010]</marker>
+<rawString>Hector Llorens, Estela Saquete, and Borja Navarro. 2010. TIPSem (English and Spanish): Evaluating CRFs and semantic roles in TempEval-2. In Proceedings of the 5th International Workshop on Semantic Evaluation, pages 284–291, Uppsala, Sweden, July. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R McDonald</author>
+<author>F Pereira</author>
+<author>K Ribarov</author>
+<author>J Hajiˇc</author>
+</authors>
+<title>Non-projective dependency parsing using spanning tree algorithms.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Conference on Human Language Technology and Empirical Methods in Natural Language Processing,</booktitle>
+<pages>523--530</pages>
+<publisher>ACL.</publisher>
+<marker>[McDonald et al.2005]</marker>
+<rawString>R. McDonald, F. Pereira, K. Ribarov, and J. Hajiˇc. 2005. Non-projective dependency parsing using spanning tree algorithms. In Proceedings of the Conference on Human Language Technology and Empirical Methods in Natural Language Processing, pages 523–530. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N McIntyre</author>
+<author>M Lapata</author>
+</authors>
+<title>Learning to tell tales: A data-driven approach to story generation.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP: Volume</booktitle>
+<volume>1</volume>
+<pages>217--225</pages>
+<publisher>ACL.</publisher>
+<marker>[McIntyre and Lapata2009]</marker>
+<rawString>N. McIntyre and M. Lapata. 2009. Learning to tell tales: A data-driven approach to story generation. In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP: Volume 1-Volume 1, pages 217–225. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Nivre</author>
+</authors>
+<title>Algorithms for deterministic incremental dependency parsing.</title>
+<date>2008</date>
+<journal>Computational Linguistics,</journal>
+<volume>34</volume>
+<issue>4</issue>
+<marker>[Nivre2008]</marker>
+<rawString>J. Nivre. 2008. Algorithms for deterministic incremental dependency parsing. Computational Linguistics, 34(4):513–553.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Feng Pan</author>
+<author>Rutu Mulkar</author>
+<author>Jerry R Hobbs</author>
+</authors>
+<title>Learning event durations from event descriptions.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>393--400</pages>
+<publisher>ACL.</publisher>
+<location>Sydney, Australia,</location>
+<marker>[Pan et al.2006]</marker>
+<rawString>Feng Pan, Rutu Mulkar, and Jerry R. Hobbs. 2006. Learning event durations from event descriptions. In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics, pages 393–400, Sydney, Australia, July. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Pustejovsky</author>
+<author>A Stubbs</author>
+</authors>
+<title>Increasing informativeness in temporal annotation.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the 5th Linguistic Annotation Workshop,</booktitle>
+<pages>152--160</pages>
+<publisher>ACL.</publisher>
+<marker>[Pustejovsky and Stubbs2011]</marker>
+<rawString>J. Pustejovsky and A. Stubbs. 2011. Increasing informativeness in temporal annotation. In Proceedings of the 5th Linguistic Annotation Workshop, pages 152–160. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>James Pustejovsky</author>
+<author>Jos´e Casta˜no</author>
+<author>Robert Ingria</author>
+<author>Roser Saur´y</author>
+<author>Robert Gaizauskas</author>
+<author>Andrea Setzer</author>
+<author>Graham Katz</author>
+</authors>
+<title>TimeML: Robust specification of event and temporal expressions in text.</title>
+<date>2003</date>
+<booktitle>In Proceedings of the Fifth International Workshop on Computational Semantics (IWCS-5),</booktitle>
+<location>Tilburg.</location>
+<marker>[Pustejovsky et al.2003a]</marker>
+<rawString>James Pustejovsky, Jos´e Casta˜no, Robert Ingria, Roser Saur´y, Robert Gaizauskas, Andrea Setzer, and Graham Katz. 2003a. TimeML: Robust specification of event and temporal expressions in text. In Proceedings of the Fifth International Workshop on Computational Semantics (IWCS-5), Tilburg.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>James Pustejovsky</author>
+<author>Patrick Hanks</author>
+<author>Roser Saur´y</author>
+<author>Andrew See</author>
+<author>Robert Gaizauskas</author>
+<author>Andrea Setzer</author>
+<author>Dragomir Radev</author>
+<author>Beth Sundheim</author>
+<author>David Day</author>
+<author>Lisa Ferro</author>
+<author>Marcia Lazo</author>
+</authors>
+<title>The TimeBank corpus.</title>
+<date>2003</date>
+<booktitle>In Proceedings of Corpus Linguistics,</booktitle>
+<pages>647--656</pages>
+<marker>[Pustejovsky et al.2003b]</marker>
+<rawString>James Pustejovsky, Patrick Hanks, Roser Saur´y, Andrew See, Robert Gaizauskas, Andrea Setzer, Dragomir Radev, Beth Sundheim, David Day, Lisa Ferro, and Marcia Lazo. 2003b. The TimeBank corpus. In Proceedings of Corpus Linguistics, pages 647–656.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Tsarfaty</author>
+<author>J Nivre</author>
+<author>E Andersson</author>
+</authors>
+<title>Evaluating dependency parsing: Robust and heuristics-free cross-annotation evaluation.</title>
+<date>2011</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>385--396</pages>
+<publisher>ACL.</publisher>
+<marker>[Tsarfaty et al.2011]</marker>
+<rawString>R. Tsarfaty, J. Nivre, and E. Andersson. 2011. Evaluating dependency parsing: Robust and heuristics-free cross-annotation evaluation. In Proceedings of the Conference on Empirical Methods in Natural Language Processing, pages 385–396. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Naushad UzZaman</author>
+<author>James Allen</author>
+</authors>
+<title>TRIPS and TRIOS system for TempEval2: Extracting temporal information from text.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 5th International Workshop on Semantic Evaluation,</booktitle>
+<pages>276--283</pages>
+<publisher>ACL.</publisher>
+<location>Uppsala, Sweden,</location>
+<marker>[UzZaman and Allen2010]</marker>
+<rawString>Naushad UzZaman and James Allen. 2010. TRIPS and TRIOS system for TempEval2: Extracting temporal information from text. In Proceedings of the 5th International Workshop on Semantic Evaluation, pages 276–283, Uppsala, Sweden, July. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marc Verhagen</author>
+<author>Robert Gaizauskas</author>
+<author>Frank Schilder</author>
+<author>Graham Katz</author>
+<author>James Pustejovsky</author>
+</authors>
+<title>SemEval2007 Task 15: TempEval temporal relation identification.</title>
+<date>2007</date>
+<booktitle>In SemEval-2007: 4th International Workshop on Semantic Evaluations.</booktitle>
+<marker>[Verhagen et al.2007]</marker>
+<rawString>Marc Verhagen, Robert Gaizauskas, Frank Schilder, Graham Katz, and James Pustejovsky. 2007. SemEval2007 Task 15: TempEval temporal relation identification. In SemEval-2007: 4th International Workshop on Semantic Evaluations.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marc Verhagen</author>
+<author>Roser Sauri</author>
+<author>Tommaso Caselli</author>
+<author>James Pustejovsky</author>
+</authors>
+<date>2010</date>
+<booktitle>SemEval2010 Task 13: TempEval-2. In Proceedings of the 5th International Workshop on Semantic Evaluation, SemEval ’10,</booktitle>
+<pages>57--62</pages>
+<publisher>ACL.</publisher>
+<location>Stroudsburg, PA, USA.</location>
+<marker>[Verhagen et al.2010]</marker>
+<rawString>Marc Verhagen, Roser Sauri, Tommaso Caselli, and James Pustejovsky. 2010. SemEval2010 Task 13: TempEval-2. In Proceedings of the 5th International Workshop on Semantic Evaluation, SemEval ’10, pages 57–62, Stroudsburg, PA, USA. ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Yamada</author>
+<author>Y Matsumoto</author>
+</authors>
+<title>Statistical dependency analysis with support vector machines.</title>
+<date>2003</date>
+<booktitle>In Proceedings of IWPT.</booktitle>
+<marker>[Yamada and Matsumoto2003]</marker>
+<rawString>H. Yamada and Y. Matsumoto. 2003. Statistical dependency analysis with support vector machines. In Proceedings of IWPT.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Yoshikawa</author>
+<author>S Riedel</author>
+<author>M Asahara</author>
+<author>Y Matsumoto</author>
+</authors>
+<title>Jointly identifying temporal relations with Markov Logic.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP,</booktitle>
+<pages>405--413</pages>
+<publisher>ACL.</publisher>
+<marker>[Yoshikawa et al.2009]</marker>
+<rawString>K. Yoshikawa, S. Riedel, M. Asahara, and Y. Matsumoto. 2009. Jointly identifying temporal relations with Markov Logic. In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the AFNLP, pages 405–413. ACL.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

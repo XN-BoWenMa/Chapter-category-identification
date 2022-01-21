@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.431549" no="0">
+<title confidence="0.918251">
+Interpreting the human genome sequence, using stochastic grammars
+</title>
+<author confidence="0.816097">
+Richard Durbin
+</author>
+<bodyText confidence="0.781861166666667">The Sanger Centre Wellcome Trust Genome Campus Hinxton Cambridge CB10 1SA UK rd@sanger.ac.uk</bodyText>
+<sectionHeader confidence="0.895758" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.9869486">The 3 billion base pair sequence of the human genome is now available, and attention is focusing on annotating it to extract biological meaning. I will discuss what we have obtained, and the methods that are being used to analyse biological sequences. In particular I will discuss approaches using stochastic grammars analogous to those used in computational linguistics, both for gene finding and protein family classification.</bodyText>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.316761" no="0">
+<title confidence="0.999961">Interpreting the human genome sequence, using stochastic grammars</title>
+<author confidence="0.999981">Richard Durbin</author>
+<affiliation confidence="0.984396">The Sanger Centre</affiliation>
+<title confidence="0.601708">Wellcome Trust Genome Campus Hinxton</title>
+<address confidence="0.779231">Cambridge CB10 1SA UK</address>
+<email confidence="0.996323">rd@sanger.ac.uk</email>
+<abstract confidence="0.992873333333333">The 3 billion base pair sequence of the human genome is now available, and attention is focusing on annotating it to extract biological meaning. I will discuss what we have obtained, and the methods that are being used to analyse biological sequences. In particular I will discuss approaches using stochastic grammars analogous to those used in computational linguistics, both for gene finding and protein family classification.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+</citationList>
+</algorithm>
+</algorithms>

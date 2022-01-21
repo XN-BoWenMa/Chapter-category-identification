@@ -1,0 +1,1035 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.992521">
+Text-level Discourse Dependency Parsing
+</title>
+<author confidence="0.999238">
+Sujian Li1 Liang Wang1 Ziqiang Cao1 Wenjie Li2
+</author>
+<affiliation confidence="0.783635">
+1 Key Laboratory of Computational Linguistics, Peking University, MOE, China
+2 Department of Computing, The Hong Kong Polytechnic University, HongKong
+</affiliation>
+<email confidence="0.965648">
+{lisujian,intfloat,ziqiangyeah}@pku.edu.cn
+cswjli@comp.polyu.edu.hk
+</email>
+<sectionHeader confidence="0.993858" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.998234">Previous researches on Text-level discourse parsing mainly made use of constituency structure to parse the whole document into one discourse tree. In this paper, we present the limitations of constituency based discourse parsing and first propose to use dependency structure to directly represent the relations between elementary discourse units (EDUs). The state-of-the-art dependency parsing techniques, the Eisner algorithm and maximum spanning tree (MST) algorithm, are adopted to parse an optimal discourse dependency tree based on the arcfactored model and the large-margin learning techniques. Experiments show that our discourse dependency parsers achieve a competitive performance on text-level discourse parsing.</bodyText>
+<sectionHeader confidence="0.998102" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.986723111111111">It is widely agreed that no units of the text can be understood in isolation, but in relation to their context. Researches in discourse parsing aim to acquire such relations in text, which is fundamental to many natural language processing applications such as question answering, automatic summarization and so on. One important issue behind discourse parsing is the representation of discourse structure. Rhetorical Structure Theory (RST) (Mann and Thompson, 1988), one of the most influential discourse theories, posits a hierarchical generative tree representation, as illustrated in Figure 1. The leaves of a tree correspond to contiguous text spans called Elementary Discourse Units (EDUs)1. The adjacent EDUs are combined into 1 EDU segmentation is a relatively trivial step in discourse parsing. Since our work focus here is not EDU segmentation but discourse parsing. We assume EDUs are already known. the larger text spans by rhetorical relations (e.g., Contrast and Elaboration) and the larger text spans continue to be combined until the whole text constitutes a parse tree. The text spans linked by rhetorical relations are annotated as either nucleus or satellite depending on how salient they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et isting approaches suffer from at least one of the following three problems.</bodyText>
+<note confidence="0.7510955">
+al., 2012; Reitter, 2003; LeThanh et al., 2004;
+Baldridge and Lascarides, 2005; Subba and Di
+Eugenio, 2009; Sagae, 2009; Hernault et al.,
+2010b; Feng and Hirst, 2012). However, the ex-
+</note>
+<bodyText confidence="0.998595636363636">First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the time complexity of the state-of-the-art constituency based parsing techniques, the approximate parsing approaches are prone to trap in local maximum. In this paper, we propose to adopt the dependency structure in discourse representation to overcome the limitations mentioned above. Here is the basic idea: the discourse structure consists of EDUs which are linked by the binary, asymmetrical relations called dependency relations. A dependency relation holds between a subordinate EDU called the dependent, and another EDU on which it depends called the head, as illustrated in Figure 2.</bodyText>
+<page confidence="0.455381">
+25
+</page>
+<note confidence="0.972908">
+Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics, pages 25–35,
+Baltimore, Maryland, USA, June 23-25 2014. c�2014 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.981552763157895">Each EDU has one head. So, the dependency structure can be seen as a set of headdependent links, which are labeled by functional relations. Now, we can analyze the relations between EDUs directly, without worrying about any interior text spans. Since dependency trees contain much fewer nodes and on average they are simpler than constituency based trees, the current dependency parsers can have a relatively low computational complexity. Moreover, concerning linearization, it is well known that dependency structures can deal with non-projective relations, while constituency-based models need the addition of complex mechanisms like transformations, movements and so on. In our work, we adopt the graph based dependency parsing techniques learned from large sets of annotated dependency trees. The Eisner (1996) algorithm and maximum spanning tree (MST) algorithm are used respectively to parse the optimal projective and non-projective dependency trees with the large-margin learning technique (Crammer and Singer, 2003). To the best of our knowledge, we are the first to apply the dependency structure and introduce the dependency parsing techniques into discourse analysis. The rest of this paper is organized as follows. Section 2 formally defines discourse dependency structure and introduces how to build a discourse dependency treebank from the existing RST corpus. Section 3 presents the discourse parsing approach based on the Eisner and MST algorithms. Section 4 elaborates on the large-margin learning technique as well as the features we use. Section 5 discusses the experimental results. Section 6 introduces the related work and Section 7 concludes the paper.</bodyText>
+<figureCaption confidence="0.986082">
+Figure 1: Headed Constituency based Discourse Tree Structure (e1,e2 and e3 denote three EDUs,
+and * denotes the NUCLEUS constituent)
+Figure 2: Discourse Dependency Tree Structures (e1,e2 and e3 denote three EDUS, and the directed
+arcs denote one dependency relations. The artificial e0 is also displayed here. )
+</figureCaption>
+<figure confidence="0.7883512">
+1 2 3 4
+5 6 7 8
+e1*-e2-e3
+e1-e2-e3*
+e1*-e2
+</figure>
+<equation confidence="0.978229620689655">
+e1-e2*
+e3
+e3
+e1 e2
+e1 e2
+e1 e2
+e3
+e1 e2
+e3
+e1-e2-e3*
+e1*-e2
+e1-e2*-e3
+e1-e2*
+e1*-e2-e3
+e1*-e2-e3
+e2*-e3 e2-e3*
+e1 e2 e3 e1 e2 e3
+e1 e2 e3
+e1-e2-e3*
+e2-e3*
+e1 e2
+e3
+e1-e2*-e3
+e2*-e3
+1' 2' 3' 4'
+e0 e1 e2 e3 e0 e1 e2 e3 e0 e1 e2 e3 e0 e1 e2 e3 e0 e1 e2 e3
+5' 6' 7' 8' 9'
+e0 e1 e2 e3 e0 e1 e2 e3 e0 e1 e2 e3 e0
+e1 e2 e3
+</equation>
+<sectionHeader confidence="0.7967095" genericHeader="method">
+2 Discourse Dependency Structure and
+Tree Bank
+</sectionHeader>
+<subsectionHeader confidence="0.998649">
+2.1 Discourse Dependency Structure
+</subsectionHeader>
+<bodyText confidence="0.999956142857143">Similar to the syntactic dependency structure defined by McDonald (2005a, 2005b), we insert an artificial EDU e0 in the beginning for each document and label the dependency relation linking from e0 as ROOT. This treatment will simplify both formal definitions and computational implementations. Normally, we assume that each EDU should have one and only one head except for e0. A labeled directed arc is used to represent the dependency relation from one head to its dependent. Then, discourse dependency structure can be formalized as the labeled directed graph, where nodes correspond to EDUs and labeled arcs correspond to labeled dependency relations.</bodyText>
+<page confidence="0.680338">
+26
+</page>
+<bodyText confidence="0.997288111111111">We assume that the text2 T is composed of n+1 EDUs including the artificial e0. That is T=e0 e1 e2 ... en. Let R={r1,r2, ... ,rm} denote a finite set of functional relations that hold between two EDUs. Then a discourse dependency graph can be denoted by G=&lt;V, A&gt; where V denotes a set of nodes and A denotes a set of labeled directed arcs, such that for the text T=e0 e1 e2 ... en and the label set R the following holds:</bodyText>
+<listItem confidence="0.995933166666667">(1) V = { e0, e1, e2, ... en } (2) A c Vx R x V, where &lt;ei, r, ej&gt;EA represents an arc from the head ei to the dependent ej labeled with the relation r. (3) If &lt;ei, r, ej&gt;EA then &lt;ek, r’, ej&gt;o-A for all k#i (4) If &lt;ei, r, ej&gt;EA then &lt;ei, r’, ej&gt;o-A for all r’#r</listItem>
+<bodyText confidence="0.994525666666667">The third condition assures that each EDU has one and only one head and the fourth tells that only one kind of dependency relation holds between two EDUs. According to the definition, we illustrate all the 9 possible unlabeled dependency trees for a text containing three EDUs in Figure 2. The dependency trees 1’ to 7’ are projective while 8’ and 9’ are non-projective with crossing arcs.</bodyText>
+<subsectionHeader confidence="0.997363">
+2.2 Our Discourse Dependency Treebank
+</subsectionHeader>
+<bodyText confidence="0.99618984">To automatically conduct discourse dependency parsing, constructing a discourse dependency treebank is fundamental. It is costly to manually construct such a treebank from scratch. Fortunately, RST Discourse Treebank (RST-DT) (Carlson et al., 2001) is an available resource to help with. A RST tree constitutes a hierarchical structure for one document through rhetorical relations. A total of 110 fine-grained relations (e.g. Elaboration-part-whole and List) were used for tagging RST-DT. They can be categorized into 18 classes (e.g. Elaboration and Joint). All these relations can be hypotactic (“mononuclear”) or paratactic (“multi-nuclear”). A hypotactic relation holds between a nucleus span and an adjacent satellite span, while a paratactic relation connects two or more equally important adjacent nucleus spans. For convenience of computation, we convert the n-ary (n&gt;2) RST trees3 to binary trees through adding a new node for the latter n-1 nodes and assume each relation is connected to only one nucleus4. This departure from the original theory 2 The two terms “text” and “document” are used interchangeably and represent the same meaning.</bodyText>
+<footnote confidence="0.358123666666667">
+3 According to our statistics, there are totally 381 n-ary rela-
+tions in RST-DT.
+4 We set the first nucleus as the only nucleus.
+</footnote>
+<bodyText confidence="0.999742818181818">is not such a major step as it may appear, since any nucleus is known to contribute to the essential meaning. Now, each RST tree can be seen as a headed constituency based binary tree where the nuclei are heads and the children of each node are linearly ordered. Given three EDUs5, Figure 1 shows the possible 8 headed constituency based trees where the superscript * denotes the heads (nuclei). We use dependency trees to simulate the headed constituency based trees. Contrasting Figure 1 with Figure 2, we use dependency tree 1’ to simulate binary trees 1 and 8, and dependency tress 2’7’ to simulate binary trees 2-7 correspondingly. The rhetorical relations in RST trees are kept as the functional relations which link the two EDUs in dependency trees. With this kind of conversion, we can get our discourse dependency treebank. It is worth noting that the non-projective trees like 8’ and 9’ do not exist in our dependency treebank, though they are eligible according to the definition of discourse dependency graph.</bodyText>
+<sectionHeader confidence="0.974498" genericHeader="method">
+3 Discourse Dependency Parsing
+</sectionHeader>
+<subsectionHeader confidence="0.999071">
+3.1 System Overview
+</subsectionHeader>
+<bodyText confidence="0.999973083333333">As stated above, T=e0 e1 ...en represents an input text (document) where ei denotes the ith EDU of T. We use V to denote all the EDU nodes and VxRxV-0 (V-0 =V-{e0}) denote all the possible discourse dependency arcs. The goal of discourse dependency parsing is to parse an optimal spanning tree from VxRxV-0. Here we follow the arc factored method and define the score of a dependency tree as the sum of the scores of all the arcs in the tree. Thus, the optimal dependency tree for T is a spanning tree with the highest score and obtained through the function DT(T,w):</bodyText>
+<equation confidence="0.996588714285714">
+DT (T , w) = argmaxG gVxRxV_0score(T, GT)
+= argmaxG V R V
+Tg x x _0
+&lt; ei,r,ej&gt;e GT
+= argmaxG V R V
+Tg x x _ 0
+&lt; ei,r,ej&gt;e GT
+</equation>
+<bodyText confidence="0.9974523">where GT means a possible spanning tree with score(T, GT)and A( ei, r, ej) denotes the score of the arc &lt;ei, r, ej&gt; which is calculated according to its feature representation f(ei,r,ej) and a weight vector w. Next, two basic problems need to be solved: how to find the dependency tree with the highest 5 We can easily get all possible headed binary trees for one more complex text containing more than three EDUs, by extending the 8 possible situations for three EDUs.</bodyText>
+<equation confidence="0.674033333333333">
+E A (ei,r,ej)
+E w - f(ei,r,ej)
+27
+</equation>
+<bodyText confidence="0.9995376">score for T given all the arc scores (i.e. a parsing problem), and how to learn and compute the scores of arcs according to a set of arc features (i.e. a learning problem). The following of this section addresses the first problem. Given the text T, we first reduce the multi-digraph composed of all possible arcs to the digraph. The digraph keeps only one arc &lt;ei, r, ej&gt; between two nodes which satisfies ( ei, r, ej) = maxr,A(ei, r', ej) . Thus, we can proceed with a reduction from labeled parsing to unlabeled parsing. Next, two algorithms, i.e. the Eisner algorithm and MST algorithm, are presented to parse the projective and non-projective unlabeled dependency trees respectively.</bodyText>
+<subsectionHeader confidence="0.998045">
+3.2 Eisner Algorithm
+</subsectionHeader>
+<bodyText confidence="0.999974272727273">It is well known that projective dependency parsing can be handled with the Eisner algorithm (1996) which is based on the bottom-up dynamic programming techniques with the time complexity of O(n3). The basic idea of the Eisner algorithm is to parse the left and right dependents of an EDU independently and combine them at a later stage. This reduces the overhead of indexing heads. Only two binary variables, i.e. c and d, are required to specify whether the heads occur leftmost or rightmost and whether an item is complete. over all the internal indices (iqj) in the span, and calculating the value of merging the two subtrees and adding one new arc. The last two steps (Lines 10 and 11) attempt to achieve an optimal left/right subtree in the span by adding the corresponding left/right subtree to the arcs that have been added previously. This algorithm considers all the possible subtrees. We can then get the optimal dependency tree with the score E[0,n,1,1] .</bodyText>
+<subsectionHeader confidence="0.999259">
+3.3 Maximum Spanning Tree Algorithm
+</subsectionHeader>
+<bodyText confidence="0.999716">As the bottom-up Eisner Algorithm must maintain the nested structural constraint, it cannot parse the non-projective dependency trees like 8’ and 9’ in Figure 2. However, the non-projective dependency does exist in real discourse. For example, the earlier text mainly talks about the topic A with mentioning the topic B, while the latter text gives a supplementary explanation for the topic B. This example can constitute a nonprojective tree and its pictorial diagram is exhibited in Figure 4. Following the work of McDonald (2005b), we formalize discourse dependency parsing as searching for a maximum spanning tree (MST) in a directed graph.</bodyText>
+<figure confidence="0.9343689375">
+... ...
+...
+A A B A B
+Eisner(T, )
+Input: Text T=e0 e1... en; Arc scores (ei,ej)
+1 Instantiate E[i, i, d, c]=0.0 for all i, d, c
+2 For m := 1 to n
+3 For i := 1 to n
+4 j = i + m
+5 if j&gt; n then break;
+6 # Create subgraphs with c=0 by adding arcs
+7 E[i, j, 0, 0]=maxiqj (E[i,q,1,1]+E[q+1,j,0,1]+(ej,ei))
+8 E[i, j, 1, 0]=maxiqj (E[i,q,1,1]+E[q+1,j,0,1]+(ei,ej))
+9 # Add corresponding left/right subgraphs
+10 E[i, j, 0, 1]=maxiqj (E[i,q,0,1]+E[q,j,0,0]
+11 E[i, j, 1, 1]=maxiqj (E[i,q,1,0]+E[q,j,1,1])
+</figure>
+<figureCaption confidence="0.993475">
+Figure 3: Eisner Algorithm
+</figureCaption>
+<bodyText confidence="0.999633818181818">Figure 3 shows the pseudo-code of the Eisner algorithm. A dynamic programming table E[i,j,d,c] is used to represent the highest scored subtree spanning ei to ej. d indicates whether ei is the head (d=1) or ej is head (d=0). c indicates whether the subtree will not take any more dependents (c=1) or it needs to be completed (c=0). The algorithm begins by initializing all lengthone subtrees to a score of 0.0. In the inner loop, the first two steps (Lines 7 and 8) are to construct the new dependency arcs by taking the maximum</bodyText>
+<figureCaption confidence="0.859852">
+Figure 4: Pictorial Diagram of Non-projective
+Trees
+</figureCaption>
+<bodyText confidence="0.9992718">Chu and Liu (1965) and Edmonds (1967) independently proposed the virtually identical algorithm named the Chu-Liu/Edmonds algorithm, for finding MSTs on directed graphs (McDonald et al. 2005b). Figure 5 shows the details of the Chu-Liu/Edmonds algorithm for discourse parsing. Each node in the graph greedily selects the incoming arc with the highest score. If one tree results, the algorithm ends. Otherwise, there must exist a cycle. The algorithm contracts the identified cycle into a single node and recalculates the scores of the arcs which go in and out of the cycle. Next, the algorithm recursively call itself on the contracted graph. Finally, those arcs which go in or out of one cycle will recover themselves to connect with the original nodes in V. Like McDonald et al. (2005b), we adopt an efficient implementation of the ChuLiu/Edmonds algorithm that is proposed by Tarjan (1997) with O(n2) time complexity.</bodyText>
+<figure confidence="0.983649185185185">
+28
+Chu-Liu-Edmonds(G, A)
+Input: Text T=e0 e1... en; Arc scores A(ei,ej)
+1 A’ = {&lt;ei, ej&gt; |ei = argmax A(ei,ej); 1!9j!9|V|}
+2 G’ = (V, A’)
+3 If G’ has no cycles, then return G’
+4 Find an arc set AC that is a cycle in G’
+5 &lt;GC, ep&gt; = contract(G, AC, A)
+6 G = (V, A)=Chu-Liu-Edmonds(GC, A)
+7 For the arc &lt;ei,eC&gt; where ep(ei,eC)=ej:
+8 A=AvACv{&lt;ei,ej)}-{&lt;ei,eC&gt;, &lt;a(ej),ej&gt;}
+9 For the arc &lt;eC, ei&gt; where ep(eC ,ei)=ej:
+10 A=Av{&lt;ej,ei&gt;}-{&lt;eC,ei&gt;}
+11 V = V
+12 Return G
+Contract(G=(V,A), AC, A)
+1 Let GC be the subgraph of G excluding nodes in C
+2 Add a node eC to GC denoting the cycle C
+3 For ej eV-C : 3eieC &lt;ei,ej&gt;eA
+4 Add arc &lt;eC,ej&gt; to GC with
+ep(eC,ej)=argmaxeiecA(ei,ej)
+5 A(eC,ej) = A(ep(eC,ej),ej)
+6 For ei eV-C: 3ejeC (ei,ej)eA
+7 Add arc &lt;ei,eC&gt; to GC with
+ep(ei,eC)= =argmaxeiec [A(ei,ej)-A(a(ei),ej)]
+8 A(ei,eC) =A(ei,ej)-A(a(ei),ej)+score(C)
+9 Return &lt;GC, ep&gt;
+</figure>
+<figureCaption confidence="0.999486">
+Figure 5: Chu-Liu/Edmonds MST Algorithm
+</figureCaption>
+<sectionHeader confidence="0.995823" genericHeader="method">
+4 Learning
+</sectionHeader>
+<bodyText confidence="0.997154545454546">In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti.</bodyText>
+<subsectionHeader confidence="0.846636">
+4.1 Features
+</subsectionHeader>
+<bodyText confidence="0.9848265">Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; .</bodyText>
+<listItem confidence="0.91888180952381">(1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where the two EDUs are located in one sentence, one paragraph, or one document. (4) Length: The length of each EDU. (5) Syntactic: POS tags of the dominating nodes as defined in Soricut and Marcu (2003) are extracted as features. We use the syntactic trees from the Penn Treebank to find the dominating nodes,. (6) Semantic similarity: We compute the semantic relatedness between the two EDUs based on WordNet. The word pairs are extracted from (ei, ej) and their similarity is calculated. Then, we can get a weighted complete bipartite graph where words are deemed as nodes and similarity as weights.</listItem>
+<bodyText confidence="0.9925285">From this bipartite graph, we get the maximum weighted matching and use the averaged weight of the matches as the similarity between ei and ej. In particular, we use path_similarity, wup_similarity, res_similarity, jcn_similarity and lin_similarity provided by the nltk.wordnet.similarity (Bird et.al., 2009) package for calculating word similarity. As for relations, we experiment two sets of relation labels from RST-DT. One is composed of 19 coarse-grained relations and the other 111 fine-grained relations6.</bodyText>
+<subsectionHeader confidence="0.984534">
+4.2 MIRA based Learning
+</subsectionHeader>
+<bodyText confidence="0.99727825">Margin Infused Relaxed Algorithm (MIRA) is an online algorithm for multiclass classification and is extended by Taskar et al. (2003) to cope with structured classification.</bodyText>
+<figure confidence="0.886950727272727">
+s.t. s(7i,yi) s(T,yi')L(yi,yi')
+MIRA Input: a training sett(T,y,)t
+t-1
+1 w0 = 0; v = 0; j = 0
+2 For iter := 1 to K
+3 For i := 1 to N
+4 update w according to ) :
+where yi '  DT(T , wj )
+5 v = v + wj ;
+6 j = j+1
+7 w = v/(K*N)
+</figure>
+<figureCaption confidence="0.999137">
+Figure 6: MIRA based Learning
+</figureCaption>
+<bodyText confidence="0.838847833333333">Figure 6 gives the pseudo-code of the MIRA algorithm (McDonld et al., 2005b). This algorithm is designed to update the parameters w using a single training instance in each iteration. On each update, MIRA attempts to keep the norm of the change to the weight vector</bodyText>
+<footnote confidence="0.318013666666667">
+6 19 relations include the original 18 relation in RST-DT
+plus one artificial ROOT relation. The 111 relations also
+include the ROOT relation.
+</footnote>
+<table confidence="0.986909">
+29
+Relations Train Test
+Elaboration-additional 2912 312
+Attribution 2474 329
+Elaboration-object-attribute-e 2274 250
+List 1690 206
+Same-unit 1230 127
+Elaboration-additional-e 747 69
+Circumstance 545 80
+Explanation-argumentative 524 70
+Purpose 430 43
+Contrast 358 64
+</table>
+<tableCaption confidence="0.5815465">
+Table 2: 10 Highest Distributed Fine-grained
+Relations
+</tableCaption>
+<note confidence="0.634023">
+5.2 Feature Influence on Two Relation Sets
+</note>
+<bodyText confidence="0.9860843">So far, researches on discourse parsing avoid adopting too fine-grained relations and the relation sets containing around 20 labels are widely used. In our experiments, we observe that adopting a fine-grained relation set can even be helpful to building the discourse trees. Here, we conduct experiments on two relation sets that contain 19 and 111 labels respectively. At the same time, different feature types are tested their effects on discourse parsing.</bodyText>
+<table confidence="0.996631625">
+Method Features Unlabeled Labeled
+Acc. Acc.
+Eisner 1+2 0.3602 0.2651
+1+2 +3 0.7310 0.4855
+1+2 +3 +4 0.7370 0.4868
+1+2 +3 +4 +5 0.7447 0.4957
+1+2 +3 +4 +5+6 0.7455 0.4983
+MST 1+2 0.1957 0.1479
+1+2 +3 0.7246 0.4783
+1+2 +3 +4 0.7280 0.4795
+1+2 +3 +4 +5 0.7340 0.4915
+1+2 +3 +4 +5+6 0.7331 0.4851
+Table 3: Performance Using Coarse-grained Re-
+lations.
+Method Feature types Unlabeled Labeled
+Acc. Acc.
+</table>
+<bodyText confidence="0.9985872">as small as possible, which is subject to constructing the correct dependency tree under consideration with a margin at least as large as the loss of the incorrect dependency trees. We define the loss of a discourse dependency tree (denoted by ) as the number of the EDUs that have incorrect heads. Since there are exponentially many possible incorrect dependency trees and thus exponentially many margin constraints, here we relax the optimization and stay with a single best dependency tree y; ' = DT(T,. , w') which is parsed under the weight vector w'. In this algorithm, the successive updated values of w are accumulated and averaged to avoid overfitting.</bodyText>
+<sectionHeader confidence="0.998887" genericHeader="evaluation and result">
+5 Experiments
+</sectionHeader>
+<subsectionHeader confidence="0.616849">
+5.1 Preparation
+</subsectionHeader>
+<bodyText confidence="0.999506315789474">We test our methods experimentally using the discourse dependency treebank which is built as in Section 2. The training part of the corpus is composed of 342 documents and contains 18,765 EDUs, while the test part consists of 38 documents and 2,346 EDUs. The number of EDUs in each document ranges between 2 and 304. Two sets of relations are adopted. One is composed of 19 relations and Table 1 shows the number of each relation in the training and test corpus. The other is composed of 111 relations. Due to space limitation, Table 2 only lists the 10 highestdistributed relations with regard to their frequency in the training corpus. The following experiments are conducted: (1) to measure the parsing performance with different relation sets and different feature types; (2) to compare our parsing methods with the state-ofthe-art discourse parsing methods.</bodyText>
+<table confidence="0.999402272727273">
+Relations Train Test
+Elaboration 6879 796
+Attribution 2641 343
+Joint 1711 212
+Same-unit 1230 127
+Contrast 944 146
+Explanation 849 110
+Background 786 111
+Cause 785 82
+Evaluation 502 80
+Enablement 500 46
+</table>
+<tableCaption confidence="0.999571">
+Table 1: Coarse-grained Relation Distribution
+</tableCaption>
+<bodyText confidence="0.9980445">Based on the MIRA leaning algorithm, the Eisner algorithm and MST algorithm are used to parse the test documents respectively. Referring to the evaluation of syntactic dependency parsing, we use unlabeled accuracy to calculate the ratio of EDUs that correctly identify their heads, labeled accuracy the ratio of EDUs that have both correct heads and correct relations.</bodyText>
+<table confidence="0.939298181818182">
+Relations Train Test
+Temporal 426 73
+ROOT 342 38
+Compari. 273 29
+Condition 258 48
+Manner. 191 27
+Summary 188 32
+Topic-Cha. 187 13
+Textual 147 9
+TopicCom. 126 24
+Total 18765 2346
+</table>
+<figure confidence="0.962492057142857">
+0.4079
+0.4041
+0.4254
+0.4288
+0.7485
+0.7472
+0.3743
+0.7451
+0.2421
+Eisner
+0.7506
+1+2
+1+2+3
+1+2+3+4
+1+2+3+4+5
+1+2+3+4+5+6
+0.7366
+0.7494
+0.7460
+0.7468
+MST
+0.1300
+0.4054
+0.4071
+0.4288
+0.4309
+0.2080
+1+2
+1+2+3
+1+2+3+4
+1+2+3+4+5
+1+2+3+4+5+6
+Table 4: Performance Using Fine-grained Rela-
+tions.
+30
+</figure>
+<bodyText confidence="0.99971409375">Table 3 and Table 4 show the performance on two relation sets. The numbers (1-6) represent the corresponding feature types described in Section 4.1. From Table 3 and Table 4, we can see that the addition of more feature types, except the 6th feature type (semantic similarity), can promote the performance of relation labeling, whether using the coarse-grained 19 relations and the finegrained 111 relations. As expected, the first and second types of features (WORD and POS) are the ones which play an important role in building and labeling the discourse dependency trees. These two types of features attain similar performance on two relation sets. The Eisner algorithm can achieve unlabeled accuracy around 0.36 and labeled accuracy around 0.26, while MST algorithm achieves unlabeled accuracy around 0.20 and labeled accuracy around 0.14. The third feature type (Position) is also very helpful to discourse parsing. With the addition of this feature type, both unlabeled accuracy and labeled accuracy exhibit a marked increase. Especially, when applying MST algorithm on discourse parsing, unlabeled accuracy rises from around 0.20 to around 0.73. This result is consistent with Hernault’s work (2010b) whose experiments have exhibited the usefulness of those position-related features. The other two types of features which are related to length and syntactic parsing, only promote the performance slightly. As we employed the MIRA learning algorithm, it is possible to identify which specific features are useful, by looking at the weights learned to each feature using the training data. Table 5 selects 10 features with the highest weights in absolute value for the parser which uses the coarsegrained relations, while Table 6 selects the top 10 features for the parser using the fine-grained relations. Each row denotes one feature: the left part before the symbol “&amp;” is from one of the 6 feature types and the right part denotes a specific relation. From Table 5 and Table 6, we can see that some features are reasonable. For example, The sixth feature in Table 5 represents that the dependency relation is preferred to be labeled Explanation with the fact that “because” is the first word of the dependent EDU. From these two tables, we also observe that most of the heavily weighted features are usually related to those highly distributed relations. When using the coarse-grained relations, the popular relations (eg. Elaboration, Attribution and Joint) are always preferred to be labeled. When using the fine-grained relations, the large relations including List and Elaboration-object-attribute-e are given the precedence of labeling. This phenomenon is mainly caused by the sparseness of the training corpus and the imbalance of relations. To solve this problem, the augment of training corpus is necessary.</bodyText>
+<table confidence="0.99947985">
+Feature description Weight
+1 Last two words in dependent EDU are 0.475
+“appeals court” &amp; Joint
+2 First word in dependent EDU is “racked” 0.445
+&amp; Elaboration
+3 First two words in head EDU are “I ‘d” 0.324
+&amp; Attribution
+4 Last word in dependent EDU is “in” -0.323
+&amp; Elaboration
+5 The res_similarity between two EDUs is 0 0.322
+&amp; Elaboration
+6 First word in dependent EDU is “because” 0.306
+&amp; Explanation
+7 First POS in head EDU is “DT” &amp; Joint -0.299
+8 First two words in dependent EDU are “that 0.287
+required” &amp; Elaboration
+9 First two words in dependent EDU are “that 0.277
+the” &amp; Elaboration
+10 First word in dependent EDU is “because” 0.265
+&amp; Cause
+</table>
+<tableCaption confidence="0.966299">
+Table 5: Top 10 Feature Weights for Coarse-
+grained Relation Labeling (Eisner Algorithm)
+</tableCaption>
+<table confidence="0.999920578947368">
+Features Weight
+1 Last two words in dependent EDU are “ap- 0.576
+peals court” &amp; List
+2 First two words in head EDU are “I ‘d” 0.385
+&amp; Attribution
+3 First two words in dependent EDU is “that 0.348
+the” &amp; Elaboration-object-attribute-e
+4 First POS in head EDU is “DT” &amp; List -0.323
+5 Last word in dependent EDU is “in” &amp; List -0.286
+6 First word in dependent EDU is “racked” &amp; 0.445
+Elaboration-object-attribute-e
+7 First two word pairs are &lt;”In an”,”But -0.252
+even”&gt; &amp; List
+8 Dependent EDU has a dominating node -0.244
+tagged “CD”&amp; Elaboration-object-attribute-e
+9 First two words in dependent EDU are “pa- 0.231
+tents disputes” &amp; Purpose
+10 First word in dependent EDU is “to” 0.230
+&amp; Purpose
+</table>
+<tableCaption confidence="0.9313035">
+Table 6: Top 10 Feature Weights for Coarse-
+grained Relation Labeling (Eisner Algorithm)
+</tableCaption>
+<bodyText confidence="0.996478285714286">Unlike previous discourse parsing approaches, our methods combine tree building and relation labeling into a uniform framework naturally. This means that relations play a role in building the dependency tree structure. From Table 3 and Table 4, we can see that fine-grained relations are more helpful to building unlabeled discourse trees more than the coarse-grained relations.</bodyText>
+<page confidence="0.980932">
+31
+</page>
+<bodyText confidence="0.999972458333333">The best result of unlabeled accuracy using 111 relations is 0.7506, better than the best performance (0.7447) using 19 relations. We can also see that the labeled accuracy using the fine-grained relations can achieve 0.4309, only 0.06 lower than the best labeled accuracy (0.4915) using the coarse-grained relations. In addition, comparing the MST algorithm with the Eisner algorithm, Table 3 and Table 4 show that their performances are not significantly different from each other. But we think that MST algorithm has more potential in discourse dependency parsing, because our converted discourse dependency treebank contains only projective trees and somewhat suppresses the MST algorithm to exhibit its advantage of parsing nonprojective trees. In fact, we observe that some non-projective dependencies produced by the MST algorithm are even reasonable than what they are in the dependency treebank. Thus, it is important to build a manually labeled discourse dependency treebank, which will be our future work.</bodyText>
+<subsectionHeader confidence="0.99971">
+5.3 Comparison with Other Systems
+</subsectionHeader>
+<bodyText confidence="0.99965093220339">The state-of-the-art discourse parsing methods normally produce the constituency based discourse trees. To comprehensively evaluate the performance of a labeled constituency tree, the blank tree structure (‘S’), the tree structure with nuclearity indication (‘N’), and the tree structure with rhetorical relation indication but no nuclearity indication (‘R’) are evaluated respectively using the F measure (Marcu 2000). To compare our discourse parsers with others, we adopt MIRA and Eisner algorithm to conduct discourse parsing with all the 6 types of features and then convert the produced projective dependency trees to constituency based trees through their correspondence as stated in Section 2. Our parsers using two relation sets are named Our-coarse and Our-fine respectively. The inputted EDUs of our parsers are from the standard segmentation of RST-DT. Other text-level discourse parsing methods include: (1) Percepcoarse: we replace MIRA with the averaged perceptron learning algorithm and the other settings are the same with Our-coarse; (2) HILDAmanual and HILDA-seg are from Hernault (2010b)’s work, and their inputted EDUs are from RST-DT and their own EDU segmenter respectively; (3) LeThanh indicates the results given by LeThanh el al. (2004), which built a multi-level rule based parser and used 14 relations evaluated on 21 documents from RST-DT; (4) Marcu denotes the results given by Marcu(2000)’s decision-tree based parser which used 15 relations evaluated on unspecified documents. Table 7 shows the performance comparison for all the parsers mentioned above. Human denotes the manual agreement between two human annotators. From this table, we can see that both our parsers perform better than all the other parsers as a whole, though our parsers are not developed directly for constituency based trees. Our parsers do not exhibit obvious advantage than HILDA-manual on labeling the blank tree structure, because our parsers and HILDAmanual all perform over 94% of Human and this performance level somewhat reaches a bottleneck to promote more. However, our parsers outperform the other parsers on both nuclearity and relation labeling. Our-coarse achieves 94.2% and 91.8% of the human F-scores, on labeling nuclearity and relation respectively, while Ourfine achieves 95.2% and 87.6%. We can also see that the averaged perceptron learning algorithm, though simple, can achieve a comparable performance, better than HILDA-manual. The parsers HILDA-seg, LeThanh and Marcu use their own automatic EDU segmenters and exhibit a relatively low performance. This means that EDU segmentation is important to a practical discourse parser and worth further investigation.</bodyText>
+<table confidence="0.999701777777778">
+S N R
+Our-coarse 82.9 73.0 60.6
+Our-fine 83.4 73.8 57.8
+Percep-coarse 82.3 72.6 59.4
+HILDA-manual 83.0 68.4 55.3
+HILDA-seg 72.3 59.1 47.8
+LeThanh 53.7 47.1 39.9
+Marcu 44.8 30.9 18.8
+Human 88.1 77.5 66.0
+</table>
+<tableCaption confidence="0.750877">
+Table 7: Full Parser Evaluation
+</tableCaption>
+<table confidence="0.999276333333333">
+MAFS WAFS Acc
+Our-coarse 0.454 0.643 66.84
+Percep-coarse 0.438 0.633 65.37
+Feng 0.440 0.607 65.30
+HILDA-manual 0.428 0.604 64.18
+Baseline - - 35.82
+</table>
+<tableCaption confidence="0.998389">
+Table 8: Relation Labeling Performance
+</tableCaption>
+<bodyText confidence="0.999940571428571">To further compare the performance of relation labeling, we follow Hernault el al. (2010a) and use Macro-averaged F-score (MAFS) to evaluate each relation. Due to space limitation, we do not list the F scores for each relation. Macro-averaged F-score is not influenced by the number of instances that are contained in each relation.</bodyText>
+<page confidence="0.839219">
+32
+</page>
+<bodyText confidence="0.998873785714286">Weight-averaged F-score (WAFS) weights the performance of each relation by the number of its existing instances. Table 8 compares our parser Our-coarse with other parsers HILDA-manual, Feng (Feng and Hirst, 2012) and Baseline. Feng (Feng and Hirst, 2012) can be seen as a strengthened version of HILDA which adopts more features and conducts feature selection. Baseline always picks the most frequent relation (i.e.Elaboration). From the results, we find that Our-coarse consistently provides superior performance for most relations over other parsers, and therefore results in higher MAFS and WAFS.</bodyText>
+<sectionHeader confidence="0.999966" genericHeader="related work">
+6 Related Work
+</sectionHeader>
+<bodyText confidence="0.999985884615385">So far, the existing discourse parsing techniques are mainly based on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts the predicate-arguments representation by taking an implicit/explicit connective as a predication of two adjacent sentences (arguments). Then the discourse relation between each pair of sentences is annotated independently to characterize its predication. A majority of researches regard discourse parsing as a classification task and mainly focus on exploiting various linguistic features and classifiers when using PDTB (Wellner et al., 2006; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteration. As the extension of Hernault’s work, Feng and Hirst (2012) further explore various features aiming to achieve better performance. However, as analyzed in Section 1, there exist three limitations with the constituency based discourse representation and parsing. We innovatively adopt the dependency structure, which can be benefited from the existing RSTDT, to represent the discourse. To the best of our knowledge, this work is the first to apply dependency structure and dependency parsing techniques in discourse analysis.</bodyText>
+<sectionHeader confidence="0.99907" genericHeader="conclusion">
+7 Conclusions
+</sectionHeader>
+<bodyText confidence="0.999988576923077">In this paper, we present the benefits and feasibility of applying dependency structure in textlevel discourse parsing. Through the correspondence between constituency-based trees and dependency trees, we build a discourse dependency treebank by converting the existing RST-DT. Based on dependency structure, we are able to directly analyze the relations between the EDUs without worrying about the additional interior text spans, and apply the existing state-of-the-art dependency parsing techniques which have a relatively low time complexity. In our work, we use the graph based dependency parsing techniques learned from the annotated dependency trees. The Eisner algorithm and the MST algorithm are applied to parse the optimal projective and non-projective dependency trees respectively based on the arc-factored model. To calculate the score for each arc, six types of features are explored to represent the arcs and the feature weights are learned based on the MIRA learning technique. Experimental results exhibit the effectiveness of the proposed approaches. In the future, we will focus on non-projective discourse dependency parsing and explore more effective features.</bodyText>
+<sectionHeader confidence="0.998817" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.846623333333333">This work was partially supported by National High Technology Research and Development Program of China (No. 2012AA011101), National Key Basic Research Program of China (No. 2014CB340504), National Natural Science Foundation of China (No. 61273278), and National Key Technology R&amp;D Program (No: 2011BAH10B04-03). We also thank the three anonymous reviewers for their helpful comments.</bodyText>
+<page confidence="0.933702">
+33
+</page>
+<sectionHeader confidence="0.997955" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999912618556701">
+Jason Baldridge and Alex Lascarides. 2005. Probabil-
+istic Head-driven Parsing for Discourse Structure.
+In Proceedings of the Ninth Conference on Com-
+putational Natural Language Learning, pages 96–
+103.
+Steven Bird, Ewan Klein, and Edward Loper. 2009.
+Natural Language Processing with Python — Ana-
+lyzing Text with the Natural Language Toolkit.
+O’Reilly.
+Lynn Carlson, Daniel Marcu, and Mary E. Okurowski.
+2001. Building a Discourse-tagged Corpus in the
+Framework of Rhetorical Structure Theory. Pro-
+ceedings of the Second SIGdial Workshop on Dis-
+course and Dialogue-Volume 16, pages 1–10.
+Yoeng-Jin Chu and Tseng-Hong Liu. 1965. On the
+Shortest Arborescence of a Directed Graph, Sci-
+ence Sinica, v.14, pp.1396-1400.
+Koby Crammer and Yoram Singer. 2003. Ultracon-
+servative Online Algorithms for Multiclass Prob-
+lems. JMLR.
+Jack Edmonds. 1967. Optimum Branchings, J. Re-
+search of the National Bureau of Standards, 71B,
+pp.233-240.
+Jason Eisner. 1996. Three New Probabilistic Models
+for Dependency Parsing: An Exploration. In Proc.
+COLING.
+Vanessa Wei Feng and Graeme Hirst. Text-level Dis-
+course Parsing with Rich Linguistic Features, Pro-
+ceedings of the 50th Annual Meeting of the
+Association for Computational Linguistics, pages
+60–68, Jeju, Republic of Korea, 8-14 July 2012.
+Hugo Hernault, Danushka Bollegala, and Mitsuru
+Ishizuka. 2010a. A Semi-supervised Approach to
+Improve Classification of Infrequent Discourse Re-
+lations Using Feature Vector Extension. In Pro-
+ceedings of the 2010 Conference on Empirical
+Methods in Natural Language Processing, pages
+399–409, Cambridge, MA, October. Association
+for Computational Linguistics.
+Hugo Hernault, Helmut Prendinger, David A. duVerle,
+and Mitsuru Ishizuka. 2010b. HILDA: A Discourse
+Parser Using Support Vector Machine Classifica-
+tion. Dialogue and Discourse, 1(3):1–33.
+Shafiq Joty, Giuseppe Carenini and Raymond T. Ng.
+A Novel Discriminative Framework for Sentence-
+level Discourse Analysis. EMNLP-CoNLL '12
+Proceedings of the 2012 Joint Conference on Em-
+pirical Methods in Natural Language Processing
+and Computational Natural Language Learning
+Stroudsburg, PA, USA.
+Huong LeThanh, Geetha Abeysinghe, and Christian
+Huyck. 2004. Generating Discourse Structures for
+Written Texts. In Proceedings of the 20th Interna-
+tional Conference on Computational Linguistics,
+pages 329– 335.
+Ziheng Lin, Min-Yen Kan, and Hwee Tou Ng. 2009.
+Recognizing Implicit Discourse Relations in the
+Penn Discourse Treebank. In Proceedings of the
+2009 Conference on Empirical Method in Natural
+Language Processing, Vol. 1, EMNLP’09, pages
+343-351.
+William Mann and Sandra Thompson. 1988. Rhetori-
+cal Structure Theory: Toward a Functional Theory
+of Text Organization. Text, 8(3):243–281.
+Daniel Marcu. 2000. The Theory and Practice of Dis-
+course Parsing and Summarization. MIT Press,
+Cambridge, MA, USA.
+Ryan McDonald, Koby Crammer, and Fernando Pe-
+reira. 2005a. Online Large-Margin Training of De-
+pendency Parsers, 43rd Annual Meeting of the
+Association for Computational Linguistics (ACL
+2005) .
+Ryan McDonald, Fernando Pereira, Kiril Ribarov, and
+Jan Hajic. 2005b. Non-projective Dependency
+Parsing using Spanning Tree Algorithms, Proceed-
+ings of HLT/EMNLP 2005.
+Emily Pitler, Annie Louis, and Ani Nenkova. 2009.
+Automatic Sense Prediction for Implicit Discourse
+Relations in Text, In Proc. of the 47th ACL. pages
+683-691.
+Rashmi Prasad, Eleni Miltsakaki, Nikhil Dinesh, Alan
+Lee, Aravind Joshi, Livio Robaldo, and Bonnie
+Webber. 2007. The Penn Discourse Treebank 2.0
+Annotation Manual. The PDTB Research Group,
+December.
+David Reitter. 2003. Simple Signals for Complex
+Rhetorics: On Rhetorical Analysis with Rich-
+feature Support Vector Models. LDV Forum,
+18(1/2):38–52.
+Kenji Sagae. 2009. Analysis of discourse structure
+with syntactic dependencies and data-driven shift-
+reduce parsing. In Proceedings of the 11th Interna-
+tional Conference on Parsing Technologies, pages
+81-84.
+Radu Soricut and Daniel Marcu. 2003. Sentence level
+discourse parsing using syntactic and lexical in-
+formation. In Proceedings of the 2003 Conference
+</reference>
+<page confidence="0.706649">
+34
+</page>
+<reference confidence="0.999708615384616">
+of the North American Chapter of the Association
+for Computational Linguistics on Human Lan-
+guage Technology, Volume 1, pages 149–156.
+Rajen Subba and Barbara Di Eugenio. 2009. An effec-
+tive discourse parser that uses rich linguistic in-
+formation. In Proceedings of Human Language
+Technologies: The 2009 Annual Conference of the
+North American Chapter of the Association for
+Computational Linguistics, pages 566–574.
+Robert Endre Tarjan, 1977. Finding Optimum
+Branchings, Networks, v.7, pp.25-35.
+Ben Taskar, Carlos Guestrin and Daphne Koller. 2003.
+Max-margin Markov Networks. In Proc. NIPS.
+Bonnie Webber. 2004. D-LTAG: Extending Lexical-
+ized TAG to Discourse. Cognitive Science,
+28(5):751–779.
+Wen Ting Wang, Jian Su and Chew Lim Tan. 2010.
+Kernel based Discourse Relation Recognition with
+Temporal Ordering Information, In Proc. of
+ACL’10. pages 710-719.
+Ben Wellner, James Pustejovsky, Catherine Havasi,
+Anna Rumshisky and Roser Sauri. 2006. Classifi-
+cation of Discourse Coherence Relations: an Ex-
+ploratory Study Using Multiple Knowledge
+Sources. In Proc.of the 7th SIGDIAL Workshop on
+Discourse and Dialogue. pages 117-125.
+</reference>
+<page confidence="0.952879">
+35
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.724654" no="0">
+<title confidence="0.999223">Text-level Discourse Dependency Parsing</title>
+<author confidence="0.939303">Liang Ziqiang Wenjie</author>
+<affiliation confidence="0.8943625">Laboratory of Computational Linguistics, Peking University, MOE, China of Computing, The Hong Kong Polytechnic University,</affiliation>
+<email confidence="0.990753">cswjli@comp.polyu.edu.hk</email>
+<abstract confidence="0.996584210526316">Previous researches on Text-level discourse parsing mainly made use of constituency structure to parse the whole document into one discourse tree. In this paper, we present the limitations of constituency based discourse parsing and first propose to use dependency structure to directly represent the relations between elementary discourse units (EDUs). The state-of-the-art dependency parsing techniques, the Eisner algorithm and maximum spanning tree (MST) algorithm, are adopted to parse an optimal discourse dependency tree based on the arcfactored model and the large-margin learning techniques. Experiments show that our discourse dependency parsers achieve a competitive performance on text-level discourse parsing.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Jason Baldridge</author>
+<author>Alex Lascarides</author>
+</authors>
+<title>Probabilistic Head-driven Parsing for Discourse Structure.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Ninth Conference on Computational Natural Language Learning,</booktitle>
+<pages>96--103</pages>
+<contexts>
+<context citStr="Baldridge and Lascarides, 2005" endWordPosition="419" position="2823" startWordPosition="416">otated as either nucleus or satellite depending on how salient they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the </context>
+<context citStr="Baldridge and Lascarides, 2005" endWordPosition="5858" position="35379" startWordPosition="5855">ang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteratio</context>
+</contexts>
+<marker>Baldridge, Lascarides, 2005</marker>
+<rawString>Jason Baldridge and Alex Lascarides. 2005. Probabilistic Head-driven Parsing for Discourse Structure. In Proceedings of the Ninth Conference on Computational Natural Language Learning, pages 96– 103.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Steven Bird</author>
+<author>Ewan Klein</author>
+<author>Edward Loper</author>
+</authors>
+<date>2009</date>
+<booktitle>Natural Language Processing with Python — Analyzing Text with the Natural Language Toolkit. O’Reilly.</booktitle>
+<marker>Bird, Klein, Loper, 2009</marker>
+<rawString>Steven Bird, Ewan Klein, and Edward Loper. 2009. Natural Language Processing with Python — Analyzing Text with the Natural Language Toolkit. O’Reilly.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lynn Carlson</author>
+<author>Daniel Marcu</author>
+<author>Mary E Okurowski</author>
+</authors>
+<title>Building a Discourse-tagged Corpus in the Framework of Rhetorical Structure Theory.</title>
+<date>2001</date>
+<booktitle>Proceedings of the Second SIGdial Workshop on Discourse and Dialogue-Volume 16,</booktitle>
+<pages>1--10</pages>
+<contexts>
+<context citStr="Carlson et al., 2001" endWordPosition="1407" position="8658" startWordPosition="1404">nly one head and the fourth tells that only one kind of dependency relation holds between two EDUs. According to the definition, we illustrate all the 9 possible unlabeled dependency trees for a text containing three EDUs in Figure 2. The dependency trees 1’ to 7’ are projective while 8’ and 9’ are non-projective with crossing arcs. 2.2 Our Discourse Dependency Treebank To automatically conduct discourse dependency parsing, constructing a discourse dependency treebank is fundamental. It is costly to manually construct such a treebank from scratch. Fortunately, RST Discourse Treebank (RST-DT) (Carlson et al., 2001) is an available resource to help with. A RST tree constitutes a hierarchical structure for one document through rhetorical relations. A total of 110 fine-grained relations (e.g. Elaboration-part-whole and List) were used for tagging RST-DT. They can be categorized into 18 classes (e.g. Elaboration and Joint). All these relations can be hypotactic (“mononuclear”) or paratactic (“multi-nuclear”). A hypotactic relation holds between a nucleus span and an adjacent satellite span, while a paratactic relation connects two or more equally important adjacent nucleus spans. For convenience of computat</context>
+</contexts>
+<marker>Carlson, Marcu, Okurowski, 2001</marker>
+<rawString>Lynn Carlson, Daniel Marcu, and Mary E. Okurowski. 2001. Building a Discourse-tagged Corpus in the Framework of Rhetorical Structure Theory. Proceedings of the Second SIGdial Workshop on Discourse and Dialogue-Volume 16, pages 1–10.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yoeng-Jin Chu</author>
+<author>Tseng-Hong Liu</author>
+</authors>
+<title>On the Shortest Arborescence of a Directed Graph, Science Sinica,</title>
+<date>1965</date>
+<volume>14</volume>
+<pages>1396--1400</pages>
+<contexts>
+<context citStr="Chu and Liu (1965)" endWordPosition="2591" position="15457" startWordPosition="2588">3: Eisner Algorithm Figure 3 shows the pseudo-code of the Eisner algorithm. A dynamic programming table E[i,j,d,c] is used to represent the highest scored subtree spanning ei to ej. d indicates whether ei is the head (d=1) or ej is head (d=0). c indicates whether the subtree will not take any more dependents (c=1) or it needs to be completed (c=0). The algorithm begins by initializing all lengthone subtrees to a score of 0.0. In the inner loop, the first two steps (Lines 7 and 8) are to construct the new dependency arcs by taking the maximum Figure 4: Pictorial Diagram of Non-projective Trees Chu and Liu (1965) and Edmonds (1967) independently proposed the virtually identical algorithm named the Chu-Liu/Edmonds algorithm, for finding MSTs on directed graphs (McDonald et al. 2005b). Figure 5 shows the details of the Chu-Liu/Edmonds algorithm for discourse parsing. Each node in the graph greedily selects the incoming arc with the highest score. If one tree results, the algorithm ends. Otherwise, there must exist a cycle. The algorithm contracts the identified cycle into a single node and recalculates the scores of the arcs which go in and out of the cycle. Next, the algorithm recursively call itself o</context>
+</contexts>
+<marker>Chu, Liu, 1965</marker>
+<rawString>Yoeng-Jin Chu and Tseng-Hong Liu. 1965. On the Shortest Arborescence of a Directed Graph, Science Sinica, v.14, pp.1396-1400.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Koby Crammer</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Ultraconservative Online Algorithms for Multiclass Problems.</title>
+<date>2003</date>
+<publisher>JMLR.</publisher>
+<contexts>
+<context citStr="Crammer and Singer, 2003" endWordPosition="790" position="5233" startWordPosition="787">elatively low computational complexity. Moreover, concerning linearization, it is well known that dependency structures can deal with non-projective relations, while constituency-based models need the addition of complex mechanisms like transformations, movements and so on. In our work, we adopt the graph based dependency parsing techniques learned from large sets of annotated dependency trees. The Eisner (1996) algorithm and maximum spanning tree (MST) algorithm are used respectively to parse the optimal projective and non-projective dependency trees with the large-margin learning technique (Crammer and Singer, 2003). To the best of our knowledge, we are the first to apply the dependency structure and introduce the dependency parsing techniques into discourse analysis. The rest of this paper is organized as follows. Section 2 formally defines discourse dependency structure and introduces how to build a discourse dependency treebank from the existing RST corpus. Section 3 presents the discourse parsing approach based on the Eisner and MST algorithms. Section 4 elaborates on the large-margin learning technique as well as the features we use. Section 5 discusses the experimental results. Section 6 introduces</context>
+</contexts>
+<marker>Crammer, Singer, 2003</marker>
+<rawString>Koby Crammer and Yoram Singer. 2003. Ultraconservative Online Algorithms for Multiclass Problems. JMLR.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jack Edmonds</author>
+</authors>
+<title>Optimum Branchings,</title>
+<date>1967</date>
+<journal>J. Research of the National Bureau of Standards,</journal>
+<volume>71</volume>
+<pages>233--240</pages>
+<contexts>
+<context citStr="Edmonds (1967)" endWordPosition="2594" position="15476" startWordPosition="2593">ure 3 shows the pseudo-code of the Eisner algorithm. A dynamic programming table E[i,j,d,c] is used to represent the highest scored subtree spanning ei to ej. d indicates whether ei is the head (d=1) or ej is head (d=0). c indicates whether the subtree will not take any more dependents (c=1) or it needs to be completed (c=0). The algorithm begins by initializing all lengthone subtrees to a score of 0.0. In the inner loop, the first two steps (Lines 7 and 8) are to construct the new dependency arcs by taking the maximum Figure 4: Pictorial Diagram of Non-projective Trees Chu and Liu (1965) and Edmonds (1967) independently proposed the virtually identical algorithm named the Chu-Liu/Edmonds algorithm, for finding MSTs on directed graphs (McDonald et al. 2005b). Figure 5 shows the details of the Chu-Liu/Edmonds algorithm for discourse parsing. Each node in the graph greedily selects the incoming arc with the highest score. If one tree results, the algorithm ends. Otherwise, there must exist a cycle. The algorithm contracts the identified cycle into a single node and recalculates the scores of the arcs which go in and out of the cycle. Next, the algorithm recursively call itself on the contracted gr</context>
+</contexts>
+<marker>Edmonds, 1967</marker>
+<rawString>Jack Edmonds. 1967. Optimum Branchings, J. Research of the National Bureau of Standards, 71B, pp.233-240.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jason Eisner</author>
+</authors>
+<title>Three New Probabilistic Models for Dependency Parsing: An Exploration. In</title>
+<date>1996</date>
+<booktitle>Proc. COLING.</booktitle>
+<contexts>
+<context citStr="Eisner (1996)" endWordPosition="761" position="5023" startWordPosition="760">out worrying about any interior text spans. Since dependency trees contain much fewer nodes and on average they are simpler than constituency based trees, the current dependency parsers can have a relatively low computational complexity. Moreover, concerning linearization, it is well known that dependency structures can deal with non-projective relations, while constituency-based models need the addition of complex mechanisms like transformations, movements and so on. In our work, we adopt the graph based dependency parsing techniques learned from large sets of annotated dependency trees. The Eisner (1996) algorithm and maximum spanning tree (MST) algorithm are used respectively to parse the optimal projective and non-projective dependency trees with the large-margin learning technique (Crammer and Singer, 2003). To the best of our knowledge, we are the first to apply the dependency structure and introduce the dependency parsing techniques into discourse analysis. The rest of this paper is organized as follows. Section 2 formally defines discourse dependency structure and introduces how to build a discourse dependency treebank from the existing RST corpus. Section 3 presents the discourse parsi</context>
+</contexts>
+<marker>Eisner, 1996</marker>
+<rawString>Jason Eisner. 1996. Three New Probabilistic Models for Dependency Parsing: An Exploration. In Proc. COLING.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vanessa Wei Feng</author>
+<author>Graeme Hirst</author>
+</authors>
+<title>Text-level Discourse Parsing with Rich Linguistic Features,</title>
+<date>2012</date>
+<booktitle>Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>60--68</pages>
+<location>Jeju, Republic of</location>
+<contexts>
+<context citStr="Feng and Hirst, 2012" endWordPosition="434" position="2911" startWordPosition="431"> attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the time complexity of the state-of-the-art constituency based parsing techniques, the appro</context>
+<context citStr="Feng and Hirst, 2012" endWordPosition="2992" position="17815" startWordPosition="2989">j)+score(C) 9 Return &lt;GC, ep&gt; Figure 5: Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where </context>
+<context citStr="Feng and Hirst, 2012" endWordPosition="5594" position="33681" startWordPosition="5591">28 0.604 64.18 Baseline - - 35.82 Table 8: Relation Labeling Performance To further compare the performance of relation labeling, we follow Hernault el al. (2010a) and use Macro-averaged F-score (MAFS) to evaluate each relation. Due to space limitation, we do not list the F scores for each relation. Macro-averaged F-score is not influenced by the number of instances that are contained in each 32 relation. Weight-averaged F-score (WAFS) weights the performance of each relation by the number of its existing instances. Table 8 compares our parser Our-coarse with other parsers HILDA-manual, Feng (Feng and Hirst, 2012) and Baseline. Feng (Feng and Hirst, 2012) can be seen as a strengthened version of HILDA which adopts more features and conducts feature selection. Baseline always picks the most frequent relation (i.e. Elaboration). From the results, we find that Our-coarse consistently provides superior performance for most relations over other parsers, and therefore results in higher MAFS and WAFS. 6 Related Work So far, the existing discourse parsing techniques are mainly based on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts</context>
+<context citStr="Feng and Hirst, 2012" endWordPosition="5868" position="35439" startWordPosition="5865">itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteration. As the extension of Hernault’s work, Feng and Hirst (2012</context>
+</contexts>
+<marker>Feng, Hirst, 2012</marker>
+<rawString>Vanessa Wei Feng and Graeme Hirst. Text-level Discourse Parsing with Rich Linguistic Features, Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics, pages 60–68, Jeju, Republic of Korea, 8-14 July 2012.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hugo Hernault</author>
+<author>Danushka Bollegala</author>
+<author>Mitsuru Ishizuka</author>
+</authors>
+<title>A Semi-supervised Approach to Improve Classification of Infrequent Discourse Relations Using Feature Vector Extension.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>399--409</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Cambridge, MA,</location>
+<contexts>
+<context citStr="Hernault et al., 2010" endWordPosition="430" position="2887" startWordPosition="427">or interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the time complexity of the state-of-the-art constituency based parsi</context>
+<context citStr="Hernault et al., 2010" endWordPosition="3000" position="17856" startWordPosition="2997">Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where the two EDUs are located in one sentence,</context>
+<context citStr="Hernault et al., 2010" endWordPosition="5864" position="35415" startWordPosition="5861">ments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteration. As the extension of Hernault’s wo</context>
+</contexts>
+<marker>Hernault, Bollegala, Ishizuka, 2010</marker>
+<rawString>Hugo Hernault, Danushka Bollegala, and Mitsuru Ishizuka. 2010a. A Semi-supervised Approach to Improve Classification of Infrequent Discourse Relations Using Feature Vector Extension. In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing, pages 399–409, Cambridge, MA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hugo Hernault</author>
+<author>Helmut Prendinger</author>
+<author>David A duVerle</author>
+<author>Mitsuru Ishizuka</author>
+</authors>
+<title>HILDA: A Discourse Parser Using Support Vector Machine Classification. Dialogue and Discourse,</title>
+<date>2010</date>
+<contexts>
+<context citStr="Hernault et al., 2010" endWordPosition="430" position="2887" startWordPosition="427">or interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the time complexity of the state-of-the-art constituency based parsi</context>
+<context citStr="Hernault et al., 2010" endWordPosition="3000" position="17856" startWordPosition="2997">Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where the two EDUs are located in one sentence,</context>
+<context citStr="Hernault et al., 2010" endWordPosition="5864" position="35415" startWordPosition="5861">ments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteration. As the extension of Hernault’s wo</context>
+</contexts>
+<marker>Hernault, Prendinger, duVerle, Ishizuka, 2010</marker>
+<rawString>Hugo Hernault, Helmut Prendinger, David A. duVerle, and Mitsuru Ishizuka. 2010b. HILDA: A Discourse Parser Using Support Vector Machine Classification. Dialogue and Discourse, 1(3):1–33.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Shafiq Joty</author>
+<author>Giuseppe Carenini</author>
+<author>Raymond T Ng</author>
+</authors>
+<title>A Novel Discriminative Framework for Sentencelevel Discourse Analysis. EMNLP-CoNLL '12</title>
+<booktitle>Proceedings of the 2012 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning</booktitle>
+<location>Stroudsburg, PA, USA.</location>
+<marker>Joty, Carenini, Ng, </marker>
+<rawString>Shafiq Joty, Giuseppe Carenini and Raymond T. Ng. A Novel Discriminative Framework for Sentencelevel Discourse Analysis. EMNLP-CoNLL '12 Proceedings of the 2012 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning Stroudsburg, PA, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Huong LeThanh</author>
+<author>Geetha Abeysinghe</author>
+<author>Christian Huyck</author>
+</authors>
+<title>Generating Discourse Structures for Written Texts.</title>
+<date>2004</date>
+<booktitle>In Proceedings of the 20th International Conference on Computational Linguistics,</booktitle>
+<pages>329--335</pages>
+<contexts>
+<context citStr="LeThanh et al., 2004" endWordPosition="415" position="2791" startWordPosition="412">ical relations are annotated as either nucleus or satellite depending on how salient they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard t</context>
+</contexts>
+<marker>LeThanh, Abeysinghe, Huyck, 2004</marker>
+<rawString>Huong LeThanh, Geetha Abeysinghe, and Christian Huyck. 2004. Generating Discourse Structures for Written Texts. In Proceedings of the 20th International Conference on Computational Linguistics, pages 329– 335.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ziheng Lin</author>
+<author>Min-Yen Kan</author>
+<author>Hwee Tou Ng</author>
+</authors>
+<title>Recognizing Implicit Discourse Relations in the Penn Discourse Treebank.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 2009 Conference on Empirical Method in Natural Language Processing,</booktitle>
+<volume>1</volume>
+<pages>343--351</pages>
+<contexts>
+<context citStr="Lin et al., 2009" endWordPosition="2996" position="17833" startWordPosition="2993">GC, ep&gt; Figure 5: Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where the two EDUs are l</context>
+</contexts>
+<marker>Lin, Kan, Ng, 2009</marker>
+<rawString>Ziheng Lin, Min-Yen Kan, and Hwee Tou Ng. 2009. Recognizing Implicit Discourse Relations in the Penn Discourse Treebank. In Proceedings of the 2009 Conference on Empirical Method in Natural Language Processing, Vol. 1, EMNLP’09, pages 343-351.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>William Mann</author>
+<author>Sandra Thompson</author>
+</authors>
+<title>Rhetorical Structure Theory: Toward a Functional Theory of Text Organization.</title>
+<date>1988</date>
+<tech>Text, 8(3):243–281.</tech>
+<contexts>
+<context citStr="Mann and Thompson, 1988" endWordPosition="214" position="1519" startWordPosition="211">learning techniques. Experiments show that our discourse dependency parsers achieve a competitive performance on text-level discourse parsing. 1 Introduction It is widely agreed that no units of the text can be understood in isolation, but in relation to their context. Researches in discourse parsing aim to acquire such relations in text, which is fundamental to many natural language processing applications such as question answering, automatic summarization and so on. One important issue behind discourse parsing is the representation of discourse structure. Rhetorical Structure Theory (RST) (Mann and Thompson, 1988), one of the most influential discourse theories, posits a hierarchical generative tree representation, as illustrated in Figure 1. The leaves of a tree correspond to contiguous text spans called Elementary Discourse Units (EDUs)1. The adjacent EDUs are combined into 1 EDU segmentation is a relatively trivial step in discourse parsing. Since our work focus here is not EDU segmentation but discourse parsing. We assume EDUs are already known. the larger text spans by rhetorical relations (e.g., Contrast and Elaboration) and the larger text spans continue to be combined until the whole text const</context>
+</contexts>
+<marker>Mann, Thompson, 1988</marker>
+<rawString>William Mann and Sandra Thompson. 1988. Rhetorical Structure Theory: Toward a Functional Theory of Text Organization. Text, 8(3):243–281.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+</authors>
+<title>The Theory and Practice of Discourse Parsing and Summarization.</title>
+<date>2000</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, MA, USA.</location>
+<contexts>
+<context citStr="Marcu 2000" endWordPosition="5085" position="30438" startWordPosition="5084">than what they are in the dependency treebank. Thus, it is important to build a manually labeled discourse dependency treebank, which will be our future work. 5.3 Comparison with Other Systems The state-of-the-art discourse parsing methods normally produce the constituency based discourse trees. To comprehensively evaluate the performance of a labeled constituency tree, the blank tree structure (‘S’), the tree structure with nuclearity indication (‘N’), and the tree structure with rhetorical relation indication but no nuclearity indication (‘R’) are evaluated respectively using the F measure (Marcu 2000). To compare our discourse parsers with others, we adopt MIRA and Eisner algorithm to conduct discourse parsing with all the 6 types of features and then convert the produced projective dependency trees to constituency based trees through their correspondence as stated in Section 2. Our parsers using two relation sets are named Our-coarse and Our-fine respectively. The inputted EDUs of our parsers are from the standard segmentation of RST-DT. Other text-level discourse parsing methods include: (1) Percepcoarse: we replace MIRA with the averaged perceptron learning algorithm and the other setti</context>
+</contexts>
+<marker>Marcu, 2000</marker>
+<rawString>Daniel Marcu. 2000. The Theory and Practice of Discourse Parsing and Summarization. MIT Press, Cambridge, MA, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ryan McDonald</author>
+<author>Koby Crammer</author>
+<author>Fernando Pereira</author>
+</authors>
+<date>2005</date>
+<booktitle>2005a. Online Large-Margin Training of Dependency Parsers, 43rd Annual Meeting of the Association for Computational Linguistics (ACL</booktitle>
+<pages>.</pages>
+<contexts>
+<context citStr="McDonald et al. 2005" endWordPosition="2616" position="15628" startWordPosition="2613">ng ei to ej. d indicates whether ei is the head (d=1) or ej is head (d=0). c indicates whether the subtree will not take any more dependents (c=1) or it needs to be completed (c=0). The algorithm begins by initializing all lengthone subtrees to a score of 0.0. In the inner loop, the first two steps (Lines 7 and 8) are to construct the new dependency arcs by taking the maximum Figure 4: Pictorial Diagram of Non-projective Trees Chu and Liu (1965) and Edmonds (1967) independently proposed the virtually identical algorithm named the Chu-Liu/Edmonds algorithm, for finding MSTs on directed graphs (McDonald et al. 2005b). Figure 5 shows the details of the Chu-Liu/Edmonds algorithm for discourse parsing. Each node in the graph greedily selects the incoming arc with the highest score. If one tree results, the algorithm ends. Otherwise, there must exist a cycle. The algorithm contracts the identified cycle into a single node and recalculates the scores of the arcs which go in and out of the cycle. Next, the algorithm recursively call itself on the contracted graph. Finally, those arcs which go in or out of one cycle will recover themselves to connect with the original nodes in V. Like McDonald et al. (2005b), </context>
+<context citStr="McDonald et al. (2005" endWordPosition="2949" position="17533" startWordPosition="2946"> to GC denoting the cycle C 3 For ej eV-C : 3eieC &lt;ei,ej&gt;eA 4 Add arc &lt;eC,ej&gt; to GC with ep(eC,ej)=argmaxeiecA(ei,ej) 5 A(eC,ej) = A(ep(eC,ej),ej) 6 For ei eV-C: 3ejeC (ei,ej)eA 7 Add arc &lt;ei,eC&gt; to GC with ep(ei,eC)= =argmaxeiec [A(ei,ej)-A(a(ei),ej)] 8 A(ei,eC) =A(ei,ej)-A(a(ei),ej)+score(C) 9 Return &lt;GC, ep&gt; Figure 5: Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two ED</context>
+</contexts>
+<marker>McDonald, Crammer, Pereira, 2005</marker>
+<rawString>Ryan McDonald, Koby Crammer, and Fernando Pereira. 2005a. Online Large-Margin Training of Dependency Parsers, 43rd Annual Meeting of the Association for Computational Linguistics (ACL 2005) .</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ryan McDonald</author>
+<author>Fernando Pereira</author>
+<author>Kiril Ribarov</author>
+<author>Jan Hajic</author>
+</authors>
+<title>Non-projective Dependency Parsing using Spanning Tree Algorithms,</title>
+<date>2005</date>
+<booktitle>Proceedings of HLT/EMNLP</booktitle>
+<contexts>
+<context citStr="McDonald et al. 2005" endWordPosition="2616" position="15628" startWordPosition="2613">ng ei to ej. d indicates whether ei is the head (d=1) or ej is head (d=0). c indicates whether the subtree will not take any more dependents (c=1) or it needs to be completed (c=0). The algorithm begins by initializing all lengthone subtrees to a score of 0.0. In the inner loop, the first two steps (Lines 7 and 8) are to construct the new dependency arcs by taking the maximum Figure 4: Pictorial Diagram of Non-projective Trees Chu and Liu (1965) and Edmonds (1967) independently proposed the virtually identical algorithm named the Chu-Liu/Edmonds algorithm, for finding MSTs on directed graphs (McDonald et al. 2005b). Figure 5 shows the details of the Chu-Liu/Edmonds algorithm for discourse parsing. Each node in the graph greedily selects the incoming arc with the highest score. If one tree results, the algorithm ends. Otherwise, there must exist a cycle. The algorithm contracts the identified cycle into a single node and recalculates the scores of the arcs which go in and out of the cycle. Next, the algorithm recursively call itself on the contracted graph. Finally, those arcs which go in or out of one cycle will recover themselves to connect with the original nodes in V. Like McDonald et al. (2005b), </context>
+<context citStr="McDonald et al. (2005" endWordPosition="2949" position="17533" startWordPosition="2946"> to GC denoting the cycle C 3 For ej eV-C : 3eieC &lt;ei,ej&gt;eA 4 Add arc &lt;eC,ej&gt; to GC with ep(eC,ej)=argmaxeiecA(ei,ej) 5 A(eC,ej) = A(ep(eC,ej),ej) 6 For ei eV-C: 3ejeC (ei,ej)eA 7 Add arc &lt;ei,eC&gt; to GC with ep(ei,eC)= =argmaxeiec [A(ei,ej)-A(a(ei),ej)] 8 A(ei,eC) =A(ei,ej)-A(a(ei),ej)+score(C) 9 Return &lt;GC, ep&gt; Figure 5: Chu-Liu/Edmonds MST Algorithm 4 Learning In Section 3, we assume that the arc scores are available. In fact, the score of each arc is calculated as a linear combination of feature weights. Thus, we need to determine the features for arc representation first. With referring to McDonald et al. (2005a; 2005b), we use the Margin Infused Relaxed Algorithm (MIRA) to learn the feature weights based on a training set of documents annotated with dependency structures{(T,.,y,)}1 where yi denotes the correct dependency tree for the text Ti. 4.1 Features Following (Feng and Hirst, 2012; Lin et al., 2009; Hernault et al., 2010b), we explore the following 6 feature types combined with relations to represent each labeled arc &lt;ei, r, ej&gt; . (1) WORD: The first one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two ED</context>
+</contexts>
+<marker>McDonald, Pereira, Ribarov, Hajic, 2005</marker>
+<rawString>Ryan McDonald, Fernando Pereira, Kiril Ribarov, and Jan Hajic. 2005b. Non-projective Dependency Parsing using Spanning Tree Algorithms, Proceedings of HLT/EMNLP 2005.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Emily Pitler</author>
+<author>Annie Louis</author>
+<author>Ani Nenkova</author>
+</authors>
+<title>Automatic Sense Prediction for Implicit Discourse Relations in Text,</title>
+<date>2009</date>
+<booktitle>In Proc. of the 47th ACL.</booktitle>
+<pages>683--691</pages>
+<contexts>
+<context citStr="Pitler et al., 2009" endWordPosition="5756" position="34746" startWordPosition="5753">hniques are mainly based on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts the predicate-arguments representation by taking an implicit/explicit connective as a predication of two adjacent sentences (arguments). Then the discourse relation between each pair of sentences is annotated independently to characterize its predication. A majority of researches regard discourse parsing as a classification task and mainly focus on exploiting various linguistic features and classifiers when using PDTB (Wellner et al., 2006; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 200</context>
+</contexts>
+<marker>Pitler, Louis, Nenkova, 2009</marker>
+<rawString>Emily Pitler, Annie Louis, and Ani Nenkova. 2009. Automatic Sense Prediction for Implicit Discourse Relations in Text, In Proc. of the 47th ACL. pages 683-691.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rashmi Prasad</author>
+<author>Eleni Miltsakaki</author>
+<author>Nikhil Dinesh</author>
+<author>Alan Lee</author>
+<author>Aravind Joshi</author>
+<author>Livio Robaldo</author>
+<author>Bonnie Webber</author>
+</authors>
+<date>2007</date>
+<booktitle>The Penn Discourse Treebank 2.0 Annotation Manual. The PDTB Research Group,</booktitle>
+<contexts>
+<context citStr="Prasad et al., 2007" endWordPosition="5681" position="34244" startWordPosition="5678">h other parsers HILDA-manual, Feng (Feng and Hirst, 2012) and Baseline. Feng (Feng and Hirst, 2012) can be seen as a strengthened version of HILDA which adopts more features and conducts feature selection. Baseline always picks the most frequent relation (i.e. Elaboration). From the results, we find that Our-coarse consistently provides superior performance for most relations over other parsers, and therefore results in higher MAFS and WAFS. 6 Related Work So far, the existing discourse parsing techniques are mainly based on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts the predicate-arguments representation by taking an implicit/explicit connective as a predication of two adjacent sentences (arguments). Then the discourse relation between each pair of sentences is annotated independently to characterize its predication. A majority of researches regard discourse parsing as a classification task and mainly focus on exploiting various linguistic features and classifiers when using PDTB (Wellner et al., 2006; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitati</context>
+</contexts>
+<marker>Prasad, Miltsakaki, Dinesh, Lee, Joshi, Robaldo, Webber, 2007</marker>
+<rawString>Rashmi Prasad, Eleni Miltsakaki, Nikhil Dinesh, Alan Lee, Aravind Joshi, Livio Robaldo, and Bonnie Webber. 2007. The Penn Discourse Treebank 2.0 Annotation Manual. The PDTB Research Group, December.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Reitter</author>
+</authors>
+<title>Simple Signals for Complex Rhetorics: On Rhetorical Analysis with Richfeature Support Vector Models. LDV Forum,</title>
+<date>2003</date>
+<pages>18--1</pages>
+<contexts>
+<context citStr="Reitter, 2003" endWordPosition="411" position="2769" startWordPosition="410">inked by rhetorical relations are annotated as either nucleus or satellite depending on how salient they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discou</context>
+</contexts>
+<marker>Reitter, 2003</marker>
+<rawString>David Reitter. 2003. Simple Signals for Complex Rhetorics: On Rhetorical Analysis with Richfeature Support Vector Models. LDV Forum, 18(1/2):38–52.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kenji Sagae</author>
+</authors>
+<title>Analysis of discourse structure with syntactic dependencies and data-driven shiftreduce parsing.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 11th International Conference on Parsing Technologies,</booktitle>
+<pages>81--84</pages>
+<contexts>
+<context citStr="Sagae, 2009" endWordPosition="426" position="2864" startWordPosition="425">nt they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and thus a uniform framework for discourse analysis is hard to develop. Third, to reduce the time complexity of the state-of-the-art c</context>
+<context citStr="Sagae, 2009" endWordPosition="5860" position="35392" startWordPosition="5859">predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relations are combined in each iteration. As the ext</context>
+</contexts>
+<marker>Sagae, 2009</marker>
+<rawString>Kenji Sagae. 2009. Analysis of discourse structure with syntactic dependencies and data-driven shiftreduce parsing. In Proceedings of the 11th International Conference on Parsing Technologies, pages 81-84.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Radu Soricut</author>
+<author>Daniel Marcu</author>
+</authors>
+<title>Sentence level discourse parsing using syntactic and lexical information.</title>
+<date>2003</date>
+<booktitle>In Proceedings of the 2003 Conference of the North American Chapter of the Association for Computational Linguistics on Human Language Technology,</booktitle>
+<volume>1</volume>
+<pages>149--156</pages>
+<contexts>
+<context citStr="Soricut and Marcu, 2003" endWordPosition="405" position="2735" startWordPosition="402">t constitutes a parse tree. The text spans linked by rhetorical relations are annotated as either nucleus or satellite depending on how salient they are for interpretation. It is attractive and challenging to parse the whole text into one tree. Since such a hierarchical discourse tree is analogous to a constituency based syntactic tree except that the constituents in the discourse trees are text spans, previous researches have explored different constituency based syntactic parsing techniques (eg. CKY and chart parsing) and various features (eg. length, position et al.) for discourse parsing (Soricut and Marcu, 2003; Joty et al., 2012; Reitter, 2003; LeThanh et al., 2004; Baldridge and Lascarides, 2005; Subba and Di Eugenio, 2009; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). However, the existing approaches suffer from at least one of the following three problems. First, it is difficult to design a set of production rules as in syntactic parsing, since there are no determinate generative rules for the interior text spans. Second, the different levels of discourse units (e.g. EDUs or larger text spans) occurring in the generative process are better represented with different features, and t</context>
+<context citStr="Soricut and Marcu (2003)" endWordPosition="3143" position="18611" startWordPosition="3140">t one word, the last one word, and the first bigrams in each EDU, the pair of the two first words and the pair of the two last words in the two EDUs are extracted as features. (2) POS: The first one and two POS tags in each EDU, and the pair of the two first POS tags in the two EDUs are extracted as features. (3) Position: These features concern whether the two EDUs are included in the same sentence, and the positions where the two EDUs are located in one sentence, one paragraph, or one document. (4) Length: The length of each EDU. (5) Syntactic: POS tags of the dominating nodes as defined in Soricut and Marcu (2003) are extracted as features. We use the syntactic trees from the Penn Treebank to find the dominating nodes,. (6) Semantic similarity: We compute the semantic relatedness between the two EDUs based on WordNet. The word pairs are extracted from (ei, ej) and their similarity is calculated. Then, we can get a weighted complete bipartite graph where words are deemed as nodes and similarity as weights. From this bipartite graph, we get the maximum weighted matching and use the averaged weight of the matches as the similarity between ei and ej. In particular, we use path_similarity, wup_similarity, r</context>
+<context citStr="Soricut and Marcu, 2003" endWordPosition="5854" position="35347" startWordPosition="5851">6; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Lascarides, 2005; Sagae, 2009; Hernault et al., 2010b; Feng and Hirst, 2012). Soricut and Marcu (2003) use a standard bottomup chart parsing algorithm to determine the discourse structure of sentences. Baldridge and Lascarides (2005) model the process of discourse parsing with the probabilistic head driven parsing techniques. Sagae (2009) apply a transition based constituent parsing approach to construct a RST tree for a document. Hernault et al. (2010b) develop a greedy bottom-up tree building strategy for discourse parsing. The two adjacent text spans with the closest relatio</context>
+</contexts>
+<marker>Soricut, Marcu, 2003</marker>
+<rawString>Radu Soricut and Daniel Marcu. 2003. Sentence level discourse parsing using syntactic and lexical information. In Proceedings of the 2003 Conference of the North American Chapter of the Association for Computational Linguistics on Human Language Technology, Volume 1, pages 149–156.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Rajen Subba</author>
+<author>Barbara Di Eugenio</author>
+</authors>
+<title>An effective discourse parser that uses rich linguistic information.</title>
+<date>2009</date>
+<booktitle>In Proceedings of Human Language Technologies: The 2009 Annual Conference of the North American Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>566--574</pages>
+<marker>Subba, Di Eugenio, 2009</marker>
+<rawString>Rajen Subba and Barbara Di Eugenio. 2009. An effective discourse parser that uses rich linguistic information. In Proceedings of Human Language Technologies: The 2009 Annual Conference of the North American Chapter of the Association for Computational Linguistics, pages 566–574.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert Endre Tarjan</author>
+</authors>
+<date>1977</date>
+<journal>Finding Optimum Branchings, Networks,</journal>
+<volume>7</volume>
+<pages>25--35</pages>
+<marker>Tarjan, 1977</marker>
+<rawString>Robert Endre Tarjan, 1977. Finding Optimum Branchings, Networks, v.7, pp.25-35.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ben Taskar</author>
+<author>Carlos Guestrin</author>
+<author>Daphne Koller</author>
+</authors>
+<title>Max-margin Markov Networks.</title>
+<date>2003</date>
+<booktitle>In Proc. NIPS.</booktitle>
+<contexts>
+<context citStr="Taskar et al. (2003)" endWordPosition="3310" position="19681" startWordPosition="3307">hted matching and use the averaged weight of the matches as the similarity between ei and ej. In particular, we use path_similarity, wup_similarity, res_similarity, jcn_similarity and lin_similarity provided by the nltk.wordnet.similarity (Bird et. al., 2009) package for calculating word similarity. As for relations, we experiment two sets of relation labels from RST-DT. One is composed of 19 coarse-grained relations and the other 111 fine-grained relations6. 4.2 MIRA based Learning Margin Infused Relaxed Algorithm (MIRA) is an online algorithm for multiclass classification and is extended by Taskar et al. (2003) to cope with structured classification. s.t. s(7i,yi) s(T,yi')L(yi,yi') MIRA Input: a training sett(T,y,)t t-1 1 w0 = 0; v = 0; j = 0 2 For iter := 1 to K 3 For i := 1 to N 4 update w according to ) : where yi '  DT(T , wj ) 5 v = v + wj ; 6 j = j+1 7 w = v/(K*N) Figure 6: MIRA based Learning Figure 6 gives the pseudo-code of the MIRA algorithm (McDonld et al., 2005b). This algorithm is designed to update the parameters w using a single training instance in each iteration. On each update, MIRA attempts to keep the norm of the change to the weight vector 6 19 relations include the original </context>
+</contexts>
+<marker>Taskar, Guestrin, Koller, 2003</marker>
+<rawString>Ben Taskar, Carlos Guestrin and Daphne Koller. 2003. Max-margin Markov Networks. In Proc. NIPS.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Bonnie Webber</author>
+</authors>
+<title>D-LTAG: Extending Lexicalized TAG to Discourse.</title>
+<date>2004</date>
+<journal>Cognitive Science,</journal>
+<volume>28</volume>
+<issue>5</issue>
+<marker>Webber, 2004</marker>
+<rawString>Bonnie Webber. 2004. D-LTAG: Extending Lexicalized TAG to Discourse. Cognitive Science, 28(5):751–779.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Wen Ting Wang</author>
+<author>Jian Su</author>
+<author>Chew Lim Tan</author>
+</authors>
+<title>Kernel based Discourse Relation Recognition with Temporal Ordering Information,</title>
+<date>2010</date>
+<booktitle>In Proc. of ACL’10.</booktitle>
+<pages>710--719</pages>
+<contexts>
+<context citStr="Wang et al., 2010" endWordPosition="5760" position="34766" startWordPosition="5757">sed on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts the predicate-arguments representation by taking an implicit/explicit connective as a predication of two adjacent sentences (arguments). Then the discourse relation between each pair of sentences is annotated independently to characterize its predication. A majority of researches regard discourse parsing as a classification task and mainly focus on exploiting various linguistic features and classifiers when using PDTB (Wellner et al., 2006; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (Soricut and Marcu, 2003; Baldridge and Las</context>
+</contexts>
+<marker>Wang, Su, Tan, 2010</marker>
+<rawString>Wen Ting Wang, Jian Su and Chew Lim Tan. 2010. Kernel based Discourse Relation Recognition with Temporal Ordering Information, In Proc. of ACL’10. pages 710-719.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ben Wellner</author>
+<author>James Pustejovsky</author>
+<author>Catherine Havasi</author>
+<author>Anna Rumshisky</author>
+<author>Roser Sauri</author>
+</authors>
+<title>Classification of Discourse Coherence Relations: an Exploratory Study Using Multiple Knowledge Sources.</title>
+<date>2006</date>
+<booktitle>In Proc.of the 7th SIGDIAL Workshop on Discourse and Dialogue.</booktitle>
+<pages>117--125</pages>
+<contexts>
+<context citStr="Wellner et al., 2006" endWordPosition="5752" position="34725" startWordPosition="5749"> discourse parsing techniques are mainly based on two well-known treebanks. One is the Penn Discourse TreeBank (PDTB) (Prasad et al., 2007) and the other is RST-DT. PDTB adopts the predicate-arguments representation by taking an implicit/explicit connective as a predication of two adjacent sentences (arguments). Then the discourse relation between each pair of sentences is annotated independently to characterize its predication. A majority of researches regard discourse parsing as a classification task and mainly focus on exploiting various linguistic features and classifiers when using PDTB (Wellner et al., 2006; Pitler et al., 2009; Wang et al., 2010). However, the predicatearguments annotation scheme itself has such a limitation that one can only obtain the local discourse relations without knowing the rich context. In contrast, RST and its treebank enable people to derive a complete representation of the whole discourse. Researches have begun to investigate how to construct a RST tree for the given text. Since the RST tree is similar to the constituency based syntactic tree except that the constituent nodes are different, the syntactic parsing techniques have been borrowed for discourse parsing (S</context>
+</contexts>
+<marker>Wellner, Pustejovsky, Havasi, Rumshisky, Sauri, 2006</marker>
+<rawString>Ben Wellner, James Pustejovsky, Catherine Havasi, Anna Rumshisky and Roser Sauri. 2006. Classification of Discourse Coherence Relations: an Exploratory Study Using Multiple Knowledge Sources. In Proc.of the 7th SIGDIAL Workshop on Discourse and Dialogue. pages 117-125.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

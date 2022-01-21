@@ -1,0 +1,671 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000003" no="0">
+<title confidence="0.966912">
+Logarithmic Opinion Pools for Conditional Random Fields
+</title>
+<author confidence="0.95115">
+Andrew Smith
+</author>
+<affiliation confidence="0.9520195">
+Division of Informatics
+University of Edinburgh
+</affiliation>
+<address confidence="0.773783">
+United Kingdom
+</address>
+<email confidence="0.990567">
+a.p.smith-2@sms.ed.ac.uk
+</email>
+<author confidence="0.956932">
+Trevor Cohn
+</author>
+<affiliation confidence="0.993911666666667">
+Department of Computer Science
+and Software Engineering
+University of Melbourne, Australia
+</affiliation>
+<email confidence="0.9927">
+tacohn@csse.unimelb.edu.au
+</email>
+<author confidence="0.661907">
+Miles Osborne
+</author>
+<affiliation confidence="0.8178665">
+Division of Informatics
+University of Edinburgh
+</affiliation>
+<address confidence="0.710434">
+United Kingdom
+</address>
+<email confidence="0.995932">
+miles@inf.ed.ac.uk
+</email>
+<sectionHeader confidence="0.99474" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999763565217391">Recent work on Conditional Random Fields (CRFs) has demonstrated the need for regularisation to counter the tendency of these models to overfit. The standard approach to regularising CRFs involves a prior distribution over the model parameters, typically requiring search over a hyperparameter space. In this paper we address the overfitting problem from a different perspective, by factoring the CRF distribution into a weighted product of individual “expert” CRF distributions. We call this model a logarithmic opinion pool (LOP) of CRFs (LOP-CRFs). We apply the LOP-CRF to two sequencing tasks. Our results show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search.</bodyText>
+<sectionHeader confidence="0.998883" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999954733333333">In recent years, conditional random fields (CRFs) (Lafferty et al., 2001) have shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend to be difficult to implement and are often computationally expensive. Consequently, due to its ease of implementation, the current standard approach to reducing overfitting in CRFs is the use of a prior distribution over the model parameters, typically a Gaussian. The disadvantage with this method, however, is that it requires adjusting the value of one or more of the distribution’s hyperparameters. This usually involves manual or automatic tuning on a development set, and can be an expensive process as the CRF must be retrained many times for different hyperparameter values. In this paper we address the overfitting problem in CRFs from a different perspective. We factor the CRF distribution into a weighted product of individual expert CRF distributions, each focusing on a particular subset of the distribution. We call this model a logarithmic opinion pool (LOP) of CRFs (LOP-CRFs), and provide a procedure for learning the weight of each expert in the product. The LOPCRF framework is “parameter-free” in the sense that it does not involve the requirement to adjust hyperparameter values. LOP-CRFs are theoretically advantageous in that their Kullback-Leibler divergence with a given distribution can be explicitly represented as a function of the KL-divergence with each of their expert distributions. This provides a well-founded framework for designing new overfitting reduction schemes:</bodyText>
+<page confidence="0.979549">
+18
+</page>
+<note confidence="0.9916625">
+Proceedings of the 43rd Annual Meeting of the ACL, pages 18–25,
+Ann Arbor, June 2005. c�2005 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999153833333333">look to factorise a CRF distribution as a set of diverse experts. We apply LOP-CRFs to two sequencing tasks in NLP: named entity recognition and part-of-speech tagging. Our results show that combination of unregularised expert CRFs with an unregularised standard CRF under a LOP can outperform the unregularised standard CRF, and attain a performance level that rivals that of the regularised standard CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search.</bodyText>
+<sectionHeader confidence="0.972954" genericHeader="method">
+2 Conditional Random Fields
+</sectionHeader>
+<bodyText confidence="0.998434">A linear chain CRF defines the conditional probability of a state or label sequence s given an observed sequence o via1:</bodyText>
+<equation confidence="0.996609666666667">
+T+1
+1
+p(s  |o) = Z(o) exp  kfk(st−1,st,o,t) (1)
+</equation>
+<bodyText confidence="0.9794254">where T is the length of both sequences, are parameters of the model and Z(o) is the partition function that ensures (1) represents a probability distribution. The functions fk are feature functions representing the occurrence of different events in the sequences s and o. The parameters can be estimated by maximising the conditional log-likelihood of a set of labell training sequences.</bodyText>
+<equation confidence="0.696132333333333">
+k
+k
+ed
+</equation>
+<bodyText confidence="0.684221">The log-likelihood is given by:</bodyText>
+<equation confidence="0.945527">
+� () =  ˜p(o,s)log |o;)
+o,s
+</equation>
+<bodyText confidence="0.996686285714286">where and are empirical distributions defined by the training set. At the maximum likelihood solution the model satisfies a set of feature constraints, whereby the expected count of each feature under the model is equal to its empiri cal count on the training data: lIn this paper we assume there is a one-to-one mapping between states and labels, though this need not be the case.</bodyText>
+<equation confidence="0.9195095">
+˜p(o,s)
+˜p(o)
+</equation>
+<equation confidence="0.823739">
+E˜p(o,s)[fk] − Ep(s|o)[fk] = 0, bk
+</equation>
+<bodyText confidence="0.9996655625">In general this cannot be solved for the k in closed form so numerical routines must be used. Malouf (2002) and Sha and Pereira (2003) show that gradient-based algorithms, particularly limited memory variable metric (LMVM), require much less time to reach convergence, for some NLP tasks, than the iterative scaling methods (Della Pietra et al., 1997) previously used for log-linear optimisation problems. In all our experiments we use the LMVM method to train the CRFs. For CRFs with general graphical structure, calculation of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hidden Markov models.</bodyText>
+<sectionHeader confidence="0.985932" genericHeader="method">
+3 Logarithmic Opinion Pools
+</sectionHeader>
+<bodyText confidence="0.994019857142857">In this paper an expert model refers a probabilistic model that focuses on modelling a specific subset of some probability distribution. The concept of combining the distributions of a set of expert models via a weighted product has previously been used in a range of different application areas, including economics and management science (Bordley, 1982), and NLP (Osborne and Baldridge, 2004). In this paper we restrict ourselves to sequence models. Given a set of sequence model experts, indexed by , with conditional distributions p(s  |o) and a set of non-negative normalised weights w, a logarithmic opinion pool 2 is defined as the distribution:</bodyText>
+<equation confidence="0.9116635">
+1
+pLOP(s  |o) = ZLOP(o)  [p(s  |o)]wa (2)
+
+with w &gt; 0 and S w = 1, and where ZLOP(o) is
+the normalisation constant:
+ZLOP(o) =s  [p(s  |o)]wa (3)
+− o
+ZHinton (1999) introduced a variant of the LOP idea called
+</equation>
+<subsectionHeader confidence="0.343276">
+Product of Experts, in which expert distributions are multiplied
+under a uniform weight distribution.
+</subsectionHeader>
+<equation confidence="0.996965375">
+t=1 k
+˜p(o)logZ(o;)
+p(s
+�T+1
+˜p(o,s)   � f(s,o,t)
+= 
+o,s
+t=1
+</equation>
+<page confidence="0.984174">
+19
+</page>
+<bodyText confidence="0.999855142857143">The weight w encodes our confidence in the opinion of expert a. Suppose that there is a “true” conditional distribution q(s  |o) which each p(s  |o) is attempting to model. Heskes (1998) shows that the KL divergence between q(s  |o) and the LOP, can be decomposed into two terms:</bodyText>
+<equation confidence="0.914842">
+K(q, pLOP) = E −A (4)
+=  wK (q, p) − wK (pLOP, p)
+</equation>
+<bodyText confidence="0.999536666666667">This tells us that the closeness of the LOP model to q(s  |o) is governed by a trade-off between two terms: an E term, which represents the closeness of the individual experts to q(s  |o), and an A term, which represents the closeness of the individual experts to the LOP, and therefore indirectly to each other. Hence for the LOP to model q well, we desire models p which are individually good models of q (having low E) and are also diverse (having large A).</bodyText>
+<subsectionHeader confidence="0.993011">
+3.1 LOPs for CRFs
+</subsectionHeader>
+<bodyText confidence="0.999935769230769">Because CRFs are log-linear models, we can see from equation (2) that CRF experts are particularly well suited to combination under a LOP. Indeed, the resulting LOP is itself a CRF, the LOP-CRF, with potential functions given by a log-linear combination of the potential functions of the experts, with weights w. As a consequence of this, the normalisation constant for the LOP-CRF can be calculated efficiently via the usual forward-backward algorithm for CRFs. Note that there is a distinction between normalisation constant for the LOP-CRF, ZLOP as given in equation (3), and the partition function of the LOP-CRF, Z. The two are related as follows:</bodyText>
+<equation confidence="0.950938333333334">
+1
+pLOP(s  |o) = ZLOP(o)  [p(s  |o)]wa
+
+1U
+U(s|o)lwa
+ZLOP(o) ZJ
+r1 [U(s  |o)]wa
+= ZLOP(o)r1 [Z(o)]wa
+where U = expET+1
+t=1 EkXkfk(st−1,st,o,t) and so
+logZ(o) = logZLOP(o) + w logZ(o)
+
+</equation>
+<bodyText confidence="0.999337571428571">This relationship will be useful below, when we describe how to train the weights w of a LOP-CRF. In this paper we will use the term LOP-CRF weights to refer to the weights w in the weighted product of the LOP-CRF distribution and the term parameters to refer to the parameters Xk of each expert CRF a.</bodyText>
+<subsectionHeader confidence="0.999709">
+3.2 Training LOP-CRFs
+</subsectionHeader>
+<bodyText confidence="0.999988">In our LOP-CRF training procedure we first train the expert CRFs unregularised on the training data. Then, treating the experts as static pre-trained models, we train the LOP-CRF weights w to maximise the log-likelihood of the training data. This training process is “parameter-free” in that neither stage involves the use of a prior distribution over expert CRF parameters or LOP-CRF weights, and so avoids the requirement to adjust hyperparameter values. The likelihood of a data set under a LOP-CRF, as a function of the LOP-CRF weights, is given by:</bodyText>
+<equation confidence="0.9756195">
+L(w) =  pLOP(s |o;w) ˜p(o,s)
+o,s
+= 1 s o wa
+o,s 1ZLOP(o;w) �p( ) ˜p(o,s)
+</equation>
+<bodyText confidence="0.9816145">After taking logs and rearranging, the loglikelihood can be expressed as:</bodyText>
+<equation confidence="0.9970345">
+Y(w) = 
+o,s
+− o
+= 
++ 
+− o
+</equation>
+<bodyText confidence="0.999956333333333">For the first two terms, the quantities that are multiplied by w inside the (outer) sums are independent of the weights, and can be evaluated once at the beginning of training.</bodyText>
+<figure confidence="0.628033">
+&amp;quot;p(o,s) w log p(s  |o)
+&amp;quot;p(o)logZLOP(o;w)
+w  &amp;quot;p(o,s)log p(s  |o)
+o,s
+w o &amp;quot;p(o)logZ(o)
+&amp;quot;p(o)logZ(o;w)
+</figure>
+<page confidence="0.868181">
+20
+</page>
+<bodyText confidence="0.999805090909091">The third term involves the partition function for the LOP-CRF and so is a function of the weights. It can be evaluated efficiently as usual for a standard CRF. Taking derivatives with respect to w and rearranging, we obtain: where Ut(o,s) is the value of the potential function for expert P on clique t under the labelling s for observation o. In a way similar to the representation of the expected feature count in a standard CRF, the third term may be re-written as:</bodyText>
+<equation confidence="0.960629">
+pLOP(st−1 = s�,st = s&amp;quot;,o)logUt(s�,s&amp;quot;,o)
+</equation>
+<bodyText confidence="0.999986666666667">Hence the derivative is tractable because we can use dynamic programming to efficiently calculate the pairwise marginal distribution for the LOP-CRF. Using these expressions we can efficiently train the LOP-CRF weights to maximise the loglikelihood of the data set.3 We make use of the LMVM method mentioned earlier to do this. We will refer to a LOP-CRF with weights trained using this procedure as an unregularised LOP-CRF.</bodyText>
+<subsectionHeader confidence="0.757418">
+3.2.1 Regularisation
+</subsectionHeader>
+<bodyText confidence="0.968010277777778">The “parameter-free” aspect of the training procedure we introduced in the previous section relies on the fact that we do not use regularisation when training the LOP-CRF weights w. However, there is a possibility that this may lead to overfitting of the training data. In order to investigate this, we develop a regularised version of the training procedure and compare the results obtained with each. We 3We must ensure that the weights are non-negative and normalised. We achieve this by parameterising the weights as functions of a set of unconstrained variables via a softmax transformation. The values of the log-likelihood and its derivatives with respect to the unconstrained variables can be derived from the corresponding values for the weights wa. use a prior distribution over the LOP-CRF weights. As the weights are non-negative and normalised we use a Dirichlet distribution, whose density function is given by:</bodyText>
+<equation confidence="0.9937665">
+r'(E 0) a−1
+p(w) = II r(0) Hw
+</equation>
+<bodyText confidence="0.971458083333333">where the 0 are hyperparameters. Under this distribution, ignoring terms that are independent of the weights, the regularised loglikelihood involves an additional term:  (0 −1)logw We assume a single value 0 across all weights. The derivative of the regularised log-likelihood with respect to weight w then involves an additional term wb1 (0 − 1). In our experiments we use the development set to optimise the value of 0. We will refer to a LOP-CRF with weights trained using this procedure as a regularised LOP-CRF.</bodyText>
+<sectionHeader confidence="0.992796" genericHeader="method">
+4 The Tasks
+</sectionHeader>
+<bodyText confidence="0.983082666666667">In this paper we apply LOP-CRFs to two sequence labelling tasks in NLP: named entity recognition (NER) and part-of-speech tagging (POS tagging).</bodyText>
+<subsectionHeader confidence="0.990846">
+4.1 Named Entity Recognition
+</subsectionHeader>
+<bodyText confidence="0.999919764705882">NER involves the identification of the location and type of pre-defined entities within a sentence and is often used as a sub-process in information extraction systems. With NER the CRF is presented with a set of sentences and must label each word so as to indicate whether the word appears outside an entity (O), at the beginning of an entity of type X (B-X) or within the continuation of an entity of type X (I-X). All our results for NER are reported on the CoNLL-2003 shared task dataset (Tjong Kim Sang and De Meulder, 2003). For this dataset the entity types are: persons (PER), locations (LOC), organisations (ORG) and miscellaneous (MISC). The training set consists of 14,987 sentences and 204,567 tokens, the development set consists of 3,466 sentences and 51,578 tokens and the test set consists of 3,684 sentences and 46,666 tokens.</bodyText>
+<equation confidence="0.6751202">
+dy(w) =  ˜p(o,s)log p (s  |o)
+dw o,s
++ o ˜p(o)logZ (o)
+− o [ �
+˜p(o)EpLOP(s|o) t logUt(o,s)
+
+t
+−o
+
+s',s&amp;quot;
+</equation>
+<page confidence="0.992656">
+21
+</page>
+<subsectionHeader confidence="0.984302">
+4.2 Part-of-Speech Tagging
+</subsectionHeader>
+<bodyText confidence="0.999597444444444">POS tagging involves labelling each word in a sentence with its part-of-speech, for example noun, verb, adjective, etc. For our experiments we use the CoNLL-2000 shared task dataset (Tjong Kim Sang and Buchholz, 2000). This has 48 different POS tags. In order to make training time manageable4, we collapse the number of POS tags from 48 to 5 following the procedure used in (McCallum et al., 2003). In summary:</bodyText>
+<listItem confidence="0.999924">• All types of noun collapse to category N. • All types of verb collapse to category V. • All types of adjective collapse to category J. • All types of adverb collapse to category R. • All other POS tags collapse to category O.</listItem>
+<bodyText confidence="0.9996865">The training set consists of 7,300 sentences and 173,542 tokens, the development set consists of 1,636 sentences and 38,185 tokens and the test set consists of 2,012 sentences and 47,377 tokens.</bodyText>
+<subsectionHeader confidence="0.998583">
+4.3 Expert sets
+</subsectionHeader>
+<bodyText confidence="0.9998742">For each task we compare the performance of the LOP-CRF to that of the standard CRF by defining a single, complex CRF, which we call a monolithic CRF, and a range of expert sets. The monolithic CRF for NER comprises a number of word and POS tag features in a window of five words around the current word, along with a set of orthographic features defined on the current word. These are based on those found in (Curran and Clark, 2003). Examples include whether the current word is capitalised, is an initial, contains a digit, contains punctuation, etc. The monolithic CRF for NER has 450,345 features. The monolithic CRF for POS tagging comprises word and POS features similar to those in the NER monolithic model, but over a smaller number of orthographic features. The monolithic model for POS tagging has 188,448 features. Each of our expert sets consists of a number of CRF experts. Usually these experts are designed to focus on modelling a particular aspect or subset of the distribution.</bodyText>
+<footnote confidence="0.4029045">
+4See (Cohn et al., 2005) for a scaling method allowing the
+full POS tagging task with CRFs.
+</footnote>
+<bodyText confidence="0.999907">As we saw earlier, the aim here is to define experts that model parts of the distribution well while retaining mutual diversity. The experts from a particular expert set are combined under a LOP-CRF and the weights are trained as described previously. We define our range of expert sets as follows:</bodyText>
+<listItem confidence="0.7644578">• Simple consists of the monolithic CRF and a single expert comprising a reduced subset of the features in the monolithic CRF. This reduced CRF models the entire distribution rather than focusing on a particular aspect or subset, but is much less expressive than the monolithic model. The reduced model comprises 24,818 features for NER and 47,420 features for POS tagging. • Positional consists of the monolithic CRF and a partition of the features in the monolithic CRF into three experts, each consisting only of features that involve events either behind, at or ahead of the current sequence position. • Label consists of the monolithic CRF and a partition of the features in the monolithic CRF into five experts, one for each label.</listItem>
+<bodyText confidence="0.9886877">For NER an expert corresponding to label X consists only of features that involve labels B-X or IX at the current or previous positions, while for POS tagging an expert corresponding to label X consists only of features that involve label X at the current or previous positions. These experts therefore focus on trying to model the distribution of a particular label.</bodyText>
+<listItem confidence="0.973457166666667">• Random consists of the monolithic CRF and a random partition of the features in the monolithic CRF into four experts. This acts as a baseline to ascertain the performance that can be expected from an expert set that is not defined via any linguistic intuition.</listItem>
+<sectionHeader confidence="0.997738" genericHeader="evaluation">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.999828">To compare the performance of LOP-CRFs trained using the procedure we described previously to that of a standard CRF regularised with a Gaussian prior, we do the following for both NER and POS tagging:</bodyText>
+<page confidence="0.988609">
+22
+</page>
+<listItem confidence="0.9634659">• Train a monolithic CRF with regularisation using a Gaussian prior. We use the development set to optimise the value of the variance hyperparameter. • Train every expert CRF in each expert set without regularisation (each expert set includes the monolithic CRF, which clearly need only be trained once). • For each expert set, create a LOP-CRF from the expert CRFs and train the weights of the LOP-CRF without regularisation. We compare its performance to that of the unregularised and regularised monolithic CRFs. • To investigate whether training the LOP-CRF weights contributes significantly to the LOPCRF’s performance, for each expert set we create a LOP-CRF with uniform weights and compare its performance to that of the LOP-CRF with trained weights. • To investigate whether unregularised training of the LOP-CRF weights leads to overfitting, for each expert set we train the weights of the LOP-CRF with regularisation using a Dirichlet prior.</listItem>
+<bodyText confidence="0.937862125">We optimise the hyperparameter in the Dirichlet distribution on the development set. We then compare the performance of the LOP-CRF with regularised weights to that of the LOP-CRF with unregularised weights.</bodyText>
+<sectionHeader confidence="0.99966" genericHeader="result">
+6 Results
+</sectionHeader>
+<subsectionHeader confidence="0.988207">
+6.1 Experts
+</subsectionHeader>
+<bodyText confidence="0.999743090909091">Before presenting results for the LOP-CRFs, we briefly give performance figures for the monolithic CRFs and expert CRFs in isolation. For illustration, we do this for NER models only. Table 1 shows F scores on the development set for the NER CRFs. We see that, as expected, the expert CRFs in isolation model the data relatively poorly compared to the monolithic CRFs. Some of the label experts, for example, attain relatively low F scores as they focus only on modelling one particular label. Similar behaviour was observed for the POS tagging models.</bodyText>
+<table confidence="0.99943525">
+Expert F score
+Monolithic unreg. 88.33
+Monolithic reg. 89.84
+Reduced 79.62
+Positional 1 86.96
+Positional2 73.11
+Positional3 73.08
+Label LOC 41.96
+Label MISC 22.03
+Label ORG 29.13
+Label PER 40.49
+Label O 60.44
+Random 1 70.34
+Random 2 67.76
+Random 3 67.97
+Random 4 70.17
+</table>
+<tableCaption confidence="0.999851">
+Table 1: Development set F scores for NER experts
+</tableCaption>
+<subsectionHeader confidence="0.999815">
+6.2 LOP-CRFs with unregularised weights
+</subsectionHeader>
+<bodyText confidence="0.9999015">In this section we present results for LOP-CRFs with unregularised weights. Table 2 gives F scores for NER LOP-CRFs while Table 3 gives accuracies for the POS tagging LOP-CRFs. The monolithic CRF scores are included for comparison. Both tables illustrate the following points:</bodyText>
+<listItem confidence="0.993137666666667">• In every case the LOP-CRFs outperform the unregularised monolithic CRF • In most cases the performance of LOP-CRFs rivals that of the regularised monolithic CRF, and in some cases exceeds it.</listItem>
+<bodyText confidence="0.9613943">We use McNemar’s matched-pairs test (Gillick and Cox, 1989) on point-wise labelling errors to examine the statistical significance of these results. We test significance at the 5% level. At this threshold, all the LOP-CRFs significantly outperform the corresponding unregularised monolithic CRF. In addition, those marked with * show a significant improvement over the regularised monolithic CRF. Only the value marked with † in Table 3 significantly under performs the regularised monolithic. All other values a do not differ significantly from those of the regularised monolithic CRF at the 5% level. These results show that LOP-CRFs with unregularised weights can lead to performance improvements that equal or exceed those achieved from a conventional regularisation approach using a Gaussian prior. The important difference, however, is that the LOP-CRF approach is “parameter-free” in the</bodyText>
+<page confidence="0.9937">
+23
+</page>
+<table confidence="0.980065454545455">
+Expert set Development set Test set
+Simple 98.30 98.12
+Positional 97.97 97.79
+Label 97.85 97.73
+Random 97.82 97.74
+Table 4: Accuracies for POS tagging uniform LOP-
+CRFs
+Expert set Development set Test set
+Monolithic unreg. 88.33 81.87
+Monolithic reg. 89.84 83.98
+Simple 90.26 84.22
+Positional 90.35 84.71
+Label 89.30 83.27
+Random 88.84 83.06
+Table 2: F scores for NER unregularised LOP-CRFs
+Expert set Development set Test set
+Monolithic unreg. 97.92 97.65
+Monolithic reg. 98.02 97.84
+Simple 98.31 98.12
+Positional 98.03 97.81
+Label 97.99 97.77
+Random 97.99 97.76†
+</table>
+<tableCaption confidence="0.9265355">
+Table 3: Accuracies for POS tagging unregularised
+LOP-CRFs
+sense that each expert CRF in the LOP-CRF is unregularised and the LOP weight training is also unregularised.</tableCaption>
+<bodyText confidence="0.999944714285714">We are therefore not required to search a hyperparameter space. As an illustration, to obtain our best results for the POS tagging regularised monolithic model, we re-trained using 15 different values of the Gaussian prior variance. With the LOP-CRF we trained each expert CRF and the LOP weights only once. As an illustration of a typical weight distribution resulting from the training procedure, the positional LOP-CRF for POS tagging attaches weight 0.45 to the monolithic model and roughly equal weights to the other three experts.</bodyText>
+<subsectionHeader confidence="0.999844">
+6.3 LOP-CRFs with uniform weights
+</subsectionHeader>
+<bodyText confidence="0.99992915">By training LOP-CRF weights using the procedure we introduce in this paper, we allow the weights to take on non-uniform values. This corresponds to letting the opinion of some experts take precedence over others in the LOP-CRF’s decision making. An alternative, simpler, approach would be to combine the experts under a LOP with uniform weights, thereby avoiding the weight training stage. We would like to ascertain whether this approach will significantly reduce the LOP-CRF’s performance. As an illustration, Table 4 gives accuracies for LOPCRFs with uniform weights for POS tagging. A similar pattern is observed for NER. Comparing these values to those in Tables 2 and 3, we can see that in general LOP-CRFs with uniform weights, although still performing significantly better than the unregularised monolithic CRF, generally under perform LOP-CRFs with trained weights. This suggests that the choice of weights can be important, and justifies the weight training stage.</bodyText>
+<subsectionHeader confidence="0.99823">
+6.4 LOP-CRFs with regularised weights
+</subsectionHeader>
+<bodyText confidence="0.999974823529412">To investigate whether unregularised training of the LOP-CRF weights leads to overfitting, we train the LOP-CRF with regularisation using a Dirichlet prior. The results we obtain show that in most cases a LOP-CRF with regularised weights achieves an almost identical performance to that with unregularised weights, and suggests there is little to be gained by weight regularisation. This is probably due to the fact that in our LOP-CRFs the number of experts, and therefore weights, is generally small and so there is little capacity for overfitting. We conjecture that although other choices of expert set may comprise many more experts than in our examples, the numbers are likely to be relatively small in comparison to, for example, the number of parameters in the individual experts. We therefore suggest that any overfitting effect is likely to be limited.</bodyText>
+<subsectionHeader confidence="0.99915">
+6.5 Choice of Expert Sets
+</subsectionHeader>
+<bodyText confidence="0.999908692307692">We can see from Tables 2 and 3 that the performance of a LOP-CRF varies with the choice of expert set. For example, in our tasks the simple and positional expert sets perform better than those for the label and random sets. For an explanation here, we refer back to our discussion of equation (5). We conjecture that the simple and positional expert sets achieve good performance in the LOP-CRF because they consist of experts that are diverse while simultaneously being reasonable models of the data. The label expert set exhibits greater diversity between the experts, because each expert focuses on modelling a particular label only, but each expert is a relatively poor model of the entire distribution and the corresponding LOP-CRF performs worse.</bodyText>
+<page confidence="0.995436">
+24
+</page>
+<bodyText confidence="0.999955769230769">Similarly, the random experts are in general better models of the entire distribution but tend to be less diverse because they do not focus on any one aspect or subset of it. Intuitively, then, we want to devise experts that provide diverse but accurate views on the data. The expert sets we present in this paper were motivated by linguistic intuition, but clearly many choices exist. It remains an important open question as to how to automatically construct expert sets for good performance on a given task, and we intend to pursue this avenue in future research.</bodyText>
+<sectionHeader confidence="0.979264" genericHeader="conclusion">
+7 Conclusion and future work
+</sectionHeader>
+<bodyText confidence="0.998321130434783">In this paper we have introduced the logarithmic opinion pool of CRFs as a way to address overfitting in CRF models. Our results show that a LOPCRF can provide a competitive alternative to conventional regularisation with a prior while avoiding the requirement to search a hyperparameter space. We have seen that, for a variety of types of expert, combination of expert CRFs with an unregularised standard CRF under a LOP with optimised weights can outperform the unregularised standard CRF and rival the performance of a regularised standard CRF. We have shown how these advantages a LOPCRF provides have a firm theoretical foundation in terms of the decomposition of the KL-divergence between a LOP-CRF and a target distribution, and how this provides a framework for designing new overfitting reduction schemes in terms of constructing diverse experts. In this work we have considered training the weights of a LOP-CRF using pre-trained, static experts. In future we intend to investigate cooperative training of LOP-CRF weights and the parameters of each expert in an expert set.</bodyText>
+<sectionHeader confidence="0.997641" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.999809666666667">We wish to thank Stephen Clark, our colleagues in Edinburgh and the anonymous reviewers for many useful comments.</bodyText>
+<sectionHeader confidence="0.994323" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999959040816327">
+R. F. Bordley. 1982. A multiplicative formula for aggregating
+probability assessments. Management Science, (28):1137–
+1148.
+T. Cohn, A. Smith, and M. Osborne. 2005. Scaling conditional
+random fields using error-correcting codes. In Proc. ACL
+2005.
+J. Curran and S. Clark. 2003. Language independent NER
+using a maximum entropy tagger. In Proc. CoNLL-2003.
+S. Della Pietra, Della Pietra V., and J. Lafferty. 1997. Induc-
+ing features of random fields. In IEEE PAMI, volume 19(4),
+pages 380–393.
+L. Gillick and S. Cox. 1989. Some statistical issues in the
+comparison of speech recognition algorithms. In Interna-
+tional Conference on Acoustics, Speech and Signal Process-
+ing, volume 1, pages 532–535.
+T. Heskes. 1998. Selecting weighting factors in logarithmic
+opinion pools. In Advances in Neural Information Process-
+ing Systems 10.
+G. E. Hinton. 1999. Product of experts. In ICANN, volume 1,
+pages 1–6.
+J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional
+random fields: Probabilistic models for segmenting and la-
+beling sequence data. In Proc. ICML 2001.
+R. Malouf. 2002. A comparison of algorithms for maximum
+entropy parameter estimation. In Proc. CoNLL-2002.
+A. McCallum and W. Li. 2003. Early results for named entity
+recognition with conditional random fields, feature induction
+and web-enhanced lexicons. In Proc. CoNLL-2003.
+A. McCallum, K. Rohanimanesh, and C. Sutton. 2003. Dy-
+namic conditional random fields for jointly labeling multiple
+sequences. In NIPS-2003 Workshop on Syntax, Semantics
+and Statistics.
+A. McCallum. 2003. Efficiently inducing features of condi-
+tional random fields. In Proc. UAI 2003.
+M. Osborne and J. Baldridge. 2004. Ensemble-based active
+learning for parse selection. In Proc. NAACL 2004.
+F. Peng and A. McCallum. 2004. Accurate information extrac-
+tion from research papers using conditional random fields.
+In Proc. HLT-NAACL 2004.
+Y. Qi, M. Szummer, and T. P. Minka. 2005. Bayesian condi-
+tional random fields. In Proc. AISTATS 2005.
+F. Sha and F. Pereira. 2003. Shallow parsing with conditional
+random fields. In Proc. HLT-NAACL 2003.
+E. F. Tjong Kim Sang and S. Buchholz. 2000. Introduction to
+the CoNLL-2000 shared task: Chunking. In Proc. CoNLL-
+2000.
+E. F. Tjong Kim Sang and F. De Meulder. 2003. Introduction to
+the CoNLL-2003 shared task: Language-independent named
+entity recognition. In Proc. CoNLL-2003.
+</reference>
+<page confidence="0.998736">
+25
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.319780" no="0">
+<title confidence="0.999474">Logarithmic Opinion Pools for Conditional Random Fields</title>
+<author confidence="0.999922">Andrew Smith</author>
+<affiliation confidence="0.9999575">Division of Informatics University of Edinburgh</affiliation>
+<address confidence="0.84338">United Kingdom</address>
+<email confidence="0.988884">a.p.smith-2@sms.ed.ac.uk</email>
+<author confidence="0.999279">Trevor Cohn</author>
+<affiliation confidence="0.843403">Department of Computer Science and Software Engineering University of Melbourne, Australia</affiliation>
+<email confidence="0.995195">tacohn@csse.unimelb.edu.au</email>
+<author confidence="0.999625">Miles Osborne</author>
+<affiliation confidence="0.9999615">Division of Informatics University of Edinburgh</affiliation>
+<address confidence="0.786424">United Kingdom</address>
+<email confidence="0.998486">miles@inf.ed.ac.uk</email>
+<abstract confidence="0.996335166666667">Recent work on Conditional Random Fields (CRFs) has demonstrated the need for regularisation to counter the tendency of these models to overfit. The standard approach to regularising CRFs involves a prior distribution over the model parameters, typically requiring search over a hyperparameter space. In this paper we address the overfitting problem from a different perspective, by factoring the CRF distribution into a weighted product of individual “expert” CRF distributions. We this model a opinion of CRFs (LOP-CRFs). We apply the LOP-CRF to two sequencing tasks. Our results show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>R F Bordley</author>
+</authors>
+<title>A multiplicative formula for aggregating probability assessments.</title>
+<date>1982</date>
+<journal>Management Science,</journal>
+<volume>28</volume>
+<pages>1148</pages>
+<contexts>
+<context citStr="Bordley, 1982" endWordPosition="1007" position="6393" startWordPosition="1006">on of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hidden Markov models. 3 Logarithmic Opinion Pools In this paper an expert model refers a probabilistic model that focuses on modelling a specific subset of some probability distribution. The concept of combining the distributions of a set of expert models via a weighted product has previously been used in a range of different application areas, including economics and management science (Bordley, 1982), and NLP (Osborne and Baldridge, 2004). In this paper we restrict ourselves to sequence models. Given a set of sequence model experts, indexed by , with conditional distributions p(s |o) and a set of non-negative normalised weights w, a logarithmic opinion pool 2 is defined as the distribution: 1 pLOP(s |o) = ZLOP(o)  [p(s |o)]wa (2)  with w &gt; 0 and S w = 1, and where ZLOP(o) is the normalisation constant: ZLOP(o) =s  [p(s |o)]wa (3) − o ZHinton (1999) introduced a variant of the LOP idea called Product of Experts, in which expert distributions are multiplied under a uniform weig</context>
+</contexts>
+<marker>Bordley, 1982</marker>
+<rawString>R. F. Bordley. 1982. A multiplicative formula for aggregating probability assessments. Management Science, (28):1137– 1148.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Cohn</author>
+<author>A Smith</author>
+<author>M Osborne</author>
+</authors>
+<title>Scaling conditional random fields using error-correcting codes.</title>
+<date>2005</date>
+<booktitle>In Proc. ACL</booktitle>
+<contexts>
+<context citStr="Cohn et al., 2005" endWordPosition="2598" position="15517" startWordPosition="2595">aphic features defined on the current word. These are based on those found in (Curran and Clark, 2003). Examples include whether the current word is capitalised, is an initial, contains a digit, contains punctuation, etc. The monolithic CRF for NER has 450,345 features. The monolithic CRF for POS tagging comprises word and POS features similar to those in the NER monolithic model, but over a smaller number of orthographic features. The monolithic model for POS tagging has 188,448 features. Each of our expert sets consists of a number of CRF experts. Usually these experts are designed to 4See (Cohn et al., 2005) for a scaling method allowing the full POS tagging task with CRFs. focus on modelling a particular aspect or subset of the distribution. As we saw earlier, the aim here is to define experts that model parts of the distribution well while retaining mutual diversity. The experts from a particular expert set are combined under a LOP-CRF and the weights are trained as described previously. We define our range of expert sets as follows: • Simple consists of the monolithic CRF and a single expert comprising a reduced subset of the features in the monolithic CRF. This reduced CRF models the entire d</context>
+</contexts>
+<marker>Cohn, Smith, Osborne, 2005</marker>
+<rawString>T. Cohn, A. Smith, and M. Osborne. 2005. Scaling conditional random fields using error-correcting codes. In Proc. ACL 2005.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Curran</author>
+<author>S Clark</author>
+</authors>
+<title>Language independent NER using a maximum entropy tagger.</title>
+<date>2003</date>
+<booktitle>In Proc. CoNLL-2003.</booktitle>
+<contexts>
+<context citStr="Curran and Clark, 2003" endWordPosition="2512" position="15001" startWordPosition="2509">sts of 7,300 sentences and 173,542 tokens, the development set consists of 1,636 sentences and 38,185 tokens and the test set consists of 2,012 sentences and 47,377 tokens. 4.3 Expert sets For each task we compare the performance of the LOP-CRF to that of the standard CRF by defining a single, complex CRF, which we call a monolithic CRF, and a range of expert sets. The monolithic CRF for NER comprises a number of word and POS tag features in a window of five words around the current word, along with a set of orthographic features defined on the current word. These are based on those found in (Curran and Clark, 2003). Examples include whether the current word is capitalised, is an initial, contains a digit, contains punctuation, etc. The monolithic CRF for NER has 450,345 features. The monolithic CRF for POS tagging comprises word and POS features similar to those in the NER monolithic model, but over a smaller number of orthographic features. The monolithic model for POS tagging has 188,448 features. Each of our expert sets consists of a number of CRF experts. Usually these experts are designed to 4See (Cohn et al., 2005) for a scaling method allowing the full POS tagging task with CRFs. focus on modelli</context>
+</contexts>
+<marker>Curran, Clark, 2003</marker>
+<rawString>J. Curran and S. Clark. 2003. Language independent NER using a maximum entropy tagger. In Proc. CoNLL-2003.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Della Pietra</author>
+<author>Della Pietra V</author>
+<author>J Lafferty</author>
+</authors>
+<title>Inducing features of random fields.</title>
+<date>1997</date>
+<booktitle>In IEEE PAMI,</booktitle>
+<volume>19</volume>
+<issue>4</issue>
+<pages>380--393</pages>
+<contexts>
+<context citStr="Pietra et al., 1997" endWordPosition="884" position="5607" startWordPosition="881"> expected count of each feature under the model is equal to its empiri ˜p(o,s) ˜p(o) cal count on the training data: lIn this paper we assume there is a one-to-one mapping between states and labels, though this need not be the case. E˜p(o,s)[fk] − Ep(s|o)[fk] = 0, bk In general this cannot be solved for the k in closed form so numerical routines must be used. Malouf (2002) and Sha and Pereira (2003) show that gradient-based algorithms, particularly limited memory variable metric (LMVM), require much less time to reach convergence, for some NLP tasks, than the iterative scaling methods (Della Pietra et al., 1997) previously used for log-linear optimisation problems. In all our experiments we use the LMVM method to train the CRFs. For CRFs with general graphical structure, calculation of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hidden Markov models. 3 Logarithmic Opinion Pools In this paper an expert model refers a probabilistic model that focuses on modelling a specific subset of some probability distribution. The concept of combining the dis</context>
+</contexts>
+<marker>Pietra, V, Lafferty, 1997</marker>
+<rawString>S. Della Pietra, Della Pietra V., and J. Lafferty. 1997. Inducing features of random fields. In IEEE PAMI, volume 19(4), pages 380–393.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L Gillick</author>
+<author>S Cox</author>
+</authors>
+<title>Some statistical issues in the comparison of speech recognition algorithms.</title>
+<date>1989</date>
+<booktitle>In International Conference on Acoustics, Speech and Signal Processing,</booktitle>
+<volume>1</volume>
+<pages>532--535</pages>
+<contexts>
+<context citStr="Gillick and Cox, 1989" endWordPosition="3374" position="20167" startWordPosition="3371">7 Table 1: Development set F scores for NER experts 6.2 LOP-CRFs with unregularised weights In this section we present results for LOP-CRFs with unregularised weights. Table 2 gives F scores for NER LOP-CRFs while Table 3 gives accuracies for the POS tagging LOP-CRFs. The monolithic CRF scores are included for comparison. Both tables illustrate the following points: • In every case the LOP-CRFs outperform the unregularised monolithic CRF • In most cases the performance of LOP-CRFs rivals that of the regularised monolithic CRF, and in some cases exceeds it. We use McNemar’s matched-pairs test (Gillick and Cox, 1989) on point-wise labelling errors to examine the statistical significance of these results. We test significance at the 5% level. At this threshold, all the LOP-CRFs significantly outperform the corresponding unregularised monolithic CRF. In addition, those marked with * show a significant improvement over the regularised monolithic CRF. Only the value marked with † in Table 3 significantly under performs the regularised monolithic. All other values a do not differ significantly from those of the regularised monolithic CRF at the 5% level. These results show that LOP-CRFs with unregularised weig</context>
+</contexts>
+<marker>Gillick, Cox, 1989</marker>
+<rawString>L. Gillick and S. Cox. 1989. Some statistical issues in the comparison of speech recognition algorithms. In International Conference on Acoustics, Speech and Signal Processing, volume 1, pages 532–535.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Heskes</author>
+</authors>
+<title>Selecting weighting factors in logarithmic opinion pools.</title>
+<date>1998</date>
+<booktitle>In Advances in Neural Information Processing Systems 10.</booktitle>
+<contexts>
+<context citStr="Heskes (1998)" endWordPosition="1164" position="7264" startWordPosition="1163">on pool 2 is defined as the distribution: 1 pLOP(s |o) = ZLOP(o)  [p(s |o)]wa (2)  with w &gt; 0 and S w = 1, and where ZLOP(o) is the normalisation constant: ZLOP(o) =s  [p(s |o)]wa (3) − o ZHinton (1999) introduced a variant of the LOP idea called Product of Experts, in which expert distributions are multiplied under a uniform weight distribution. t=1 k ˜p(o)logZ(o;) p(s �T+1 ˜p(o,s)   � f(s,o,t) =  o,s t=1 19 The weight w encodes our confidence in the opinion of expert a. Suppose that there is a “true” conditional distribution q(s |o) which each p(s |o) is attempting to model. Heskes (1998) shows that the KL divergence between q(s |o) and the LOP, can be decomposed into two terms: K(q, pLOP) = E −A (4) =  wK (q, p) − wK (pLOP, p) This tells us that the closeness of the LOP model to q(s |o) is governed by a trade-off between two terms: an E term, which represents the closeness of the individual experts to q(s |o), and an A term, which represents the closeness of the individual experts to the LOP, and therefore indirectly to each other. Hence for the LOP to model q well, we desire models p which are individually good models of q (having low E) and are also diverse (having</context>
+</contexts>
+<marker>Heskes, 1998</marker>
+<rawString>T. Heskes. 1998. Selecting weighting factors in logarithmic opinion pools. In Advances in Neural Information Processing Systems 10.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G E Hinton</author>
+</authors>
+<title>Product of experts.</title>
+<date>1999</date>
+<booktitle>In ICANN,</booktitle>
+<volume>1</volume>
+<pages>1--6</pages>
+<contexts>
+<context citStr="Hinton (1999)" endWordPosition="1093" position="6863" startWordPosition="1092">weighted product has previously been used in a range of different application areas, including economics and management science (Bordley, 1982), and NLP (Osborne and Baldridge, 2004). In this paper we restrict ourselves to sequence models. Given a set of sequence model experts, indexed by , with conditional distributions p(s |o) and a set of non-negative normalised weights w, a logarithmic opinion pool 2 is defined as the distribution: 1 pLOP(s |o) = ZLOP(o)  [p(s |o)]wa (2)  with w &gt; 0 and S w = 1, and where ZLOP(o) is the normalisation constant: ZLOP(o) =s  [p(s |o)]wa (3) − o ZHinton (1999) introduced a variant of the LOP idea called Product of Experts, in which expert distributions are multiplied under a uniform weight distribution. t=1 k ˜p(o)logZ(o;) p(s �T+1 ˜p(o,s)   � f(s,o,t) =  o,s t=1 19 The weight w encodes our confidence in the opinion of expert a. Suppose that there is a “true” conditional distribution q(s |o) which each p(s |o) is attempting to model. Heskes (1998) shows that the KL divergence between q(s |o) and the LOP, can be decomposed into two terms: K(q, pLOP) = E −A (4) =  wK (q, p) − wK (pLOP, p) This tells us that the closeness of the LOP mode</context>
+</contexts>
+<marker>Hinton, 1999</marker>
+<rawString>G. E. Hinton. 1999. Product of experts. In ICANN, volume 1, pages 1–6.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Lafferty</author>
+<author>A McCallum</author>
+<author>F Pereira</author>
+</authors>
+<title>Conditional random fields: Probabilistic models for segmenting and labeling sequence data. In</title>
+<date>2001</date>
+<booktitle>Proc. ICML</booktitle>
+<contexts>
+<context citStr="Lafferty et al., 2001" endWordPosition="197" position="1377" startWordPosition="194">ent perspective, by factoring the CRF distribution into a weighted product of individual “expert” CRF distributions. We call this model a logarithmic opinion pool (LOP) of CRFs (LOP-CRFs). We apply the LOP-CRF to two sequencing tasks. Our results show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search. 1 Introduction In recent years, conditional random fields (CRFs) (Lafferty et al., 2001) have shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induc</context>
+<context citStr="Lafferty et al. (2001)" endWordPosition="926" position="5865" startWordPosition="923">fk] = 0, bk In general this cannot be solved for the k in closed form so numerical routines must be used. Malouf (2002) and Sha and Pereira (2003) show that gradient-based algorithms, particularly limited memory variable metric (LMVM), require much less time to reach convergence, for some NLP tasks, than the iterative scaling methods (Della Pietra et al., 1997) previously used for log-linear optimisation problems. In all our experiments we use the LMVM method to train the CRFs. For CRFs with general graphical structure, calculation of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hidden Markov models. 3 Logarithmic Opinion Pools In this paper an expert model refers a probabilistic model that focuses on modelling a specific subset of some probability distribution. The concept of combining the distributions of a set of expert models via a weighted product has previously been used in a range of different application areas, including economics and management science (Bordley, 1982), and NLP (Osborne and Baldridge, 2004). In this paper we restrict ourse</context>
+</contexts>
+<marker>Lafferty, McCallum, Pereira, 2001</marker>
+<rawString>J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional random fields: Probabilistic models for segmenting and labeling sequence data. In Proc. ICML 2001.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Malouf</author>
+</authors>
+<title>A comparison of algorithms for maximum entropy parameter estimation.</title>
+<date>2002</date>
+<booktitle>In Proc. CoNLL-2002.</booktitle>
+<contexts>
+<context citStr="Malouf (2002)" endWordPosition="848" position="5363" startWordPosition="847">sequences. The log-likelihood is given by: � () =  ˜p(o,s)log |o;) o,s where and are empirical distributions defined by the training set. At the maximum likelihood solution the model satisfies a set of feature constraints, whereby the expected count of each feature under the model is equal to its empiri ˜p(o,s) ˜p(o) cal count on the training data: lIn this paper we assume there is a one-to-one mapping between states and labels, though this need not be the case. E˜p(o,s)[fk] − Ep(s|o)[fk] = 0, bk In general this cannot be solved for the k in closed form so numerical routines must be used. Malouf (2002) and Sha and Pereira (2003) show that gradient-based algorithms, particularly limited memory variable metric (LMVM), require much less time to reach convergence, for some NLP tasks, than the iterative scaling methods (Della Pietra et al., 1997) previously used for log-linear optimisation problems. In all our experiments we use the LMVM method to train the CRFs. For CRFs with general graphical structure, calculation of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forwa</context>
+</contexts>
+<marker>Malouf, 2002</marker>
+<rawString>R. Malouf. 2002. A comparison of algorithms for maximum entropy parameter estimation. In Proc. CoNLL-2002.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A McCallum</author>
+<author>W Li</author>
+</authors>
+<title>Early results for named entity recognition with conditional random fields, feature induction and web-enhanced lexicons.</title>
+<date>2003</date>
+<booktitle>In Proc. CoNLL-2003.</booktitle>
+<contexts>
+<context citStr="McCallum and Li, 2003" endWordPosition="225" position="1552" startWordPosition="222">s (LOP-CRFs). We apply the LOP-CRF to two sequencing tasks. Our results show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search. 1 Introduction In recent years, conditional random fields (CRFs) (Lafferty et al., 2001) have shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend to be difficult to implement and are often computat</context>
+</contexts>
+<marker>McCallum, Li, 2003</marker>
+<rawString>A. McCallum and W. Li. 2003. Early results for named entity recognition with conditional random fields, feature induction and web-enhanced lexicons. In Proc. CoNLL-2003.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A McCallum</author>
+<author>K Rohanimanesh</author>
+<author>C Sutton</author>
+</authors>
+<title>Dynamic conditional random fields for jointly labeling multiple sequences.</title>
+<date>2003</date>
+<booktitle>In NIPS-2003 Workshop on Syntax, Semantics and Statistics.</booktitle>
+<contexts>
+<context citStr="McCallum et al., 2003" endWordPosition="2349" position="14114" startWordPosition="2346"> 51,578 tokens and the test set consists of 3,684 sentences and 46,666 tokens. dy(w) =  ˜p(o,s)log p (s |o) dw o,s + o ˜p(o)logZ (o) − o [ � ˜p(o)EpLOP(s|o) t logUt(o,s)  t −o  s',s&amp;quot; 21 4.2 Part-of-Speech Tagging POS tagging involves labelling each word in a sentence with its part-of-speech, for example noun, verb, adjective, etc. For our experiments we use the CoNLL-2000 shared task dataset (Tjong Kim Sang and Buchholz, 2000). This has 48 different POS tags. In order to make training time manageable4, we collapse the number of POS tags from 48 to 5 following the procedure used in (McCallum et al., 2003). In summary: • All types of noun collapse to category N. • All types of verb collapse to category V. • All types of adjective collapse to category J. • All types of adverb collapse to category R. • All other POS tags collapse to category O. The training set consists of 7,300 sentences and 173,542 tokens, the development set consists of 1,636 sentences and 38,185 tokens and the test set consists of 2,012 sentences and 47,377 tokens. 4.3 Expert sets For each task we compare the performance of the LOP-CRF to that of the standard CRF by defining a single, complex CRF, which we call a monolithic C</context>
+</contexts>
+<marker>McCallum, Rohanimanesh, Sutton, 2003</marker>
+<rawString>A. McCallum, K. Rohanimanesh, and C. Sutton. 2003. Dynamic conditional random fields for jointly labeling multiple sequences. In NIPS-2003 Workshop on Syntax, Semantics and Statistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A McCallum</author>
+</authors>
+<title>Efficiently inducing features of conditional random fields.</title>
+<date>2003</date>
+<booktitle>In Proc. UAI</booktitle>
+<contexts>
+<context citStr="McCallum, 2003" endWordPosition="292" position="1998" startWordPosition="291">shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend to be difficult to implement and are often computationally expensive. Consequently, due to its ease of implementation, the current standard approach to reducing overfitting in CRFs is the use of a prior distribution over the model parameters, typically a Gaussian. The disadvantage with this method, however, is that it requires adjusting the value of one or more of the distribution’s hyperparameters. This usually involves manual or automatic tuning on a development set, and can be an expensive</context>
+</contexts>
+<marker>McCallum, 2003</marker>
+<rawString>A. McCallum. 2003. Efficiently inducing features of conditional random fields. In Proc. UAI 2003.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Osborne</author>
+<author>J Baldridge</author>
+</authors>
+<title>Ensemble-based active learning for parse selection.</title>
+<date>2004</date>
+<booktitle>In Proc. NAACL</booktitle>
+<contexts>
+<context citStr="Osborne and Baldridge, 2004" endWordPosition="1013" position="6432" startWordPosition="1010">actable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hidden Markov models. 3 Logarithmic Opinion Pools In this paper an expert model refers a probabilistic model that focuses on modelling a specific subset of some probability distribution. The concept of combining the distributions of a set of expert models via a weighted product has previously been used in a range of different application areas, including economics and management science (Bordley, 1982), and NLP (Osborne and Baldridge, 2004). In this paper we restrict ourselves to sequence models. Given a set of sequence model experts, indexed by , with conditional distributions p(s |o) and a set of non-negative normalised weights w, a logarithmic opinion pool 2 is defined as the distribution: 1 pLOP(s |o) = ZLOP(o)  [p(s |o)]wa (2)  with w &gt; 0 and S w = 1, and where ZLOP(o) is the normalisation constant: ZLOP(o) =s  [p(s |o)]wa (3) − o ZHinton (1999) introduced a variant of the LOP idea called Product of Experts, in which expert distributions are multiplied under a uniform weight distribution. t=1 k ˜p(o)logZ(o;) p</context>
+</contexts>
+<marker>Osborne, Baldridge, 2004</marker>
+<rawString>M. Osborne and J. Baldridge. 2004. Ensemble-based active learning for parse selection. In Proc. NAACL 2004.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Peng</author>
+<author>A McCallum</author>
+</authors>
+<title>Accurate information extraction from research papers using conditional random fields.</title>
+<date>2004</date>
+<booktitle>In Proc. HLT-NAACL</booktitle>
+<contexts>
+<context citStr="Peng and McCallum, 2004" endWordPosition="235" position="1626" startWordPosition="232">show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search. 1 Introduction In recent years, conditional random fields (CRFs) (Lafferty et al., 2001) have shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend to be difficult to implement and are often computationally expensive. Consequently, due to its ease of implementation, the cu</context>
+</contexts>
+<marker>Peng, McCallum, 2004</marker>
+<rawString>F. Peng and A. McCallum. 2004. Accurate information extraction from research papers using conditional random fields. In Proc. HLT-NAACL 2004.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Qi</author>
+<author>M Szummer</author>
+<author>T P Minka</author>
+</authors>
+<title>Bayesian conditional random fields.</title>
+<date>2005</date>
+<booktitle>In Proc. AISTATS</booktitle>
+<contexts>
+<context citStr="Qi et al., 2005" endWordPosition="305" position="2071" startWordPosition="302">cluding shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend to be difficult to implement and are often computationally expensive. Consequently, due to its ease of implementation, the current standard approach to reducing overfitting in CRFs is the use of a prior distribution over the model parameters, typically a Gaussian. The disadvantage with this method, however, is that it requires adjusting the value of one or more of the distribution’s hyperparameters. This usually involves manual or automatic tuning on a development set, and can be an expensive process as the CRF must be retrained many times for different hyperparam</context>
+</contexts>
+<marker>Qi, Szummer, Minka, 2005</marker>
+<rawString>Y. Qi, M. Szummer, and T. P. Minka. 2005. Bayesian conditional random fields. In Proc. AISTATS 2005.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Sha</author>
+<author>F Pereira</author>
+</authors>
+<title>Shallow parsing with conditional random fields.</title>
+<date>2003</date>
+<booktitle>In Proc. HLT-NAACL</booktitle>
+<contexts>
+<context citStr="Sha and Pereira, 2003" endWordPosition="218" position="1502" startWordPosition="215">this model a logarithmic opinion pool (LOP) of CRFs (LOP-CRFs). We apply the LOP-CRF to two sequencing tasks. Our results show that unregularised expert CRFs with an unregularised CRF under a LOP can outperform the unregularised CRF, and attain a performance level close to the regularised CRF. LOP-CRFs therefore provide a viable alternative to CRF regularisation without the need for hyperparameter search. 1 Introduction In recent years, conditional random fields (CRFs) (Lafferty et al., 2001) have shown success on a number of natural language processing (NLP) tasks, including shallow parsing (Sha and Pereira, 2003), named entity recognition (McCallum and Li, 2003) and information extraction from research papers (Peng and McCallum, 2004). In general, this work has demonstrated the susceptibility of CRFs to overfit the training data during parameter estimation. As a consequence, it is now standard to use some form of overfitting reduction in CRF training. Recently, there have been a number of sophisticated approaches to reducing overfitting in CRFs, including automatic feature induction (McCallum, 2003) and a full Bayesian approach to training and inference (Qi et al., 2005). These advanced methods tend t</context>
+<context citStr="Sha and Pereira (2003)" endWordPosition="853" position="5390" startWordPosition="850">-likelihood is given by: � () =  ˜p(o,s)log |o;) o,s where and are empirical distributions defined by the training set. At the maximum likelihood solution the model satisfies a set of feature constraints, whereby the expected count of each feature under the model is equal to its empiri ˜p(o,s) ˜p(o) cal count on the training data: lIn this paper we assume there is a one-to-one mapping between states and labels, though this need not be the case. E˜p(o,s)[fk] − Ep(s|o)[fk] = 0, bk In general this cannot be solved for the k in closed form so numerical routines must be used. Malouf (2002) and Sha and Pereira (2003) show that gradient-based algorithms, particularly limited memory variable metric (LMVM), require much less time to reach convergence, for some NLP tasks, than the iterative scaling methods (Della Pietra et al., 1997) previously used for log-linear optimisation problems. In all our experiments we use the LMVM method to train the CRFs. For CRFs with general graphical structure, calculation of Ep(s|o)[fk] is intractable, but for the linear chain case Lafferty et al. (2001) describe an efficient dynamic programming procedure for inference, similar in nature to the forward-backward algorithm in hi</context>
+</contexts>
+<marker>Sha, Pereira, 2003</marker>
+<rawString>F. Sha and F. Pereira. 2003. Shallow parsing with conditional random fields. In Proc. HLT-NAACL 2003.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E F Tjong Kim Sang</author>
+<author>S Buchholz</author>
+</authors>
+<title>Introduction to the CoNLL-2000 shared task: Chunking. In</title>
+<date>2000</date>
+<booktitle>Proc. CoNLL2000.</booktitle>
+<contexts>
+<context citStr="Sang and Buchholz, 2000" endWordPosition="2316" position="13933" startWordPosition="2313">), locations (LOC), organisations (ORG) and miscellaneous (MISC). The training set consists of 14,987 sentences and 204,567 tokens, the development set consists of 3,466 sentences and 51,578 tokens and the test set consists of 3,684 sentences and 46,666 tokens. dy(w) =  ˜p(o,s)log p (s |o) dw o,s + o ˜p(o)logZ (o) − o [ � ˜p(o)EpLOP(s|o) t logUt(o,s)  t −o  s',s&amp;quot; 21 4.2 Part-of-Speech Tagging POS tagging involves labelling each word in a sentence with its part-of-speech, for example noun, verb, adjective, etc. For our experiments we use the CoNLL-2000 shared task dataset (Tjong Kim Sang and Buchholz, 2000). This has 48 different POS tags. In order to make training time manageable4, we collapse the number of POS tags from 48 to 5 following the procedure used in (McCallum et al., 2003). In summary: • All types of noun collapse to category N. • All types of verb collapse to category V. • All types of adjective collapse to category J. • All types of adverb collapse to category R. • All other POS tags collapse to category O. The training set consists of 7,300 sentences and 173,542 tokens, the development set consists of 1,636 sentences and 38,185 tokens and the test set consists of 2,012 sentences a</context>
+</contexts>
+<marker>Sang, Buchholz, 2000</marker>
+<rawString>E. F. Tjong Kim Sang and S. Buchholz. 2000. Introduction to the CoNLL-2000 shared task: Chunking. In Proc. CoNLL2000.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E F Tjong Kim Sang</author>
+<author>F De Meulder</author>
+</authors>
+<title>Introduction to the CoNLL-2003 shared task: Language-independent named entity recognition.</title>
+<date>2003</date>
+<booktitle>In Proc. CoNLL-2003.</booktitle>
+<marker>Sang, De Meulder, 2003</marker>
+<rawString>E. F. Tjong Kim Sang and F. De Meulder. 2003. Introduction to the CoNLL-2003 shared task: Language-independent named entity recognition. In Proc. CoNLL-2003.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

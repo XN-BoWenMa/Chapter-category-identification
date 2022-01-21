@@ -1,0 +1,914 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.007926" no="0">
+<title confidence="0.9956695">
+Combining Morpheme-based Machine Translation with
+Post-processing Morpheme Prediction
+</title>
+<author confidence="0.986386">
+Ann Clifton and Anoop Sarkar
+</author>
+<affiliation confidence="0.9268055">
+Simon Fraser University
+Burnaby, British Columbia, Canada
+</affiliation>
+<email confidence="0.982372">
+{ann clifton,anoop}@sfu.ca
+</email>
+<sectionHeader confidence="0.978651" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999841461538462">This paper extends the training and tuning regime for phrase-based statistical machine translation to obtain fluent translations into morphologically complex languages (we build an English to Finnish translation system). Our methods use unsupervised morphology induction. Unlike previous work we focus on morphologically productive phrase pairs – our decoder can combine morphemes across phrase boundaries. Morphemes in the target language may not have a corresponding morpheme or word in the source language. Therefore, we propose a novel combination of post-processing morphology prediction with morpheme-based translation. We show, using both automatic evaluation scores and linguistically motivated analyses of the output, that our methods outperform previously proposed ones and provide the best known results on the EnglishFinnish Europarl translation task. Our methods are mostly language independent, so they should improve translation into other target languages with complex morphology.</bodyText>
+<sectionHeader confidence="0.46275" genericHeader="introduction">
+1 Translation and Morphology
+</sectionHeader>
+<bodyText confidence="0.999659769230769">Languages with rich morphological systems present significant hurdles for statistical machine translation (SMT), most notably data sparsity, source-target asymmetry, and problems with automatic evaluation. In this work, we propose to address the problem of morphological complexity in an Englishto-Finnish MT task within a phrase-based translation framework. We focus on unsupervised segmentation methods to derive the morphological information supplied to the MT model in order to provide coverage on very large datasets and for languages with few hand-annotated resources.</bodyText>
+<page confidence="0.989386">
+32
+</page>
+<bodyText confidence="0.998540538461538">In fact, in our experiments, unsupervised morphology always outperforms the use of a hand-built morphological analyzer. Rather than focusing on a few linguistically motivated aspects of Finnish morphological behaviour, we develop techniques for handling morphological complexity in general. We chose Finnish as our target language for this work, because it exemplifies many of the problems morphologically complex languages present for SMT. Among all the languages in the Europarl data-set, Finnish is the most difficult language to translate from and into, as was demonstrated in the MT Summit shared task (Koehn, 2005). Another reason is the current lack of knowledge about how to apply SMT successfully to agglutinative languages like Turkish or Finnish. Our main contributions are: 1) the introduction of the notion of segmented translation where we explicitly allow phrase pairs that can end with a dangling morpheme, which can connect with other morphemes as part of the translation process, and 2) the use of a fully segmented translation model in combination with a post-processing morpheme prediction system, using unsupervised morphology induction. Both of these approaches beat the state of the art on the English-Finnish translation task. Morphology can express both content and function categories, and our experiments show that it is important to use morphology both within the translation model (for morphology with content) and outside it (for morphology contributing to fluency). Automatic evaluation measures for MT, BLEU (Papineni et al., 2002), WER (Word Error Rate) and PER (Position Independent Word Error Rate) use the word as the basic unit rather than morphemes.In a word comprised of multiple morphemes, getting even a single morpheme wrong means the entire word is wrong.</bodyText>
+<note confidence="0.962222">
+Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 32–42,
+Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.990903877551021">In addition to standard MT evaluation measures, we perform a detailed linguistic analysis of the output. Our proposed approaches are significantly better than the state of the art, achieving the highest reported BLEU scores on the English-Finnish Europarl version 3 data-set. Our linguistic analysis shows that our models have fewer morpho-syntactic errors compared to the word-based baseline.</bodyText>
+<sectionHeader confidence="0.46275" genericHeader="method">
+2 Models
+</sectionHeader>
+<subsectionHeader confidence="0.46275" genericHeader="keywords">
+2.1 Baseline Models
+</subsectionHeader>
+<bodyText confidence="0.990903877551021">We set up three baseline models for comparison in this work. The first is a basic wordbased model (called Baseline in the results); we trained this on the original unsegmented version of the text. Our second baseline is a factored translation model (Koehn and Hoang, 2007) (called Factored), which used as factors the word, “stem”1 and suffix. These are derived from the same unsupervised segmentation model used in other experiments. The results (Table 3) show that a factored model was unable to match the scores of a simple wordbased baseline. We hypothesize that this may be an inherently difficult representational form for a language with the degree of morphological complexity found in Finnish. Because the morphology generation must be precomputed, for languages with a high degree of morphological complexity, the combinatorial explosion makes it unmanageable to capture the full range of morphological productivity. In addition, because the morphological variants are generated on a per-word basis within a given phrase, it excludes productive morphological combination across phrase boundaries and makes it impossible for the model to take into account any longdistance dependencies between morphemes. We conclude from this result that it may be more useful for an agglutinative language to use morphology beyond the confines of the phrasal unit, and condition its generation on more than just the local target stem. In order to compare the performance of unsupervised segmentation for translation, our third baseline is a segmented translation model based on a supervised segmentation model (called Sup), using the hand-built Omorfi morphological analyzer (Pirinen and Listenmaa, 2007), which provided slightly higher BLEU scores than the word-based baseline</bodyText>
+<subsectionHeader confidence="0.46275" genericHeader="keywords">
+2.2 Segmented Translation
+</subsectionHeader>
+<bodyText confidence="0.9834203125">For segmented translation models, it cannot betaken for granted that greater linguistic accuracy in segmentation yields improved translation (Chang et al., 2008). Rather, the goal insegmentation for translation is instead to maximize the amount of lexical content-carrying morphology, while generalizing over the informationnot helpful for improving the translation model.We therefore trained several different segmentation models, considering factors of granularity,coverage, and source-target symmetry.We performed unsupervised segmentation of the target data, using Morfessor (Creutz andLagus, 2005) and Paramor (Monson, 2008), twotop systems from the Morpho Challenge 2008(their combined output was the Morpho Challenge winner). However, translation modelsbased upon either Paramor alone or the combined systems output could not match the wordbased baseline, so we concentrated on Morfessor. Morfessor uses minimum description lengthcriteria to train a HMM-based segmentationmodel. When tested against a human-annotatedgold standard of linguistic morpheme segmentations for Finnish, this algorithm outperformscompeting unsupervised methods, achieving anF-score of 67.0% on a 3 million sentence corpus (Creutz and Lagus, 2006). Varying the perplexity threshold in Morfessor does not segmentmore word types, but rather over-segments thesame word types. In order to get robust, common segmentations, we trained the segmenteron the 5000 most frequent words2 ; we then usedthis to segment the entire data set. In orderto improve coverage, we then further segmented any word type that contained a match from the most frequent suffix set, looking for the longest matching suffix character string.</bodyText>
+<table confidence="0.995429166666667">
+1see Section 2.2.
+33
+Training Set Test Set
+Total 64,106,047 21,938
+Morph 30,837,615 5,191
+Hanging Morph 10,906,406 296
+</table>
+<tableCaption confidence="0.981472">
+Table 1: Morpheme occurences in the phrase table
+and in translation.
+</tableCaption>
+<bodyText confidence="0.9834203125">We call this method Unsup L-match. After the segmentation, word-internal morpheme boundary markers were inserted into the segmented text to be used to reconstruct the surface forms in the MT output. We then trained the Moses phrase-based system (Koehn et al., 2007) on the segmented and marked text. After decoding, it was a simple matter to join together all adjacent morphemes with word-internal boundary markers to reconstruct the surface forms. Figure 1(a) gives the full model overview for all the variants of the segmented translation model (supervised/unsupervised; with and without the Unsup L-match procedure). Table 1 shows how morphemes are being used in the MT system. Of the phrases that included segmentations (‘Morph’ in Table 1), roughly a third were ‘productive’, i.e.had a hanging morpheme (with a form such as stem+) that could be joined to a suffix (‘Hanging Morph’ in Table 1). However, in phrases used while decoding the development and test data, roughly a quarter of the phrases that generated the translated output included segmentations, but of these, only a small fraction (6%) had a hanging morpheme; and while there are many possible reasons to account for this we were unable to find a single convincing cause.</bodyText>
+<subsectionHeader confidence="0.998612">
+2.3 Morphology Generation
+</subsectionHeader>
+<bodyText confidence="0.999981457142857">Morphology generation as a post-processing step allows major vocabulary reduction in the translation model, and allows the use of morphologically targeted features for modeling inflection. A possible disadvantage of this approach is that in this model there is no opportunity to consider the morphology in translation since it is removed prior to training the translation model. Morphology generation models can use a variety of bilingual and contextual information to capture dependencies between morphemes, often more long-distance than what is possible using n-gram language models over morphemes in the segmented model. Similar to previous work (Minkov et al., 2007; Toutanova et al., 2008), we model morphology generation as a sequence learning problem. Unlike previous work, we use unsupervised morphology induction and use automatically generated suffix classes as tags. The first phase of our morphology prediction model is to train a MT system that produces morphologically simplified word forms in the target language. The output word forms are complex stems (a stem and some suffixes) but still missing some important suffix morphemes. In the second phase, the output of the MT decoder is then tagged with a sequence of abstract suffix tags. In particular, the output of the MT decoder is a sequence of complex stems denoted by x and the output is a sequence of suffix class tags denoted by y. We use a list of parts from (x,y) and map to a d-dimensional feature vector 4b(x, y), with each dimension being a real number. We infer the best sequence of tags using:</bodyText>
+<equation confidence="0.88909">
+F(x) = argmax p(y  |x, w)
+y
+</equation>
+<bodyText confidence="0.9956116">where F(x) returns the highest scoring output y*. A conditional random field (CRF) (Lafferty et al., 2001) defines the conditional probability as a linear score for each candidate y and a global normalization term:</bodyText>
+<equation confidence="0.945425">
+logp(y  |x, w) = -b(x, y) · w − log Z
+</equation>
+<bodyText confidence="0.998572">where Z = Ey1EGEN(x) exp(-b(x,y') · w). We use stochastic gradient descent (using crfsgd3) to train the weight vector w. So far, this is all off-the-shelf sequence learning. However, the output y* from the CRF decoder is still only a sequence of abstract suffix tags. The third and final phase in our morphology prediction model is to take the abstract suffix tag sequence y∗ and then map it into fully inflected word forms, and rank those outputs using a morphemic language model.</bodyText>
+<footnote confidence="0.975625">
+3http://leon.bottou.org/projects/sgd
+</footnote>
+<page confidence="0.997253">
+34
+</page>
+<figure confidence="0.999489692307692">
+English Training Data Finnish Training Data
+words
+Morphological Pre-Processing
+stem+ +morph
+MT System
+Alignment:
+word word word
+stem+ +morph stem
+words
+English Training Data Finnish Training Data
+words
+Morphological Pre-Processing 1
+stem+ +morph1+ +morph2
+Morphological Pre-Processing 2
+stem+ +morph1+
+MT System
+Alignment:
+word word word
+stem+ +morph1+ stem
+Post-Process 1:
+Morph Re-Stitching
+stem+ +morph1+
+words
+stem+ +morph complex stem: stem+morph1+
+Post-Process:
+Morph Re-Stitching
+Fully inflected surface form
+Evaluation against
+original reference
+(a) Segmented Translation Model
+Post-Process 2: CRF
+Morphology Generation
+Language Model
+surface form mapping
+stem+morph1+ +morph2
+Fully inflected surface form
+Evaluation against
+original reference
+(b) Post-Processing Model Translation &amp; Generation
+</figure>
+<figureCaption confidence="0.999985">
+Figure 1: Training and testing pipelines for the SMT models.
+</figureCaption>
+<bodyText confidence="0.999370479166667">The abstract suffix tags are extracted from the unsupervised morpheme learning process, and are carefully designed to enable CRF training and decoding. We call this model CRFLM for short. Figure 1(b) shows the full pipeline and Figure 2 shows a worked example of all the steps involved. We use the morphologically segmented training data (obtained using the segmented corpus described in Section 2.24) and remove selected suffixes to create a morphologically simplified version of the training data. The MT model is trained on the morphologically simplified training data. The output from the MT system is then used as input to the CRF model. The CRF model was trained on a ∼210,000 Finnish sentences, consisting of —1.5 million tokens; the 2,000 sentence Europarl test set consisted of 41,434 stem tokens. The labels in the output sequence y were obtained by selecting the most productive 150 stems, and then collapsing certain vowels into equivalence classes corresponding to Finnish vowel harmony patterns. Thus ¢Note that unlike Section 2.2 we do not use Unsup L-match because when evaluating the CRF model on the suffix prediction task it obtained 95.61% without using Unsup L-match and 82.99% when using Unsup L-match.variants -ko and -ko become vowel-generic enclitic particle -kO, and variants -ssa and -ssa become the vowel-generic inessive case marker -ssA, etc. This is the only language-specific component of our translation model. However, we expect this approach to work for other agglutinative languages as well. For fusional languages like Spanish, another mapping from suffix to abstract tags might be needed. These suffix transformations to their equivalence classes prevent morphophonemic variants of the same morpheme from competing against each other in the prediction model. This resulted in 44 possible label outputs per stem which was a reasonable sized tag-set for CRF training. The CRF was trained on monolingual features of the segmented text for suffix prediction, where t is the current token:</bodyText>
+<subsectionHeader confidence="0.430064">
+Word Stem st−n, .., st, .., st+n(n = 4)
+</subsectionHeader>
+<bodyText confidence="0.971571818181818">Morph Prediction yt−2, yt−1, yt With this simple feature set, we were able to use features over longer distances, resulting in a total of 1,110,075 model features. After CRF based recovery of the suffix tag sequence, we use a bigram language model trained on a full segmented version on the training data to recover the original vowels. We used bigrams only, because the suffix vowel harmony alternation depends only upon the preceding phonemes in the word from which it was segmented.</bodyText>
+<page confidence="0.989085">
+35
+</page>
+<figure confidence="0.895926296296296">
+original training data:
+koskevaa mietintoa kasitellaan
+segmentation:
+koske+ +va+ +a mietinto+ +a kasi+ +te+ +lla+ +a+ +n
+(train bigram language model with mapping A = { a, a� })
+map final suffix to abstract tag-set:
+koske+ +va+ +A mietinto+ +A kasi+ +te+ +lla+ +a+ +n
+(train CRF model to predict the final suffix)
+peeling of final suffix:
+koske+ +va+ mietinto+ kasi+ +te+ +lla+ +a+
+(train SMT model on this transformation of training data)
+(a) Training
+decoder output:
+koske+ +va+ mietinto+ kasi+ +te+ +lla+ +a+
+decoder output stitched up:
+koskeva+ mietinto+ kasitellm+
+CRF model prediction:
+X = `koskeva+ mietinto+ kasitellaa+', U = `+A +A +n'
+koskeva+ +A mietinto+ +A kasitellm+ +n
+unstitch morphemes:
+koske+ +va+ +A mietinto+ +A kasi+ +te+ +lla+ +a+ +n
+language model disambiguation:
+koske+ +va+ +a mietinto+ +a kasi+ +te+ +lla+ +a+ +n
+final stitching:
+koskevaa mietintoa kasitellaan
+(the output is then compared to the reference translation)
+(b) Decoding
+</figure>
+<figureCaption confidence="0.999566">
+Figure 2: Worked example of all steps in the post-processing morphology prediction model.
+</figureCaption>
+<sectionHeader confidence="0.996171" genericHeader="evaluation and result">
+3 Experimental Results
+</sectionHeader>
+<bodyText confidence="0.999955709677419">For all of the models built in this paper, we used the Europarl version 3 corpus (Koehn, 2005) English-Finnish training data set, as well as the standard development and test data sets. Our parallel training data consists of —1 million sentences of 40 words or less, while the development and test sets were each 2,000 sentences long. In all the experiments conducted in this paper, we used the Moses5 phrase-based translation system (Koehn et al., 2007), 2008 version. We trained all of the Moses systems herein using the standard features: language model, reordering model, translation model, and word penalty; in addition to these, the factored experiments called for additional translation and generation features for the added factors as noted above. We used in all experiments the following settings: a hypothesis stack size 100, distortion limit 6, phrase translations limit 20, and maximum phrase length 20. For the language models, we used SRILM 5-gram language models (Stolcke, 2002) for all factors. For our word-based Baseline system, we trained a word-based model using the same Moses system with identical settings. For evaluation against segmented translation systems in segmented forms before word reconstruction, we also segmented the baseline system’s word-based output. All the BLEU scores reported are for lowercase evaluation. We did an initial evaluation of the segmented output translation for each system using the notion of m-BLEU score (Luong et al., 2010) where the BLEU score is computed by comparing the segmented output with a segmented reference translation.</bodyText>
+<footnote confidence="0.962129">
+5http://www.statmt.org/moses/
+</footnote>
+<table confidence="0.99980125">
+Segmentation m-BLEU No Uni
+Baseline 14.84±0.69 9.89
+Sup 18.41±0.69 13.49
+Unsup L-match 20.74±0.68 15.89
+</table>
+<tableCaption confidence="0.986674142857143">
+Table 2: Segmented Model Scores. Sup refers to the
+supervised segmentation baseline model. m-BLEU
+indicates that the segmented output was evaluated
+against a segmented version of the reference (this
+measure does not have the same correlation with hu-
+man judgement as BLEU). No Uni indicates the seg-
+mented BLEU score without unigrams.
+</tableCaption>
+<bodyText confidence="0.999943318181818">Table 2 shows the m-BLEU scores for various systems. We also show the m-BLEU score without unigrams, since over-segmentation could lead to artificially high m-BLEU scores. In fact, if we compare the relative improvement of our m-BLEU scores for the Unsup L-match system we see a relative improvement of 39.75% over the baseline. Luong et.al.(2010) report an m-BLEU score of 55.64% but obtain a relative improvement of 0.6% over their baseline m-BLEU score. We find that when using a good segmentation model, segmentation of the morphologically complex target language improves model performance over an unsegmented baseline (the confidence scores come from bootstrap resampling). Table 3 shows the evaluation scores for all the baselines and the methods introduced in this paper using standard wordbased lowercase BLEU, WER and PER.We do better than (Luong et al., 2010), the previous best score for this task.</bodyText>
+<page confidence="0.983402">
+36
+</page>
+<table confidence="0.999785714285714">
+Model BLEU WER TER
+Baseline 14.68 74.96 72.42
+Factored 14.22 76.68 74.15
+(Luong et.al, 2010) 14.82 - -
+Sup 14.90 74.56 71.84
+Unsup L-match 15.09∗ 74.46 71.78
+CRF-LM 14.87 73.71 71.15
+</table>
+<tableCaption confidence="0.9888618">
+Table 3: Test Scores: lowercase BLEU, WER and
+TER. The * indicates a statistically significant im-
+provement of BLEU score over the Baseline model.
+The boldface scores are the best performing scores
+per evaluation measure.
+</tableCaption>
+<bodyText confidence="0.999901153846154">We also show a better relative improvement over our baseline when compared to (Luong et al., 2010): a relative improvement of 4.86% for Unsup L-match compared to our baseline word-based model, compared to their 1.65% improvement over their baseline word-based model. Our best performing method used unsupervised morphology with L-match (see Section 2.2) and the improvement is significant: bootstrap resampling provides a confidence margin of ±0.77 and a t-test (Collins et al., 2005) showed significance with p = 0.001.</bodyText>
+<subsectionHeader confidence="0.998893">
+3.1 Morphological Fluency Analysis
+</subsectionHeader>
+<bodyText confidence="0.999741625">To see how well the models were doing at getting morphology right, we examined several patterns of morphological behavior. While we wish to explore minimally supervised morphological MT models, and use as little language specific information as possible, we do want to use linguistic analysis on the output of our system to see how well the models capture essential morphological information in the target language. So, we ran the word-based baseline system, the segmented model (Unsup L-match), and the prediction model (CRF-LM) outputs, along with the reference translation through the supervised morphological analyzer Omorfi (Pirinen and Listenmaa, 2007). Using this analysis, we looked at a variety of linguistic constructions that might reveal patterns in morphological behavior. These were: (a) explicitly marked noun forms, (b) noun-adjective case agreement, (c) subject-verb person/number agreement, (d) transitive object case marking, (e) postpositions, and (f) possession. In each of these categories, we looked for construction matches on a per-sentence level between the models’ output and the reference translation. Table 4 shows the models’ performance on the constructions we examined. In all of the categories, the CRF-LM model achieves the best precision score, as we explain below, while the Unsup L-match model most frequently gets the highest recall score. A general pattern in the most prevalent of these constructions is that the baseline tends to prefer the least marked form for noun cases (corresponding to the nominative) more than the reference or the CRF-LM model. The baseline leaves nouns in the (unmarked) nominative far more than the reference, while the CRF-LM model comes much closer, so it seems to fare better at explicitly marking forms, rather than defaulting to the more frequent unmarked form. Finnish adjectives must be marked with the same case as their head noun, while verbs must agree in person and number with their subject. We saw that in both these categories, the CRFLM model outperforms for precision, while the segmented model gets the best recall. In addition, Finnish generally marks direct objects of verbs with the accusative or the partitive case; we observed more accusative/partitive-marked nouns following verbs in the CRF-LM output than in the baseline, as illustrated by example (1) in Fig. 3. While neither translation picks the same verb as in the reference for the input ‘clarify,’ the CRFLM-output paraphrases it by using a grammatical construction of the transitive verb followed by a noun phrase inflected with the accusative case, correctly capturing the transitive construction. The baseline translation instead follows ‘give’ with a direct object in the nominative case. To help clarify the constructions in question, we have used Google Translate6 to provide backtranslations of our MT output into English; to contextualize these back-translations, we have provided Google's back-translation of the reference.</bodyText>
+<footnote confidence="0.979638">
+6http://translate.google.com/
+</footnote>
+<page confidence="0.996924">
+37
+</page>
+<table confidence="0.99994575">
+Construction Freq. P Baseline Unsup L-match P CRF-LM
+R F P R F R F
+Noun Marking 5.5145 51.74 78.48 62.37 53.11 83.63 64.96 54.99 80.21 65.25
+Trans Obj 1.0022 32.35 27.50 29.73 33.47 29.64 31.44 35.83 30.71 33.07
+Noun-Adj Agr 0.6508 72.75 67.16 69.84 69.62 71.00 70.30 73.29 62.58 67.51
+Subj-Verb Agr 0.4250 56.61 40.67 47.33 55.90 48.17 51.48 57.79 40.17 47.40
+Postpositions 0.1138 43.31 29.89 35.37 39.31 36.96 38.10 47.16 31.52 37.79
+Possession 0.0287 66.67 70.00 68.29 75.68 70.00 72.73 78.79 60.00 68.12
+</table>
+<tableCaption confidence="0.99536375">
+Table 4: Model Accuracy: Morphological Constructions. Freq. refers to the construction’s average number
+of occurrences per sentence, also averaged over the various translations. P, R and F stand for precision,
+recall and F-score. The constructions are listed in descending order of their frequency in the texts. The
+highlighted value in each column is the most accurate with respect to the reference value.
+</tableCaption>
+<bodyText confidence="0.99984735">The use of postpositions shows another difference between the models. Finnish postpositions require the preceding noun to be in the genitive or sometimes partitive case, which occurs correctly more frequently in the CRF-LM than the baseline. In example (2) in Fig.3, all three translations correspond to the English text, ‘with the basque nationalists.’ However, the CRF-LM output is more grammatical than the baseline, because not only do the adjective and noun agree for case, but the noun ‘baskien' to which the postposition `kanssa' belongs is marked with the correct genitive case. However, this well-formedness is not rewarded by BLEU, because `baskien' does not match the reference. In addition, while Finnish may express possession using case marking alone, it has another construction for possession; this can disambiguate an otherwise ambiguous clause. This alternate construction uses a pronoun in the genitive case followed by a possessive-marked noun; we see that the CRF-LM model correctly marks this construction more frequently than the baseline. As example (3) in Fig.3 shows, while neither model correctly translates `matkan' (‘trip’), the baseline’s output attributes the inessive `yhteydess' (‘connection’) as belonging to `tulokset' (‘results’), and misses marking the possession linking it to ‘Commissioner Fischler’. Our manual evaluation shows that the CRFLM model is producing output translations that are more morphologically fluent than the wordbased baseline and the segmented translation Unsup L-match system, even though the word choices lead to a lower BLEU score overall when compared to Unsup L-match.</bodyText>
+<sectionHeader confidence="0.999744" genericHeader="related work">
+4 Related Work
+</sectionHeader>
+<bodyText confidence="0.999980076923077">The work on morphology in MT can be grouped into three categories, factored models, segmented translation, and morphology generation. Factored models (Koehn and Hoang, 2007) factor the phrase translation probabilities over additional information annotated to each word, allowing for text to be represented on multiple levels of analysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more frequently occurring components, and may also increase the symmetry of the lexically realized content be-</bodyText>
+<page confidence="0.995391">
+38
+</page>
+<listItem confidence="0.948232738095238">(1) Input: ‘the charter we are to approve today both strengthens and gives visible shape to the common fundamental rights and values our community is to be based upon.’ a. Reference: perusoikeuskirja , jonka tanMn aiomme hyvaksya , seka vahvistaa etta selventaa (selventaa/VERB/ACT/INF/SG/LAT-clarify) niita (ne/PRONOUN/PL/PAR-them) yhteisia perusoikeuksia ja arvoja , joiden on oltava yhteisomme perusta. Back-translation: ‘Charter of Fundamental Rights, which today we are going to accept that clarify and strengthen the common fundamental rights and values, which must be community based.’ b. Baseline: perusoikeuskirja me hyvaksymme tanaan molemmat vahvistaa ja antaa (antaa/VERB/INF/SG/LATgive) nakyva (nakya/VERB/ACT/PCP/SG/NOM-visible) muokata yhteista perusoikeuksia ja arvoja on perustuttava. Back-translation: ‘Charter today, we accept both confirm and modify to make a visible and common values, fundamental rights must be based.’ c. CRF-LM: perusoikeuskirja on hyvaksytty tanaan , seka vahvistaa ja antaa (antaa/VERB/ACT/INF/SG/LAT-give) konkreettisen (konkreettinen/ADJECTIVE/SG/GEN,ACC-concrete) muodon (muoto/NOUN/SG/GEN,ACCshape) yhteisia perusoikeuksia ja perusarvoja , yhteison on perustuttava. Back-translation: ‘Charter has been approved today, and to strengthen and give concrete shape to the common basic rights and fundamental values, the Community must be based.’ (2) Input: ‘with the basque nationalists’ a. Reference: baskimaan kansallismielisten kanssa basque-SG/NOM+land-SG/GEN,ACC nationalists-PL/GEN with-POST b. Baseline: baskimaan kansallismieliset kanssa basque-SG/NOM-+land-SG/GEN,ACC kansallismielinen-PL/NOM,ACC-nationalists POST-with c. CRF-LM: kansallismielisten baskien kanssa nationalists-PL/GEN basques-PL/GEN with-POST (3) Input: ‘and in this respect we should value the latest measures from commissioner fischler , the results of his trip to morocco on the 26th of last month and the high level meetings that took place, including the one with the king himself’ a. Reference: ja tassa mielessa osaamme myos arvostaa komission jasen fischlerin viimeisimpia toimia , jotka ovat hanen (hanen/GEN-his) marokkoon 26 lokakuuta tekemns (tekemansa/POSS-his) matkan (matkan/GENtour) ja korkean tason kokousten jopa itsensa kuninkaan kanssa tulosta Back-translation: ‘and in this sense we can also appreciate the Commissioner Fischler's latest actions, which are his to Morocco 26 October trip to high-level meetings and even the king himself with the result b. Baseline: ja tassa yhteydessa olisi arvoa viimeisin toimia komission jasen fischler , tulokset monitulkintaisia marokon yhteydessa (yhteydess/INE-connection) , ja viime kuussa pidettiin korkean tason kokouksissa , mukaan luettuna kuninkaan kanssa Back-translation: ‘and in this context would be the value of the last act, Commissioner Fischler, the results of the Moroccan context, ambiguous, and last month held high level meetings, including with the king’ c. CRF-LM: ja tassa yhteydessa meidan olisi lisaarvoa viimeista toimenpiteita kuin komission jasen fischler , etta hanen (hanen/GEN-his) kokemuksensa (kokemuksensa/POSS-experience) marokolle (marokolle-Moroccan) viime kuun 26 ja korkean tason tapaamiset jarjestettiin, kuninkaan kanssa Back-translation: ‘and in this context, we should value the last measures as the Commissioner Fischler, that his experience in Morocco has on the 26th and high-level meetings took place, including with the king.’ tween source and target.</listItem>
+<figureCaption confidence="0.998237">
+Figure 3: Morphological fluency analysis (see Section 3.1).
+</figureCaption>
+<bodyText confidence="0.999927807692308">In a somewhat orthogonal approach to ours, (Ma et al., 2007) use alignment of a parallel text to pack together adjacent segments in the alignment output, which are then fed back to the word aligner to bootstrap an improved alignment, which is then used in the translation model. We compared our results against (Luong et al., 2010) in Table 3 since their results are directly comparable to ours. They use a segmented phrase table and language model along with the word-based versions in the decoder and in tuning a Finnish target. Their approach requires segmented phrases to match word boundaries, eliminating morphologically productive phrases. In their work a segmented language model can score a translation, but cannot insert morphology that does not show source-side reflexes. In order to perform a similar experiment that still allowed for morphologically productive phrases, we tried training a segmented translation model, the output of which we stitched up in tuning so as to tune to a word-based reference. The goal of this experiment was to control the segmented model’s tendency to overfit by rewarding it for using correct whole-word forms.However, we found that this approach was less successful than using the segmented reference in tuning, and could not meet the baseline (13.97% BLEU best tuning score, versus 14.93% BLEU for the baseline best tuning score).</bodyText>
+<page confidence="0.998583">
+39
+</page>
+<bodyText confidence="0.999988416666667">Previous work in segmented translation has often used linguistically motivated morphological analysis selectively applied based on a language-specific heuristic. A typical approach is to select a highly inflecting class of words and segment them for particular morphology (de Gispert and Marino, 2008; Ramanathan et al., 2009). Popoviq and Ney (2004) perform segmentation to reduce morphological complexity of the source to translate into an isolating target, reducing the translation error rate for the English target. For Czech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et.al.(2007) and Toutanova et.al.(2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); this can be a problem for languages in which morphology expresses lexical content.de Gispert (2008) uses a language-specific targeted morphological classifier for Spanish verbs to avoid this issue. Talbot and Osborne (2006) use clustering to group morphological variants of words for word alignments and for smoothing phrase translation tables. Habash (2007) provides various methods to incorporate morphological variants of words in the phrase table in order to help recognize out of vocabulary words in the source language.</bodyText>
+<sectionHeader confidence="0.974276" genericHeader="conclusion">
+5 Conclusion and Future Work
+</sectionHeader>
+<bodyText confidence="0.999994795454546">We found that using a segmented translation model based on unsupervised morphology induction and a model that combined morpheme segments in the translation model with a postprocessing morphology prediction model gave us better BLEU scores than a word-based baseline. Using our proposed approach we obtain better scores than the state of the art on the EnglishFinnish translation task (Luong et al., 2010): from 14.82% BLEU to 15.09%, while using a simpler model. We show that using morphological segmentation in the translation model can improve output translation scores. We also demonstrate that for Finnish (and possibly other agglutinative languages), phrase-based MT benefits from allowing the translation model access to morphological segmentation yielding productive morphological phrases. Taking advantage of linguistic analysis of the output we show that using a post-processing morphology generation model can improve translation fluency on a sub-word level, in a manner that is not captured by the BLEU word-based evaluation measure. In order to help with replication of the results in this paper, we have run the various morphological analysis steps and created the necessary training, tuning and test data files needed in order to train, tune and test any phrase-based machine translation system with our data. The files can be downloaded from natlang.cs.sfu.ca. In future work we hope to explore the utility of phrases with productive morpheme boundaries and explore why they are not used more pervasively in the decoder. Evaluation measures for morphologically complex languages and tuning to those measures are also important future work directions. Also, we would like to explore a non-pipelined approach to morphological preand post-processing so that a globally trained model could be used to remove the target side morphemes that would improve the translation model and then predict those morphemes in the target language.</bodyText>
+<sectionHeader confidence="0.990804" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.996246909090909">This research was partially supported by NSERC, Canada (RGPIN: 264905) and a Google Faculty Award. We would like to thank Christian Monson, Franz Och, Fred Popowich, Howard Johnson, Majid Razmara, Baskaran Sankaran and the anonymous reviewers for their valuable comments on this work. We would particularly like to thank the developers of the open-source Moses machine translation toolkit and the Omorfi morphological analyzer for Finnish which we used for our experiments.</bodyText>
+<page confidence="0.997794">
+40
+</page>
+<sectionHeader confidence="0.97787" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.998566276190476">
+Eleftherios Avramidis and Philipp Koehn. 2008. En-
+riching morphologically poor languages for statis-
+tical machine translation. In Proceedings of the
+46th Annual Meeting of the Association for Com-
+putational Linguistics: Human Language Tech-
+nologies, page 763?770, Columbus, Ohio, USA.
+Association for Computational Linguistics.
+Peter F. Brown, Stephen A. Della Pietra, Vincent
+J. Della Pietra, and R. L. Mercer. 1993. The
+mathematics of statistical machine translation:
+Parameter estimation. Computational Linguis-
+tics, 19(2):263–311.
+Pi-Chuan Chang, Michel Galley, and Christopher D.
+Manning. 2008. Optimizing Chinese word seg-
+mentation for machine translation performance.
+In Proceedings of the Third Workshop on Statisti-
+cal Machine Translation, pages 224–232, Colum-
+bus, Ohio, June. Association for Computational
+Linguistics.
+Michael Collins, Philipp Koehn, and Ivona Kucerova.
+2005. Clause restructuring for statistical machine
+translation. In Proceedings of 43rd Annual Meet-
+ing of the Association for Computational Linguis-
+tics (ACL05). Association for Computational Lin-
+guistics.
+Mathias Creutz and Krista Lagus. 2005. Inducing
+the morphological lexicon of a natural language
+from unannotated text. In Proceedings of the In-
+ternational and Interdisciplinary Conference on
+Adaptive Knowledge Representation and Reason-
+ing (AKRR'05), pages 106–113, Espoo, Finland.
+Mathias Creutz and Krista Lagus. 2006. Morfes-
+sor in the morpho challenge. In Proceedings of
+the PASCAL Challenge Workshop on Unsuper-
+vised Segmentation of Words into Morphemes.
+Adria de Gispert and Jose Marino. 2008. On the
+impact of morphology in English to Spanish sta-
+tistical MT. Speech Communication, 50(11-12).
+Sharon Goldwater and David McClosky. 2005.
+Improving statistical MT through morphological
+analysis. In Proceedings of the Human Language
+Technology Conference and Conference on Em-
+pirical Methods in Natural Language Processing,
+pages 676–683, Vancouver, B.C., Canada. Associ-
+ation for Computational Linguistics.
+Philipp Koehn and Hieu Hoang. 2007. Factored
+translation models. In Proceedings of the Confer-
+ence on Empirical Methods in Natural Language
+Processing (EMNLP), pages 868–876, Prague,
+Czech Republic. Association for Computational
+Linguistics.
+Philipp Koehn, Hieu Hoang, Alexandra Birch,
+Chris Callison-Burch, Marcello Federico, Nicola
+Bertoldi, Brooke Cowan, Wade Shen, Christine
+Moran, Richard Zens, Chris Dyer, Ondrej Bojar,
+Alexandra Constantin, and Evan Herbst. 2007.
+Moses: Open source toolkit for statistical ma-
+chine translation. In ACL `07: Proceedings of
+the 45th Annual Meeting of the ACL on Inter-
+active Poster and Demonstration Sessions, pages
+177–108, Prague, Czech Republic. Association for
+Computational Linguistics.
+Philipp Koehn. 2005. Europarl: A parallel corpus
+for statistical machine translation. In Proceedings
+of Machine Translation Summit X, pages 79–86,
+Phuket, Thailand. Association for Computational
+Linguistics.
+John Lafferty, Andrew McCallum, and Fernando
+Pereira. 2001. Conditional random fields: Prob-
+abilistic models for segmenting and labeling se-
+quence data. In Proceedings of the 18th Inter-
+national Conference on Machine Learning, pages
+282–289, San Francisco, California, USA. Associ-
+ation for Computing Machinery.
+Minh-Thang Luong, Preslav Nakov, and Min-Yen
+Kan. 2010. A hybrid morpheme-word repre-
+sentation for machine translation of morphologi-
+cally rich languages. In Proceedings of the Con-
+ference on Empirical Methods in Natural Lan-
+guage Processing (EMNLP), pages 148–157, Cam-
+bridge, Massachusetts. Association for Computa-
+tional Linguistics.
+Yanjun Ma, Nicolas Stroppa, and Andy Way. 2007.
+Bootstrapping word alignment via word packing.
+In Proceedings of the 45th Annual Meeting of the
+Association of Computational Linguistics, pages
+304–311, Prague, Czech Republic. Association for
+Computational Linguistics.
+Einat Minkov, Kristina Toutanova, and Hisami
+Suzuki. 2007. Generating complex morphology
+for machine translation. In In Proceedings of the
+45th Annual Meeting of the Association for Com-
+putational Linguistics (ACL07), pages 128–135,
+Prague, Czech Republic. Association for Compu-
+tational Linguistics.
+Christian Monson. 2008. Paramor and morpho chal-
+lenge 2008. In Lecture Notes in Computer Science:
+Workshop of the Cross-Language Evaluation Fo-
+rum (CLEF 2008), Revised Selected Papers.
+Habash Nizar. 2007. Four techniques for online han-
+dling of out-of-vocabulary words in arabic-english
+statistical machine translation. In Proceedings of
+the 46th Annual Meeting of the Association of
+Computational Linguistics, Columbus, Ohio. As-
+sociation for Computational Linguistics.
+</reference>
+<page confidence="0.987565">
+41
+</page>
+<reference confidence="0.999824745098039">
+Kishore Papineni, Salim Roukos, Todd Ward, and
+Wei jing Zhu. 2002. BLEU: A method for auto-
+matic evaluation of machine translation. In Pro-
+ceedings of 40th Annual Meeting of the Associ-
+ation for Computational Linguistics ACL, pages
+311–318, Philadelphia, Pennsylvania, USA. Asso-
+ciation for Computational Linguistics.
+Tommi Pirinen and Inari Listenmaa.
+2007. Omorfi morphological analzer.
+http://gna.org/projects/omorfi.
+Maja Popoviq and Hermann Ney. 2004. Towards
+the use of word stems and suffixes for statisti-
+cal machine translation. In Proceedings of the 4th
+International Conference on Language Resources
+and Evaluation (LREC), pages 1585–1588, Lis-
+bon, Portugal. European Language Resources As-
+sociation (ELRA).
+Ananthakrishnan Ramanathan, Hansraj Choudhary,
+Avishek Ghosh, and Pushpak Bhattacharyya.
+2009. Case markers and morphology: Address-
+ing the crux of the fluency problem in English-
+Hindi SMT. In Proceedings of the Joint Confer-
+ence of the 47th Annual Meeting of the Associa-
+tion for Computational Linguistics and the 4th In-
+ternational Joint Conference on Natural Language
+Processing of the Asian Federation of Natural Lan-
+guage Processing, pages 800–808, Suntec, Singa-
+pore. Association for Computational Linguistics.
+Andreas Stolcke. 2002. Srilm – an extensible lan-
+guage modeling toolkit. 7th International Confer-
+ence on Spoken Language Processing, 3:901–904.
+David Talbot and Miles Osborne. 2006. Modelling
+lexical redundancy for machine translation. In
+Proceedings of the 21st International Conference
+on Computational Linguistics and 44th Annual
+Meeting of the Association for Computational Lin-
+guistics, pages 969–976, Sydney, Australia, July.
+Association for Computational Linguistics.
+Kristina Toutanova, Hisami Suzuki, and Achim
+Ruopp. 2008. Applying morphology generation
+models to machine translation. In Proceedings
+of the 46th Annual Meeting of the Association
+for Computational Linguistics: Human Language
+Technologies, pages 514–522, Columbus, Ohio,
+USA. Association for Computational Linguistics.
+Mei Yang and Katrin Kirchhoff. 2006. Phrase-based
+backoff models for machine translation of highly
+inflected languages. In Proceedings of the Eu-
+ropean Chapter of the Association for Computa-
+tional Linguistics, pages 41–48, Trento, Italy. As-
+sociation for Computational Linguistics.
+</reference>
+<page confidence="0.999297">
+42
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.981887666666667">Combining Morpheme-based Machine Translation Post-processing Morpheme Prediction Clifton</title>
+<author confidence="0.8032815">Simon Fraser Burnaby</author>
+<author confidence="0.8032815">British Columbia</author>
+<abstract confidence="0.988193737837839">This paper extends the training and tuning regime for phrase-based statistical machine translation to obtain fluent transcomplex languages (we build an English to Finnish translation system). Our methods use unsupervised morphology induction. Unlike previous work we focus on morphologically productive phrase pairs – our decoder can combine morphemes across phrase boundaries. Morphemes in the target language may not have a corresponding morpheme or word in the source language. Therefore, we propose a novel combination of post-processing morphology prediction with morpheme-based translation. We show, using both automatic evaluation scores and linguistically motivated analyses of the output, that our methods outperform previously proposed ones and provide the best known results on the English- Finnish Europarl translation task. Our methods are mostly language independent, so they should improve translation into other target languages with complex morphology. 1 Translation and Morphology Languages with rich morphological systems present significant hurdles for statistical machine translation (SMT), most notably data sparsity, source-target asymmetry, and problems with automatic evaluation. In this work, we propose to address the problem of morphological complexity in an Englishto-Finnish MT task within a phrase-based translation framework. We focus on unsupervised segmentation methods to derive the morphological information supplied to the MT model in order to provide coverage on very large datasets and for languages with few hand-annotated 32 resources. In fact, in our experiments, unsupervised morphology always outperforms the use of a hand-built morphological analyzer. Rather than focusing on a few linguistically motivated aspects of Finnish morphological behaviour, we develop techniques for handling morphological complexity in general. We chose Finnish as our target language for this work, because it exemplifies many of the problems morphologically complex languages present for SMT. Among all the languages in the Europarl data-set, Finnish is the most difficult language to translate from and into, as was demonstrated in the MT Summit shared task (Koehn, 2005). Another reason is the current lack of knowledge about how to apply SMT successfully to agglutinative languages like Turkish or Finnish. Our main contributions are: 1) the introduction of the notion of segmented translation where we explicitly allow phrase pairs that can end with a dangling morpheme, which can connect with other morphemes as part of the translation process, and 2) the use of a fully segmented translation model in combination with a post-processing morpheme prediction system, using unsupervised morphology induction. Both of these approaches beat the state of the art on the English-Finnish translation task. Morphology can express both content and function categories, and our experiments show that it is important to use morphology both within the translation model (for morphology with content) and outside it (for morphology contributing to fluency). Automatic evaluation measures for MT, et al., 2002), Rate) and Independent Word Error Rate) use the word as the basic rather than morphemes. In a word comof the 49th Annual Meeting of the Association for Computational pages 32–42, Oregon, June 19-24, 2011. Association for Computational Linguistics prised of multiple morphemes, getting even a single morpheme wrong means the entire word is wrong. In addition to standard MT evaluation measures, we perform a detailed linguistic anal-ysis of the output. Our proposed approaches are significantly better than the state of the art, the highest reported on the English-Finnish Europarl version 3 data-set. Our linguistic analysis shows that our models have fewer morpho-syntactic errors compared to the word-based baseline. performance of unsupervised segmentation for translation, our third baseline is a segmented translation model based on a supervised segmen-tation model (called Sup), using the hand-built Omorfi morphological analyzer (Pirinen and Lis-tenmaa, 2007), which provided slightly higher BLEU scores than the word-based baseline. 2 Models 2.2 Segmented Translation 2.1 Baseline Models For segmented translation models, it cannot be taken for granted that greater linguistic accu-racy in segmentation yields improved transla-tion (Chang et al., 2008). Rather, the goal in segmentation for translation is instead to maxi-mize the amount of lexical content-carrying mor-phology, while generalizing over the information not helpful for improving the translation model. We therefore trained several different segmenta-tion models, considering factors of granularity, coverage, and source-target symmetry. We set up three baseline models for compari-son in this work. The first is a basic word-based model (called Baseline in the results); we trained this on the original unsegmented version of the text. Our second baseline is a factored translation model (Koehn and Hoang, 2007) (called Factored), which used as factors word, and suffix. These are de-rived from the same unsupervised segmenta-tion model used in other experiments. The re-sults (Table 3) show that a factored model was unable to match the scores of a simple word-based baseline. We hypothesize that this may be an inherently difficult representational form for a language with the degree of morphologi-cal complexity found in Finnish. Because the morphology generation must be precomputed, for languages with a high degree of morpho-logical complexity, the combinatorial explosion makes it unmanageable to capture the full range of morphological productivity. In addition, be-cause the morphological variants are generated on a per-word basis within a given phrase, it excludes productive morphological combination across phrase boundaries and makes it impossi-ble for the model to take into account any long-distance dependencies between morphemes. We conclude from this result that it may be more useful for an agglutinative language to use mor-phology beyond the confines of the phrasal unit, and condition its generation on more than just the local target stem. In order to compare the We performed unsupervised segmentation of the target data, using Morfessor (Creutz and Lagus, 2005) and Paramor (Monson, 2008), two top systems from the Morpho Challenge 2008 (their combined output was the Morpho Chal-lenge winner). However, translation models based upon either Paramor alone or the com-bined systems output could not match the word-based baseline, so we concentrated on Morfes-sor. Morfessor uses minimum description length criteria to train a HMM-based segmentation model. When tested against a human-annotated gold standard of linguistic morpheme segmen-tations for Finnish, this algorithm outperforms competing unsupervised methods, achieving an F-score of 67.0% on a 3 million sentence cor-pus (Creutz and Lagus, 2006). Varying the per-plexity threshold in Morfessor does not segment more word types, but rather over-segments the same word types. In order to get robust, com-mon segmentations, we trained the segmenter the 5000 most frequent we then used this to segment the entire data set. In order to improve coverage, we then further segmented the factored model baseline we also used the setting 30, 5,000 most frequent words, but with all but the last suffix collapsed and called the “stem”. Section 2.2. 33 Training Set Test Set Total 64,106,047 21,938 Morph 30,837,615 5,191 Hanging Morph 10,906,406 296 Table 1: Morpheme occurences in the phrase table and in translation. any word type that contained a match from the most frequent suffix set, looking for the longest matching suffix character string. We call this method Unsup L-match. After the segmentation, word-internal morpheme boundary markers were inserted into the segmented text to be used to reconstruct the surface forms in the MT output. We then trained the Moses phrase-based system (Koehn et al., 2007) on the segmented and marked text. After decoding, it was a simple matter to join together all adjacent morphemes with word-internal boundary markers to reconstruct the surface forms. Figure 1(a) gives the full model overview for all the variants of the segmented translation model (supervised/unsupervised; with and without the Unsup L-match procedure). Table 1 shows how morphemes are being used in the MT system. Of the phrases that included segmentations (‘Morph’ in Table 1), roughly a third were ‘productive’, i.e. had a hanging mor- (with a form such as that could be joined to a suffix (‘Hanging Morph’ in Table 1). However, in phrases used while decoding the development and test data, roughly a quarter of the phrases that generated the translated output included segmentations, but of these, only a small fraction (6%) had a hanging morpheme; and while there are many possible reasons to account for this we were unable to find a single convincing cause. 2.3 Morphology Generation Morphology generation as a post-processing step allows major vocabulary reduction in the translation model, and allows the use of morphologically targeted features for modeling inflection. A possible disadvantage of this approach is that this model there is no opportunity to consider the morphology in translation since it is removed prior to training the translation model. Morphology generation models can use a variety of bilingual and contextual information to capture dependencies between morphemes, often more long-distance than what is possible uslanguage models over morphemes in the segmented model. Similar to previous work (Minkov et al., 2007; Toutanova et al., 2008), we model morphology generation as a sequence learning problem. Unlike previous work, we use unsupervised morphology induction and use automatically generated suffix classes as tags. The first phase of our morphology prediction model is to train a MT system that produces morphologically simplified word forms in the target language. The output word forms are complex stems (a stem and some suffixes) but still missing some important suffix morphemes. In the second phase, the output of the MT decoder is then tagged with a sequence of abstract suffix tags. In particular, the output of the MT decoder is a sequence of complex denoted by the output is a sequence suffix class tags denoted by We use a list parts from and map to a vector with each dimension being a real number. We infer the best sequence of tags using: = argmax | y returns the highest scoring output A random field (Lafferty et al., 2001) defines the conditional probability a linear score for each candidate a normalization term:  |= We stochastic gradient descent (using train the weight vector far, this is all off-the-shelf sequence learning. However, the from the CRF decoder is still only a sequence of abstract suffix tags. The third and final phase in our morphology prediction model 34 English Training Data Finnish Training Data words Morphological Pre-Processing stem+ +morph MT Alignment: word word word stem+ +morph stem words English Training Data Finnish Training Data words Morphological Pre-Processing 1 stem+ +morph1+ +morph2 Morphological Pre-Processing 2 stem+ +morph1+ MT Alignment: word word word stem+ +morph1+ stem Post-Process Morph Re-Stitching stem+ +morph1+ words stem+ +morph complex stem: stem+morph1+ Morph Re-Stitching Fully inflected surface form Evaluation original reference (a) Segmented Translation Model Post-Process 2: CRF Morphology Generation Language Model surface form mapping stem+morph1+ +morph2 Fully inflected surface form Evaluation original reference (b) Post-Processing Model Translation &amp; Generation Figure 1: Training and testing pipelines for the SMT models. to take the abstract suffix tag sequence then map it into fully inflected word forms, and rank those outputs using a morphemic language model. The abstract suffix tags are extracted from the unsupervised morpheme learning process, and are carefully designed to enable CRF training and decoding. We call this model CRF- LM for short. Figure 1(b) shows the full pipeline and Figure 2 shows a worked example of all the steps involved. We use the morphologically segmented training data (obtained using the segmented corpus in Section and remove selected suffixes to create a morphologically simplified version of the training data. The MT model is trained on the morphologically simplified training data. The output from the MT system is then used as input to the CRF model. The model was trained on a Finnish consisting of million tokens; the 2,000 sentence Europarl test set consisted of 41,434 stem tokens. The labels in the output obtained by selecting the most productive 150 stems, and then collapsing certain vowels into equivalence classes corresponding to Finnish vowel harmony patterns. Thus that unlike Section 2.2 we do not use Unsup L-match because when evaluating the CRF model on the suffix prediction task it obtained 95.61% without using Unsup L-match and 82.99% when using Unsup L-match. variants -ko and -ko become vowel-generic enclitic particle -kO, and variants -ssa and -ssa become the vowel-generic inessive case marker -ssA, etc. This is the only language-specific component of our translation model. However, we expect this approach to work for other agglutinative languages as well. For fusional languages like Spanish, another mapping from suffix to abstract tags might be needed. These suffix transformations to their equivalence classes prevent morphophonemic variants of the same morpheme from competing against each other in the prediction model. This resulted in 44 possible label outputs per stem which was a reasonable sized tag-set for CRF training. The CRF was trained on monolingual features of the segtext for suffix prediction, where the current token: Stem .., .., 4) Prediction With this simple feature set, we were able to use features over longer distances, resulting in a total of 1,110,075 model features. After CRF based recovery of the suffix tag sequence, we use a bigram language model trained on a full segmented version on the training data to recover the original vowels. We used bigrams only, because the suffix vowel harmony alternation depends only upon the preceding phonemes in the word from which it was segmented. 35 training koskevaa mietintoa kasitellaan koske+ +va+ +a mietinto+ +a kasi+ +te+ +lla+ +a+ +n bigram language model with mapping A = a� final to abstract koske+ +va+ +A mietinto+ +A kasi+ +te+ +lla+ +a+ +n (train CRF model to predict the final suffix) of final koske+ +va+ mietinto+ kasi+ +te+ +lla+ +a+ (train SMT model on this transformation of training data) (a) Training koske+ +va+ mietinto+ kasi+ +te+ +lla+ +a+ output stitched koskeva+ mietinto+ kasitellm+ model `koskeva+ mietinto+ kasitellaa+', `+A +A +n' koskeva+ +A mietinto+ +A kasitellm+ +n koske+ +va+ +A mietinto+ +A kasi+ +te+ +lla+ +a+ +n model koske+ +va+ +a mietinto+ +a kasi+ +te+ +lla+ +a+ +n koskevaa mietintoa kasitellaan (the output is then compared to the reference translation) (b) Decoding Figure 2: Worked example of all steps in the post-processing morphology prediction model. 3 Experimental Results For all of the models built in this paper, we used the Europarl version 3 corpus (Koehn, 2005) English-Finnish training data set, as well as the standard development and test data sets. Our training data consists of million sentences of 40 words or less, while the development and test sets were each 2,000 sentences long. In all the experiments conducted in this we used the translation system (Koehn et al., 2007), 2008 version. We trained all of the Moses systems herein using the standard features: language model, reordering model, translation model, and word penalty; in addition to these, the factored experiments called for additional translation and generation features for the added factors as noted above. We used in all experiments the following settings: a hypothesis stack size 100, distortion limit 6, phrase translations limit 20, and maximum phrase length 20. For the language models, we used SRILM 5-gram language models (Stolcke, 2002) for all factors. For our word-based Baseline system, we trained a word-based model using the same Moses system with identical settings. For evaluation against segmented translation systems in segmented forms before word reconstruction, we also segmented the baseline system’s word-based output. All the BLEU scores reported are for lowercase evaluation. We did an initial evaluation of the segmented translation for each system using the no- Segmentation No Uni Baseline 9.89 Sup 13.49 Unsup L-match 15.89 Table 2: Segmented Model Scores. Sup refers to the segmentation baseline model. indicates that the segmented output was evaluated against a segmented version of the reference (this measure does not have the same correlation with human judgement as BLEU). No Uni indicates the segmented BLEU score without unigrams. of score (Luong et al., 2010) where the BLEU score is computed by comparing the segmented output with a segmented reference Table 2 shows the scores various systems. We also show the score without unigrams, since over-segmentation lead to artificially high scores. In fact, if we compare the relative improvement our scores for the Unsup L-match system we see a relative improvement of 39.75% over the baseline. Luong et. al. (2010) report score of 55.64% but obtain a relative improvement of 0.6% over their baseline score. We find that when using a good segmentation model, segmentation of the morphologically complex target language improves model performance over an unsegmented baseline (the confidence scores come from bootstrap resampling). Table 3 shows the evaluation scores for all the baselines and the methods introduced in this paper using standard wordbased lowercase BLEU, WER and PER. We do 36 Model BLEU WER TER</abstract>
+<note confidence="0.841955714285714">Baseline 14.68 74.96 72.42 Factored 14.22 76.68 74.15 (Luong et.al, 2010) 14.82 - - Sup 14.90 74.56 71.84 Unsup L-match 74.46 71.78 CRF-LM 14.87 73.71 71.15 Table 3: Test Scores: lowercase BLEU, WER and</note>
+<abstract confidence="0.990600590361446">The a statistically significant improvement of BLEU score over the Baseline model. The boldface scores are the best performing scores per evaluation measure. better than (Luong et al., 2010), the previous best score for this task. We also show a better relative improvement over our baseline when compared to (Luong et al., 2010): a relative improvement of 4.86% for Unsup L-match compared to our baseline word-based model, compared to their 1.65% improvement over their baseline word-based model. Our best performing method used unsupervised morphology with (see Section 2.2) and the improvement is significant: bootstrap resampling provides a margin of and a (Collins al., 2005) showed significance with 3.1 Morphological Fluency Analysis To see how well the models were doing at getting morphology right, we examined several patterns of morphological behavior. While we wish to explore minimally supervised morphological MT models, and use as little language specific information as possible, we do want to use linguistic analysis on the output of our system to see how well the models capture essential morphological information in the target language. So, we ran the word-based baseline system, the segmented model (Unsup L-match), and the prediction model (CRF-LM) outputs, along with the reference translation through the supervised morphological analyzer Omorfi (Pirinen and Listenmaa, 2007). Using this analysis, we looked at a variety of linguistic constructions that might reveal patterns in morphological behavior. These were: (a) explicitly marked noun forms, (b) noun-adjective case agreement, (c) subject-verb person/number agreement, (d) transitive object case marking, (e) postpositions, and (f) possession. In each of these categories, we looked for construction matches on a per-sentence level between the models’ output and the reference translation. Table 4 shows the models’ performance on the constructions we examined. In all of the categories, the CRF-LM model achieves the best precision score, as we explain below, while the Unsup L-match model most frequently gets the highest recall score. A general pattern in the most prevalent of these constructions is that the baseline tends to prefer the least marked form for noun cases (corresponding to the nominative) more than the reference or the CRF-LM model. The baseline leaves nouns in the (unmarked) nominative far more than the reference, while the CRF-LM model comes much closer, so it seems to fare better at explicitly marking forms, rather than defaulting to the more frequent unmarked form. Finnish adjectives must be marked with the same case as their head noun, while verbs must agree in person and number with their subject. We saw that in both these categories, the CRF- LM model outperforms for precision, while the segmented model gets the best recall. In addition, Finnish generally marks direct objects of verbs with the accusative or the partitive case; we observed more accusative/partitive-marked nouns following verbs in the CRF-LM output than in the baseline, as illustrated by example (1) in Fig. 3. While neither translation picks the same verb as in the reference for the input ‘clarify,’ the CRF- LM-output paraphrases it by using a grammatical construction of the transitive verb followed by a noun phrase inflected with the accusative case, correctly capturing the transitive construction. The baseline translation instead follows ‘give’ with a direct object in the nominative case. To help clarify the constructions in question, have used Google to provide back- 37</abstract>
+<title confidence="0.2991185">Construction Freq. P Baseline Unsup L-match P CRF-LM R F P R F R F</title>
+<note confidence="0.836195285714286">Noun Marking 5.5145 51.74 78.48 62.37 53.11 83.63 64.96 54.99 80.21 65.25 Trans Obj 1.0022 32.35 27.50 29.73 33.47 29.64 31.44 35.83 30.71 33.07 Noun-Adj Agr 0.6508 72.75 67.16 69.84 69.62 71.00 70.30 73.29 62.58 67.51 Subj-Verb Agr 0.4250 56.61 40.67 47.33 55.90 48.17 51.48 57.79 40.17 47.40 Postpositions 0.1138 43.31 29.89 35.37 39.31 36.96 38.10 47.16 31.52 37.79 Possession 0.0287 66.67 70.00 68.29 75.68 70.00 72.73 78.79 60.00 68.12 Table 4: Model Accuracy: Morphological Constructions. Freq. refers to the construction’s average number</note>
+<abstract confidence="0.997677558558558">of occurrences per sentence, also averaged over the various translations. P, R and F stand for precision, recall and F-score. The constructions are listed in descending order of their frequency in the texts. The highlighted value in each column is the most accurate with respect to the reference value. translations of our MT output into English; to contextualize these back-translations, we have provided Google's back-translation of the reference. The use of postpositions shows another difference between the models. Finnish postpositions require the preceding noun to be in the genitive or sometimes partitive case, which occurs correctly more frequently in the CRF-LM than the baseline. In example (2) in Fig. 3, all three translations correspond to the English text, ‘with the basque nationalists.’ However, the CRF-LM output is more grammatical than the baseline, because not only do the adjective and noun agree for case, but the noun ‘baskien' to which the postposition `kanssa' belongs is marked with the correct genitive case. However, this well-formedness is not rewarded by BLEU, because `baskien' does not match the reference. In addition, while Finnish may express possession using case marking alone, it has another construction for possession; this can disambiguate an otherwise ambiguous clause. This alternate construction uses a pronoun in the genitive case followed by a possessive-marked noun; we see that the CRF-LM model correctly marks this construction more frequently than the baseline. As example (3) in Fig. 3 shows, while neither model correctly translates `matkan' (‘trip’), the baseline’s output attributes the inessive `yhteydess' (‘connection’) as belonging to `tulokset' (‘results’), and misses marking the possession linking it to ‘Commissioner Fischler’. Our manual evaluation shows that the CRF- LM model is producing output translations that are more morphologically fluent than the wordbased baseline and the segmented translation Unsup L-match system, even though the word choices lead to a lower BLEU score overall when compared to Unsup L-match. 4 Related Work The work on morphology in MT can be grouped into three categories, factored models, segmented translation, and morphology generation. Factored models (Koehn and Hoang, 2007) factor the phrase translation probabilities over additional information annotated to each word, allowing for text to be represented on multiple levels of analysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more frequently occurring components, and may also increase the of the lexically realized content be- 38 (1) Input: ‘the charter we are to approve today both strengthens and gives visible shape to the common fundamental rights and values our community is to be based upon.’ Reference: perusoikeuskirja , jonka tanMn aiomme hyvaksya , seka vahvistaa etta (selyhteisia perusoikeuksia ja arvoja , joiden on oltava yhteisomme perusta. Back-translation: ‘Charter of Fundamental Rights, which today we are going to accept that clarify and strengthen the common fundamental rights and values, which must be community based.’ Baseline: perusoikeuskirja me hyvaksymme tanaan molemmat vahvistaa ja (antaa/VERB/INF/SG/LATmuokata yhteista perusoikeuksia ja arvoja on perustuttava. Back-translation: ‘Charter today, we accept both confirm and modify to make a visible and common values, fundamental rights must be based.’ CRF-LM: perusoikeuskirja on hyvaksytty tanaan , seka vahvistaa ja (muoto/NOUN/SG/GEN,ACCshape) yhteisia perusoikeuksia ja perusarvoja , yhteison on perustuttava. Back-translation: ‘Charter has been approved today, and to strengthen and give concrete shape to the common basic rights and fundamental values, the Community must be based.’ (2) Input: ‘with the basque nationalists’ a. Reference: baskimaan kansallismielisten kanssa basque-SG/NOM+land-SG/GEN,ACC nationalists-PL/GEN with-POST b. Baseline: baskimaan kansallismieliset kanssa basque-SG/NOM-+land-SG/GEN,ACC kansallismielinen-PL/NOM,ACC-nationalists POST-with c. CRF-LM: kansallismielisten baskien kanssa nationalists-PL/GEN basques-PL/GEN with-POST Input: ‘and in this respect we should value the latest measures from commissioner fischler , the results of trip to on the 26th of last month the high level meetings that took place, including the one with the king himself’ a. Reference: ja tassa mielessa osaamme myos arvostaa komission jasen fischlerin viimeisimpia toimia , jotka ovat 26 lokakuuta tekemns (matkan/GENtour) ja korkean tason kokousten jopa itsensa kuninkaan kanssa tulosta ‘and in this sense we can also appreciate the Commissioner Fischler's latest actions, which are Morocco 26 October trip high-level meetings and even the king himself with the result Baseline: ja tassa yhteydessa olisi arvoa viimeisin toimia komission jasen fischler , tulokset monitulkintaisia , ja viime kuussa pidettiin korkean tason kokouksissa , mukaan luettuna kuninkaan kanssa ‘and in this context would be the value of the last act, Commissioner Fischler, the results of context, and last month held high level meetings, including with the king’ CRF-LM: ja tassa yhteydessa meidan olisi lisaarvoa viimeista toimenpiteita kuin komission jasen fischler , etta viime kuun 26 ja korkean tason tapaamiset jarjestettiin, kuninkaan kanssa ‘and in this context, we should value the last measures as the Commissioner Fischler, that in Morocco on the 26th and high-level meetings took place, including with the king.’ Figure 3: Morphological fluency analysis (see Section 3.1). tween source and target. In a somewhat orthogonal approach to ours, (Ma et al., 2007) use alignment of a parallel text to pack together adjacent segments in the alignment output, which are then fed back to the word aligner to bootstrap an improved alignment, which is then used in the translation model. We compared our results against (Luong et al., 2010) in Table 3 since their results are directly comparable to ours. They use a segmented phrase table and language model along with the word-based versions in the decoder and in tuning a Finnish target. Their approach requires segmented phrases to match word boundaries, eliminating morphologically productive phrases. In their work a segmented language model can score a translation, but cannot insert morphology that does not show source-side reflexes. In order to perform a similar experiment that still allowed for morphologically productive phrases, we tried training a segmented translation model, the output of which we stitched up in tuning so as to tune to a word-based reference. The goal of this experiment was to control the segmented model’s tendency to overfit by rewarding it for using correct whole-word forms. However, we found 39 that this approach was less successful than using the segmented reference in tuning, and could not meet the baseline (13.97% BLEU best tuning score, versus 14.93% BLEU for the baseline best tuning score). Previous work in segmented translation has often used linguistically motivated morphological analysis selectively applied based on a language-specific heuristic. A typical approach is to select a highly inflecting class of words and segment them for particular morphology (de Gispert and Marino, 2008; Ramanathan et al., 2009). Popoviq and Ney (2004) perform segmentation to reduce morphological complexity of the source to translate into an isolating target, reducing the translation error rate for the English target. For Czech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et. al. (2007) and Toutanova et. al. (2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); this can be a problem for languages in which morphology expresses lexical content. de Gispert (2008) uses a language-specific targeted morphological classifier for Spanish verbs to avoid this issue. Talbot and Osborne (2006) use clustering to group morphological variants of words for word alignments and for smoothing phrase translation tables. Habash (2007) provides various methods to incorporate morphological variants of words in the phrase table in order to help recognize out of vocabulary words in the source language. 5 Conclusion and Future Work We found that using a segmented translation model based on unsupervised morphology induction and a model that combined morpheme segments in the translation model with a postprocessing morphology prediction model gave us better BLEU scores than a word-based baseline. Using our proposed approach we obtain better scores than the state of the art on the English- Finnish translation task (Luong et al., 2010): from 14.82% BLEU to 15.09%, while using a simpler model. We show that using morphological segmentation in the translation model can improve output translation scores. We also demonstrate that for Finnish (and possibly other agglutinative languages), phrase-based MT benefits from allowing the translation model access to morphological segmentation yielding productive morphological phrases. Taking advantage of linguistic analysis of the output we show that using a post-processing morphology generation model can improve translation fluency on a sub-word level, in a manner that is not captured by the BLEU word-based evaluation measure. In order to help with replication of the results in this paper, we have run the various morphological analysis steps and created the necessary training, tuning and test data files needed in order to train, tune and test any phrase-based machine translation system with our data. The files be downloaded from In future work we hope to explore the utility of phrases with productive morpheme boundaries and explore why they are not used more pervasively in the decoder. Evaluation measures for morphologically complex languages and tuning to those measures are also important future work directions. Also, we would like to explore a non-pipelined approach to morphological preand post-processing so that a globally trained model could be used to remove the target side morphemes that would improve the translation model and then predict those morphemes in the target language.</abstract>
+<note confidence="0.769403666666667">Acknowledgements This research was partially supported by NSERC, Canada (RGPIN: 264905) and a</note>
+<title confidence="0.984417">Google Faculty Award. We would like to thank</title>
+<author confidence="0.843555666666667">Christian Monson</author>
+<author confidence="0.843555666666667">Franz Och</author>
+<author confidence="0.843555666666667">Fred Popowich</author>
+<author confidence="0.843555666666667">Howard Johnson</author>
+<author confidence="0.843555666666667">Majid Razmara</author>
+<author confidence="0.843555666666667">Baskaran Sankaran</author>
+<author confidence="0.843555666666667">the anonymous reviewers for</author>
+<abstract confidence="0.9485713">their valuable comments on this work. We would particularly like to thank the developers of the open-source Moses machine translation toolkit and the Omorfi morphological analyzer for Finnish which we used for our experiments. 40 References Eleftherios Avramidis and Philipp Koehn. 2008. Enriching morphologically poor languages for statismachine translation. In of the</abstract>
+<note confidence="0.60604175">46th Annual Meeting of the Association for Computational Linguistics: Human Language Techpage 763?770, Columbus, Ohio, USA. Association for Computational Linguistics.</note>
+<author confidence="0.6559955">The</author>
+<abstract confidence="0.948777714285714">mathematics of statistical machine translation: estimation. Linguis- 19(2):263–311. Pi-Chuan Chang, Michel Galley, and Christopher D. Manning. 2008. Optimizing Chinese word segmentation for machine translation performance. of the Third Workshop on Statisti-</abstract>
+<note confidence="0.893818782608696">Machine pages 224–232, Columbus, Ohio, June. Association for Computational Linguistics. Michael Collins, Philipp Koehn, and Ivona Kucerova. 2005. Clause restructuring for statistical machine In of 43rd Annual Meeting of the Association for Computational Linguis- Association for Computational Linguistics. Mathias Creutz and Krista Lagus. 2005. Inducing the morphological lexicon of a natural language unannotated text. In of the International and Interdisciplinary Conference on Adaptive Knowledge Representation and Reasonpages 106–113, Espoo, Finland. Mathias Creutz and Krista Lagus. 2006. Morfesin the morpho challenge. In of the PASCAL Challenge Workshop on Unsuper- Segmentation of Words into Adria de Gispert and Jose Marino. 2008. On the impact of morphology in English to Spanish sta- MT. 50(11-12). Sharon Goldwater and David McClosky. 2005.</note>
+<title confidence="0.56213625">Improving statistical MT through morphological In of the Human Language Technology Conference and Conference on Em- Methods in Natural Language</title>
+<note confidence="0.937970375">pages 676–683, Vancouver, B.C., Canada. Association for Computational Linguistics. Philipp Koehn and Hieu Hoang. 2007. Factored models. In of the Conference on Empirical Methods in Natural Language pages 868–876, Prague, Czech Republic. Association for Computational Linguistics.</note>
+<author confidence="0.751071666666667">Philipp Koehn</author>
+<author confidence="0.751071666666667">Hieu Hoang</author>
+<author confidence="0.751071666666667">Alexandra Birch</author>
+<author confidence="0.751071666666667">Chris Callison-Burch</author>
+<author confidence="0.751071666666667">Marcello Federico</author>
+<author confidence="0.751071666666667">Nicola Bertoldi</author>
+<author confidence="0.751071666666667">Brooke Cowan</author>
+<author confidence="0.751071666666667">Wade Shen</author>
+<author confidence="0.751071666666667">Christine</author>
+<affiliation confidence="0.561839">Moran, Richard Zens, Chris Dyer, Ondrej Bojar,</affiliation>
+<address confidence="0.556397">Alexandra Constantin, and Evan Herbst. 2007.</address>
+<note confidence="0.952704538461538">Moses: Open source toolkit for statistical matranslation. In `07: Proceedings of the 45th Annual Meeting of the ACL on Inter- Poster and Demonstration pages 177–108, Prague, Czech Republic. Association for Computational Linguistics. Philipp Koehn. 2005. Europarl: A parallel corpus statistical machine translation. In Machine Translation Summit pages 79–86, Phuket, Thailand. Association for Computational Linguistics. John Lafferty, Andrew McCallum, and Fernando Pereira. 2001. Conditional random fields: Prob-</note>
+<abstract confidence="0.839144">abilistic models for segmenting and labeling sedata. In of the 18th Inter- Conference on Machine pages 282–289, San Francisco, California, USA. Association for Computing Machinery. Minh-Thang Luong, Preslav Nakov, and Min-Yen Kan. 2010. A hybrid morpheme-word representation for machine translation of morphologirich languages. In of the Con-</abstract>
+<note confidence="0.961705590909091">ference on Empirical Methods in Natural Lan- Processing pages 148–157, Cambridge, Massachusetts. Association for Computational Linguistics. Yanjun Ma, Nicolas Stroppa, and Andy Way. 2007. Bootstrapping word alignment via word packing. of the 45th Annual Meeting of the of Computational pages 304–311, Prague, Czech Republic. Association for Computational Linguistics. Einat Minkov, Kristina Toutanova, and Hisami Suzuki. 2007. Generating complex morphology machine translation. In Proceedings of the 45th Annual Meeting of the Association for Com- Linguistics pages 128–135, Prague, Czech Republic. Association for Computational Linguistics. Christian Monson. 2008. Paramor and morpho chal- 2008. In Notes in Computer Science: Workshop of the Cross-Language Evaluation Fo- (CLEF 2008), Revised Selected Habash Nizar. 2007. Four techniques for online han-</note>
+<abstract confidence="0.866533565217391">dling of out-of-vocabulary words in arabic-english machine translation. In of the 46th Annual Meeting of the Association of Columbus, Ohio. Association for Computational Linguistics. 41 Kishore Papineni, Salim Roukos, Todd Ward, and Wei jing Zhu. 2002. BLEU: A method for autoevaluation of machine translation. In Proceedings of 40th Annual Meeting of the Associfor Computational Linguistics pages 311–318, Philadelphia, Pennsylvania, USA. Association for Computational Linguistics. Tommi Pirinen and Inari Listenmaa. 2007. Omorfi morphological http://gna.org/projects/omorfi. Maja Popoviq and Hermann Ney. 2004. Towards the use of word stems and suffixes for statistimachine translation. In of the 4th International Conference on Language Resources Evaluation pages 1585–1588, Lisbon, Portugal. European Language Resources Association (ELRA).</abstract>
+<note confidence="0.763347657142857">Ananthakrishnan Ramanathan, Hansraj Choudhary, Avishek Ghosh, and Pushpak Bhattacharyya. 2009. Case markers and morphology: Addressing the crux of the fluency problem in English- SMT. In of the Joint Conference of the 47th Annual Meeting of the Association for Computational Linguistics and the 4th International Joint Conference on Natural Language Processing of the Asian Federation of Natural Lanpages 800–808, Suntec, Singapore. Association for Computational Linguistics. Andreas Stolcke. 2002. Srilm – an extensible lanmodeling toolkit. International Conferon Spoken Language 3:901–904. David Talbot and Miles Osborne. 2006. Modelling lexical redundancy for machine translation. In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linpages 969–976, Sydney, Australia, July. Association for Computational Linguistics. Kristina Toutanova, Hisami Suzuki, and Achim Ruopp. 2008. Applying morphology generation to machine translation. In of the 46th Annual Meeting of the Association for Computational Linguistics: Human Language pages 514–522, Columbus, Ohio, USA. Association for Computational Linguistics. Mei Yang and Katrin Kirchhoff. 2006. Phrase-based backoff models for machine translation of highly languages. In of the European Chapter of the Association for Computapages 41–48, Trento, Italy. Association for Computational Linguistics. 42</note>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Eleftherios Avramidis</author>
+<author>Philipp Koehn</author>
+</authors>
+<title>Enriching morphologically poor languages for statistical machine translation.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 46th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>763--770</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio, USA.</location>
+<contexts>
+<context citStr="Avramidis and Koehn, 2008" endWordPosition="4140" position="26264" startWordPosition="4137">sup L-match system, even though the word choices lead to a lower BLEU score overall when compared to Unsup L-match. 4 Related Work The work on morphology in MT can be grouped into three categories, factored models, segmented translation, and morphology generation. Factored models (Koehn and Hoang, 2007) factor the phrase translation probabilities over additional information annotated to each word, allowing for text to be represented on multiple levels of analysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more frequently occurring component</context>
+</contexts>
+<marker>Avramidis, Koehn, 2008</marker>
+<rawString>Eleftherios Avramidis and Philipp Koehn. 2008. Enriching morphologically poor languages for statistical machine translation. In Proceedings of the 46th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies, page 763?770, Columbus, Ohio, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Peter F Brown</author>
+<author>Stephen A Della Pietra</author>
+<author>Vincent J Della Pietra</author>
+<author>R L Mercer</author>
+</authors>
+<title>The mathematics of statistical machine translation: Parameter estimation.</title>
+<date>1993</date>
+<journal>Computational Linguistics,</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Brown et al., 1993" endWordPosition="4208" position="26719" startWordPosition="4205">ysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more frequently occurring components, and may also increase the symmetry of the lexically realized content be38 (1) Input: ‘the charter we are to approve today both strengthens and gives visible shape to the common fundamental rights and values our community is to be based upon.’ a. Reference: perusoikeuskirja , jonka tanMn aiomme hyvaksya , seka vahvistaa etta selventaa (selventaa/VERB/ACT/INF/SG/LAT-clarify) niita (ne/PRONOUN/PL/PAR-them) yhteisia perusoikeuksia ja - arvoja , joiden </context>
+</contexts>
+<marker>Brown, Pietra, Pietra, Mercer, 1993</marker>
+<rawString>Peter F. Brown, Stephen A. Della Pietra, Vincent J. Della Pietra, and R. L. Mercer. 1993. The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics, 19(2):263–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Pi-Chuan Chang</author>
+<author>Michel Galley</author>
+<author>Christopher D Manning</author>
+</authors>
+<title>Optimizing Chinese word segmentation for machine translation performance.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the Third Workshop on Statistical Machine Translation,</booktitle>
+<pages>224--232</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Chang et al., 2008" endWordPosition="700" position="4713" startWordPosition="697">ur proposed approaches Omorfi morphological analyzer (Pirinen and Lisare significantly better than the state of the art, tenmaa, 2007), which provided slightly higher achieving the highest reported BLEU scores on BLEU scores than the word-based baseline. the English-Finnish Europarl version 3 data-set. 2.2 Segmented Translation Our linguistic analysis shows that our models For segmented translation models, it cannot be have fewer morpho-syntactic errors compared to taken for granted that greater linguistic accuthe word-based baseline. racy in segmentation yields improved transla2 Models tion (Chang et al., 2008). Rather, the goal in 2.1 Baseline Models segmentation for translation is instead to maxiWe set up three baseline models for compari- mize the amount of lexical content-carrying morson in this work. The first is a basic word- phology, while generalizing over the information based model (called Baseline in the results); not helpful for improving the translation model. we trained this on the original unsegmented We therefore trained several different segmentaversion of the text. Our second baseline is a tion models, considering factors of granularity, factored translation model (Koehn and Hoang,</context>
+</contexts>
+<marker>Chang, Galley, Manning, 2008</marker>
+<rawString>Pi-Chuan Chang, Michel Galley, and Christopher D. Manning. 2008. Optimizing Chinese word segmentation for machine translation performance. In Proceedings of the Third Workshop on Statistical Machine Translation, pages 224–232, Columbus, Ohio, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+<author>Philipp Koehn</author>
+<author>Ivona Kucerova</author>
+</authors>
+<title>Clause restructuring for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proceedings of 43rd Annual Meeting of the Association for Computational Linguistics (ACL05). Association for Computational Linguistics.</booktitle>
+<contexts>
+<context citStr="Collins et al., 2005" endWordPosition="3168" position="20115" startWordPosition="3165">e scores are the best performing scores per evaluation measure. better than (Luong et al., 2010), the previous best score for this task. We also show a better relative improvement over our baseline when compared to (Luong et al., 2010): a relative improvement of 4.86% for Unsup L-match compared to our baseline word-based model, compared to their 1.65% improvement over their baseline word-based model. Our best performing method used unsupervised morphology with L-match (see Section 2.2) and the improvement is significant: bootstrap resampling provides a confidence margin of ±0.77 and a t-test (Collins et al., 2005) showed significance with p = 0.001. 3.1 Morphological Fluency Analysis To see how well the models were doing at getting morphology right, we examined several patterns of morphological behavior. While we wish to explore minimally supervised morphological MT models, and use as little language specific information as possible, we do want to use linguistic analysis on the output of our system to see how well the models capture essential morphological information in the target language. So, we ran the word-based baseline system, the segmented model (Unsup L-match), and the prediction model (CRF-LM</context>
+</contexts>
+<marker>Collins, Koehn, Kucerova, 2005</marker>
+<rawString>Michael Collins, Philipp Koehn, and Ivona Kucerova. 2005. Clause restructuring for statistical machine translation. In Proceedings of 43rd Annual Meeting of the Association for Computational Linguistics (ACL05). Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mathias Creutz</author>
+<author>Krista Lagus</author>
+</authors>
+<title>Inducing the morphological lexicon of a natural language from unannotated text.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the International and Interdisciplinary Conference on Adaptive Knowledge Representation and Reasoning (AKRR'05),</booktitle>
+<pages>106--113</pages>
+<location>Espoo, Finland.</location>
+<marker>Creutz, Lagus, 2005</marker>
+<rawString>Mathias Creutz and Krista Lagus. 2005. Inducing the morphological lexicon of a natural language from unannotated text. In Proceedings of the International and Interdisciplinary Conference on Adaptive Knowledge Representation and Reasoning (AKRR'05), pages 106–113, Espoo, Finland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mathias Creutz</author>
+<author>Krista Lagus</author>
+</authors>
+<title>Morfessor in the morpho challenge.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the PASCAL Challenge Workshop on Unsupervised Segmentation of Words into Morphemes.</booktitle>
+<contexts>
+<context citStr="Creutz and Lagus, 2006" endWordPosition="1029" position="6867" startWordPosition="1026">th morphology generation must be precomputed, criteria to train a HMM-based segmentation for languages with a high degree of morpho- model. When tested against a human-annotated logical complexity, the combinatorial explosion gold standard of linguistic morpheme segmenmakes it unmanageable to capture the full range tations for Finnish, this algorithm outperforms of morphological productivity. In addition, be- competing unsupervised methods, achieving an cause the morphological variants are generated F-score of 67.0% on a 3 million sentence coron a per-word basis within a given phrase, it pus (Creutz and Lagus, 2006). Varying the perexcludes productive morphological combination plexity threshold in Morfessor does not segment across phrase boundaries and makes it impossi- more word types, but rather over-segments the ble for the model to take into account any long- same word types. In order to get robust, comdistance dependencies between morphemes. We mon segmentations, we trained the segmenter conclude from this result that it may be more on the 5000 most frequent words2; we then used useful for an agglutinative language to use mor- this to segment the entire data set. In order phology beyond the confines</context>
+</contexts>
+<marker>Creutz, Lagus, 2006</marker>
+<rawString>Mathias Creutz and Krista Lagus. 2006. Morfessor in the morpho challenge. In Proceedings of the PASCAL Challenge Workshop on Unsupervised Segmentation of Words into Morphemes.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Adria de Gispert</author>
+<author>Jose Marino</author>
+</authors>
+<title>On the impact of morphology in English to Spanish statistical MT.</title>
+<date>2008</date>
+<journal>Speech Communication,</journal>
+<pages>50--11</pages>
+<marker>de Gispert, Marino, 2008</marker>
+<rawString>Adria de Gispert and Jose Marino. 2008. On the impact of morphology in English to Spanish statistical MT. Speech Communication, 50(11-12).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sharon Goldwater</author>
+<author>David McClosky</author>
+</authors>
+<title>Improving statistical MT through morphological analysis.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>676--683</pages>
+<location>Vancouver, B.C.,</location>
+<contexts>
+<context citStr="Goldwater and McClosky, 2005" endWordPosition="4212" position="26749" startWordPosition="4209">he drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more frequently occurring components, and may also increase the symmetry of the lexically realized content be38 (1) Input: ‘the charter we are to approve today both strengthens and gives visible shape to the common fundamental rights and values our community is to be based upon.’ a. Reference: perusoikeuskirja , jonka tanMn aiomme hyvaksya , seka vahvistaa etta selventaa (selventaa/VERB/ACT/INF/SG/LAT-clarify) niita (ne/PRONOUN/PL/PAR-them) yhteisia perusoikeuksia ja - arvoja , joiden on oltava yhteisomme perusta. </context>
+<context citStr="Goldwater and McClosky (2005)" endWordPosition="5025" position="32433" startWordPosition="5022">, versus 14.93% BLEU for the baseline best tuning score). Previous work in segmented translation has often used linguistically motivated morphological analysis selectively applied based on a language-specific heuristic. A typical approach is to select a highly inflecting class of words and segment them for particular morphology (de Gispert and Marino, 2008; Ramanathan et al., 2009). Popoviq and Ney (2004) perform segmentation to reduce morphological complexity of the source to translate into an isolating target, reducing the translation error rate for the English target. For Czech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et. al. (2007) and Toutanova et. al. (2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); this can be a problem for languages in which morphology expresses lexical content. de Gispert (2008) uses a language-specific targeted morphological classifier for Spanish verbs to avoid this issue. Talbot and Osborne (2006) use clustering to gr</context>
+</contexts>
+<marker>Goldwater, McClosky, 2005</marker>
+<rawString>Sharon Goldwater and David McClosky. 2005. Improving statistical MT through morphological analysis. In Proceedings of the Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing, pages 676–683, Vancouver, B.C., Canada. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+<author>Hieu Hoang</author>
+</authors>
+<title>Factored translation models.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<pages>868--876</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic.</location>
+<contexts>
+<context citStr="Koehn and Hoang, 2007" endWordPosition="4088" position="25942" startWordPosition="4085">yhteydess' (‘connection’) as belonging to `tulokset' (‘results’), and misses marking the possession linking it to ‘Commissioner Fischler’. Our manual evaluation shows that the CRFLM model is producing output translations that are more morphologically fluent than the wordbased baseline and the segmented translation Unsup L-match system, even though the word choices lead to a lower BLEU score overall when compared to Unsup L-match. 4 Related Work The work on morphology in MT can be grouped into three categories, factored models, segmented translation, and morphology generation. Factored models (Koehn and Hoang, 2007) factor the phrase translation probabilities over additional information annotated to each word, allowing for text to be represented on multiple levels of analysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored m</context>
+</contexts>
+<marker>Koehn, Hoang, 2007</marker>
+<rawString>Philipp Koehn and Hieu Hoang. 2007. Factored translation models. In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 868–876, Prague, Czech Republic. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Philipp Koehn</author>
+<author>Hieu Hoang</author>
+<author>Alexandra Birch</author>
+<author>Chris Callison-Burch</author>
+<author>Marcello Federico</author>
+<author>Nicola Bertoldi</author>
+<author>Brooke Cowan</author>
+<author>Wade Shen</author>
+<author>Christine Moran</author>
+<author>Richard Zens</author>
+<author>Chris Dyer</author>
+<author>Ondrej Bojar</author>
+<author>Alexandra Constantin</author>
+<author>Evan Herbst</author>
+</authors>
+<title>Moses: Open source toolkit for statistical machine translation.</title>
+<date>2007</date>
+<booktitle>In ACL `07: Proceedings of the 45th Annual Meeting of the ACL on Interactive Poster and Demonstration Sessions,</booktitle>
+<pages>177--108</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic.</location>
+<contexts>
+<context citStr="Koehn et al., 2007" endWordPosition="1277" position="8386" startWordPosition="1274">ix collapsed and called the “stem”. 1see Section 2.2. 33 Training Set Test Set Total 64,106,047 21,938 Morph 30,837,615 5,191 Hanging Morph 10,906,406 296 Table 1: Morpheme occurences in the phrase table and in translation. any word type that contained a match from the most frequent suffix set, looking for the longest matching suffix character string. We call this method Unsup L-match. After the segmentation, word-internal morpheme boundary markers were inserted into the segmented text to be used to reconstruct the surface forms in the MT output. We then trained the Moses phrase-based system (Koehn et al., 2007) on the segmented and marked text. After decoding, it was a simple matter to join together all adjacent morphemes with word-internal boundary markers to reconstruct the surface forms. Figure 1(a) gives the full model overview for all the variants of the segmented translation model (supervised/unsupervised; with and without the Unsup L-match procedure). Table 1 shows how morphemes are being used in the MT system. Of the phrases that included segmentations (‘Morph’ in Table 1), roughly a third were ‘productive’, i.e. had a hanging morpheme (with a form such as stem+) that could be joined to a su</context>
+<context citStr="Koehn et al., 2007" endWordPosition="2629" position="16707" startWordPosition="2626">compared to the reference translation) (b) Decoding Figure 2: Worked example of all steps in the post-processing morphology prediction model. 3 Experimental Results For all of the models built in this paper, we used the Europarl version 3 corpus (Koehn, 2005) English-Finnish training data set, as well as the standard development and test data sets. Our parallel training data consists of —1 million sentences of 40 words or less, while the development and test sets were each 2,000 sentences long. In all the experiments conducted in this paper, we used the Moses5 phrase-based translation system (Koehn et al., 2007), 2008 version. We trained all of the Moses systems herein using the standard features: language model, reordering model, translation model, and word penalty; in addition to these, the factored experiments called for additional translation and generation features for the added factors as noted above. We used in all experiments the following settings: a hypothesis stack size 100, distortion limit 6, phrase translations limit 20, and maximum phrase length 20. For the language models, we used SRILM 5-gram language models (Stolcke, 2002) for all factors. For our word-based Baseline system, we trai</context>
+</contexts>
+<marker>Koehn, Hoang, Birch, Callison-Burch, Federico, Bertoldi, Cowan, Shen, Moran, Zens, Dyer, Bojar, Constantin, Herbst, 2007</marker>
+<rawString>Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris Callison-Burch, Marcello Federico, Nicola Bertoldi, Brooke Cowan, Wade Shen, Christine Moran, Richard Zens, Chris Dyer, Ondrej Bojar, Alexandra Constantin, and Evan Herbst. 2007. Moses: Open source toolkit for statistical machine translation. In ACL `07: Proceedings of the 45th Annual Meeting of the ACL on Interactive Poster and Demonstration Sessions, pages 177–108, Prague, Czech Republic. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+</authors>
+<title>Europarl: A parallel corpus for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proceedings of Machine Translation Summit X,</booktitle>
+<pages>79--86</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Phuket, Thailand.</location>
+<contexts>
+<context citStr="Koehn, 2005" endWordPosition="355" position="2433" startWordPosition="354"> in our experiments, unsupervised morphology always outperforms the use of a hand-built morphological analyzer. Rather than focusing on a few linguistically motivated aspects of Finnish morphological behaviour, we develop techniques for handling morphological complexity in general. We chose Finnish as our target language for this work, because it exemplifies many of the problems morphologically complex languages present for SMT. Among all the languages in the Europarl data-set, Finnish is the most difficult language to translate from and into, as was demonstrated in the MT Summit shared task (Koehn, 2005). Another reason is the current lack of knowledge about how to apply SMT successfully to agglutinative languages like Turkish or Finnish. Our main contributions are: 1) the introduction of the notion of segmented translation where we explicitly allow phrase pairs that can end with a dangling morpheme, which can connect with other morphemes as part of the translation process, and 2) the use of a fully segmented translation model in combination with a post-processing morpheme prediction system, using unsupervised morphology induction. Both of these approaches beat the state of the art on the Eng</context>
+<context citStr="Koehn, 2005" endWordPosition="2568" position="16347" startWordPosition="2567">nto+ kasitellm+ CRF model prediction: X = `koskeva+ mietinto+ kasitellaa+', U = `+A +A +n' koskeva+ +A mietinto+ +A kasitellm+ +n unstitch morphemes: koske+ +va+ +A mietinto+ +A kasi+ +te+ +lla+ +a+ +n language model disambiguation: koske+ +va+ +a mietinto+ +a kasi+ +te+ +lla+ +a+ +n final stitching: koskevaa mietintoa kasitellaan (the output is then compared to the reference translation) (b) Decoding Figure 2: Worked example of all steps in the post-processing morphology prediction model. 3 Experimental Results For all of the models built in this paper, we used the Europarl version 3 corpus (Koehn, 2005) English-Finnish training data set, as well as the standard development and test data sets. Our parallel training data consists of —1 million sentences of 40 words or less, while the development and test sets were each 2,000 sentences long. In all the experiments conducted in this paper, we used the Moses5 phrase-based translation system (Koehn et al., 2007), 2008 version. We trained all of the Moses systems herein using the standard features: language model, reordering model, translation model, and word penalty; in addition to these, the factored experiments called for additional translation </context>
+</contexts>
+<marker>Koehn, 2005</marker>
+<rawString>Philipp Koehn. 2005. Europarl: A parallel corpus for statistical machine translation. In Proceedings of Machine Translation Summit X, pages 79–86, Phuket, Thailand. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John Lafferty</author>
+<author>Andrew McCallum</author>
+<author>Fernando Pereira</author>
+</authors>
+<title>Conditional random fields: Probabilistic models for segmenting and labeling sequence data.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 18th International Conference on Machine Learning,</booktitle>
+<pages>282--289</pages>
+<publisher>Association for Computing Machinery.</publisher>
+<location>San Francisco, California, USA.</location>
+<contexts>
+<context citStr="Lafferty et al., 2001" endWordPosition="1735" position="11096" startWordPosition="1732"> suffixes) but still missing some important suffix morphemes. In the second phase, the output of the MT decoder is then tagged with a sequence of abstract suffix tags. In particular, the output of the MT decoder is a sequence of complex stems denoted by x and the output is a sequence of suffix class tags denoted by y. We use a list of parts from (x,y) and map to a d-dimensional feature vector 4b(x, y), with each dimension being a real number. We infer the best sequence of tags using: F(x) = argmax p(y |x, w) y where F(x) returns the highest scoring output y*. A conditional random field (CRF) (Lafferty et al., 2001) defines the conditional probability as a linear score for each candidate y and a global normalization term: logp(y |x, w) = -b(x, y) · w − log Z where Z = Ey1EGEN(x) exp(-b(x,y') · w). We use stochastic gradient descent (using crfsgd3) to train the weight vector w. So far, this is all off-the-shelf sequence learning. However, the output y* from the CRF decoder is still only a sequence of abstract suffix tags. The third and final phase in our morphology prediction model 3http://leon.bottou.org/projects/sgd 34 English Training Data Finnish Training Data words Morphological Pre-Processing stem+ </context>
+</contexts>
+<marker>Lafferty, McCallum, Pereira, 2001</marker>
+<rawString>John Lafferty, Andrew McCallum, and Fernando Pereira. 2001. Conditional random fields: Probabilistic models for segmenting and labeling sequence data. In Proceedings of the 18th International Conference on Machine Learning, pages 282–289, San Francisco, California, USA. Association for Computing Machinery.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Minh-Thang Luong</author>
+<author>Preslav Nakov</author>
+<author>Min-Yen Kan</author>
+</authors>
+<title>A hybrid morpheme-word representation for machine translation of morphologically rich languages.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP),</booktitle>
+<pages>148--157</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Cambridge, Massachusetts.</location>
+<contexts>
+<context citStr="Luong et al., 2010" endWordPosition="2857" position="18202" startWordPosition="2854">rcase evaluation. We did an initial evaluation of the segmented output translation for each system using the no5http://www.statmt.org/moses/ Segmentation m-BLEU No Uni Baseline 14.84±0.69 9.89 Sup 18.41±0.69 13.49 Unsup L-match 20.74±0.68 15.89 Table 2: Segmented Model Scores. Sup refers to the supervised segmentation baseline model. m-BLEU indicates that the segmented output was evaluated against a segmented version of the reference (this measure does not have the same correlation with human judgement as BLEU). No Uni indicates the segmented BLEU score without unigrams. tion of m-BLEU score (Luong et al., 2010) where the BLEU score is computed by comparing the segmented output with a segmented reference translation. Table 2 shows the m-BLEU scores for various systems. We also show the m-BLEU score without unigrams, since over-segmentation could lead to artificially high m-BLEU scores. In fact, if we compare the relative improvement of our m-BLEU scores for the Unsup L-match system we see a relative improvement of 39.75% over the baseline. Luong et. al. (2010) report an m-BLEU score of 55.64% but obtain a relative improvement of 0.6% over their baseline m-BLEU score. We find that when using a good se</context>
+<context citStr="Luong et al., 2010" endWordPosition="3083" position="19590" startWordPosition="3080">otstrap resampling). Table 3 shows the evaluation scores for all the baselines and the methods introduced in this paper using standard wordbased lowercase BLEU, WER and PER. We do 36 Model BLEU WER TER Baseline 14.68 74.96 72.42 Factored 14.22 76.68 74.15 (Luong et.al, 2010) 14.82 - - Sup 14.90 74.56 71.84 Unsup L-match 15.09∗ 74.46 71.78 CRF-LM 14.87 73.71 71.15 Table 3: Test Scores: lowercase BLEU, WER and TER. The * indicates a statistically significant improvement of BLEU score over the Baseline model. The boldface scores are the best performing scores per evaluation measure. better than (Luong et al., 2010), the previous best score for this task. We also show a better relative improvement over our baseline when compared to (Luong et al., 2010): a relative improvement of 4.86% for Unsup L-match compared to our baseline word-based model, compared to their 1.65% improvement over their baseline word-based model. Our best performing method used unsupervised morphology with L-match (see Section 2.2) and the improvement is significant: bootstrap resampling provides a confidence margin of ±0.77 and a t-test (Collins et al., 2005) showed significance with p = 0.001. 3.1 Morphological Fluency Analysis To </context>
+<context citStr="Luong et al., 2010" endWordPosition="4766" position="30812" startWordPosition="4763">lation: ‘and in this context, we should value the last measures as the Commissioner Fischler, that his experience in Morocco has on the 26th and high-level meetings took place, including with the king.’ Figure 3: Morphological fluency analysis (see Section 3.1). tween source and target. In a somewhat orthogonal approach to ours, (Ma et al., 2007) use alignment of a parallel text to pack together adjacent segments in the alignment output, which are then fed back to the word aligner to bootstrap an improved alignment, which is then used in the translation model. We compared our results against (Luong et al., 2010) in Table 3 since their results are directly comparable to ours. They use a segmented phrase table and language model along with the word-based versions in the decoder and in tuning a Finnish target. Their approach requires segmented phrases to match word boundaries, eliminating morphologically productive phrases. In their work a segmented language model can score a translation, but cannot insert morphology that does not show source-side reflexes. In order to perform a similar experiment that still allowed for morphologically productive phrases, we tried training a segmented translation model,</context>
+<context citStr="Luong et al., 2010" endWordPosition="5236" position="33748" startWordPosition="5233">les. Habash (2007) provides various methods to incorporate morphological variants of words in the phrase table in order to help recognize out of vocabulary words in the source language. 5 Conclusion and Future Work We found that using a segmented translation model based on unsupervised morphology induction and a model that combined morpheme segments in the translation model with a postprocessing morphology prediction model gave us better BLEU scores than a word-based baseline. Using our proposed approach we obtain better scores than the state of the art on the EnglishFinnish translation task (Luong et al., 2010): from 14.82% BLEU to 15.09%, while using a simpler model. We show that using morphological segmentation in the translation model can improve output translation scores. We also demonstrate that for Finnish (and possibly other agglutinative languages), phrase-based MT benefits from allowing the translation model access to morphological segmentation yielding productive morphological phrases. Taking advantage of linguistic analysis of the output we show that using a post-processing morphology generation model can improve translation fluency on a sub-word level, in a manner that is not captured by</context>
+</contexts>
+<marker>Luong, Nakov, Kan, 2010</marker>
+<rawString>Minh-Thang Luong, Preslav Nakov, and Min-Yen Kan. 2010. A hybrid morpheme-word representation for machine translation of morphologically rich languages. In Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 148–157, Cambridge, Massachusetts. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yanjun Ma</author>
+<author>Nicolas Stroppa</author>
+<author>Andy Way</author>
+</authors>
+<title>Bootstrapping word alignment via word packing.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics,</booktitle>
+<pages>304--311</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic.</location>
+<contexts>
+<context citStr="Ma et al., 2007" endWordPosition="4717" position="30541" startWordPosition="4714">sa meidan olisi lisaarvoa viimeista toimenpiteita kuin komission jasen fischler , etta hanen (hanen/GEN-his) kokemuksensa (kokemuksensa/POSS-experience) marokolle (marokolle-Moroccan) viime kuun 26 ja korkean tason tapaamiset jarjestettiin, kuninkaan kanssa Back-translation: ‘and in this context, we should value the last measures as the Commissioner Fischler, that his experience in Morocco has on the 26th and high-level meetings took place, including with the king.’ Figure 3: Morphological fluency analysis (see Section 3.1). tween source and target. In a somewhat orthogonal approach to ours, (Ma et al., 2007) use alignment of a parallel text to pack together adjacent segments in the alignment output, which are then fed back to the word aligner to bootstrap an improved alignment, which is then used in the translation model. We compared our results against (Luong et al., 2010) in Table 3 since their results are directly comparable to ours. They use a segmented phrase table and language model along with the word-based versions in the decoder and in tuning a Finnish target. Their approach requires segmented phrases to match word boundaries, eliminating morphologically productive phrases. In their work</context>
+</contexts>
+<marker>Ma, Stroppa, Way, 2007</marker>
+<rawString>Yanjun Ma, Nicolas Stroppa, and Andy Way. 2007. Bootstrapping word alignment via word packing. In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 304–311, Prague, Czech Republic. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Einat Minkov</author>
+<author>Kristina Toutanova</author>
+<author>Hisami Suzuki</author>
+</authors>
+<title>Generating complex morphology for machine translation. In</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the Association for Computational Linguistics (ACL07),</booktitle>
+<pages>128--135</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic.</location>
+<contexts>
+<context citStr="Minkov et al., 2007" endWordPosition="1552" position="10058" startWordPosition="1549">lows major vocabulary reduction in the translation model, and allows the use of morphologically targeted features for modeling inflection. A possible disadvantage of this approach is that in this model there is no opportunity to consider the morphology in translation since it is removed prior to training the translation model. Morphology generation models can use a variety of bilingual and contextual information to capture dependencies between morphemes, often more long-distance than what is possible using n-gram language models over morphemes in the segmented model. Similar to previous work (Minkov et al., 2007; Toutanova et al., 2008), we model morphology generation as a sequence learning problem. Unlike previous work, we use unsupervised morphology induction and use automatically generated suffix classes as tags. The first phase of our morphology prediction model is to train a MT system that produces morphologically simplified word forms in the target language. The output word forms are complex stems (a stem and some suffixes) but still missing some important suffix morphemes. In the second phase, the output of the MT decoder is then tagged with a sequence of abstract suffix tags. In particular, t</context>
+</contexts>
+<marker>Minkov, Toutanova, Suzuki, 2007</marker>
+<rawString>Einat Minkov, Kristina Toutanova, and Hisami Suzuki. 2007. Generating complex morphology for machine translation. In In Proceedings of the 45th Annual Meeting of the Association for Computational Linguistics (ACL07), pages 128–135, Prague, Czech Republic. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Christian Monson</author>
+</authors>
+<title>Paramor and morpho challenge</title>
+<date>2008</date>
+<booktitle>In Lecture Notes in Computer Science: Workshop of the Cross-Language Evaluation Forum (CLEF</booktitle>
+<contexts>
+<context citStr="Monson, 2008" endWordPosition="836" position="5612" startWordPosition="835"> (called Baseline in the results); not helpful for improving the translation model. we trained this on the original unsegmented We therefore trained several different segmentaversion of the text. Our second baseline is a tion models, considering factors of granularity, factored translation model (Koehn and Hoang, coverage, and source-target symmetry. 2007) (called Factored), which used as factors We performed unsupervised segmentation of the word, “stem&amp;quot;1 and suffix. These are de- the target data, using Morfessor (Creutz and rived from the same unsupervised segmenta- Lagus, 2005) and Paramor (Monson, 2008), two tion model used in other experiments. The re- top systems from the Morpho Challenge 2008 sults (Table 3) show that a factored model was (their combined output was the Morpho Chalunable to match the scores of a simple word- lenge winner). However, translation models based baseline. We hypothesize that this may based upon either Paramor alone or the combe an inherently difficult representational form bined systems output could not match the wordfor a language with the degree of morphologi- based baseline, so we concentrated on Morfescal complexity found in Finnish. Because the sor. Morfess</context>
+</contexts>
+<marker>Monson, 2008</marker>
+<rawString>Christian Monson. 2008. Paramor and morpho challenge 2008. In Lecture Notes in Computer Science: Workshop of the Cross-Language Evaluation Forum (CLEF 2008), Revised Selected Papers.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Habash Nizar</author>
+</authors>
+<title>Four techniques for online handling of out-of-vocabulary words in arabic-english statistical machine translation.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 46th Annual Meeting of the Association of Computational Linguistics,</booktitle>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio.</location>
+<marker>Nizar, 2007</marker>
+<rawString>Habash Nizar. 2007. Four techniques for online handling of out-of-vocabulary words in arabic-english statistical machine translation. In Proceedings of the 46th Annual Meeting of the Association of Computational Linguistics, Columbus, Ohio. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kishore Papineni</author>
+<author>Salim Roukos</author>
+<author>Todd Ward</author>
+<author>Wei jing Zhu</author>
+</authors>
+<title>BLEU: A method for automatic evaluation of machine translation.</title>
+<date>2002</date>
+<booktitle>In Proceedings of 40th Annual Meeting of the Association for Computational Linguistics ACL,</booktitle>
+<pages>311--318</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Philadelphia, Pennsylvania, USA.</location>
+<contexts>
+<context citStr="Papineni et al., 2002" endWordPosition="503" position="3376" startWordPosition="500">with other morphemes as part of the translation process, and 2) the use of a fully segmented translation model in combination with a post-processing morpheme prediction system, using unsupervised morphology induction. Both of these approaches beat the state of the art on the English-Finnish translation task. Morphology can express both content and function categories, and our experiments show that it is important to use morphology both within the translation model (for morphology with content) and outside it (for morphology contributing to fluency). Automatic evaluation measures for MT, BLEU (Papineni et al., 2002), WER (Word Error Rate) and PER (Position Independent Word Error Rate) use the word as the basic unit rather than morphemes. In a word comProceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 32–42, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics prised of multiple morphemes, getting even a performance of unsupervised segmentation for single morpheme wrong means the entire word is translation, our third baseline is a segmented wrong. In addition to standard MT evaluation translation model based on a supervised segmen</context>
+</contexts>
+<marker>Papineni, Roukos, Ward, Zhu, 2002</marker>
+<rawString>Kishore Papineni, Salim Roukos, Todd Ward, and Wei jing Zhu. 2002. BLEU: A method for automatic evaluation of machine translation. In Proceedings of 40th Annual Meeting of the Association for Computational Linguistics ACL, pages 311–318, Philadelphia, Pennsylvania, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tommi Pirinen</author>
+<author>Inari Listenmaa</author>
+</authors>
+<date>2007</date>
+<note>Omorfi morphological analzer. http://gna.org/projects/omorfi.</note>
+<contexts>
+<context citStr="Pirinen and Listenmaa, 2007" endWordPosition="3284" position="20845" startWordPosition="3280">e doing at getting morphology right, we examined several patterns of morphological behavior. While we wish to explore minimally supervised morphological MT models, and use as little language specific information as possible, we do want to use linguistic analysis on the output of our system to see how well the models capture essential morphological information in the target language. So, we ran the word-based baseline system, the segmented model (Unsup L-match), and the prediction model (CRF-LM) outputs, along with the reference translation through the supervised morphological analyzer Omorfi (Pirinen and Listenmaa, 2007). Using this analysis, we looked at a variety of linguistic constructions that might reveal patterns in morphological behavior. These were: (a) explicitly marked noun forms, (b) noun-adjective case agreement, (c) subject-verb person/number agreement, (d) transitive object case marking, (e) postpositions, and (f) possession. In each of these categories, we looked for construction matches on a per-sentence level between the models’ output and the reference translation. Table 4 shows the models’ performance on the constructions we examined. In all of the categories, the CRF-LM model achieves the </context>
+</contexts>
+<marker>Pirinen, Listenmaa, 2007</marker>
+<rawString>Tommi Pirinen and Inari Listenmaa. 2007. Omorfi morphological analzer. http://gna.org/projects/omorfi.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Maja Popoviq</author>
+<author>Hermann Ney</author>
+</authors>
+<title>Towards the use of word stems and suffixes for statistical machine translation.</title>
+<date>2004</date>
+<journal>European Language Resources Association (ELRA).</journal>
+<booktitle>In Proceedings of the 4th International Conference on Language Resources and Evaluation (LREC),</booktitle>
+<pages>1585--1588</pages>
+<location>Lisbon,</location>
+<contexts>
+<context citStr="Popoviq and Ney (2004)" endWordPosition="4994" position="32212" startWordPosition="4991">arding it for using correct whole-word forms. However, we found 39 that this approach was less successful than using the segmented reference in tuning, and could not meet the baseline (13.97% BLEU best tuning score, versus 14.93% BLEU for the baseline best tuning score). Previous work in segmented translation has often used linguistically motivated morphological analysis selectively applied based on a language-specific heuristic. A typical approach is to select a highly inflecting class of words and segment them for particular morphology (de Gispert and Marino, 2008; Ramanathan et al., 2009). Popoviq and Ney (2004) perform segmentation to reduce morphological complexity of the source to translate into an isolating target, reducing the translation error rate for the English target. For Czech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et. al. (2007) and Toutanova et. al. (2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); this can be a problem fo</context>
+</contexts>
+<marker>Popoviq, Ney, 2004</marker>
+<rawString>Maja Popoviq and Hermann Ney. 2004. Towards the use of word stems and suffixes for statistical machine translation. In Proceedings of the 4th International Conference on Language Resources and Evaluation (LREC), pages 1585–1588, Lisbon, Portugal. European Language Resources Association (ELRA).</rawString>
+</citation>
+<citation valid="false">
+<authors>
+<author>Ananthakrishnan Ramanathan</author>
+<author>Hansraj Choudhary</author>
+<author>Avishek Ghosh</author>
+<author>Pushpak Bhattacharyya</author>
+</authors>
+<title>Case markers and morphology: Addressing the crux of the fluency problem in EnglishHindi SMT.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Joint Conference of the 47th Annual Meeting of the Association for Computational Linguistics and the 4th International Joint Conference on Natural Language Processing of the Asian Federation of Natural Language Processing,</booktitle>
+<pages>800--808</pages>
+<institution>Suntec, Singapore. Association for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Ramanathan et al., 2009" endWordPosition="4990" position="32188" startWordPosition="4986">tendency to overfit by rewarding it for using correct whole-word forms. However, we found 39 that this approach was less successful than using the segmented reference in tuning, and could not meet the baseline (13.97% BLEU best tuning score, versus 14.93% BLEU for the baseline best tuning score). Previous work in segmented translation has often used linguistically motivated morphological analysis selectively applied based on a language-specific heuristic. A typical approach is to select a highly inflecting class of words and segment them for particular morphology (de Gispert and Marino, 2008; Ramanathan et al., 2009). Popoviq and Ney (2004) perform segmentation to reduce morphological complexity of the source to translate into an isolating target, reducing the translation error rate for the English target. For Czech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et. al. (2007) and Toutanova et. al. (2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); </context>
+</contexts>
+<marker>Ramanathan, Choudhary, Ghosh, Bhattacharyya, 2009</marker>
+<rawString>Ananthakrishnan Ramanathan, Hansraj Choudhary, Avishek Ghosh, and Pushpak Bhattacharyya. 2009. Case markers and morphology: Addressing the crux of the fluency problem in EnglishHindi SMT. In Proceedings of the Joint Conference of the 47th Annual Meeting of the Association for Computational Linguistics and the 4th International Joint Conference on Natural Language Processing of the Asian Federation of Natural Language Processing, pages 800–808, Suntec, Singapore. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andreas Stolcke</author>
+</authors>
+<title>Srilm – an extensible language modeling toolkit.</title>
+<date>2002</date>
+<booktitle>7th International Conference on Spoken Language Processing,</booktitle>
+<pages>3--901</pages>
+<contexts>
+<context citStr="Stolcke, 2002" endWordPosition="2714" position="17246" startWordPosition="2712">er, we used the Moses5 phrase-based translation system (Koehn et al., 2007), 2008 version. We trained all of the Moses systems herein using the standard features: language model, reordering model, translation model, and word penalty; in addition to these, the factored experiments called for additional translation and generation features for the added factors as noted above. We used in all experiments the following settings: a hypothesis stack size 100, distortion limit 6, phrase translations limit 20, and maximum phrase length 20. For the language models, we used SRILM 5-gram language models (Stolcke, 2002) for all factors. For our word-based Baseline system, we trained a word-based model using the same Moses system with identical settings. For evaluation against segmented translation systems in segmented forms before word reconstruction, we also segmented the baseline system’s word-based output. All the BLEU scores reported are for lowercase evaluation. We did an initial evaluation of the segmented output translation for each system using the no5http://www.statmt.org/moses/ Segmentation m-BLEU No Uni Baseline 14.84±0.69 9.89 Sup 18.41±0.69 13.49 Unsup L-match 20.74±0.68 15.89 Table 2: Segmented</context>
+</contexts>
+<marker>Stolcke, 2002</marker>
+<rawString>Andreas Stolcke. 2002. Srilm – an extensible language modeling toolkit. 7th International Conference on Spoken Language Processing, 3:901–904.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Talbot</author>
+<author>Miles Osborne</author>
+</authors>
+<title>Modelling lexical redundancy for machine translation.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>969--976</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Sydney, Australia,</location>
+<contexts>
+<context citStr="Talbot and Osborne (2006)" endWordPosition="5119" position="33012" startWordPosition="5115">zech-to-English, Goldwater and McClosky (2005) lemmatized the source text and inserted a set of `pseudowords' expected to have lexical reflexes in English. Minkov et. al. (2007) and Toutanova et. al. (2008) use a Maximum Entropy Markov Model for morphology generation. The main drawback to this approach is that it removes morphological information from the translation model (which only uses stems); this can be a problem for languages in which morphology expresses lexical content. de Gispert (2008) uses a language-specific targeted morphological classifier for Spanish verbs to avoid this issue. Talbot and Osborne (2006) use clustering to group morphological variants of words for word alignments and for smoothing phrase translation tables. Habash (2007) provides various methods to incorporate morphological variants of words in the phrase table in order to help recognize out of vocabulary words in the source language. 5 Conclusion and Future Work We found that using a segmented translation model based on unsupervised morphology induction and a model that combined morpheme segments in the translation model with a postprocessing morphology prediction model gave us better BLEU scores than a word-based baseline. U</context>
+</contexts>
+<marker>Talbot, Osborne, 2006</marker>
+<rawString>David Talbot and Miles Osborne. 2006. Modelling lexical redundancy for machine translation. In Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the Association for Computational Linguistics, pages 969–976, Sydney, Australia, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kristina Toutanova</author>
+<author>Hisami Suzuki</author>
+<author>Achim Ruopp</author>
+</authors>
+<title>Applying morphology generation models to machine translation.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 46th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>514--522</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio, USA.</location>
+<contexts>
+<context citStr="Toutanova et al., 2008" endWordPosition="1556" position="10083" startWordPosition="1553"> reduction in the translation model, and allows the use of morphologically targeted features for modeling inflection. A possible disadvantage of this approach is that in this model there is no opportunity to consider the morphology in translation since it is removed prior to training the translation model. Morphology generation models can use a variety of bilingual and contextual information to capture dependencies between morphemes, often more long-distance than what is possible using n-gram language models over morphemes in the segmented model. Similar to previous work (Minkov et al., 2007; Toutanova et al., 2008), we model morphology generation as a sequence learning problem. Unlike previous work, we use unsupervised morphology induction and use automatically generated suffix classes as tags. The first phase of our morphology prediction model is to train a MT system that produces morphologically simplified word forms in the target language. The output word forms are complex stems (a stem and some suffixes) but still missing some important suffix morphemes. In the second phase, the output of the MT decoder is then tagged with a sequence of abstract suffix tags. In particular, the output of the MT decod</context>
+</contexts>
+<marker>Toutanova, Suzuki, Ruopp, 2008</marker>
+<rawString>Kristina Toutanova, Hisami Suzuki, and Achim Ruopp. 2008. Applying morphology generation models to machine translation. In Proceedings of the 46th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies, pages 514–522, Columbus, Ohio, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mei Yang</author>
+<author>Katrin Kirchhoff</author>
+</authors>
+<title>Phrase-based backoff models for machine translation of highly inflected languages.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the European Chapter of the Association for Computational Linguistics,</booktitle>
+<pages>41--48</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Trento, Italy.</location>
+<contexts>
+<context citStr="Yang and Kirchhoff, 2006" endWordPosition="4136" position="26236" startWordPosition="4133">e segmented translation Unsup L-match system, even though the word choices lead to a lower BLEU score overall when compared to Unsup L-match. 4 Related Work The work on morphology in MT can be grouped into three categories, factored models, segmented translation, and morphology generation. Factored models (Koehn and Hoang, 2007) factor the phrase translation probabilities over additional information annotated to each word, allowing for text to be represented on multiple levels of analysis. We discussed the drawbacks of factored models for our task in Section 2.1. While (Koehn and Hoang, 2007; Yang and Kirchhoff, 2006; Avramidis and Koehn, 2008) obtain improvements using factored models for translation into English, German, Spanish, and Czech, these models may be less useful for capturing long-distance dependencies in languages with much more complex morphological systems such as Finnish. In our experiments factored models did worse than the baseline. Segmented translation performs morphological analysis on the morphologically complex text for use in the translation model (Brown et al., 1993; Goldwater and McClosky, 2005; de Gispert and Marino, 2008). This method unpacks complex forms into simpler, more fr</context>
+</contexts>
+<marker>Yang, Kirchhoff, 2006</marker>
+<rawString>Mei Yang and Katrin Kirchhoff. 2006. Phrase-based backoff models for machine translation of highly inflected languages. In Proceedings of the European Chapter of the Association for Computational Linguistics, pages 41–48, Trento, Italy. Association for Computational Linguistics.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,912 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000000" no="0">
+<title confidence="0.997836">
+Exact Decoding of Syntactic Translation Models
+through Lagrangian Relaxation
+</title>
+<author confidence="0.776454">
+Alexander M. Rush
+</author>
+<address confidence="0.4254155">
+MIT CSAIL,
+Cambridge, MA 02139, USA
+</address>
+<email confidence="0.997816">
+srush@csail.mit.edu
+</email>
+<sectionHeader confidence="0.997379" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999517222222222">We describe an exact decoding algorithm for syntax-based statistical translation. The approach uses Lagrangian relaxation to decompose the decoding problem into tractable subproblems, thereby avoiding exhaustive dynamic programming. The method recovers exact solutions, with certificates of optimality, on over 97% of test examples; it has comparable speed to state-of-the-art decoders.</bodyText>
+<sectionHeader confidence="0.999378" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999650409090909">Recent work has seen widespread use of synchronous probabilistic grammars in statistical machine translation (SMT). The decoding problem for a broad range of these systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008)) corresponds to the intersection of a (weighted) hypergraph with an n-gram language model.1 The hypergraph represents a large set of possible translations, and is created by applying a synchronous grammar to the source language string. The language model is then used to rescore the translations in the hypergraph. Decoding with these models is challenging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too expensive to be used in practice.2 Previous work on decoding for syntax-based SMT has therefore been focused primarily on approximate search methods. This paper describes an efficient algorithm for exact decoding of synchronous grammar models for translation. We avoid the construction of (Bar-Hillel et al., 1964) by using Lagrangian relaxation to decompose the decoding problem into the following sub-problems:</bodyText>
+<footnote confidence="0.8721308">
+1This problem is also relevant to other areas of statistical
+NLP, for example NL generation (Langkilde, 2000).
+2E.g., with a trigram language model they run in O(JEJws)
+time, where JEJ is the number of edges in the hypergraph, and
+w is the number of distinct lexical items in the hypergraph.
+</footnote>
+<page confidence="0.973304">
+72
+</page>
+<author confidence="0.867423">
+Michael Collins
+</author>
+<affiliation confidence="0.935261">
+Department of Computer Science,
+Columbia University,
+</affiliation>
+<address confidence="0.966137">
+New York, NY 10027, USA
+</address>
+<email confidence="0.995274">
+mcollins@cs.columbia.edu
+</email>
+<listItem confidence="0.974064">1. Dynamic programming over the weighted hypergraph. This step does not require language model integration, and hence is highly efficient. 2. Application of an all-pairs shortest path algorithm to a directed graph derived from the weighted hypergraph. The size of the derived directed graph is linear in the size of the hypergraph, hence this step is again efficient.</listItem>
+<bodyText confidence="0.999951708333333">Informally, the first decoding algorithm incorporates the weights and hard constraints on translations from the synchronous grammar, while the second decoding algorithm is used to integrate language model scores. Lagrange multipliers are used to enforce agreement between the structures produced by the two decoding algorithms. In this paper we first give background on hypergraphs and the decoding problem. We then describe our decoding algorithm. The algorithm uses a subgradient method to minimize a dual function. The dual corresponds to a particular linear programming (LP) relaxation of the original decoding problem. The method will recover an exact solution, with a certificate of optimality, if the underlying LP relaxation has an integral solution. In some cases, however, the underlying LP will have a fractional solution, in which case the method will not be exact. The second technical contribution of this paper is to describe a method that iteratively tightens the underlying LP relaxation until an exact solution is produced. We do this by gradually introducing constraints to step 1 (dynamic programming over the hypergraph), while still maintaining efficiency.</bodyText>
+<note confidence="0.9618795">
+Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 72–82,
+Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999796666666667">We report experiments using the tree-to-string model of (Huang and Mi, 2010). Our method gives exact solutions on over 97% of test examples. The method is comparable in speed to state-of-the-art decoding algorithms; for example, over 70% of the test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning.</bodyText>
+<sectionHeader confidence="0.999929" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.999966176470588">A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars. The FST algorithms are shown to produce higher scoring solutions than cube-pruning on a large proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008).</bodyText>
+<sectionHeader confidence="0.983825" genericHeader="related work">
+3 Background: Hypergraphs
+</sectionHeader>
+<bodyText confidence="0.999708404761905">Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is created as follows: first, the source side of the synchronous grammar is used to create a parse forest over the source language string. Second, transduction operations derived from synchronous rules in the grammar are used to create the target-language hypergraph. Chiang’s method uses a synchronous context-free grammar, but the hypergraph formalism is applicable to a broad range of other grammatical formalisms, for example dependency grammars (e.g., (Shen et al., 2008)). A hypergraph is a pair (V, E) where V = {1, 2, ... , JV J} is a set of vertices, and E is a set of hyperedges. A single distinguished vertex is taken as the root of the hypergraph; without loss of generality we take this vertex to be v = 1. Each hyperedge e E E is a tuple ((v1, v2, ... , vk), v0) where v0 E V , and vi E {2 ... JV J} for i = 1... k. The vertex v0 is referred to as the head of the edge. The ordered sequence (v1,v2,...,vk) is referred to as the tail of the edge; in addition, we sometimes refer to v1, v2,... vk as the children in the edge. The number of children k may vary across different edges, but k &gt; 1 for all edges (i.e., each edge has at least one child). We will use h(e) to refer to the head of an edge e, and t(e) to refer to the tail. We will assume that the hypergraph is acyclic: intuitively this will mean that no derivation (as defined below) contains the same vertex more than once (see (Martin et al., 1990) for a formal definition). Each vertex v E V is either a non-terminal in the hypergraph, or a leaf. The set of non-terminals is</bodyText>
+<equation confidence="0.861398">
+VN={vEV:]eEE suchthat h(e) = v}
+Conversely, the set of leaves is defined as
+VL = {v E V :Ae E E suchthat h(e) = v}
+</equation>
+<page confidence="0.981362">
+73
+</page>
+<bodyText confidence="0.966051083333333">Finally, we assume that each v E V has a label l(v). The labels for leaves will be words, and will be important in defining strings and language model scores for those strings. The labels for non-terminal nodes will not be important for results in this paper.3 We now turn to derivations. Define an index set Z = V U E. A derivation is represented by a vector y = 1yr : r E Z} where yv = 1 if vertex v is used in the derivation, yv = 0 otherwise (similarly ye = 1 if edge e is used in the derivation, ye = 0 otherwise). Thus y is a vector in 10, 1}|I|. A valid derivation satisfies the following constraints:</bodyText>
+<listItem confidence="0.997796">• y1 = 1 (the root must be in the derivation). • For all v E VN, yv = &amp;:h(e)=v ye. • For all v E 2 ... |V |, yv = Ee:v∈t(e) ye.</listItem>
+<bodyText confidence="0.99777">We use Y to refer to the set of valid derivations. The set Y is a subset of 10,1}|I |(not all members of 10,1}|I |will correspond to valid derivations). Each derivation y in the hypergraph will imply an ordered sequence of leaves v1 ... vn. We use s(y) to refer to this sequence. The sentence associated with the derivation is then l(v1) ... l(vn). In a weighted hypergraph problem, we assume a parameter vector θ = 1θr : r E Z}. The score for any derivation is f(y) = θ y = Er∈I θryr. Simple bottom-up dynamic programming—essentially the CKY algorithm—can be used to find y∗ = arg maxy∈Y f(y) under these definitions. The focus of this paper will be to solve problems involving the integration of a k’th order language model with a hypergraph. In these problems, the score for a derivation is modified to be where v1 ... vn = s(y).</bodyText>
+<equation confidence="0.59817">
+θ(vi−k+1, vi−k+2, ... , vi) (1)
+</equation>
+<bodyText confidence="0.998666666666667">The θ(vi−k+1, ..., vi) parameters score n-grams of length k. These parameters are typically defined by a language model, for example with k = 3 we would have θ(vi−2, vi−1, vi) = log p(l(vi)|l(vi−2), l(vi−1)). The problem is then to find y∗ = arg maxy∈Y f(y) under this definition. Throughout this paper we make the following assumption when using a bigram language model:</bodyText>
+<footnote confidence="0.9711215">
+3They might for example be non-terminal symbols from the
+grammar used to generate the hypergraph.
+</footnote>
+<equation confidence="0.905680333333333">
+Assumption 3.1 (Bigram start/end assump-
+tion.) For any derivation y, with leaves
+s(y) = v1, v2, ... , vn, it is the case that: (1)
+v1 = 2 and vn = 3; (2) the leaves 2 and 3 cannot
+appear at any other position in the strings s(y) for
+y E Y; (3) l(2) = &lt;s&gt; where &lt;s&gt; is the start
+</equation>
+<bodyText confidence="0.9978755">symbol in the language model; (4) l(3) = &lt;/s&gt; where &lt;/s&gt; is the end symbol. This assumption allows us to incorporate language model terms that depend on the start and end symbols. It also allows a clean solution for boundary conditions (the start/end of strings).4</bodyText>
+<sectionHeader confidence="0.994224" genericHeader="method">
+4 A Simple Lagrangian Relaxation
+Algorithm
+</sectionHeader>
+<bodyText confidence="0.999226647058824">We now give a Lagrangian relaxation algorithm for integration of a hypergraph with a bigram language model, in cases where the hypergraph satisfies the following simplifying assumption: Assumption 4.1 (The strict ordering assumption.) For any two leaves v and w, it is either the case that: 1) for all derivations y such that v and w are both in the sequence l(y), v precedes w; or 2) for all derivations y such that v and w are both in l(y), w precedes v. Thus under this assumption, the relative ordering of any two leaves is fixed. This assumption is overly restrictive:5 the next section describes an algorithm that does not require this assumption. However deriving the simple algorithm will be useful in developing intuition, and will lead directly to the algorithm for the unrestricted case.</bodyText>
+<subsectionHeader confidence="0.998819">
+4.1 A Sketch of the Algorithm
+</subsectionHeader>
+<bodyText confidence="0.961571">At a high level, the algorithm is as follows. We introduce Lagrange multipliers u(v) for all v E VL, with initial values set to zero. The algorithm then involves the following steps: (1) For each leaf v, find the previous leaf w that maximizes the score θ(w,v) − u(w) (call this leaf α∗(v), and define αv = θ(α∗(v),v) − u(α∗(v))). (2) find the highest scoring derivation using dynamic programming 4The assumption generalizes in the obvious way to k’th order language models: e.g., for trigram models we assume that v1 = 2, v2 = 3, vn = 4, l(2) = l(3) = &lt;s&gt;, l(4) = &lt;/s&gt;. 5It is easy to come up with examples that violate this assumption: for example a hypergraph with edges ((4, 5), 1) and ((5, 4), 1) violates the assumption. The hypergraphs found in translation frequently contain alternative orderings such as this.</bodyText>
+<equation confidence="0.982584333333333">
+� θryr + n
+f(y) = E
+rEZ i=k
+</equation>
+<page confidence="0.979542">
+74
+</page>
+<bodyText confidence="0.99997525">over the original (non-intersected) hypergraph, with leaf nodes having weights Bv + αv + u(v). (3) If the output derivation from step 2 has the same set of bigrams as those from step 1, then we have an exact solution to the problem. Otherwise, the Lagrange multipliers u(v) are modified in a way that encourages agreement of the two steps, and we return to step 1. Steps 1 and 2 can be performed efficiently; in particular, we avoid the classical dynamic programming intersection, instead relying on dynamic programming over the original, simple hypergraph.</bodyText>
+<subsectionHeader confidence="0.993793">
+4.2 A Formal Description
+</subsectionHeader>
+<bodyText confidence="0.999840818181818">We now give a formal description of the algorithm. Define 13 C_ VL xVL to be the set of all ordered pairs (v, w) such that there is at least one derivation y with v directly preceding w in s(y). Extend the bit-vector y to include variables y(v, w) for (v, w) E 13 where y(v, w) = 1 if leaf v is followed by w in s(y), 0 otherwise. We redefine the index set to be Z = V U E U 13, and define Y C_ {0,11|&amp;quot; |to be the set of all possible derivations. Under assumptions 3.1 and 4.1 above, Y = {y : y satisfies constraints C0, C1, C21 where the constraint definitions are:</bodyText>
+<listItem confidence="0.968002166666667">• (C0) The yv and ye variables form a derivation in the hypergraph, as defined in section 3. • (C1) For all v E VL such that v =� 2, yv = Ew:(w,v)EB y(w, v). • (C2) For all v E VL such that v =� 3, yv = Ew:(v,w)EB y(v, w).</listItem>
+<bodyText confidence="0.998870142857143">C1 states that each leaf in a derivation has exactly one in-coming bigram, and that each leaf not in the derivation has 0 incoming bigrams; C2 states that each leaf in a derivation has exactly one out-going bigram, and that each leaf not in the derivation has 0 outgoing bigrams.6 The score of a derivation is now f(y) = 0 · y, i.e., where 0(v, w) are scores from the language model.</bodyText>
+<equation confidence="0.9875475">
+f(y) = � �vyv+ � Oeye+ � 0(v, w)y(v, w)
+v e (v,w)EB
+</equation>
+<bodyText confidence="0.9843218">Our goal is to compute y* = arg maxyEY f(y).6Recall that according to the bigram start/end assumption the leaves 2/3 are reserved for the start/end of the sequence s(y), and hence do not have an incoming/outgoing bigram.</bodyText>
+<figure confidence="0.6738735">
+Initialization: Set u°(v) = 0 for all v E VL
+Algorithm: For t = 1... T:
+• yt = arg maxyEY′ L(ut−1, y)
+• If yt satisfies constraints C2, return yt,
+Else Vv E VL, ut(v) =
+)ut−1(v) − St ( yt(v) − � w:(v,w)Eg yt(v, w) .
+</figure>
+<figureCaption confidence="0.929538">
+Figure 1: A simple Lagrangian relaxation algorithm.
+St &gt; 0 is the step size at iteration t.
+</figureCaption>
+<bodyText confidence="0.876737">Next, define Y′ as</bodyText>
+<equation confidence="0.7742">
+Y′ = {y : y satisfies constraints C0 and C11
+</equation>
+<bodyText confidence="0.983466333333333">In this definition we have dropped the C2 constraints. To incorporate these constraints, we use Lagrangian relaxation, with one Lagrange multiplier</bodyText>
+<equation confidence="0.942073777777778">
+u(v) for each constraint in C2. The Lagrangian is
+L(u, y) = f(y) + � u(v)(y(v) − � y(v, w))
+v w:(v,w)EB
+= Q · y
+where Qv = Ov + u(v), Qe = 0e, and Q(v, w) =
+0(v, w) − u(v).
+The dual problem is to find ming L(u) where
+L(u) = max
+yEY′
+</equation>
+<bodyText confidence="0.994133466666667">Figure 1 shows a subgradient method for solving this problem. At each point the algorithm finds yt = arg maxyEY′ L(ut−1, y), where ut−1 are the Lagrange multipliers from the previous iteration. If yt satisfies the C2 constraints in addition to C0 and C1, then it is returned as the output from the algorithm. Otherwise, the multipliers u(v) are updated. Intuitively, these updates encourage the values of yv and Ew:(v,w)EB y(v, w) to be equal; formally, these updates correspond to subgradient steps. The main computational step at each iteration is to compute arg maxyEY′ L(ut−1, y) This step is easily solved, as follows (we again use Qv, Qe and Q(v1, v2) to refer to the parameter values that incorporate Lagrange multipliers):</bodyText>
+<listItem confidence="0.990775">• For all v E VL, define α*(v) = arg maxw:(w,v)EB Q(w, v) and αv =
+Q(α*(v), v).</listItem>
+<construct confidence="0.501627">For all v E VN define αv = 0.</construct>
+<equation confidence="0.836771">
+L(u, y)
+</equation>
+<page confidence="0.972354">
+75
+</page>
+<listItem confidence="0.9182288">• Using dynamic programming, find values for the yv and ye variables that form a valid derivation, and that( maximize f′(y) = &amp;(0v + αv)yv + &amp; Qeye. • Set y(v, w) = 1 iff y(w) = 1 and α*(w) = v.</listItem>
+<bodyText confidence="0.997895032258065">The critical point here is that through our definition of Y′, which ignores the C2 constraints, we are able to do efficient search as just described. In the first step we compute the highest scoring incoming bigram for each leaf v. In the second step we use conventional dynamic programming over the hypergraph to find an optimal derivation that incorporates weights from the first step. Finally, we fill in the y(v, w) values. Each iteration of the algorithm runs in O(JEJ + JBJ) time. There are close connections between Lagrangian relaxation and linear programming relaxations. The most important formal results are: 1) for any value of u, L(u) &gt; f(y*) (hence the dual value provides an upper bound on the optimal primal value); 2) under an appropriate choice of the step sizes St, the subgradient algorithm is guaranteed to converge to the minimum of L(u) (i.e., we will minimize the upper bound, making it as tight as possible); 3) if at any point the algorithm in figure 1 finds a yt that satisfies the C2 constraints, then this is guaranteed to be the optimal primal solution. Unfortunately, this algorithm may fail to produce a good solution for hypergraphs where the strict ordering constraint does not hold. In this case it is possible to find derivations y that satisfy constraints C0, C1, C2, but which are invalid. As one example, consider a derivation with s(y) = 2, 4, 5, 3 and y(2,3) = y(4,5) = y(5,4) = 1. The constraints are all satisfied in this case, but the bigram variables are invalid (e.g., they contain a cycle).</bodyText>
+<sectionHeader confidence="0.984795" genericHeader="method">
+5 The Full Algorithm
+</sectionHeader>
+<bodyText confidence="0.999994">We now describe our full algorithm, which does not require the strict ordering constraint. In addition, the full algorithm allows a trigram language model. We first give a sketch, and then give a formal definition.</bodyText>
+<subsectionHeader confidence="0.991267">
+5.1 A Sketch of the Algorithm
+</subsectionHeader>
+<bodyText confidence="0.932640818181818">A crucial idea in the new algorithm is that of paths between leaves in hypergraph derivations. Previously, for each derivation y, we had defined s(y) = v1, v2, ... , vn to be the sequence of leaves in y. In addition, we will define g(y) = p0, v1, p1, v2, p2, v3, p3, . . . , pn−1, vn, pn where each pi is a path in the derivation between leaves vi and vi+1. The path traces through the nonterminals that are between the two leaves in the tree. As an example, consider the following derivation (with hyperedges ((2, 5), 1) and ((3, 4), 2)):</bodyText>
+<equation confidence="0.965956666666667">
+1
+2 5
+3 4
+</equation>
+<bodyText confidence="0.982926259259259">For this example g(y) is (1 1, 2 1) (2 1, 3 1) (3 1), 3, (3 T) (3 T, 4 1) (4 1), 4, (4 T) (4 T, 2 T) (2 T, 5 1) (5 1), 5, (5 T) (5 T,1 T). States of the form (a 1) and (a T) where a is a leaf appear in the paths respectively before/after the leaf a. States of the form (a, b) correspond to the steps taken in a top-down, left-to-right, traversal of the tree, where down and up arrows indicate whether a node is being visited for the first or second time (the traversal in this case would be 1, 2, 3, 4, 2, 5, 1). The mapping from a derivation y to a path g(y) can be performed using the algorithm in figure 2. For a given derivation y, define E(y) = {y : ye = 11, and use E(y) as the set of input edges to this algorithm. The output from the algorithm will be a set of states 5, and a set of directed edges T, which together fully define the path g(y). In the simple algorithm, the first step was to predict the previous leaf for each leaf v, under a score that combined a language model score with a Lagrange multiplier score (i.e., compute arg maxw Q(w, v) where Q(w, v) = O(w, v) + u(w)). In this section we describe an algorithm that for each leaf v again predicts the previous leaf, but in addition predicts the full path back to that leaf. For example, rather than making a prediction for leaf 5 that it should be preceded by leaf 4, we would also</bodyText>
+<listItem confidence="0.615233">1) bepredict the path (4 T)(4 T, 2 T) (2 T, 5 1)(5 tween these two leaves.</listItem>
+<bodyText confidence="0.9994226">Lagrange multipliers will be used to enforce consistency between these predictions (both paths and previous words) and a valid derivation.</bodyText>
+<page confidence="0.933238">
+76
+</page>
+<bodyText confidence="0.848367214285714">Input: A set E of hyperedges. Output: A directed graph S, T where S is a set of vertices, and T is a set of edges. Step 1: Creating S: Define S = ∪eEES(e) where S(e) is defined as follows. Assume e = hhv1, v2, ... , vki, v0i. Include the following states in S(e): (1) hv0 ↓, v1 ↓i and hvk ↑, v0↑i. (2) hvj ↑, vj+1↓i for j = 1... k − 1 (if k = 1 then there are no such states). (3) In addition, for any vj for j = 1... k such that vj ∈ VL, add the states hvj ↓i and hvj ↑i. Step 2: Creating T: T is formed by including the following directed arcs: (1) Add an arc from ha, bi ∈ S to hc, di ∈ S whenever b = c. (2) Add an arc from ha, b ↓i ∈ S to hc ↓i ∈ S whenever b = c. (3) Add an arc from ha ↑i ∈ S to hb ↑, ci ∈ S whenever a = b.</bodyText>
+<figureCaption confidence="0.8937995">
+Figure 2: Algorithm for constructing a directed graph
+(S, T) from a set of hyperedges E.
+</figureCaption>
+<subsectionHeader confidence="0.991172">
+5.2 A Formal Description
+</subsectionHeader>
+<bodyText confidence="0.999052166666667">We first use the algorithm in figure 2 with the entire set of hyperedges, E, as its input. The result is a directed graph (S, T) that contains all possible paths for valid derivations in V, E (it also contains additional, ill-formed paths). We then introduce the following definition:</bodyText>
+<equation confidence="0.925539">
+Definition 5.1 A trigram path p is p =
+hv1, p1, v2, p2, v3i where: a) v1, v2, v3 ∈ VL;
+b) p1 is a path (sequence of states) between nodes
+</equation>
+<bodyText confidence="0.96971475">hv1 ↑i and hv2 ↓i in the graph (S, T); c) p2 is a path between nodes hv2 ↑i and hv3 ↓i in the graph (S, T). We define P to be the set of all trigram paths in (S, T). The set P of trigram paths plays an analogous role to the set B of bigrams in our previous algorithm. We use v1(p), p1(p), v2(p), p2(p), v3(p) to refer to the individual components of a path p. In addition, define SN to be the set of states in S of the form ha, bi (as opposed to the form hc ↓i or hc ↑i where c ∈ VL). We now define a new index set, I = V ∪ E ∪ SN ∪ P, adding variables ys for s ∈ SN, and yp for p ∈ P. If we take Y ⊂ {0, 1}|z |to be the set of valid derivations, the optimization problem is to find y* = arg maxyEY f(y), where f(y) = θ · y, that is, v e s p In particular, we might define θs = 0 for all s, and θp = log p(l(v3(p))|l(v1(p)), l(v2(p))) where</bodyText>
+<equation confidence="0.993784">
+f(y) = X θvyv + X θeye + X θsys + X θpyp
+</equation>
+<listItem confidence="0.9992164">• D0. The yv and ye variables form a valid derivation in the original hypergraph. • D1. For all s ∈ SN, ys = Pe:sES(e) ye (see figure 2 for the definition of S(e)). • D2. For all v ∈ VL, yv = Pp:v3(p)=v yp • D3. For all v ∈ VL, yv = Pp:v2(p)=v yp • D4. For all v ∈ VL, yv = Pp:v,(p)=v, yp • D5. For all s ∈ SN, ys = Pp:sEp1(p) yp • D6. For all s ∈ SN, ys = Pp:sEp2(p) yp • Lagrangian with Lagrange multipliers for D3–D6:</listItem>
+<equation confidence="0.9887465">
+L(y, λ, γ, u, v) = θ · y � �
++ P yv − P
+v λv p:v2(p)=v yp
+� �
++ P yv − P
+v γv p:v1(p)=v yp
+~ +Ps us ys − Pp:sEp1(p) yp)
+~ +Ps vs ys − Pp:sEp2(p) yp) .
+</equation>
+<figureCaption confidence="0.767372">
+Figure 3: Constraints D0–D6, and the Lagrangian.
+</figureCaption>
+<equation confidence="0.959578">
+p(w3|w1, w2) is a trigram probability.
+</equation>
+<bodyText confidence="0.999608466666667">The set P is large (typically exponential in size): however, we will see that we do not need to represent the yp variables explicitly. Instead we will be able to leverage the underlying structure of a path as a sequence of states. The set of valid derivations is Y = {y : y satisfies constraints D0–D6} where the constraints are shown in figure 3. D1 simply states that ys = 1 iff there is exactly one edge e in the derivation such that s ∈ S(e). Constraints D2–D4 enforce consistency between leaves in the trigram paths, and the yv values. Constraints D5 and D6 enforce consistency between states seen in the paths, and the ys values. The Lagrangian relaxation algorithm is then derived in a similar way to before. Define</bodyText>
+<equation confidence="0.768969">
+Y′ = {y : y satisfies constraints D0–D2}
+</equation>
+<bodyText confidence="0.9901723">We have dropped the D3–D6 constraints, but these will be introduced using Lagrange multipliers. The resulting Lagrangian is shown in figure 3, and can be written as L(y, λ, γ, u, v) = β · y where βv = θv+λv+γv, βs = θs+us+vs, βp = θp−λ(v2(p))− γ(v1(p)) − PsEp,(p) u(s) − PsEp2(p) v(s). The dual maxyEY′ L(y, λ, γ, u, v); figure 4 shows a subgradient method that minimizes this dual. The key step in the algorithm at each iteration is to compute arg maxy∈Y′ L(y, λ, γ, u, v) = arg maxy∈Y′ β · y where β is defined above.</bodyText>
+<equation confidence="0.900155">
+is
+L(λ, γ, u, v)
+=
+</equation>
+<page confidence="0.995572">
+77
+</page>
+<figureCaption confidence="0.997983">
+Figure 4: The full Lagrangian relaxation algortihm. δt &gt;
+0 is the step size at iteration t.
+</figureCaption>
+<bodyText confidence="0.99775275">Again, our definition of Y′ allows this maximization to be performed efficiently, as follows:</bodyText>
+<listItem confidence="0.96614925">1. For each v E VL, define α∗v = arg maxp:v3(p)=v β(p), and αv = β(α∗v). (i.e., for each v, compute the highest scoring trigram path ending in v.) 2. Find values for the yv, ye and ys variables that form a valid derivation, and that maximize f′(y) = Pv(βv +αv)yv +P e βeye+P s βsys 3. Set yp = 1 iff yv3(p) = 1 and p = α∗v3(p).</listItem>
+<bodyText confidence="0.999980444444444">The first step involves finding the highest scoring incoming trigram path for each leaf v. This step can be performed efficiently using the Floyd-Warshall allpairs shortest path algorithm (Floyd, 1962) over the graph (S, T); the details are given in the appendix. The second step involves simple dynamic programming over the hypergraph (V, E) (it is simple to integrate the βs terms into this algorithm). In the third step, the path variables yp are filled in.</bodyText>
+<subsectionHeader confidence="0.967977">
+5.3 Properties
+</subsectionHeader>
+<bodyText confidence="0.999571125">We now describe some important properties of the algorithm: Efficiency. The main steps of the algorithm are: 1) construction of the graph (S, T); 2) at each iteration, dynamic programming over the hypergraph (V, E); 3) at each iteration, all-pairs shortest path algorithms over the graph (S, T). Each of these steps is vastly more efficient than computing an exact intersection of the hypergraph with a language model. Exact solutions. By usual guarantees for Lagrangian relaxation, if at any point the algorithm returns a solution yt that satisfies constraints D3–D6, then yt exactly solves the problem in Eq. 1. Upper bounds. At each point in the algorithm, L(λt, γt, ut, vt) is an upper bound on the score of the optimal primal solution, f(y∗). Upper bounds can be useful in evaluating the quality of primal solutions from either our algorithm or other methods such as cube pruning. Simplicity of implementation. Construction of the (S, T) graph is straightforward. The other steps—hypergraph dynamic programming, and allpairs shortest path—are widely known algorithms that are simple to implement.</bodyText>
+<sectionHeader confidence="0.990364" genericHeader="method">
+6 Tightening the Relaxation
+</sectionHeader>
+<bodyText confidence="0.999881115384616">The algorithm that we have described minimizes the dual function L(λ, γ, u, v). By usual results for Lagrangian relaxation (e.g., see (Korte and Vygen, 2008)), L is the dual function for a particular LP relaxation arising from the definition of Y′ and the additional constaints D3–D6. In some cases the LP relaxation has an integral solution, in which case the algorithm will return an optimal solution yt.7 In other cases, when the LP relaxation has a fractional solution, the subgradient algorithm will still converge to the minimum of L, but the primal solutions yt will move between a number of solutions. We now describe a method that incrementally adds hard constraints to the set Y′, until the method returns an exact solution. For a given y E Y′, for any v with yv = 1, we can recover the previous two leaves (the trigram ending in v) from either the path variables yp, or the hypergraph variables ye. Specifically, define v−1(v, y) to be the leaf preceding v in the trigram path p with yp = 1 and v3(p) = v, and v−2(v, y) to be the leaf two positions before v in the trigram path p with yp = 1 and v3(p) = v. Similarly, define v′−1(v, y) and v′−2(v, y) to be the preceding two leaves under the ye variables. If the method has not converged, these two trigram definitions may not be consistent. For a consistent solution, we require v−1(v, y) = v′ −1(v, y) and v−2(v, y) = v′−2(v, y) for all v with y„ = 1.</bodyText>
+<footnote confidence="0.8770965">
+7Provided that the algorithm is run for enough iterations for
+convergence.
+</footnote>
+<figure confidence="0.953190454545454">
+Initialization: Set λ0 = 0, γ0 = 0, u0 = 0, v0 = 0
+Algorithm: For t = 1... T:
+• yt = arg maxy∈Y′ L(y, λt−1, γt−1, ut−1, vt−1)
+• If yt satisfies the constraints D3–D6, return yt, else:
+- dv E VL, λtv = λt− v 1 − δt(yt v − P p:v2(p)=v yt p)
+L�yv = yv-1 t t _ yt)
+- dv E V - S (yv P:v1(p)=v
+tt−1 t t t
+- ds E SN, us = us − δ (ys − Pp:s∈p1(p) yp)
+- ds E SN, vt s = vt−1
+s − δt(yt s − P p:s∈p2(p) yt p)
+</figure>
+<page confidence="0.99442">
+78
+</page>
+<bodyText confidence="0.993898545454545">Unfortunately, explicitly enforcing all of these constraints would require exhaustive dynamic programming over the hypergraph using the (Bar-Hillel et al., 1964) method, something we wish to avoid. Instead, we enforce a weaker set of constraints, which require far less computation. Assume some function 7r : VL -* 11, 2,... q} that partitions the set of leaves into q different partitions. Then we will add the following constraints to Y′:</bodyText>
+<equation confidence="0.993771">
+7r(v−1(v, y)) = 7r(v′ −1(v, y))
+7r(v−2(v, y)) = 7r(v′−2(v, y))
+</equation>
+<bodyText confidence="0.995806925925926">for all v such that y„ = 1. Finding arg maxyEY′ 0 � y under this new definition of Y′ can be performed using the construction of (Bar-Hillel et al., 1964), with q different lexical items (for brevity we omit the details). This is efficient if q is small.8 The remaining question concerns how to choose a partition 7r that is effective in tightening the relaxation. To do this we implement the following steps: 1) run the subgradient algorithm until L is close to convergence; 2) then run the subgradient algorithm for m further iterations, keeping track of all pairs of leaf nodes that violate the constraints (i.e., pairs a = v−1(v, y)/b = v′−1(v, y) or a = v−2(v, y)/b = v′−2(v, y) such that a =� b); 3) use a graph coloring algorithm to find a small partition that places all pairs (a, b) into separate partitions; 4) continue running Lagrangian relaxation, with the new constraints added. We expand 7r at each iteration to take into account new pairs (a, b) that violate the constraints. In related work, Sontag et al. (2008) describe a method for inference in Markov random fields where additional constraints are chosen to tighten an underlying relaxation. Other relevant work in NLP includes (Tromble and Eisner, 2006; Riedel and Clarke, 2006). Our use of partitions 7r is related to previous work on coarse-to-fine inference for machine translation (Petrov et al., 2008).</bodyText>
+<sectionHeader confidence="0.998841" genericHeader="evaluation and result">
+7 Experiments
+</sectionHeader>
+<bodyText confidence="0.9984615">We report experiments on translation from Chinese to English, using the tree-to-string model described in (Huang and Mi, 2010).</bodyText>
+<footnote confidence="0.955828">
+8In fact in our experiments we use the original hypergraph
+to compute admissible outside scores for an exact A* search
+algorithm for this problem. We have found the resulting search
+algorithm to be very efficient.
+</footnote>
+<table confidence="0.9994327">
+Time %age %age %age %age
+(LR) (DP) (ILP) (LP)
+0.5s 37.5 10.2 8.8 21.0
+1.0s 57.0 11.6 13.9 31.1
+2.0s 72.2 15.1 21.1 45.9
+4.0s 82.5 20.7 30.7 63.7
+8.0s 88.9 25.2 41.8 78.3
+16.0s 94.4 33.3 54.6 88.9
+32.0s 97.8 42.8 68.5 95.2
+Median time 0.79s 77.5s 12.1s 2.4s
+</table>
+<figureCaption confidence="0.974785">
+Figure 5: Results showing percentage of examples that are de-
+coded in less than t seconds, for t = 0.5, 1.0, 2.0, ... , 32.0. LR = Lagrangian relaxation; DP = exhaustive dynamic programming; ILP = integer linear programming; LP = linear programming (LP does not recover an exact solution). The (I)LP experiments were carried out using Gurobi, a high-performance commercial-grade solver.</figureCaption>
+<bodyText confidence="0.9830875">We use an identical model, and identical development and test data, to that used by Huang and Mi.9 The translation model is trained on 1.5M sentence pairs of Chinese-English data; a trigram language model is used. The development data is the newswire portion of the 2006 NIST MT evaluation test set (616 sentences). The test set is the newswire portion of the 2008 NIST MT evaluation test set (691 sentences). We ran the full algorithm with the tightening method described in section 6. We ran the method for a limit of 200 iterations, hence some examples may not terminate with an exact solution. Our method gives exact solutions on 598/616 development set sentences (97.1%), and 675/691 test set sentences (97.7%). In cases where the method does not converge within 200 iterations, we can return the best primal solution yt found by the algorithm during those iterations. We can also get an upper bound on the difference f(y*) − f(yt) using mint L(ut) as an upper bound on f(y*). Of the examples that did not converge, the worst example had a bound that was 1.4% of f(yt) (more specifically, f(yt) was -24.74, and the upper bound on f(y*) − f(yt) was 0.34). Figure 5 gives information on decoding time for our method and two other exact decoding methods: integer linear programming (using constraints D0– D6), and exhaustive dynamic programming using the construction of (Bar-Hillel et al., 1964).Our method is clearly the most efficient, and is comparable in speed to state-of-the-art decoding algorithms.</bodyText>
+<footnote confidence="0.994466">
+9We thank Liang Huang and Haitao Mi for providing us with
+their model and data.
+</footnote>
+<page confidence="0.998464">
+79
+</page>
+<bodyText confidence="0.999574714285714">We also compare our method to cube pruning (Chiang, 2007; Huang and Chiang, 2007). We reimplemented cube pruning in C++, to give a fair comparison to our method. Cube pruning has a parameter, b, dictating the maximum number of items stored at each chart entry. With b = 50, our decoder finds higher scoring solutions on 50.5% of all examples (349 examples), the cube-pruning method gets a strictly higher score on only 1 example (this was one of the examples that did not converge within 200 iterations). With b = 500, our decoder finds better solutions on 18.5% of the examples (128 cases), cubepruning finds a better solution on 3 examples. The median decoding time for our method is 0.79 seconds; the median times for cube pruning with b = 50 and b = 500 are 0.06 and 1.2 seconds respectively. Our results give a very good estimate of the percentage of search errors for cube pruning. A natural question is how large b must be before exact solutions are returned on almost all examples. Even at b = 1000, we find that our method gives a better solution on 95 test examples (13.7%). Figure 5 also gives a speed comparison of our method to a linear programming (LP) solver that solves the LP relaxation defined by constraints D0– D6. We still see speed-ups, in spite of the fact that our method is solving a harder problem (it provides integral solutions). The Lagrangian relaxation method, when run without the tightening method of section 6, is solving a dual of the problem being solved by the LP solver. Hence we can measure how often the tightening procedure is absolutely necessary, by seeing how often the LP solver provides a fractional solution. We find that this is the case on 54.0% of the test examples: the tightening procedure is clearly important. Inspection of the tightening procedure shows that the number of partitions required (the parameter q) is generally quite small: 59% of examples that require tightening require q &lt; 6; 97.2% require q &lt; 10.</bodyText>
+<sectionHeader confidence="0.999061" genericHeader="conclusion">
+8 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999841066666667">We have described a Lagrangian relaxation algorithm for exact decoding of syntactic translation models, and shown that it is significantly more efficient than other exact algorithms for decoding treeto-string models. There are a number of possible ways to extend this work. Our experiments have focused on tree-to-string models, but the method should also apply to Hiero-style syntactic translation models (Chiang, 2007). Additionally, our experiments used a trigram language model, however the constraints in figure 3 generalize to higher-order language models. Finally, our algorithm recovers the 1-best translation for a given input sentence; it should be possible to extend the method to find kbest solutions.</bodyText>
+<figure confidence="0.210055">
+A Computing the Optimal Trigram Paths
+/F��o//r„„each v E/VL, define α/v, maxp:v3(p)=v β(p), where
+0(p) = h(v1(p),v2(p),v3(P))−λ1 (v1 (p))−λ2(v2(p))−
+0s∈p1(p) u(s)−rs∈p2(p) v(s). Here h is a function that
+</figure>
+<figureCaption confidence="0.633293333333333">
+computes language model scores, and the other terms in-
+volve Lagrange mulipliers. Our task is to compute α∗v for
+all v E VL.
+</figureCaption>
+<bodyText confidence="0.979107333333333">It is straightforward to show that the S, T graph is acyclic. This will allow us to apply shortest path algorithms to the graph, even though the weights u(s) and v(s) can be positive or negative. For any pair v1, v2 E VL, define P(v1, v2) to be the set of paths between (v1 T) and (v2 t) in the graph S, T. Each path p gets a score scoreu(p) = − K, u(s). Next, define p∗u(v1, v2) = arg maxp∈P(v1,v2) scoreu(p), and score∗u(v1, v2) = scoreu(p∗). We assume similar definitions for p∗v(v1, v2) and score∗v(v1, v2). The p∗u and score∗ u values can be calculated using an all-pairs shortest path algorithm, with weights u(s) on nodes in the graph. Similarly, p∗v and score∗ v can be computed using all-pairs shortest path with weights v(s) on the nodes. Having calculated these values, define T (v) for any leaf v to be the set of trigrams (x, y, v) such that: 1) x, y E VL; 2) there is a path from (x T) to (y t) and from (y T) to (v t) in the graph S, T. Then we can calculate</bodyText>
+<equation confidence="0.9179344">
+αv = max (h(x,y,v) − λ1(x) − λ2(y)
+(x,y,v)∈T (v)
++p∗u(x, y) + p∗v(y, v))
+in O(|T (v)|) time, by brute force search through the set
+T (v).
+</equation>
+<footnote confidence="0.971689125">
+Acknowledgments Alexander Rush and Michael
+Collins were supported under the GALE program of the
+Defense Advanced Research Projects Agency, Contract
+No. HR0011-06-C-0022. Michael Collins was also sup-
+ported by NSF grant IIS-0915176. We also thank the
+anonymous reviewers for very helpful comments; we
+hope to fully address these in an extended version of the
+paper.
+</footnote>
+<page confidence="0.997364">
+80
+</page>
+<sectionHeader confidence="0.996085" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999038701923077">
+Y. Bar-Hillel, M. Perles, and E. Shamir. 1964. On formal
+properties of simple phrase structure grammars. In
+Language and Information: Selected Essays on their
+Theory and Application, pages 116–150.
+D. Chiang. 2005. A hierarchical phrase-based model
+for statistical machine translation. In Proceedings of
+the 43rd Annual Meeting on Association for Compu-
+tational Linguistics, pages 263–270. Association for
+Computational Linguistics.
+D. Chiang. 2007. Hierarchical phrase-based translation.
+computational linguistics, 33(2):201–228.
+Adria de Gispert, Gonzalo Iglesias, Graeme Blackwood,
+Eduardo R. Banga, and William Byrne. 2010. Hierar-
+chical Phrase-Based Translation with Weighted Finite-
+State Transducers and Shallow-n Grammars. In Com-
+putational linguistics, volume 36, pages 505–533.
+Robert W. Floyd. 1962. Algorithm 97: Shortest path.
+Commun. ACM, 5:345.
+Liang Huang and David Chiang. 2007. Forest rescoring:
+Faster decoding with integrated language models. In
+Proceedings of the 45th Annual Meeting of the Asso-
+ciation of Computational Linguistics, pages 144–151,
+Prague, Czech Republic, June. Association for Com-
+putational Linguistics.
+Liang Huang and Haitao Mi. 2010. Efficient incremental
+decoding for tree-to-string translation. In Proceedings
+of the 2010 Conference on Empirical Methods in Natu-
+ral Language Processing, pages 273–283, Cambridge,
+MA, October. Association for Computational Linguis-
+tics.
+Gonzalo Iglesias, Adri`a de Gispert, Eduardo R. Banga,
+and William Byrne. 2009. Rule filtering by pattern
+for efficient hierarchical translation. In Proceedings of
+the 12th Conference of the European Chapter of the
+ACL (EACL 2009), pages 380–388, Athens, Greece,
+March. Association for Computational Linguistics.
+N. Komodakis, N. Paragios, and G. Tziritas. 2007.
+MRF optimization via dual decomposition: Message-
+passing revisited. In International Conference on
+Computer Vision.
+Terry Koo, Alexander M. Rush, Michael Collins, Tommi
+Jaakkola, and David Sontag. 2010. Dual decompo-
+sition for parsing with non-projective head automata.
+In Proceedings of the 2010 Conference on Empiri-
+cal Methods in Natural Language Processing, pages
+1288–1298, Cambridge, MA, October. Association for
+Computational Linguistics.
+B.H. Korte and J. Vygen. 2008. Combinatorial optimiza-
+tion: theory and algorithms. Springer Verlag.
+Shankar Kumar and William Byrne. 2005. Local phrase
+reordering models for statistical machine translation.
+In Proceedings of Human Language Technology Con-
+ference and Conference on Empirical Methods in Nat-
+ural Language Processing, pages 161–168, Vancou-
+ver, British Columbia, Canada, October. Association
+for Computational Linguistics.
+I. Langkilde. 2000. Forest-based statistical sentence gen-
+eration. In Proceedings of the 1st North American
+chapter of the Association for Computational Linguis-
+tics conference, pages 170–177. Morgan Kaufmann
+Publishers Inc.
+Daniel Marcu, Wei Wang, Abdessamad Echihabi, and
+Kevin Knight. 2006. Spmt: Statistical machine
+translation with syntactified target language phrases.
+In Proceedings of the 2006 Conference on Empirical
+Methods in Natural Language Processing, pages 44–
+52, Sydney, Australia, July. Association for Computa-
+tional Linguistics.
+R.K. Martin, R.L. Rardin, and B.A. Campbell. 1990.
+Polyhedral characterization of discrete dynamic pro-
+gramming. Operations research, 38(1):127–138.
+Slav Petrov, Aria Haghighi, and Dan Klein. 2008.
+Coarse-to-fine syntactic machine translation using lan-
+guage projections. In Proceedings of the 2008 Confer-
+ence on Empirical Methods in Natural Language Pro-
+cessing, pages 108–116, Honolulu, Hawaii, October.
+Association for Computational Linguistics.
+Sebastian Riedel and James Clarke. 2006. Incremental
+integer linear programming for non-projective depen-
+dency parsing. In Proceedings of the 2006 Conference
+on Empirical Methods in Natural Language Process-
+ing, EMNLP ’06, pages 129–137, Stroudsburg, PA,
+USA. Association for Computational Linguistics.
+Alexander M Rush, David Sontag, Michael Collins, and
+Tommi Jaakkola. 2010. On dual decomposition and
+linear programming relaxations for natural language
+processing. In Proceedings of the 2010 Conference on
+Empirical Methods in Natural Language Processing,
+pages 1–11, Cambridge, MA, October. Association for
+Computational Linguistics.
+Libin Shen, Jinxi Xu, and Ralph Weischedel. 2008. A
+new string-to-dependency machine translation algo-
+rithm with a target dependency language model. In
+Proceedings ofACL-08: HLT, pages 577–585, Colum-
+bus, Ohio, June. Association for Computational Lin-
+guistics.
+D.A. Smith and J. Eisner. 2008. Dependency parsing by
+belief propagation. In Proc. EMNLP, pages 145–156.
+D. Sontag, T. Meltzer, A. Globerson, T. Jaakkola, and
+Y. Weiss. 2008. Tightening LP relaxations for MAP
+using message passing. In Proc. UAI.
+Roy W. Tromble and Jason Eisner. 2006. A fast
+finite-state relaxation method for enforcing global con-
+straints on sequence decoding. In Proceedings of
+</reference>
+<page confidence="0.983981">
+81
+</page>
+<reference confidence="0.99741694117647">
+the main conference on Human Language Technology
+Conference of the North American Chapter of the As-
+sociation of Computational Linguistics, HLT-NAACL
+’06, pages 423–430, Stroudsburg, PA, USA. Associa-
+tion for Computational Linguistics.
+M. Wainwright, T. Jaakkola, and A. Willsky. 2005. MAP
+estimation via agreement on trees: message-passing
+and linear programming. In IEEE Transactions on In-
+formation Theory, volume 51, pages 3697–3717.
+Taro Watanabe, Hajime Tsukada, and Hideki Isozaki.
+2006. Left-to-right target generation for hierarchical
+phrase-based translation. In Proceedings of the 21st
+International Conference on Computational Linguis-
+tics and the 44th annual meeting of the Association for
+Computational Linguistics, ACL-44, pages 777–784,
+Morristown, NJ, USA. Association for Computational
+Linguistics.
+</reference>
+<page confidence="0.999112">
+82
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.960121" no="0">
+<title confidence="0.995699">Exact Decoding of Syntactic Translation through Lagrangian Relaxation</title>
+<author confidence="0.999857">M Alexander</author>
+<affiliation confidence="0.994809">MIT</affiliation>
+<address confidence="0.999134">Cambridge, MA 02139,</address>
+<email confidence="0.999908">srush@csail.mit.edu</email>
+<abstract confidence="0.9969905">We describe an exact decoding algorithm for syntax-based statistical translation. The approach uses Lagrangian relaxation to decompose the decoding problem into tractable subproblems, thereby avoiding exhaustive dynamic programming. The method recovers exact solutions, with certificates of optimality, on over 97% of test examples; it has comparable speed to state-of-the-art decoders.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Y Bar-Hillel</author>
+<author>M Perles</author>
+<author>E Shamir</author>
+</authors>
+<title>On formal properties of simple phrase structure grammars.</title>
+<date>1964</date>
+<booktitle>In Language and Information: Selected Essays on their Theory and Application,</booktitle>
+<pages>116--150</pages>
+<contexts>
+<context citStr="Bar-Hillel et al., 1964" endWordPosition="200" position="1339" startWordPosition="197">e of these systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008)) corresponds to the intersection of a (weighted) hypergraph with an n-gram language model.1 The hypergraph represents a large set of possible translations, and is created by applying a synchronous grammar to the source language string. The language model is then used to rescore the translations in the hypergraph. Decoding with these models is challenging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too expensive to be used in practice.2 Previous work on decoding for syntax-based SMT has therefore been focused primarily on approximate search methods. This paper describes an efficient algorithm for exact decoding of synchronous grammar models for translation. We avoid the construction of (Bar-Hillel 1This problem is also relevant to other areas of statistical NLP, for example NL generation (Langkilde, 2000). 2E.g., with a trigram language model they run in O(JEJws) time, where JEJ is the number of edges in the hypergraph, and w is the number of distinct lexical items in the hyper</context>
+<context citStr="Bar-Hillel et al., 1964" endWordPosition="5360" position="28792" startWordPosition="5357">0, v0 = 0 Algorithm: For t = 1... T: • yt = arg maxy∈Y′ L(y, λt−1, γt−1, ut−1, vt−1) • If yt satisfies the constraints D3–D6, return yt, else: - dv E VL, λtv = λt− v 1 − δt(yt v − P p:v2(p)=v yt p) L�yv = yv-1 t t _ yt) - dv E V - S (yv P:v1(p)=v tt−1 t t t - ds E SN, us = us − δ (ys − Pp:s∈p1(p) yp) - ds E SN, vt s = vt−1 s − δt(yt s − P p:s∈p2(p) yt p) 78 sistent solution, we require v−1(v, y) = v′ −1(v, y) and v−2(v, y) = v′−2(v, y) for all v with y„ = 1. Unfortunately, explicitly enforcing all of these constraints would require exhaustive dynamic programming over the hypergraph using the (Bar-Hillel et al., 1964) method, something we wish to avoid. Instead, we enforce a weaker set of constraints, which require far less computation. Assume some function 7r : VL -* 11, 2,... q} that partitions the set of leaves into q different partitions. Then we will add the following constraints to Y′: 7r(v−1(v, y)) = 7r(v′ −1(v, y)) 7r(v−2(v, y)) = 7r(v′−2(v, y)) for all v such that y„ = 1. Finding arg maxyEY′ 0 � y under this new definition of Y′ can be performed using the construction of (Bar-Hillel et al., 1964), with q different lexical items (for brevity we omit the details). This is efficient if q is small.8 T</context>
+<context citStr="Bar-Hillel et al., 1964" endWordPosition="6073" position="32912" startWordPosition="6070">erations, we can return the best primal solution yt found by the algorithm during those iterations. We can also get an upper bound on the difference f(y*) − f(yt) using mint L(ut) as an upper bound on f(y*). Of the examples that did not converge, the worst example had a bound that was 1.4% of f(yt) (more specifically, f(yt) was -24.74, and the upper bound on f(y*) − f(yt) was 0.34). Figure 5 gives information on decoding time for our method and two other exact decoding methods: integer linear programming (using constraints D0– D6), and exhaustive dynamic programming using the construction of (Bar-Hillel et al., 1964). Our 9We thank Liang Huang and Haitao Mi for providing us with their model and data. 79 method is clearly the most efficient, and is comparable in speed to state-of-the-art decoding algorithms. We also compare our method to cube pruning (Chiang, 2007; Huang and Chiang, 2007). We reimplemented cube pruning in C++, to give a fair comparison to our method. Cube pruning has a parameter, b, dictating the maximum number of items stored at each chart entry. With b = 50, our decoder finds higher scoring solutions on 50.5% of all examples (349 examples), the cube-pruning method gets a strictly higher </context>
+</contexts>
+<marker>Bar-Hillel, Perles, Shamir, 1964</marker>
+<rawString>Y. Bar-Hillel, M. Perles, and E. Shamir. 1964. On formal properties of simple phrase structure grammars. In Language and Information: Selected Essays on their Theory and Application, pages 116–150.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Chiang</author>
+</authors>
+<title>A hierarchical phrase-based model for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the 43rd Annual Meeting on Association for Computational Linguistics,</booktitle>
+<pages>263--270</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Chiang, 2005" endWordPosition="107" position="754" startWordPosition="106">.mit.edu Abstract We describe an exact decoding algorithm for syntax-based statistical translation. The approach uses Lagrangian relaxation to decompose the decoding problem into tractable subproblems, thereby avoiding exhaustive dynamic programming. The method recovers exact solutions, with certificates of optimality, on over 97% of test examples; it has comparable speed to state-of-the-art decoders. 1 Introduction Recent work has seen widespread use of synchronous probabilistic grammars in statistical machine translation (SMT). The decoding problem for a broad range of these systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008)) corresponds to the intersection of a (weighted) hypergraph with an n-gram language model.1 The hypergraph represents a large set of possible translations, and is created by applying a synchronous grammar to the source language string. The language model is then used to rescore the translations in the hypergraph. Decoding with these models is challenging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too e</context>
+<context citStr="Chiang, 2005" endWordPosition="962" position="6233" startWordPosition="961">is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is created as follows: first, the source side of the synchronous grammar is used to create a p</context>
+</contexts>
+<marker>Chiang, 2005</marker>
+<rawString>D. Chiang. 2005. A hierarchical phrase-based model for statistical machine translation. In Proceedings of the 43rd Annual Meeting on Association for Computational Linguistics, pages 263–270. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Chiang</author>
+</authors>
+<title>Hierarchical phrase-based translation. computational linguistics,</title>
+<date>2007</date>
+<pages>33--2</pages>
+<contexts>
+<context citStr="Chiang, 2007" endWordPosition="658" position="4258" startWordPosition="657">1 (dynamic programming over the hypergraph), while still maintaining efficiency. Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 72–82, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics We report experiments using the tree-to-string model of (Huang and Mi, 2010). Our method gives exact solutions on over 97% of test examples. The method is comparable in speed to state-of-the-art decoding algorithms; for example, over 70% of the test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (</context>
+<context citStr="Chiang, 2007" endWordPosition="6116" position="33163" startWordPosition="6115">e had a bound that was 1.4% of f(yt) (more specifically, f(yt) was -24.74, and the upper bound on f(y*) − f(yt) was 0.34). Figure 5 gives information on decoding time for our method and two other exact decoding methods: integer linear programming (using constraints D0– D6), and exhaustive dynamic programming using the construction of (Bar-Hillel et al., 1964). Our 9We thank Liang Huang and Haitao Mi for providing us with their model and data. 79 method is clearly the most efficient, and is comparable in speed to state-of-the-art decoding algorithms. We also compare our method to cube pruning (Chiang, 2007; Huang and Chiang, 2007). We reimplemented cube pruning in C++, to give a fair comparison to our method. Cube pruning has a parameter, b, dictating the maximum number of items stored at each chart entry. With b = 50, our decoder finds higher scoring solutions on 50.5% of all examples (349 examples), the cube-pruning method gets a strictly higher score on only 1 example (this was one of the examples that did not converge within 200 iterations). With b = 500, our decoder finds better solutions on 18.5% of the examples (128 cases), cubepruning finds a better solution on 3 examples. The median de</context>
+<context citStr="Chiang, 2007" endWordPosition="6533" position="35509" startWordPosition="6532">ing procedure shows that the number of partitions required (the parameter q) is generally quite small: 59% of examples that require tightening require q &lt; 6; 97.2% require q &lt; 10. 8 Conclusion We have described a Lagrangian relaxation algorithm for exact decoding of syntactic translation models, and shown that it is significantly more efficient than other exact algorithms for decoding treeto-string models. There are a number of possible ways to extend this work. Our experiments have focused on tree-to-string models, but the method should also apply to Hiero-style syntactic translation models (Chiang, 2007). Additionally, our experiments used a trigram language model, however the constraints in figure 3 generalize to higher-order language models. Finally, our algorithm recovers the 1-best translation for a given input sentence; it should be possible to extend the method to find kbest solutions. A Computing the Optimal Trigram Paths /F��o//r„„each v E/VL, define α/v, maxp:v3(p)=v β(p), where 0(p) = h(v1(p),v2(p),v3(P))−λ1 (v1 (p))−λ2(v2(p))− 0s∈p1(p) u(s)−rs∈p2(p) v(s). Here h is a function that computes language model scores, and the other terms involve Lagrange mulipliers. Our task is to comput</context>
+</contexts>
+<marker>Chiang, 2007</marker>
+<rawString>D. Chiang. 2007. Hierarchical phrase-based translation. computational linguistics, 33(2):201–228.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Adria de Gispert</author>
+<author>Gonzalo Iglesias</author>
+<author>Graeme Blackwood</author>
+<author>Eduardo R Banga</author>
+<author>William Byrne</author>
+</authors>
+<title>Hierarchical Phrase-Based Translation with Weighted FiniteState Transducers and Shallow-n Grammars.</title>
+<date>2010</date>
+<booktitle>In Computational linguistics,</booktitle>
+<volume>36</volume>
+<pages>505--533</pages>
+<marker>de Gispert, Iglesias, Blackwood, Banga, Byrne, 2010</marker>
+<rawString>Adria de Gispert, Gonzalo Iglesias, Graeme Blackwood, Eduardo R. Banga, and William Byrne. 2010. Hierarchical Phrase-Based Translation with Weighted FiniteState Transducers and Shallow-n Grammars. In Computational linguistics, volume 36, pages 505–533.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert W Floyd</author>
+</authors>
+<date>1962</date>
+<booktitle>Algorithm 97: Shortest path. Commun. ACM,</booktitle>
+<pages>5--345</pages>
+<contexts>
+<context citStr="Floyd, 1962" endWordPosition="4711" position="25335" startWordPosition="4710">definition of Y′ allows this maximization to be performed efficiently, as follows: 1. For each v E VL, define α∗v = arg maxp:v3(p)=v β(p), and αv = β(α∗v). (i.e., for each v, compute the highest scoring trigram path ending in v.) 2. Find values for the yv, ye and ys variables that form a valid derivation, and that maximize f′(y) = Pv(βv +αv)yv +P e βeye+P s βsys 3. Set yp = 1 iff yv3(p) = 1 and p = α∗v3(p). The first step involves finding the highest scoring incoming trigram path for each leaf v. This step can be performed efficiently using the Floyd-Warshall allpairs shortest path algorithm (Floyd, 1962) over the graph (S, T); the details are given in the appendix. The second step involves simple dynamic programming over the hypergraph (V, E) (it is simple to integrate the βs terms into this algorithm). In the third step, the path variables yp are filled in. 5.3 Properties We now describe some important properties of the algorithm: Efficiency. The main steps of the algorithm are: 1) construction of the graph (S, T); 2) at each iteration, dynamic programming over the hypergraph (V, E); 3) at each iteration, all-pairs shortest path algorithms over the graph (S, T). Each of these steps is vastly</context>
+</contexts>
+<marker>Floyd, 1962</marker>
+<rawString>Robert W. Floyd. 1962. Algorithm 97: Shortest path. Commun. ACM, 5:345.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liang Huang</author>
+<author>David Chiang</author>
+</authors>
+<title>Forest rescoring: Faster decoding with integrated language models.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics,</booktitle>
+<pages>144--151</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic,</location>
+<contexts>
+<context citStr="Huang and Chiang, 2007" endWordPosition="717" position="4640" startWordPosition="714">utions on over 97% of test examples. The method is comparable in speed to state-of-the-art decoding algorithms; for example, over 70% of the test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars</context>
+<context citStr="Huang and Chiang, 2007" endWordPosition="6120" position="33188" startWordPosition="6117">that was 1.4% of f(yt) (more specifically, f(yt) was -24.74, and the upper bound on f(y*) − f(yt) was 0.34). Figure 5 gives information on decoding time for our method and two other exact decoding methods: integer linear programming (using constraints D0– D6), and exhaustive dynamic programming using the construction of (Bar-Hillel et al., 1964). Our 9We thank Liang Huang and Haitao Mi for providing us with their model and data. 79 method is clearly the most efficient, and is comparable in speed to state-of-the-art decoding algorithms. We also compare our method to cube pruning (Chiang, 2007; Huang and Chiang, 2007). We reimplemented cube pruning in C++, to give a fair comparison to our method. Cube pruning has a parameter, b, dictating the maximum number of items stored at each chart entry. With b = 50, our decoder finds higher scoring solutions on 50.5% of all examples (349 examples), the cube-pruning method gets a strictly higher score on only 1 example (this was one of the examples that did not converge within 200 iterations). With b = 500, our decoder finds better solutions on 18.5% of the examples (128 cases), cubepruning finds a better solution on 3 examples. The median decoding time for our metho</context>
+</contexts>
+<marker>Huang, Chiang, 2007</marker>
+<rawString>Liang Huang and David Chiang. 2007. Forest rescoring: Faster decoding with integrated language models. In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 144–151, Prague, Czech Republic, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liang Huang</author>
+<author>Haitao Mi</author>
+</authors>
+<title>Efficient incremental decoding for tree-to-string translation.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>273--283</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Cambridge, MA,</location>
+<contexts>
+<context citStr="Huang and Mi, 2010" endWordPosition="611" position="3989" startWordPosition="608"> solution, in which case the method will not be exact. The second technical contribution of this paper is to describe a method that iteratively tightens the underlying LP relaxation until an exact solution is produced. We do this by gradually introducing constraints to step 1 (dynamic programming over the hypergraph), while still maintaining efficiency. Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 72–82, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics We report experiments using the tree-to-string model of (Huang and Mi, 2010). Our method gives exact solutions on over 97% of test examples. The method is comparable in speed to state-of-the-art decoding algorithms; for example, over 70% of the test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including </context>
+<context citStr="Huang and Mi, 2010" endWordPosition="974" position="6293" startWordPosition="971">ods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is created as follows: first, the source side of the synchronous grammar is used to create a parse forest over the source language string. Second, transdu</context>
+<context citStr="Huang and Mi, 2010" endWordPosition="5832" position="31512" startWordPosition="5829">.5s 37.5 10.2 8.8 21.0 1.0s 57.0 11.6 13.9 31.1 2.0s 72.2 15.1 21.1 45.9 4.0s 82.5 20.7 30.7 63.7 8.0s 88.9 25.2 41.8 78.3 16.0s 94.4 33.3 54.6 88.9 32.0s 97.8 42.8 68.5 95.2 Median time 0.79s 77.5s 12.1s 2.4s Figure 5: Results showing percentage of examples that are decoded in less than t seconds, for t = 0.5, 1.0, 2.0, ... , 32.0. LR = Lagrangian relaxation; DP = exhaustive dynamic programming; ILP = integer linear programming; LP = linear programming (LP does not recover an exact solution). The (I)LP experiments were carried out using Gurobi, a high-performance commercial-grade solver. in (Huang and Mi, 2010). We use an identical model, and identical development and test data, to that used by Huang and Mi.9 The translation model is trained on 1.5M sentence pairs of Chinese-English data; a trigram language model is used. The development data is the newswire portion of the 2006 NIST MT evaluation test set (616 sentences). The test set is the newswire portion of the 2008 NIST MT evaluation test set (691 sentences). We ran the full algorithm with the tightening method described in section 6. We ran the method for a limit of 200 iterations, hence some examples may not terminate with an exact solution. </context>
+</contexts>
+<marker>Huang, Mi, 2010</marker>
+<rawString>Liang Huang and Haitao Mi. 2010. Efficient incremental decoding for tree-to-string translation. In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing, pages 273–283, Cambridge, MA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Gonzalo Iglesias</author>
+<author>Adri`a de Gispert</author>
+<author>Eduardo R Banga</author>
+<author>William Byrne</author>
+</authors>
+<title>Rule filtering by pattern for efficient hierarchical translation.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 12th Conference of the European Chapter of the ACL (EACL</booktitle>
+<pages>380--388</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Athens, Greece,</location>
+<marker>Iglesias, de Gispert, Banga, Byrne, 2009</marker>
+<rawString>Gonzalo Iglesias, Adri`a de Gispert, Eduardo R. Banga, and William Byrne. 2009. Rule filtering by pattern for efficient hierarchical translation. In Proceedings of the 12th Conference of the European Chapter of the ACL (EACL 2009), pages 380–388, Athens, Greece, March. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Komodakis</author>
+<author>N Paragios</author>
+<author>G Tziritas</author>
+</authors>
+<title>MRF optimization via dual decomposition: Messagepassing revisited.</title>
+<date>2007</date>
+<booktitle>In International Conference on Computer Vision.</booktitle>
+<contexts>
+<context citStr="Komodakis et al., 2007" endWordPosition="916" position="5931" startWordPosition="913">an cube-pruning on a large proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations </context>
+</contexts>
+<marker>Komodakis, Paragios, Tziritas, 2007</marker>
+<rawString>N. Komodakis, N. Paragios, and G. Tziritas. 2007. MRF optimization via dual decomposition: Messagepassing revisited. In International Conference on Computer Vision.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Terry Koo</author>
+<author>Alexander M Rush</author>
+<author>Michael Collins</author>
+<author>Tommi Jaakkola</author>
+<author>David Sontag</author>
+</authors>
+<title>Dual decomposition for parsing with non-projective head automata.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1288--1298</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Cambridge, MA,</location>
+<contexts>
+<context citStr="Koo et al., 2010" endWordPosition="935" position="6030" startWordPosition="932">binatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate</context>
+</contexts>
+<marker>Koo, Rush, Collins, Jaakkola, Sontag, 2010</marker>
+<rawString>Terry Koo, Alexander M. Rush, Michael Collins, Tommi Jaakkola, and David Sontag. 2010. Dual decomposition for parsing with non-projective head automata. In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing, pages 1288–1298, Cambridge, MA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B H Korte</author>
+<author>J Vygen</author>
+</authors>
+<title>Combinatorial optimization: theory and algorithms.</title>
+<date>2008</date>
+<publisher>Springer Verlag.</publisher>
+<contexts>
+<context citStr="Korte and Vygen, 2008" endWordPosition="841" position="5460" startWordPosition="838"> state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars. The FST algorithms are shown to produce higher scoring solutions than cube-pruning on a large proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections </context>
+<context citStr="Korte and Vygen, 2008" endWordPosition="4973" position="26897" startWordPosition="4970"> γt, ut, vt) is an upper bound on the score of the optimal primal solution, f(y∗). Upper bounds can be useful in evaluating the quality of primal solutions from either our algorithm or other methods such as cube pruning. Simplicity of implementation. Construction of the (S, T) graph is straightforward. The other steps—hypergraph dynamic programming, and allpairs shortest path—are widely known algorithms that are simple to implement. 6 Tightening the Relaxation The algorithm that we have described minimizes the dual function L(λ, γ, u, v). By usual results for Lagrangian relaxation (e.g., see (Korte and Vygen, 2008)), L is the dual function for a particular LP relaxation arising from the definition of Y′ and the additional constaints D3–D6. In some cases the LP relaxation has an integral solution, in which case the algorithm will return an optimal solution yt.7 In other cases, when the LP relaxation has a fractional solution, the subgradient algorithm will still converge to the minimum of L, but the primal solutions yt will move between a number of solutions. We now describe a method that incrementally adds hard constraints to the set Y′, until the method returns an exact solution. For a given y E Y′, fo</context>
+</contexts>
+<marker>Korte, Vygen, 2008</marker>
+<rawString>B.H. Korte and J. Vygen. 2008. Combinatorial optimization: theory and algorithms. Springer Verlag.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Shankar Kumar</author>
+<author>William Byrne</author>
+</authors>
+<title>Local phrase reordering models for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>161--168</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Vancouver, British Columbia, Canada,</location>
+<contexts>
+<context citStr="Kumar and Byrne, 2005" endWordPosition="774" position="5017" startWordPosition="771">ccurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars. The FST algorithms are shown to produce higher scoring solutions than cube-pruning on a large proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual funct</context>
+</contexts>
+<marker>Kumar, Byrne, 2005</marker>
+<rawString>Shankar Kumar and William Byrne. 2005. Local phrase reordering models for statistical machine translation. In Proceedings of Human Language Technology Conference and Conference on Empirical Methods in Natural Language Processing, pages 161–168, Vancouver, British Columbia, Canada, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>I Langkilde</author>
+</authors>
+<title>Forest-based statistical sentence generation.</title>
+<date>2000</date>
+<booktitle>In Proceedings of the 1st North American chapter of the Association for Computational Linguistics conference,</booktitle>
+<pages>170--177</pages>
+<publisher>Morgan Kaufmann Publishers Inc.</publisher>
+<contexts>
+<context citStr="Langkilde, 2000" endWordPosition="265" position="1763" startWordPosition="264">ging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too expensive to be used in practice.2 Previous work on decoding for syntax-based SMT has therefore been focused primarily on approximate search methods. This paper describes an efficient algorithm for exact decoding of synchronous grammar models for translation. We avoid the construction of (Bar-Hillel 1This problem is also relevant to other areas of statistical NLP, for example NL generation (Langkilde, 2000). 2E.g., with a trigram language model they run in O(JEJws) time, where JEJ is the number of edges in the hypergraph, and w is the number of distinct lexical items in the hypergraph. 72 Michael Collins Department of Computer Science, Columbia University, New York, NY 10027, USA mcollins@cs.columbia.edu et al., 1964) by using Lagrangian relaxation to decompose the decoding problem into the following sub-problems: 1. Dynamic programming over the weighted hypergraph. This step does not require language model integration, and hence is highly efficient. 2. Application of an all-pairs shortest path </context>
+</contexts>
+<marker>Langkilde, 2000</marker>
+<rawString>I. Langkilde. 2000. Forest-based statistical sentence generation. In Proceedings of the 1st North American chapter of the Association for Computational Linguistics conference, pages 170–177. Morgan Kaufmann Publishers Inc.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Daniel Marcu</author>
+<author>Wei Wang</author>
+<author>Abdessamad Echihabi</author>
+<author>Kevin Knight</author>
+</authors>
+<title>Spmt: Statistical machine translation with syntactified target language phrases.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>44--52</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Sydney, Australia,</location>
+<contexts>
+<context citStr="Marcu et al., 2006" endWordPosition="111" position="774" startWordPosition="108">act We describe an exact decoding algorithm for syntax-based statistical translation. The approach uses Lagrangian relaxation to decompose the decoding problem into tractable subproblems, thereby avoiding exhaustive dynamic programming. The method recovers exact solutions, with certificates of optimality, on over 97% of test examples; it has comparable speed to state-of-the-art decoders. 1 Introduction Recent work has seen widespread use of synchronous probabilistic grammars in statistical machine translation (SMT). The decoding problem for a broad range of these systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008)) corresponds to the intersection of a (weighted) hypergraph with an n-gram language model.1 The hypergraph represents a large set of possible translations, and is created by applying a synchronous grammar to the source language string. The language model is then used to rescore the translations in the hypergraph. Decoding with these models is challenging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too expensive to be used </context>
+<context citStr="Marcu et al., 2006" endWordPosition="966" position="6253" startWordPosition="963">zed, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is created as follows: first, the source side of the synchronous grammar is used to create a parse forest over the</context>
+</contexts>
+<marker>Marcu, Wang, Echihabi, Knight, 2006</marker>
+<rawString>Daniel Marcu, Wei Wang, Abdessamad Echihabi, and Kevin Knight. 2006. Spmt: Statistical machine translation with syntactified target language phrases. In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing, pages 44– 52, Sydney, Australia, July. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R K Martin</author>
+<author>R L Rardin</author>
+<author>B A Campbell</author>
+</authors>
+<title>Polyhedral characterization of discrete dynamic programming.</title>
+<date>1990</date>
+<journal>Operations research,</journal>
+<volume>38</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Martin et al., 1990" endWordPosition="1328" position="8162" startWordPosition="1325"> ... JV J} for i = 1... k. The vertex v0 is referred to as the head of the edge. The ordered sequence (v1,v2,...,vk) is referred to as the tail of the edge; in addition, we sometimes refer to v1, v2,... vk as the children in the edge. The number of children k may vary across different edges, but k &gt; 1 for all edges (i.e., each edge has at least one child). We will use h(e) to refer to the head of an edge e, and t(e) to refer to the tail. We will assume that the hypergraph is acyclic: intuitively this will mean that no derivation (as defined below) contains the same vertex more than once (see (Martin et al., 1990) for a formal definition). Each vertex v E V is either a non-terminal in the hypergraph, or a leaf. The set of non-terminals is VN={vEV:]eEE suchthat h(e) = v} Conversely, the set of leaves is defined as VL = {v E V :Ae E E suchthat h(e) = v} 73 Finally, we assume that each v E V has a label l(v). The labels for leaves will be words, and will be important in defining strings and language model scores for those strings. The labels for non-terminal nodes will not be important for results in this paper.3 We now turn to derivations. Define an index set Z = V U E. A derivation is represented by a v</context>
+</contexts>
+<marker>Martin, Rardin, Campbell, 1990</marker>
+<rawString>R.K. Martin, R.L. Rardin, and B.A. Campbell. 1990. Polyhedral characterization of discrete dynamic programming. Operations research, 38(1):127–138.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Slav Petrov</author>
+<author>Aria Haghighi</author>
+<author>Dan Klein</author>
+</authors>
+<title>Coarse-to-fine syntactic machine translation using language projections.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>108--116</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Honolulu, Hawaii,</location>
+<contexts>
+<context citStr="Petrov et al., 2008" endWordPosition="737" position="4775" startWordPosition="734">he test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars. The FST algorithms are shown to produce higher scoring solutions than cube-pruning on a large proportion of examples. Lagrangian rela</context>
+<context citStr="Petrov et al., 2008" endWordPosition="5661" position="30513" startWordPosition="5658">tion that places all pairs (a, b) into separate partitions; 4) continue running Lagrangian relaxation, with the new constraints added. We expand 7r at each iteration to take into account new pairs (a, b) that violate the constraints. In related work, Sontag et al. (2008) describe a method for inference in Markov random fields where additional constraints are chosen to tighten an underlying relaxation. Other relevant work in NLP includes (Tromble and Eisner, 2006; Riedel and Clarke, 2006). Our use of partitions 7r is related to previous work on coarse-to-fine inference for machine translation (Petrov et al., 2008). 7 Experiments We report experiments on translation from Chinese to English, using the tree-to-string model described 8In fact in our experiments we use the original hypergraph to compute admissible outside scores for an exact A* search algorithm for this problem. We have found the resulting search algorithm to be very efficient. Time %age %age %age %age (LR) (DP) (ILP) (LP) 0.5s 37.5 10.2 8.8 21.0 1.0s 57.0 11.6 13.9 31.1 2.0s 72.2 15.1 21.1 45.9 4.0s 82.5 20.7 30.7 63.7 8.0s 88.9 25.2 41.8 78.3 16.0s 94.4 33.3 54.6 88.9 32.0s 97.8 42.8 68.5 95.2 Median time 0.79s 77.5s 12.1s 2.4s Figure 5: </context>
+</contexts>
+<marker>Petrov, Haghighi, Klein, 2008</marker>
+<rawString>Slav Petrov, Aria Haghighi, and Dan Klein. 2008. Coarse-to-fine syntactic machine translation using language projections. In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing, pages 108–116, Honolulu, Hawaii, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sebastian Riedel</author>
+<author>James Clarke</author>
+</authors>
+<title>Incremental integer linear programming for non-projective dependency parsing.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing, EMNLP ’06,</booktitle>
+<pages>129--137</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Stroudsburg, PA, USA.</location>
+<contexts>
+<context citStr="Riedel and Clarke, 2006" endWordPosition="5640" position="30385" startWordPosition="5637"> v−1(v, y)/b = v′−1(v, y) or a = v−2(v, y)/b = v′−2(v, y) such that a =� b); 3) use a graph coloring algorithm to find a small partition that places all pairs (a, b) into separate partitions; 4) continue running Lagrangian relaxation, with the new constraints added. We expand 7r at each iteration to take into account new pairs (a, b) that violate the constraints. In related work, Sontag et al. (2008) describe a method for inference in Markov random fields where additional constraints are chosen to tighten an underlying relaxation. Other relevant work in NLP includes (Tromble and Eisner, 2006; Riedel and Clarke, 2006). Our use of partitions 7r is related to previous work on coarse-to-fine inference for machine translation (Petrov et al., 2008). 7 Experiments We report experiments on translation from Chinese to English, using the tree-to-string model described 8In fact in our experiments we use the original hypergraph to compute admissible outside scores for an exact A* search algorithm for this problem. We have found the resulting search algorithm to be very efficient. Time %age %age %age %age (LR) (DP) (ILP) (LP) 0.5s 37.5 10.2 8.8 21.0 1.0s 57.0 11.6 13.9 31.1 2.0s 72.2 15.1 21.1 45.9 4.0s 82.5 20.7 30.7</context>
+</contexts>
+<marker>Riedel, Clarke, 2006</marker>
+<rawString>Sebastian Riedel and James Clarke. 2006. Incremental integer linear programming for non-projective dependency parsing. In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing, EMNLP ’06, pages 129–137, Stroudsburg, PA, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alexander M Rush</author>
+<author>David Sontag</author>
+<author>Michael Collins</author>
+<author>Tommi Jaakkola</author>
+</authors>
+<title>On dual decomposition and linear programming relaxations for natural language processing.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1--11</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Cambridge, MA,</location>
+<contexts>
+<context citStr="Rush et al., 2010" endWordPosition="931" position="6011" startWordPosition="928">al technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second s</context>
+</contexts>
+<marker>Rush, Sontag, Collins, Jaakkola, 2010</marker>
+<rawString>Alexander M Rush, David Sontag, Michael Collins, and Tommi Jaakkola. 2010. On dual decomposition and linear programming relaxations for natural language processing. In Proceedings of the 2010 Conference on Empirical Methods in Natural Language Processing, pages 1–11, Cambridge, MA, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Libin Shen</author>
+<author>Jinxi Xu</author>
+<author>Ralph Weischedel</author>
+</authors>
+<title>A new string-to-dependency machine translation algorithm with a target dependency language model.</title>
+<date>2008</date>
+<booktitle>In Proceedings ofACL-08: HLT,</booktitle>
+<pages>577--585</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Shen et al., 2008" endWordPosition="115" position="794" startWordPosition="112">xact decoding algorithm for syntax-based statistical translation. The approach uses Lagrangian relaxation to decompose the decoding problem into tractable subproblems, thereby avoiding exhaustive dynamic programming. The method recovers exact solutions, with certificates of optimality, on over 97% of test examples; it has comparable speed to state-of-the-art decoders. 1 Introduction Recent work has seen widespread use of synchronous probabilistic grammars in statistical machine translation (SMT). The decoding problem for a broad range of these systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008)) corresponds to the intersection of a (weighted) hypergraph with an n-gram language model.1 The hypergraph represents a large set of possible translations, and is created by applying a synchronous grammar to the source language string. The language model is then used to rescore the translations in the hypergraph. Decoding with these models is challenging, largely because of the cost of integrating an n-gram language model into the search process. Exact dynamic programming algorithms for the problem are well known (Bar-Hillel et al., 1964), but are too expensive to be used in practice.2 Previo</context>
+<context citStr="Shen et al., 2008" endWordPosition="970" position="6272" startWordPosition="967">ng subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is created as follows: first, the source side of the synchronous grammar is used to create a parse forest over the source language st</context>
+</contexts>
+<marker>Shen, Xu, Weischedel, 2008</marker>
+<rawString>Libin Shen, Jinxi Xu, and Ralph Weischedel. 2008. A new string-to-dependency machine translation algorithm with a target dependency language model. In Proceedings ofACL-08: HLT, pages 577–585, Columbus, Ohio, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D A Smith</author>
+<author>J Eisner</author>
+</authors>
+<title>Dependency parsing by belief propagation.</title>
+<date>2008</date>
+<booktitle>In Proc. EMNLP,</booktitle>
+<pages>145--156</pages>
+<contexts>
+<context citStr="Smith and Eisner, 2008" endWordPosition="951" position="6142" startWordPosition="948">o an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target language) and derivations under the grammar. The second step is to integrate an n-gram language model with this hypergraph. For example, in the system of (Chiang, 2005), the hypergraph is </context>
+</contexts>
+<marker>Smith, Eisner, 2008</marker>
+<rawString>D.A. Smith and J. Eisner. 2008. Dependency parsing by belief propagation. In Proc. EMNLP, pages 145–156.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Sontag</author>
+<author>T Meltzer</author>
+<author>A Globerson</author>
+<author>T Jaakkola</author>
+<author>Y Weiss</author>
+</authors>
+<title>Tightening LP relaxations for MAP using message passing.</title>
+<date>2008</date>
+<booktitle>In Proc. UAI.</booktitle>
+<contexts>
+<context citStr="Sontag et al., 2008" endWordPosition="920" position="5953" startWordPosition="917">ge proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set of possible translations (strings in the target</context>
+<context citStr="Sontag et al. (2008)" endWordPosition="5607" position="30164" startWordPosition="5604"> 1) run the subgradient algorithm until L is close to convergence; 2) then run the subgradient algorithm for m further iterations, keeping track of all pairs of leaf nodes that violate the constraints (i.e., pairs a = v−1(v, y)/b = v′−1(v, y) or a = v−2(v, y)/b = v′−2(v, y) such that a =� b); 3) use a graph coloring algorithm to find a small partition that places all pairs (a, b) into separate partitions; 4) continue running Lagrangian relaxation, with the new constraints added. We expand 7r at each iteration to take into account new pairs (a, b) that violate the constraints. In related work, Sontag et al. (2008) describe a method for inference in Markov random fields where additional constraints are chosen to tighten an underlying relaxation. Other relevant work in NLP includes (Tromble and Eisner, 2006; Riedel and Clarke, 2006). Our use of partitions 7r is related to previous work on coarse-to-fine inference for machine translation (Petrov et al., 2008). 7 Experiments We report experiments on translation from Chinese to English, using the tree-to-string model described 8In fact in our experiments we use the original hypergraph to compute admissible outside scores for an exact A* search algorithm for</context>
+</contexts>
+<marker>Sontag, Meltzer, Globerson, Jaakkola, Weiss, 2008</marker>
+<rawString>D. Sontag, T. Meltzer, A. Globerson, T. Jaakkola, and Y. Weiss. 2008. Tightening LP relaxations for MAP using message passing. In Proc. UAI.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Roy W Tromble</author>
+<author>Jason Eisner</author>
+</authors>
+<title>A fast finite-state relaxation method for enforcing global constraints on sequence decoding.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the main conference on Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics, HLT-NAACL ’06,</booktitle>
+<pages>423--430</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Stroudsburg, PA, USA.</location>
+<contexts>
+<context citStr="Tromble and Eisner, 2006" endWordPosition="5636" position="30359" startWordPosition="5633">nstraints (i.e., pairs a = v−1(v, y)/b = v′−1(v, y) or a = v−2(v, y)/b = v′−2(v, y) such that a =� b); 3) use a graph coloring algorithm to find a small partition that places all pairs (a, b) into separate partitions; 4) continue running Lagrangian relaxation, with the new constraints added. We expand 7r at each iteration to take into account new pairs (a, b) that violate the constraints. In related work, Sontag et al. (2008) describe a method for inference in Markov random fields where additional constraints are chosen to tighten an underlying relaxation. Other relevant work in NLP includes (Tromble and Eisner, 2006; Riedel and Clarke, 2006). Our use of partitions 7r is related to previous work on coarse-to-fine inference for machine translation (Petrov et al., 2008). 7 Experiments We report experiments on translation from Chinese to English, using the tree-to-string model described 8In fact in our experiments we use the original hypergraph to compute admissible outside scores for an exact A* search algorithm for this problem. We have found the resulting search algorithm to be very efficient. Time %age %age %age %age (LR) (DP) (ILP) (LP) 0.5s 37.5 10.2 8.8 21.0 1.0s 57.0 11.6 13.9 31.1 2.0s 72.2 15.1 21.</context>
+</contexts>
+<marker>Tromble, Eisner, 2006</marker>
+<rawString>Roy W. Tromble and Jason Eisner. 2006. A fast finite-state relaxation method for enforcing global constraints on sequence decoding. In Proceedings of the main conference on Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics, HLT-NAACL ’06, pages 423–430, Stroudsburg, PA, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Wainwright</author>
+<author>T Jaakkola</author>
+<author>A Willsky</author>
+</authors>
+<title>MAP estimation via agreement on trees: message-passing and linear programming.</title>
+<date>2005</date>
+<booktitle>In IEEE Transactions on Information Theory,</booktitle>
+<volume>51</volume>
+<pages>3697--3717</pages>
+<contexts>
+<context citStr="Wainwright et al., 2005" endWordPosition="912" position="5907" startWordPosition="908">gher scoring solutions than cube-pruning on a large proportion of examples. Lagrangian relaxation is a classical technique in combinatorial optimization (Korte and Vygen, 2008). Lagrange multipliers are used to add linear constraints to an existing problem that can be solved using a combinatorial algorithm; the resulting dual function is then minimized, for example using subgradient methods. In recent work, dual decomposition—a special case of Lagrangian relaxation, where the linear constraints enforce agreement between two or more models—has been applied to inference in Markov random fields (Wainwright et al., 2005; Komodakis et al., 2007; Sontag et al., 2008), and also to inference problems in NLP (Rush et al., 2010; Koo et al., 2010). There are close connections between dual decomposition and work on belief propagation (Smith and Eisner, 2008). 3 Background: Hypergraphs Translation with many syntax-based systems (e.g., (Chiang, 2005; Marcu et al., 2006; Shen et al., 2008; Huang and Mi, 2010)) can be implemented as a two-step process. The first step is to take an input sentence in the source language, and from this to create a hypergraph (sometimes called a translation forest) that represents the set o</context>
+</contexts>
+<marker>Wainwright, Jaakkola, Willsky, 2005</marker>
+<rawString>M. Wainwright, T. Jaakkola, and A. Willsky. 2005. MAP estimation via agreement on trees: message-passing and linear programming. In IEEE Transactions on Information Theory, volume 51, pages 3697–3717.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Taro Watanabe</author>
+<author>Hajime Tsukada</author>
+<author>Hideki Isozaki</author>
+</authors>
+<title>Left-to-right target generation for hierarchical phrase-based translation.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 21st International Conference on Computational Linguistics and the 44th annual meeting of the Association for Computational Linguistics, ACL-44,</booktitle>
+<pages>777--784</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Morristown, NJ, USA.</location>
+<contexts>
+<context citStr="Watanabe et al., 2006" endWordPosition="726" position="4704" startWordPosition="723">peed to state-of-the-art decoding algorithms; for example, over 70% of the test examples are decoded in 2 seconds or less. We compare our method to cube pruning (Chiang, 2007), and find that our method gives improved model scores on a significant number of examples. One consequence of our work is that we give accurate estimates of the number of search errors for cube pruning. 2 Related Work A variety of approximate decoding algorithms have been explored for syntax-based translation systems, including cube-pruning (Chiang, 2007; Huang and Chiang, 2007), left-to-right decoding with beam search (Watanabe et al., 2006; Huang and Mi, 2010), and coarse-to-fine methods (Petrov et al., 2008). Recent work has developed decoding algorithms based on finite state transducers (FSTs). Iglesias et al. (2009) show that exact FST decoding is feasible for a phrase-based system with limited reordering (the MJ1 model (Kumar and Byrne, 2005)), and de Gispert et al. (2010) show that exact FST decoding is feasible for a specific class of hierarchical grammars (shallow-1 grammars). Approximate search methods are used for more complex reordering models or grammars. The FST algorithms are shown to produce higher scoring solutio</context>
+</contexts>
+<marker>Watanabe, Tsukada, Isozaki, 2006</marker>
+<rawString>Taro Watanabe, Hajime Tsukada, and Hideki Isozaki. 2006. Left-to-right target generation for hierarchical phrase-based translation. In Proceedings of the 21st International Conference on Computational Linguistics and the 44th annual meeting of the Association for Computational Linguistics, ACL-44, pages 777–784, Morristown, NJ, USA. Association for Computational Linguistics.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

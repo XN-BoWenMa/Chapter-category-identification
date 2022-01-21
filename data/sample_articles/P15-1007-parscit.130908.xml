@@ -1,0 +1,905 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000006" no="0">
+<title confidence="0.9981285">
+MultiGranCNN: An Architecture for General Matching of Text Chunks
+on Multiple Levels of Granularity
+</title>
+<author confidence="0.996353">
+Wenpeng Yin and Hinrich Sch¨utze
+</author>
+<affiliation confidence="0.9978955">
+Center for Information and Language Processing
+University of Munich, Germany
+</affiliation>
+<email confidence="0.969736">
+wenpeng@cis.uni-muenchen.de 
+</email>
+<bodyText confidence="0.252751">p</bodyText>
+<sectionHeader confidence="0.969764" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.9978115">We present MultiGranCNN, a general deep learning architecture for matching text chunks. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one chunk can be directly compared to longer sequences in the other chunk. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks.</bodyText>
+<sectionHeader confidence="0.998793" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.996747516129032">Many natural language processing (NLP) tasks can be posed as classifying the relationship between two TEXTCHUNKS (cf. Li et al. (2012), Bordes et al. (2014b)) where a TEXTCHUNK can be a sentence, a clause, a paragraph or any other sequence of words that forms a unit. Paraphrasing (Figure 1, top) is one task that we address in this paper and that can be formalized as classifying a TEXTCHUNK relation. The two classes correspond to the sentences being (e.g., the pair &lt;p, q+&gt;) or not being (e.g., the pair &lt;p, q−&gt;) paraphrases of each other. Another task we look at is clause coherence (Figure 1, bottom). Here the two TEXTCHUNK relation classes correspond to the second clause being (e.g., the pair &lt;x, y+&gt;) or not being (e.g., the pair &lt;x, y−&gt;) a discourse-coherent continuation of the first clause. Other tasks that can be formalized as TEXTCHUNK relations are question answering (QA) (is the second chunk an answer to the first?), textual inference (does the first chunk imply the second?) and machine translation (are the two chunks translations of each other?). PDC will also almost certainly fan the flames of speculation about Longhorn’s release. q+ PDC will also almost certainly reignite speculation about release dates of Microsoft ’s new products. q− PDC is indifferent to the release of Longhorn. x The dollar suffered its worst one-day loss in a month, y+ falling to 1.7717 marks ... from 1.7925 marks yesterday. y− up from 112.78 yen in late New York trading yesterday.</bodyText>
+<figureCaption confidence="0.966762">
+Figure 1: Examples for paraphrasing and clause
+coherence tasks
+</figureCaption>
+<bodyText confidence="0.999935838709677">In this paper, we present MultiGranCNN, a general architecture for TEXTCHUNK relation classification. MultiGranCNN can be applied to a broad range of different TEXTCHUNK relations. This is a challenge because natural language has a complex structure – both sequential and hierarchical – and because this structure is usually not parallel in the two chunks that must be matched, further increasing the difficulty of the task. A successful detection algorithm therefore needs to capture not only the internal structure of TEXTCHUNKS, but also the rich pattern of their interactions. MultiGranCNN is based on two innovations that are critical for successful TEXTCHUNK relation classification. First, the architecture is designed to ensure multigranular comparability. For general matching, we need the ability to match short sequences in one chunk with long sequences in the other chunk. For example, what is expressed by a single word in one chunk (“reignite” in q+ in the figure) may be expressed by a sequence of several words in its paraphrase (“fan the flames of” in p). To meet this objective, we learn representations for words, phrases and the entire sentence that are all mutually comparable; in particular, these representations all have the same dimensionality and live in the same space. Most prior work (e.g., Blacoe and Lapata (2012; Hu et al. (2014)) has neglected the need for multigranular comparability and performed matching within fixed levels only, e.g., only words were matched with words or only sentences with sentences.</bodyText>
+<page confidence="0.99336">
+63
+</page>
+<note confidence="0.978527333333333">
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics
+and the 7th International Joint Conference on Natural Language Processing, pages 63–73,
+Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.905879018518519">For a general solution to the problem of matching, we instead need the ability to match a unit on a lower level of granularity in one chunk with a unit on a higher level of granularity in the other chunk. Unlike (Socher et al., 2011), our model does not rely on parsing and it can more exhaustively search the hypothesis space of possible matchings, including matchings that correspond to conflicting segmentations of the input chunks (see Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al.(2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots of training data, then a richer match feature model may be the right choice. This motivates the need for an architecture like MultiGranCNN that allows selection of the taskappropriate match feature model from a range of different models and its seamless integration into the architecture. In remaining parts, Section 2 introduces some related work; Section 3 gives an overview of the proposed MultiGranCNN; Section 4 shows how to learn representations for generalized phrases (gphrases); Section 5 describes the three matching models: DIRECTSIM, INDIRECTSIM and CONCAT; Section 6 describes the two 2D pooling methods: grid-based pooling and phrase-based pooling; Section 7 describes the match feature CNN; Section 8 summarizes the architecture of MultiGran CNN; and Section 9 presents experiments; finally, Section 10 concludes.</bodyText>
+<sectionHeader confidence="0.998659" genericHeader="related work">
+2 Related Work
+</sectionHeader>
+<bodyText confidence="0.999633608695652">Paraphrase identification (PI) is a typical task of sentence matching and it has been frequently studied (Qiu et al., 2006; Blacoe and Lapata, 2012; Madnani et al., 2012; Ji and Eisenstein, 2013). Socher et al. (2011) utilized parsing to model the hierarchical structure of sentences and uses unfolding recursive autoencoders to learn representations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions between the two texts were obtained via LDA (Blei et al., 2003) and were then the basis for computing a matching score. Compared to MultiGranCNN, drawbacks of this approach are that LDA parameters are not optimized for the specific task and that the interactions are formed on the level of single words only.</bodyText>
+<page confidence="0.998879">
+64
+</page>
+<bodyText confidence="0.99968148">Gao et al.(2014) modeled interestingness between two documents with deep NNs. They mapped source-target document pairs to feature vectors in a latent space in such a way that the distance between the source document and its corresponding interesting target in that space was minimized. Interestingness is more like topic relevance, based mainly on the aggregated meaning of keywords, as opposed to more structural relationships as is the case for paraphrasing and clause coherence. We briefly discussed (Hu et al., 2014)’s ARC in Section 1. MultiGranCNN is partially inspired by ARC, but introduces multigranular comparability (thus enabling crosslevel matching) and supports a wider range of match feature models. Our unsupervised learning component (Section 4, last paragraph) resembles word2vec CBOW (Mikolov et al., 2013), but learns representations of TEXTCHUNKS as well as words. It also resembles PV-DM (Le and Mikolov, 2014), but our TEXTCHUNK representation is derived using a hierarchical architecture based on convolution and pooling.</bodyText>
+<sectionHeader confidence="0.939343" genericHeader="method">
+3 Overview of MultiGranCNN
+</sectionHeader>
+<bodyText confidence="0.99973527027027">We use convolution-plus-pooling in two different components of MultiGranCNN. The first component, the generalized phrase CNN (gpCNN), will be introduced in Section 4. This component learns representations for generalized phrases (gphrases) where a generalized phrase is a general term for subsequences of all granularities: words, short phrases, long phrases and the sentence itself. The gpCNN architecture has L layers of convolution, corresponding (for L = 2) to words, short phrases, long phrases and the sentence. We test different values of L in our experiments. We train gpCNN on large data in an unsupervised manner and then fine-tune it on labeled training data. Using a Siamese configuration, two copies of gpCNN, one for each of the two input TEXTCHUNKS, are the input to the match feature model, presented in Section 5. This model produces s1 x s2 matching features, one for each pair of g-phrases in the two chunks, where s1, s2 are the number of g-phrases in the two chunks, respectively. The s1xs2 match feature matrix is first reduced to a fixed size by dynamic 2D pooling. The resulting fixed size matrix is then the input to the second convolution-plus-pooling component, the match feature CNN (mfCNN) whose output is fed to a multilayer perceptron (MLP) that produces the final match score. Section 6 will give details. We use convolution-plus-pooling for both word sequences and match features because we want to compute increasingly abstract features at multiple levels of granularity. To ensure that g-phrases are mutually comparable when computing the s1 x s2 match feature matrix, we impose the constraint that all g-phrase representations live in the same space and have the same dimensionality.</bodyText>
+<figureCaption confidence="0.874844333333333">
+Figure 2: gpCNN: learning g-phrase representa-
+tions. This figure only shows two convolution lay-
+ers (i.e., L = 2) for saving space.
+</figureCaption>
+<sectionHeader confidence="0.7194675" genericHeader="method">
+4 gpCNN: Learning Representations for
+g-Phrases
+</sectionHeader>
+<bodyText confidence="0.999977692307692">We use several stacked blocks, i.e., convolutionplus-pooling layers, to extract increasingly abstract features of the TEXTCHUNK. The input to the first block are the words of the TEXTCHUNK, represented by CW (Collobert and Weston, 2008) embeddings. Given a TEXTCHUNK of length |S|, let vector ci E Rwd be the concatenated embeddings of words vi_w+1, ... , vi where w = 5 is the filter width, d = 50 is the dimensionality of CW embeddings and 0 &lt; i &lt; |S |+ w. Embeddings for words vi, i &lt; 1 and i &gt; |S|, are set to zero. We then generate the representation pi E Rd of the g-phrase vi_w+1, ... , vi using the convolution where block index l = 1, bias bl E Rd.</bodyText>
+<page confidence="0.944265">
+65
+</page>
+<equation confidence="0.8864715">
+matrix Wl E Rdxwd:
+pi = tanh(Wlci + bl) (1)
+</equation>
+<bodyText confidence="0.999966571428571">We use wide convolution (i.e., we apply the convolution matrix Wl to words vi, i &lt; 1 and i &gt; |S|) because this makes sure that each word vi, 1 &lt; i &lt; |S|, can be detected by all weights of Wl – as opposed to only the rightmost (resp.leftmost) weights for initial (resp.final) words in narrow convolution. The configuration of convolution layers in following blocks (l &gt; 1) is exactly the same except that the input vectors ci are not words, but the output of pooling from the previous layer of convolution – as we will explain presently. The configuration is the same (e.g., all Wl E Rdxwd) because, by design, all g-phrase representations have the same dimensionality d. This also ensures that each g-phrase representation can be directly compared with each other g-phrase representation. We use dynamic k-max pooling to extract the kl top values from each dimension after convolution in the lth block and the kL top values in the final block.We set where l = 1, · · · , L is the block index, and α = 4 is a constant (cf.</bodyText>
+<equation confidence="0.9942515">
+kl = max(α, rL � l
+L |S|D (2)
+</equation>
+<bodyText confidence="0.9772709">Kalchbrenner et al.(2014)) that makes sure a reasonable minimum number of values is passed on to the next layer. We set kL = 1 (not 4, cf. Kalchbrenner et al.(2014)) because our design dictates that all g-phrase representations, including the representation of the TEXTCHUNK itself, have the same dimensionality. Example: for L = 4, |S |= 20, the ki are [15,10, 5,1]. Dynamic k-max pooling keeps the most important features and allows us to stack multiple blocks to extract hiearchical features: units on consecutive layers correspond to larger and larger parts of the TEXTCHUNK thanks to the subset selection property of pooling. For many tasks, labeled data for training gpCNN is limited. We therefore employ unsupervised training to initialize gpCNN as shown in Figure 2. Similar to CBOW (Mikolov et al., 2013), we predict a sampled middle word vi from the average of seven vectors: the TEXTCHUNK representation (the final output of gpCNN) and the three words to the left and to the right of vi. We use noise-contrastive estimation (Mnih and Teh, 2012) for training: 10 noise words are sampled for each true example. Figure 3: General illustration of match feature model. In this example, both S1 and S2 have 10 gphrases, so the match feature matrix Fˆ E Rs1xs2 has size 10 x 10.</bodyText>
+<sectionHeader confidence="0.982284" genericHeader="method">
+5 Match Feature Models
+</sectionHeader>
+<bodyText confidence="0.99997206060606">Let g1, ... , gsk be an enumeration of the sk gphrases of TEXTCHUNK Sk. Let Sk E Rskxd be the matrix, constructed by concatenating the four matrices of unigram, short phrase, long phrase and sentence representations shown in Figure 2 that contain the learned representations from Section 4 for these sk g-phrases; i.e., row Ski is the learned representation of gi. The basic design of a match feature model is that we produce an s1 x s2 matrix Fˆ for a pair of TEXTCHUNKS S1 and S2, shown in Figure 3. ˆFi,j is a score that assesses the relationship between g-phrase gi of S1 and g-phrase gj of S2 with respect to the TEXTCHUNK relation of interest (paraphrasing, clause coherence etc). This score ˆFi,j is computed based on the vector representations S1i and S2j of the two g-phrases.1 We experiment with three different feature models to compute the match score ˆFi,j because we would like our architecture to address a wide variety of different TEXTCHUNK relations. We can model a TEXTCHUNK relation like paraphrasing as “for each meaning element in one sentence, there must be a similar meaning element in the other sentence”; thus, a good candidate for the match score ˆFi,j is simply vector similarity. In contrast, similarity is a less promising match score for clause coherence; for clause coherence, we want a score that models how good a continuation one g-phrase is for the other. These considerations motivate us to define three different match feature models that we will introduce now. The first match feature model is DIRECTSIM.</bodyText>
+<footnote confidence="0.615928">
+1In response to a reviewer question, recall that si is the
+total number of g-phrases of Si, so there is only one s1 × s2
+matrix, not several on different levels of granularity.
+</footnote>
+<page confidence="0.92353">
+66
+</page>
+<figureCaption confidence="0.998132">
+Figure 4: CONCAT match feature model
+</figureCaption>
+<bodyText confidence="0.999765">This model computes the match score of two gphrases as their similarity using a radial basis function kernel: where we set β = 2 (cf. Wu et al. (2013)). DIRECTSIM is an appropriate feature model for TEXTCHUNK relations like paraphrasing because in that case direct similarity features are helpful in assessing meaning equivalence. The second match feature model is INDIRECTSIM. Instead of computing the similarity directly as we do for DIRECTSIM, we first transform the representation of the g-phrase in one TEXTCHUNK using a transformation matrix M E Rd×d, then compute the match score by inner product and sigmoid activation:</bodyText>
+<equation confidence="0.98379">
+ˆFi,j = σ(S1iMST2j + b), (4)
+</equation>
+<bodyText confidence="0.997197833333333">Our motivation is that for a TEXTCHUNK relation like clause coherence, the two TEXTCHUNKS need not have any direct similarity. However, if we map the representations of TEXTCHUNK S1 into an appropriate space then we can hope that similarity between these transformed representations of S1 and the representations of TEXTCHUNK S2 do yield useful features. We will see that this hope is borne out by our experiments. The third match feature model is CONCAT. This is a general model that can learn any weighted combination of the values of the two vectors:</bodyText>
+<equation confidence="0.971053">
+ˆFi,j = σ(wTei,j + b) (5)
+</equation>
+<bodyText confidence="0.999982947368421">where ei,j E R2d is the concatenation of S1i and S2j. We can learn different combination weights w to solve different types of TEXTCHUNK matching. We call this match feature model CONCAT because we implement it by concatenating g-phrase vectors to form a tensor as shown in Figure 4. The match feature models implement multigranular comparability: they match all units in one TEXTCHUNK with all units in the other TEXTCHUNK. This is necessary because a general solution to matching must match a low-level unit like “reignite” to a higher-level unit like “fan the flames of” (Figure 1). Unlike (Socher et al., 2011), our model does not rely on parsing; therefore, it can more exhaustively search the hypothesis space of possible matchings: mfCNN covers a wide variety of different, possibly overlapping units, not just those of a single parse tree.</bodyText>
+<sectionHeader confidence="0.988234" genericHeader="method">
+6 Dynamic 2D Pooling
+</sectionHeader>
+<bodyText confidence="0.9999608">The match feature models generate an s1 x s2 matrix. Since it has variable size, we apply two different dynamic 2D pooling methods, grid-based pooling and phrase-focused pooling, to transform it to a fixed size matrix.</bodyText>
+<subsectionHeader confidence="0.990672">
+6.1 Grid-based pooling
+</subsectionHeader>
+<bodyText confidence="0.99988875">We need to map Fˆ E Rs1×s2 into a matrix F of fixed size s∗ x s∗ where s∗ is a parameter. Gridbased pooling divides Fˆ into s∗ x s∗ nonoverlapping (dynamic) pools and copies the maximum value in each dynamic pool to F. This method is similar to (Socher et al., 2011), but preserves locality better. Fˆ can be split into equal regions only if both s1 and s2 are divisible by s∗. Otherwise, for s1 &gt; s∗ and if s1 mod s∗ = b, the dynamic pools in the first s∗ − b splits each have 1ss1 ∗I rows while the remaining b splits each have + 1 rows. In Figure 5, a s1 x s2 = 4 x 5 matrix (left) is split into s∗ xs∗ = 3x3 dynamic pools (middle): each row is split into [1, 1, 2] and each column is split into [1, 2, 2]. If s1 &lt; s∗, we first repeat all rows in batch style with size s1 until no fewer than s∗ rows remain. Then the first s∗ rows are kept and split into s∗ dynamic pools. The same principle applies to the partitioning of columns. In Figure 5 (right), the areas with dashed lines and dotted lines are repeated parts for rows and columns, respectively; each cell is its own dynamic pool.</bodyText>
+<subsectionHeader confidence="0.997764">
+6.2 Phrase-focused pooling
+</subsectionHeader>
+<bodyText confidence="0.99998175">In the match feature matrix Fˆ E Rs1×s2, row i (resp. column j) contains all feature values for gphrase gi of S1 (resp. gj of S2). Phrase-focused pooling attempts to pick the largest match features for a g-phrase g on the assumption that they are the best basis for assessing the relation of g with other g-phrases.</bodyText>
+<equation confidence="0.975634666666667">
+ˆFi,j = exp(
+2β ) (3)
+−||S1i − S2j||2
+</equation>
+<page confidence="0.991724">
+67
+</page>
+<figureCaption confidence="0.838017666666667">
+Figure 5: Partition methods in grid-based pooling. Original matrix with size 4 x 5 is mapped into matrix
+with size 3 x 3 and matrix with size 6 x 7, respectively. Each dynamic pool is distinguished by a border
+of empty white space around it.
+</figureCaption>
+<bodyText confidence="0.999854285714286">To implement this, we sort the values of each row i (resp.each column j) in decreasing order giving us a matrix ˆFr E Rs1×s2 with sorted rows (resp.ˆFc E Rs1×s2 with sorted columns). Then we concatenate the columns of ˆFr (resp.the rows of ˆFc) resulting in list Fr = {fr1 , ... , frs1s2} (resp. Fc = {fc1, ... , fcs1s2}) where each fr (fc) is ˆFc). These two lists are merged into a list F by interleaving them so that members from Fr and Fc alternate. F is then used to fill the rows of F from top to bottom with each row being filled from left to right.2</bodyText>
+<sectionHeader confidence="0.948017" genericHeader="method">
+7 mfCNN: Match feature CNN
+</sectionHeader>
+<bodyText confidence="0.900377789473684">The output of dynamic 2D pooling is further processed by the match feature CNN (mfCNN) as depicted in Figure 6. mfCNN extracts increasingly abstract interaction features from lower-level interaction features, using several layers of 2D wide convolution and fixed-size 2D pooling. We call the combination of a 2D wide convolution layer and a fixed-size 2D pooling layer a block, denoted by index b (b = 1, 2 ...). In general, let tensor Tb E Rcb×sb×sb denote the feature maps in block b; block b has cb feature maps, each of size sb x sb (T1 = F E R1×s*×s*). Let Wb E Rcb+1×cb×fb×fb be the filter weights of 2D wide convolution in block b, fbxfb is then the size of sliding convolution regions. Then the convolution is performed as element-wise multiplication 2If Fˆ has fewer cells than F, then we simply repeat the filling procedure to fill all cells. between Wb and Tb as follows:</bodyText>
+<equation confidence="0.9143885">
+T bmi−1 ,j−1 = σ(E Wb m,:,:,:Tb:,i−fb:i,j−fb:j+bbm)
+(6)
+</equation>
+<bodyText confidence="0.99956775">where 0&lt;m&lt;cb+1, 1 &lt; i, j &lt; sb+fb, bb E Rcb+1. Subsequently, fixed-size 2D pooling selects dominant features from kb x kb non-overlapping windows of ˆTb+1 to form a tensor as input of where 0 &lt; i, j &lt; Lsb+fb−1 kb J. Hu et al.(2014) used narrow convolution which would limit the number of blocks.2D wide convolution in this work enables to stack multiple blocks of convolution and pooling to extract higher-level interaction features.</bodyText>
+<equation confidence="0.780068">
+block b + 1:
+m,ikb:(i+1)kb,jkb:(j+1)kb) (7)
+</equation>
+<bodyText confidence="0.978992">We will study the influence of the number of blocks on performance below. For the experiments, we set s∗ = 40, cb = 50, fb=5,kb=2(b= 1,2,···).</bodyText>
+<sectionHeader confidence="0.997563" genericHeader="method">
+8 MultiGranCNN
+</sectionHeader>
+<bodyText confidence="0.999984214285714">We can now describe the overall architecture of MultiGranCNN. First, using a Siamese configuration, two copies of gpCNN, one for each of the two input TEXTCHUNKS, produce g-phrase representations on different levels of abstraction (Figure 2). Then one of the three match feature models (DIRECTSIM, CONCAT or INDIRECTSIM) produces an s1 x s2 match feature matrix, each cell of which assesses the match of a pair of gphrases from the two chunks. This match feature matrix is reduced to a fixed size matrix by dynamic 2D pooling (Section 6). As shown in Figure 6, the resulting fixed size matrix is the input for mfCNN, which extracts interaction features of increasing complexity from the basic interaction features computed by the match feature model.</bodyText>
+<figure confidence="0.6765344">
+an element of ˆFr (
+i
+Tm,1= max(
+,j
+ˆTb+1
+</figure>
+<page confidence="0.918292">
+68
+</page>
+<figureCaption confidence="0.999529">
+Figure 6: mfCNN &amp; MLP for matching score learning. s∗ = 10, fb = 5, kb = 2, cb = 4 in this example.
+</figureCaption>
+<bodyText confidence="0.999978454545455">Finally, the output of the last block of mfCNN is the input to an MLP that computes the match score. MultiGranCNN bears resemblance to previous work on clause and sentence matching (e.g., Hu et al.(2014), Socher et al.(2011)), but it is more general and more flexible. It learns representations of g-phrases, i.e., representations of parts of the TEXTCHUNK at multiple granularities, not just for a single level such as the sentence as ARC-I does (Hu et al., 2014). MultiGranCNN explores the space of interactions between the two chunks more exhaustively by considering interactions between every unit in one chunk with every other unit in the other chunk, at all levels of granularity. Finally, MultiGranCNN supports a number of different match feature models; the corresponding module can be instantiated in a way that ensures that match features are best suited to support accurate decisions on the TEXTCHUNK relation task that needs to be addressed.</bodyText>
+<sectionHeader confidence="0.86467" genericHeader="evaluation and result">
+9 Experimental Setup and Results
+</sectionHeader>
+<subsectionHeader confidence="0.969565">
+9.1 Training
+</subsectionHeader>
+<bodyText confidence="0.9929544">Suppose the triple (x, y+, y−) is given and x matches y+ better than y−. Then our objective is the minimization of the following ranking loss: l(x, y+, y−) = max(0,1 + s(x, y−) − s(x, y+)) where s(x, y) is the predicted match score for (x, y). We use stochastic gradient descent with Adagrad (Duchi et al., 2011), L2 regularization and minibatch training. We set initial learning rate to 0.05, batch size to 70, L2 weight to 5 · 10−4. Recall that we employ unsupervised pretraining of representations for g-phrases. We can either freeze these representations in subsequent supervised training; or we canfine-tune them. We study the performance of both regimes.</bodyText>
+<subsectionHeader confidence="0.985503">
+9.2 Clause Coherence Task
+</subsectionHeader>
+<bodyText confidence="0.960915636363636">As introduced by Hu et al. (2014), the clause coherence task determines for a pair (x, y) of clauses if the sentence “xy” is a coherent sentence. We construct a clause coherence dataset as follows (the set used by Hu et al. (2014) is not yet available). We consider all sentences from English Gigaword (Parker et al., 2009) that consist of two comma-separated clauses x and y, with each clause having between five and 30 words. For each y, we choose four clauses y0 ...y0000 randomly from the 1000 second clauses that have the highest similarity to y, where similarity is cosine similarity of TF-IDF vectors of the clauses; restricting the alternatives to similar clauses ensures that the task is hard. The clause coherence task then is to select y from the set y, y0, ... , y0000 as the correct continuation of x. We create 21 million examples, each consisting of a first clause x and five second clauses. This set is divided into a training set of 19 million and development and test sets of one million each. An example from the training set is given in Figure 1. Then, we study the performance variance of different MultiGranCNN setups from three perspectives: a) layers of CNN in both unsupervised (gpCNN) and supervised (mfCNN) training phases; b) different approaches for clause relation feature modeling; c) dynamic pooling methods for generating same-sized feature matrices. Figure 7 (top table) shows that (Hu et al., 2014)’s parameters are good choices for our setup as well. We get best result when both gpCNN and mfCNN have three blocks of convolution and pooling.</bodyText>
+<page confidence="0.998272">
+69
+</page>
+<bodyText confidence="0.964791736842105">This suggests that multiple layers of convolution succeed in extracting high-level features that are beneficial for clause coherence. Figure 7 (2nd table) shows that INDIRECTSIM and CONCAT have comparable performance and both outperform DIRECTSIM. DIRECTSIM is expected to perform poorly because the contents in the two clauses usually have little or no overlapping meaning. In contrast, we can imagine that INDIRECTSIM first transforms the first clause x into a counterpart and then matches this counterpart with the second clause y. In CONCAT, each of s1×s2 pairs of g-phrases is concatentated and supervised training can then learn an unrestricted function to assess the importance of this pair for clause coherence (cf.Eq.5). Again, this is clearly a more promising TEXTCHUNK relation model for clause coherence than one that relies on DIRECTSIM.</bodyText>
+<table confidence="0.8844372">
+0 mfCNN 3
+1 2
+0 38.02 44.08 47.81 48.43
+1 40.91 45.31 51.73 52.13
+2 43.10 48.06 54.14 54.86
+3 45.62 51.77 55.97 56.31
+match feature model acc
+DIRECTSIM 25.40
+INDIRECTSIM 56.31
+CONCAT 56.12
+</table>
+<bodyText confidence="0.72115925">pooling method acc dynamic (Socher et al., 2011) grid-based phrase-focused</bodyText>
+<figureCaption confidence="0.999891">
+Figure 7: Effect on dev acc (clause coherence) of
+different factors: # convolution blocks, match fea-
+ture model, freeze vs. fine-tune, pooling method.
+Figure 7 (3rd table) demonstrates that fine-
+tuning g-phrase representations gives better performance than freezing them.</figureCaption>
+<bodyText confidence="0.977668666666667">Also, grid-based and phrase-focused pooling outperform dynamic pooling (Socher et al., 2011) (4th table).Phrasefocused pooling performs best. Table 1 compares MultiGranCNN to ARC-I and ARC-II, the architectures proposed by Hu et al.(2014). We also test the five baseline systems from their paper: DeepMatch, WordEmbed, SENMLP, SENNA+MLP, URAE+MLP. For MultiGranCNN, we use the best dev set settings: number of convolution layers in gpCNN and mfCNN is 3; INDIRECTSIM; phrase-focused pooling. Table 1 shows that MultiGranCNN outperforms all other approaches on clause coherence test set.</bodyText>
+<subsectionHeader confidence="0.998523">
+9.3 Paraphrase Identification Task
+</subsectionHeader>
+<bodyText confidence="0.999676642857143">We evaluate paraphrase identification (PI) on the PAN corpus (http://bit.ly/mt-para, (Madnani et al., 2012)), consisting of training and test sets of 10,000 and 3000 sentence pairs, respectively. Sentences are about 40 words long on average. Since PI is a binary classification task, we replace the MLP with a logistic regression layer. As phrase-focused pooling was proven to be optimal, we directly use phrase-focused pooling in PI task without comparison, assuming that the choice of dynamic pooling is task independent. For parameter selection, we split the PAN training set into a core training set (core) of size 9000 and a development set (dev) of size 1000. We then train models on core and select parameters based on best performance on dev. The best results on dev are obtained for the following parameters: freezing g-phrase representations, DIRECTSIM, two convolution layers in gpCNN, no convolution layers in mfCNN. We use these parameter settings to train a model on the entire training set and report performance in Table 2. We compare MultiGranCNN to ARC-I/II (Hu et al., 2014), and two previous papers reporting performance on PAN. Madnani et al. (2012) used a combination of three basic MT metrics (BLEU, NIST and TER) and five complex MT metrics (TERp, METEOR, BADGER, MAXISIM, acc
+gpCNN
+freeze g-phrase represenations or not acc
+MultiGranCNN (freeze) 55.79
+MultiGranCNN (fine-tune) 56.31
+55.91
+56.07
+56.31</bodyText>
+<table confidence="0.9951164">
+model acc
+Random Guess 20.00
+DeepMatch 34.17
+WordEmbed 38.28
+SENMLP 34.57
+SENNA+MLP 42.09
+URAE+MLP 27.41
+ARC-I 45.04
+ARC-II 50.18
+MultiGranCNN 56.27
+</table>
+<tableCaption confidence="0.999935">
+Table 1: Performance on clause coherence test set.
+</tableCaption>
+<page confidence="0.987883">
+70
+</page>
+<bodyText confidence="0.98743">SEPIA), computed on entire sentences. Bach et al. (2014) applied MT metrics to elementary discourse units. We integrate these eight MT metrics from prior work.</bodyText>
+<table confidence="0.9996404">
+method acc F1
+ARC-I 61.4 60.3
+ARC-II 64.9 63.5
+basic MT metrics 88.6 87.8
++ TERp 91.5 91.2
++ METEOR 92.0 91.8
++ Others 92.3 92.1
+(Bach et al., 2014) 93.4 93.3
+8MT+MultiGranCNN (fine-tune) 94.1 94.0
+8MT+MultiGranCNN (freeze) 94.9 94.7
+</table>
+<tableCaption confidence="0.999824">
+Table 2: Results on PAN. “8MT” = 8 MT metrics
+</tableCaption>
+<bodyText confidence="0.995730888888889">Table 2 shows that MultiGranCNN in combination with MT metrics obtains state-of-the-art performance on PAN. Freezing weights learned in unsupervised training (Figure 2) performs better thanfine-tuning them; also, Table 3 shows that the best result is achieved if no convolution is used in mfCNN. Thus, the best configuration for paraphrase identification is to “forward” fixed-size interaction matrices as input to the logistic regression, without any intermediate convolution layers. Freezing weights learned in unsupervised training and no convolution layers in mfCNN both protect against overfitting. Complex deep neural networks are in particular danger of overfitting when training sets are small as in the case of PAN (cf. Hu et al. (2014)). In contrast, fine-tuning weights and several convolution layers were the optimal setup for clause coherence. For clause coherence, we have a much larger training set and therefore can successfully train a much larger number of parameters. Table 3 shows that CONCAT performs badly for PI while DIRECTSIM and INDIRECTSIM perform well. We can conceptualize PI as the task of determining if each meaning element in 51 has a similar meaning element in 52. The s1 × s2 DIRECTSIM feature model directly models this task and the s1×s2 INDIRECTSIM feature model also models it, but learning a transformation of g-phrase representations before applying similarity. In contrast, CONCAT can learn arbitrary relations between parts of the two sentences, a model that seems to be too unconstrained for PI if insufficient training resources are available. In contrast, for the clause coherence task, concatentation worked well and DIRECTSIM worked poorly and we provided an explanation based on the specific properties of clause coherence (see discussion of Figure 7). We conclude from these results that it is dependent on the task what the best feature model is for matching two linguistic objects. Interestingly, INDIRECTSIM performs well on both tasks. This suggests that INDIRECTSIM is a general feature model for matching, applicable to tasks with very different properties.</bodyText>
+<sectionHeader confidence="0.99274" genericHeader="conclusion">
+10 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999961538461539">In this paper, we present MultiGranCNN, a general deep learning architecture for classifying the relation between two TEXTCHUNKS. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one TEXTCHUNK can be directly compared to longer sequences in the other TEXTCHUNK. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different TEXTCHUNK relations. We demonstrated state-of-the-art performance of MultiGranCNN on paraphrase identification and clause coherence tasks.</bodyText>
+<sectionHeader confidence="0.997639" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.945047833333333">Thanks to CIS members and anonymous reviewers for constructive comments. This work was supported by Baidu (through a Baidu scholarship awarded to Wenpeng Yin) and by Deutsche Forschungsgemeinschaft (grant DFG SCHU 2246/8-2, SPP 1335).</bodyText>
+<table confidence="0.9974312">
+0 mfCNN 3
+1 2
+0 92.7 92.9 92.9 93.9
+1 93.2 93.5 93.9 93.5
+2 94.7 94.2 93.7 93.3
+3 94.5 94.0 93.6 92.9
+match feature model acc F1
+DIRECTSIM 94.9 94.7
+INDIRECTSIM 94.7 94.5
+CONCAT 93.0 92.9
+</table>
+<tableCaption confidence="0.993722">
+Table 3: Effect on dev F1 (PI) of different factors:
+# convolution blocks, match feature model.
+</tableCaption>
+<figure confidence="0.6930585">
+F1
+gpCNN
+</figure>
+<page confidence="0.994534">
+71
+</page>
+<sectionHeader confidence="0.989426" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999732898148148">
+Ngo Xuan Bach, Nguyen Le Minh, and Akira Shi-
+mazu. 2014. Exploiting discourse information to
+identify paraphrases. Expert Systems with Applica-
+tions, 41(6):2832–2841.
+William Blacoe and Mirella Lapata. 2012. A com-
+parison of vector-based representations for semantic
+composition. In Proceedings of the 2012 Joint Con-
+ference on Empirical Methods in Natural Language
+Processing and Computational Natural Language
+Learning, pages 546–556. Association for Compu-
+tational Linguistics.
+David M Blei, Andrew Y Ng, and Michael I Jordan.
+2003. Latent dirichlet allocation. the Journal of ma-
+chine Learning research, 3:993–1022.
+Antoine Bordes, Sumit Chopra, and Jason Weston.
+2014a. Question answering with subgraph embed-
+dings. Proceedings of the 2014 Conference on Em-
+pirical Methods in Natural Language Processing.
+Antoine Bordes, Xavier Glorot, Jason Weston, and
+Yoshua Bengio. 2014b. A semantic matching en-
+ergy function for learning with multi-relational data.
+Machine Learning, 94(2):233–259.
+Antoine Bordes, Jason Weston, and Nicolas Usunier.
+2014c. Open question answering with weakly su-
+pervised embedding models. Proceedings of 2014
+European Conference on Machine Learning and
+Principles and Practice of Knowledge Discovery in
+Databases.
+Sumit Chopra, Raia Hadsell, and Yann LeCun. 2005.
+Learning a similarity metric discriminatively, with
+application to face verification. In Computer Vision
+and Pattern Recognition, 2005. CVPR 2005. IEEE
+Computer Society Conference on, volume 1, pages
+539–546. IEEE.
+Ronan Collobert and Jason Weston. 2008. A unified
+architecture for natural language processing: Deep
+neural networks with multitask learning. In Pro-
+ceedings of the 25th international conference on
+Machine learning, pages 160–167. ACM.
+John Duchi, Elad Hazan, and Yoram Singer. 2011.
+Adaptive subgradient methods for online learning
+and stochastic optimization. The Journal of Ma-
+chine Learning Research, 12:2121–2159.
+Jianfeng Gao, Patrick Pantel, Michael Gamon, Xi-
+aodong He, Li Deng, and Yelong Shen. 2014. Mod-
+eling interestingness with deep neural networks. In
+Proceedings of the 2014 Conference on Empirical
+Methods in Natural Language Processing.
+Baotian Hu, Zhengdong Lu, Hang Li, and Qingcai
+Chen. 2014. Convolutional neural network archi-
+tectures for matching natural language sentences.
+In Advances in Neural Information Processing Sys-
+tems, pages 2042–2050.
+Mohit Iyyer, Jordan Boyd-Graber, Leonardo Claudino,
+Richard Socher, and Hal Daum´e III. 2014. A neural
+network for factoid question answering over para-
+graphs. In Proceedings of the 2014 Conference on
+Empirical Methods in Natural Language Process-
+ing, pages 633–644.
+Yangfeng Ji and Jacob Eisenstein. 2013. Discrimi-
+native improvements to distributional sentence sim-
+ilarity. In Proceedings of the 2013 Conference on
+Empirical Methods in Natural Language Process-
+ing, pages 891–896.
+Nal Kalchbrenner, Edward Grefenstette, and Phil Blun-
+som. 2014. A convolutional neural network for
+modelling sentences. In Proceedings of the 52nd
+Annual Meeting of the Association for Computa-
+tional Linguistics. Association for Computational
+Linguistics.
+Quoc V Le and Tomas Mikolov. 2014. Distributed rep-
+resentations of sentences and documents. Proceed-
+ings of The 31st International Conference on Ma-
+chine Learning, pages 1188–1196.
+Hang Li and Jun Xu. 2012. Beyond bag-of-words:
+machine learning for query-document matching in
+web search. In Proceedings of the 35th international
+ACM SIGIR conference on Research and develop-
+ment in information retrieval, pages 1177–1177.
+ACM.
+Xutao Li, Michael K Ng, and Yunming Ye. 2012.
+Har: Hub, authority and relevance scores in multi-
+relational data for query search. In Proceedings of
+the 12th SIAM International Conference on Data
+Mining, pages 141–152. SIAM.
+Chen Liu. 2013. Probabilistic Siamese Network for
+Learning Representations. Ph.D. thesis, University
+of Toronto.
+Zhengdong Lu and Hang Li. 2013. A deep architec-
+ture for matching short texts. In Advances in Neural
+Information Processing Systems, pages 1367–1375.
+Nitin Madnani, Joel Tetreault, and Martin Chodorow.
+2012. Re-examining machine translation metrics
+for paraphrase identification. In Proceedings of the
+2012 Conference of the North American Chapter of
+the Association for Computational Linguistics: Hu-
+man Language Technologies, pages 182–190. Asso-
+ciation for Computational Linguistics.
+Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg S Cor-
+rado, and Jeff Dean. 2013. Distributed representa-
+tions of words and phrases and their compositional-
+ity. In Advances in Neural Information Processing
+Systems, pages 3111–3119.
+Andriy Mnih and Yee Whye Teh. 2012. A fast and
+simple algorithm for training neural probabilistic
+language models. In Proceedings of the 29th In-
+ternational Conference on Machine Learning, pages
+1751–1758.
+</reference>
+<page confidence="0.971054">
+72
+</page>
+<reference confidence="0.999629107142857">
+Robert Parker, Linguistic Data Consortium, et al.
+2009. English gigaword fourth edition. Linguistic
+Data Consortium.
+Long Qiu, Min-Yen Kan, and Tat-Seng Chua. 2006.
+Paraphrase recognition via dissimilarity significance
+classification. In Proceedings of the 2006 Confer-
+ence on Empirical Methods in Natural Language
+Processing, pages 18–26. Association for Compu-
+tational Linguistics.
+Richard Socher, Eric H Huang, Jeffrey Pennin, Christo-
+pher D Manning, and Andrew Y Ng. 2011. Dy-
+namic pooling and unfolding recursive autoencoders
+for paraphrase detection. In Advances in Neural In-
+formation Processing Systems, pages 801–809.
+Pengcheng Wu, Steven CH Hoi, Hao Xia, Peilin Zhao,
+Dayong Wang, and Chunyan Miao. 2013. Online
+multimodal deep similarity learning with application
+to image retrieval. In Proceedings of the 21st ACM
+international conference on Multimedia, pages 153–
+162. ACM.
+Min-Chul Yang, Nan Duan, Ming Zhou, and Hae-
+Chang Rim. 2014. Joint relational embeddings for
+knowledge-based question answering. In Proceed-
+ings of the 2014 Conference on Empirical Methods
+in Natural Language Processing, pages 645–650.
+Lei Yu, Karl Moritz Hermann, Phil Blunsom, and
+Stephen Pulman. 2014. Deep learning for answer
+sentence selection. NIPS deep learning workshop.
+</reference>
+<page confidence="0.999294">
+73
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.476451" no="0">
+<title confidence="0.998303">MultiGranCNN: An Architecture for General Matching of Text on Multiple Levels of Granularity</title>
+<author confidence="0.98683">Yin</author>
+<affiliation confidence="0.9992785">Center for Information and Language University of Munich,</affiliation>
+<email confidence="0.96132">wenpeng@cis.uni-muenchen.de</email>
+<abstract confidence="0.969155">p Abstract We present MultiGranCNN, a general deep learning architecture for matching text chunks. MultiGranCNN supports comparability representations: shorter sequences in one chunk be directly compared to longer sein the other chunk. also contains a and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Ngo Xuan Bach</author>
+<author>Nguyen Le Minh</author>
+<author>Akira Shimazu</author>
+</authors>
+<title>Exploiting discourse information to identify paraphrases.</title>
+<date>2014</date>
+<journal>Expert Systems with Applications,</journal>
+<volume>41</volume>
+<issue>6</issue>
+<marker>Bach, Le Minh, Shimazu, 2014</marker>
+<rawString>Ngo Xuan Bach, Nguyen Le Minh, and Akira Shimazu. 2014. Exploiting discourse information to identify paraphrases. Expert Systems with Applications, 41(6):2832–2841.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>William Blacoe</author>
+<author>Mirella Lapata</author>
+</authors>
+<title>A comparison of vector-based representations for semantic composition.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 2012 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning,</booktitle>
+<pages>546--556</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Blacoe and Lapata (2012" endWordPosition="584" position="3667" startWordPosition="581">igned to ensure multigranular comparability. For general matching, we need the ability to match short sequences in one chunk with long sequences in the other chunk. For example, what is expressed by a single word in one chunk (“reignite” in q+ in the figure) may be expressed by a sequence of several words in its paraphrase (“fan the flames of” in p). To meet this objective, we learn representations for words, phrases and the entire sentence that are all mutually comparable; in particular, these representations all have the same dimensionality and live in the same space. Most prior work (e.g., Blacoe and Lapata (2012; Hu et al. (2014)) has neglected the need for multigranular comparability and performed matching within fixed levels only, e.g., only words were 63 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing, pages 63–73, Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics matched with words or only sentences with sentences. For a general solution to the problem of matching, we instead need the ability to match a unit on a lower level of granularity in one chunk</context>
+<context citStr="Blacoe and Lapata, 2012" endWordPosition="1083" position="6756" startWordPosition="1080">overview of the proposed MultiGranCNN; Section 4 shows how to learn representations for generalized phrases (gphrases); Section 5 describes the three matching models: DIRECTSIM, INDIRECTSIM and CONCAT; Section 6 describes the two 2D pooling methods: grid-based pooling and phrase-based pooling; Section 7 describes the match feature CNN; Section 8 summarizes the architecture of MultiGran CNN; and Section 9 presents experiments; finally, Section 10 concludes. 2 Related Work Paraphrase identification (PI) is a typical task of sentence matching and it has been frequently studied (Qiu et al., 2006; Blacoe and Lapata, 2012; Madnani et al., 2012; Ji and Eisenstein, 2013). Socher et al. (2011) utilized parsing to model the hierarchical structure of sentences and uses unfolding recursive autoencoders to learn representations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing</context>
+</contexts>
+<marker>Blacoe, Lapata, 2012</marker>
+<rawString>William Blacoe and Mirella Lapata. 2012. A comparison of vector-based representations for semantic composition. In Proceedings of the 2012 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning, pages 546–556. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David M Blei</author>
+<author>Andrew Y Ng</author>
+<author>Michael I Jordan</author>
+</authors>
+<title>Latent dirichlet allocation.</title>
+<date>2003</date>
+<journal>the Journal of machine Learning research,</journal>
+<pages>3--993</pages>
+<contexts>
+<context citStr="Blei et al., 2003" endWordPosition="1367" position="8556" startWordPosition="1364">ight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions between the two texts were obtained via LDA (Blei et al., 2003) and were then the basis for computing a matching score. Compared to MultiGranCNN, drawbacks of this approach are that LDA parameters are not optimized for the specific task and that the interactions are 64 formed on the level of single words only. Gao et al. (2014) modeled interestingness between two documents with deep NNs. They mapped source-target document pairs to feature vectors in a latent space in such a way that the distance between the source document and its corresponding interesting target in that space was minimized. Interestingness is more like topic relevance, based mainly on th</context>
+</contexts>
+<marker>Blei, Ng, Jordan, 2003</marker>
+<rawString>David M Blei, Andrew Y Ng, and Michael I Jordan. 2003. Latent dirichlet allocation. the Journal of machine Learning research, 3:993–1022.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Sumit Chopra</author>
+<author>Jason Weston</author>
+</authors>
+<title>Question answering with subgraph embeddings.</title>
+<date>2014</date>
+<booktitle>Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing.</booktitle>
+<contexts>
+<context citStr="Bordes et al. (2014" endWordPosition="131" position="930" startWordPosition="128">for matching text chunks. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one chunk can be directly compared to longer sequences in the other chunk. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks. 1 Introduction Many natural language processing (NLP) tasks can be posed as classifying the relationship between two TEXTCHUNKS (cf. Li et al. (2012), Bordes et al. (2014b)) where a TEXTCHUNK can be a sentence, a clause, a paragraph or any other sequence of words that forms a unit. Paraphrasing (Figure 1, top) is one task that we address in this paper and that can be formalized as classifying a TEXTCHUNK relation. The two classes correspond to the sentences being (e.g., the pair &lt;p, q+&gt;) or not being (e.g., the pair &lt;p, q−&gt;) paraphrases of each other. Another task we look at is clause coherence (Figure 1, bottom). Here the two TEXTCHUNK relation classes correspond to the second clause being (e.g., the pair &lt;x, y+&gt;) or not being (e.g., the pair &lt;x, y−&gt;) a disco</context>
+<context citStr="Bordes et al., 2014" endWordPosition="825" position="5164" startWordPosition="821"> the input chunks (see Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots</context>
+<context citStr="Bordes et al., 2014" endWordPosition="1241" position="7771" startWordPosition="1238">ations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic</context>
+</contexts>
+<marker>Bordes, Chopra, Weston, 2014</marker>
+<rawString>Antoine Bordes, Sumit Chopra, and Jason Weston. 2014a. Question answering with subgraph embeddings. Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Xavier Glorot</author>
+<author>Jason Weston</author>
+<author>Yoshua Bengio</author>
+</authors>
+<title>A semantic matching energy function for learning with multi-relational data.</title>
+<date>2014</date>
+<booktitle>Machine Learning,</booktitle>
+<volume>94</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Bordes et al. (2014" endWordPosition="131" position="930" startWordPosition="128">for matching text chunks. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one chunk can be directly compared to longer sequences in the other chunk. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks. 1 Introduction Many natural language processing (NLP) tasks can be posed as classifying the relationship between two TEXTCHUNKS (cf. Li et al. (2012), Bordes et al. (2014b)) where a TEXTCHUNK can be a sentence, a clause, a paragraph or any other sequence of words that forms a unit. Paraphrasing (Figure 1, top) is one task that we address in this paper and that can be formalized as classifying a TEXTCHUNK relation. The two classes correspond to the sentences being (e.g., the pair &lt;p, q+&gt;) or not being (e.g., the pair &lt;p, q−&gt;) paraphrases of each other. Another task we look at is clause coherence (Figure 1, bottom). Here the two TEXTCHUNK relation classes correspond to the second clause being (e.g., the pair &lt;x, y+&gt;) or not being (e.g., the pair &lt;x, y−&gt;) a disco</context>
+<context citStr="Bordes et al., 2014" endWordPosition="825" position="5164" startWordPosition="821"> the input chunks (see Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots</context>
+<context citStr="Bordes et al., 2014" endWordPosition="1241" position="7771" startWordPosition="1238">ations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic</context>
+</contexts>
+<marker>Bordes, Glorot, Weston, Bengio, 2014</marker>
+<rawString>Antoine Bordes, Xavier Glorot, Jason Weston, and Yoshua Bengio. 2014b. A semantic matching energy function for learning with multi-relational data. Machine Learning, 94(2):233–259.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Antoine Bordes</author>
+<author>Jason Weston</author>
+<author>Nicolas Usunier</author>
+</authors>
+<title>Open question answering with weakly supervised embedding models.</title>
+<date>2014</date>
+<booktitle>Proceedings of 2014 European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases.</booktitle>
+<contexts>
+<context citStr="Bordes et al. (2014" endWordPosition="131" position="930" startWordPosition="128">for matching text chunks. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one chunk can be directly compared to longer sequences in the other chunk. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks. 1 Introduction Many natural language processing (NLP) tasks can be posed as classifying the relationship between two TEXTCHUNKS (cf. Li et al. (2012), Bordes et al. (2014b)) where a TEXTCHUNK can be a sentence, a clause, a paragraph or any other sequence of words that forms a unit. Paraphrasing (Figure 1, top) is one task that we address in this paper and that can be formalized as classifying a TEXTCHUNK relation. The two classes correspond to the sentences being (e.g., the pair &lt;p, q+&gt;) or not being (e.g., the pair &lt;p, q−&gt;) paraphrases of each other. Another task we look at is clause coherence (Figure 1, bottom). Here the two TEXTCHUNK relation classes correspond to the second clause being (e.g., the pair &lt;x, y+&gt;) or not being (e.g., the pair &lt;x, y−&gt;) a disco</context>
+<context citStr="Bordes et al., 2014" endWordPosition="825" position="5164" startWordPosition="821"> the input chunks (see Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots</context>
+<context citStr="Bordes et al., 2014" endWordPosition="1241" position="7771" startWordPosition="1238">ations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic</context>
+</contexts>
+<marker>Bordes, Weston, Usunier, 2014</marker>
+<rawString>Antoine Bordes, Jason Weston, and Nicolas Usunier. 2014c. Open question answering with weakly supervised embedding models. Proceedings of 2014 European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sumit Chopra</author>
+<author>Raia Hadsell</author>
+<author>Yann LeCun</author>
+</authors>
+<title>Learning a similarity metric discriminatively, with application to face verification.</title>
+<date>2005</date>
+<booktitle>In Computer Vision and Pattern Recognition,</booktitle>
+<volume>1</volume>
+<pages>539--546</pages>
+<publisher>IEEE.</publisher>
+<contexts>
+<context citStr="Chopra et al. (2005)" endWordPosition="1261" position="7882" startWordPosition="1258">entary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. In</context>
+</contexts>
+<marker>Chopra, Hadsell, LeCun, 2005</marker>
+<rawString>Sumit Chopra, Raia Hadsell, and Yann LeCun. 2005. Learning a similarity metric discriminatively, with application to face verification. In Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on, volume 1, pages 539–546. IEEE.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ronan Collobert</author>
+<author>Jason Weston</author>
+</authors>
+<title>A unified architecture for natural language processing: Deep neural networks with multitask learning.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 25th international conference on Machine learning,</booktitle>
+<pages>160--167</pages>
+<publisher>ACM.</publisher>
+<contexts>
+<context citStr="Collobert and Weston, 2008" endWordPosition="1925" position="12013" startWordPosition="1922">o ensure that g-phrases are mutually comparable when computing the s1 x s2 match feature matrix, we impose the constraint that all g-phrase representations live in the same space and have the same dimensionality. Figure 2: gpCNN: learning g-phrase representations. This figure only shows two convolution layers (i.e., L = 2) for saving space. 4 gpCNN: Learning Representations for g-Phrases We use several stacked blocks, i.e., convolutionplus-pooling layers, to extract increasingly abstract features of the TEXTCHUNK. The input to the first block are the words of the TEXTCHUNK, represented by CW (Collobert and Weston, 2008) embeddings. Given a TEXTCHUNK of length |S|, let vector ci E Rwd be the concatenated embeddings of words vi_w+1, ... , vi where w = 5 is the filter width, d = 50 is the dimensionality of CW embeddings and 0 &lt; i &lt; |S |+ w. Embeddings for words vi, i &lt; 1 and i &gt; |S|, are set to zero. We then generate the representation pi E Rd of the g-phrase vi_w+1, ... , vi using the convolution 65 matrix Wl E Rdxwd: pi = tanh(Wlci + bl) (1) where block index l = 1, bias bl E Rd. We use wide convolution (i.e., we apply the convolution matrix Wl to words vi, i &lt; 1 and i &gt; |S|) because this makes sure that each</context>
+</contexts>
+<marker>Collobert, Weston, 2008</marker>
+<rawString>Ronan Collobert and Jason Weston. 2008. A unified architecture for natural language processing: Deep neural networks with multitask learning. In Proceedings of the 25th international conference on Machine learning, pages 160–167. ACM.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John Duchi</author>
+<author>Elad Hazan</author>
+<author>Yoram Singer</author>
+</authors>
+<title>Adaptive subgradient methods for online learning and stochastic optimization.</title>
+<date>2011</date>
+<journal>The Journal of Machine Learning Research,</journal>
+<pages>12--2121</pages>
+<contexts>
+<context citStr="Duchi et al., 2011" endWordPosition="4295" position="25045" startWordPosition="4292">y, MultiGranCNN supports a number of different match feature models; the corresponding module can be instantiated in a way that ensures that match features are best suited to support accurate decisions on the TEXTCHUNK relation task that needs to be addressed. 9 Experimental Setup and Results 9.1 Training Suppose the triple (x, y+, y−) is given and x matches y+ better than y−. Then our objective is the minimization of the following ranking loss: l(x, y+, y−) = max(0,1 + s(x, y−) − s(x, y+)) where s(x, y) is the predicted match score for (x, y). We use stochastic gradient descent with Adagrad (Duchi et al., 2011), L2 regularization and minibatch training. We set initial learning rate to 0.05, batch size to 70, L2 weight to 5 · 10−4. Recall that we employ unsupervised pretraining of representations for g-phrases. We can either freeze these representations in subsequent supervised training; or we canfine-tune them. We study the performance of both regimes. 9.2 Clause Coherence Task As introduced by Hu et al. (2014), the clause coherence task determines for a pair (x, y) of clauses if the sentence “xy” is a coherent sentence. We construct a clause coherence dataset as follows (the set used by Hu et al. (</context>
+</contexts>
+<marker>Duchi, Hazan, Singer, 2011</marker>
+<rawString>John Duchi, Elad Hazan, and Yoram Singer. 2011. Adaptive subgradient methods for online learning and stochastic optimization. The Journal of Machine Learning Research, 12:2121–2159.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jianfeng Gao</author>
+<author>Patrick Pantel</author>
+<author>Michael Gamon</author>
+<author>Xiaodong He</author>
+<author>Li Deng</author>
+<author>Yelong Shen</author>
+</authors>
+<title>Modeling interestingness with deep neural networks.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing.</booktitle>
+<contexts>
+<context citStr="Gao et al. (2014)" endWordPosition="1415" position="8822" startWordPosition="1412">d Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions between the two texts were obtained via LDA (Blei et al., 2003) and were then the basis for computing a matching score. Compared to MultiGranCNN, drawbacks of this approach are that LDA parameters are not optimized for the specific task and that the interactions are 64 formed on the level of single words only. Gao et al. (2014) modeled interestingness between two documents with deep NNs. They mapped source-target document pairs to feature vectors in a latent space in such a way that the distance between the source document and its corresponding interesting target in that space was minimized. Interestingness is more like topic relevance, based mainly on the aggregated meaning of keywords, as opposed to more structural relationships as is the case for paraphrasing and clause coherence. We briefly discussed (Hu et al., 2014)’s ARC in Section 1. MultiGranCNN is partially inspired by ARC, but introduces multigranular com</context>
+</contexts>
+<marker>Gao, Pantel, Gamon, He, Deng, Shen, 2014</marker>
+<rawString>Jianfeng Gao, Patrick Pantel, Michael Gamon, Xiaodong He, Li Deng, and Yelong Shen. 2014. Modeling interestingness with deep neural networks. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Baotian Hu</author>
+<author>Zhengdong Lu</author>
+<author>Hang Li</author>
+<author>Qingcai Chen</author>
+</authors>
+<title>Convolutional neural network architectures for matching natural language sentences.</title>
+<date>2014</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>2042--2050</pages>
+<contexts>
+<context citStr="Hu et al. (2014)" endWordPosition="588" position="3685" startWordPosition="585">ular comparability. For general matching, we need the ability to match short sequences in one chunk with long sequences in the other chunk. For example, what is expressed by a single word in one chunk (“reignite” in q+ in the figure) may be expressed by a sequence of several words in its paraphrase (“fan the flames of” in p). To meet this objective, we learn representations for words, phrases and the entire sentence that are all mutually comparable; in particular, these representations all have the same dimensionality and live in the same space. Most prior work (e.g., Blacoe and Lapata (2012; Hu et al. (2014)) has neglected the need for multigranular comparability and performed matching within fixed levels only, e.g., only words were 63 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing, pages 63–73, Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics matched with words or only sentences with sentences. For a general solution to the problem of matching, we instead need the ability to match a unit on a lower level of granularity in one chunk with a unit on a </context>
+<context citStr="Hu et al. (2014)" endWordPosition="853" position="5320" startWordPosition="850">putes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots of training data, then a richer match feature model may be the right choice. This motivates the need for an architecture like MultiGranCNN that allows sele</context>
+<context citStr="Hu et al., 2014" endWordPosition="1498" position="9326" startWordPosition="1495">r the specific task and that the interactions are 64 formed on the level of single words only. Gao et al. (2014) modeled interestingness between two documents with deep NNs. They mapped source-target document pairs to feature vectors in a latent space in such a way that the distance between the source document and its corresponding interesting target in that space was minimized. Interestingness is more like topic relevance, based mainly on the aggregated meaning of keywords, as opposed to more structural relationships as is the case for paraphrasing and clause coherence. We briefly discussed (Hu et al., 2014)’s ARC in Section 1. MultiGranCNN is partially inspired by ARC, but introduces multigranular comparability (thus enabling crosslevel matching) and supports a wider range of match feature models. Our unsupervised learning component (Section 4, last paragraph) resembles word2vec CBOW (Mikolov et al., 2013), but learns representations of TEXTCHUNKS as well as words. It also resembles PV-DM (Le and Mikolov, 2014), but our TEXTCHUNK representation is derived using a hierarchical architecture based on convolution and pooling. 3 Overview of MultiGranCNN We use convolution-plus-pooling in two differen</context>
+<context citStr="Hu et al. (2014)" endWordPosition="3849" position="22473" startWordPosition="3846">ights of 2D wide convolution in block b, fbxfb is then the size of sliding convolution regions. Then the convolution is performed as element-wise multiplication 2If Fˆ has fewer cells than F, then we simply repeat the filling procedure to fill all cells. between Wb and Tb as follows: T bmi−1 ,j−1 = σ(E Wb m,:,:,:Tb:,i−fb:i,j−fb:j+bbm) (6) where 0&lt;m&lt;cb+1, 1 &lt; i, j &lt; sb+fb, bb E Rcb+1. Subsequently, fixed-size 2D pooling selects dominant features from kb x kb non-overlapping windows of ˆTb+1 to form a tensor as input of block b + 1: m,ikb:(i+1)kb,jkb:(j+1)kb) (7) where 0 &lt; i, j &lt; Lsb+fb−1 kb J. Hu et al. (2014) used narrow convolution which would limit the number of blocks. 2D wide convolution in this work enables to stack multiple blocks of convolution and pooling to extract higher-level interaction features. We will study the influence of the number of blocks on performance below. For the experiments, we set s∗ = 40, cb = 50, fb=5,kb=2(b= 1,2,···). 8 MultiGranCNN We can now describe the overall architecture of MultiGranCNN. First, using a Siamese configuration, two copies of gpCNN, one for each of the two input TEXTCHUNKS, produce g-phrase representations on different levels of abstraction (Figure</context>
+<context citStr="Hu et al. (2014)" endWordPosition="4106" position="23935" startWordPosition="4103">a fixed size matrix by dynamic 2D pooling (Section 6). As shown in Figure 6, the resulting fixed size matrix is the input for mfCNN, which extracts interaction features of an element of ˆFr ( i Tm,1= max( ,j ˆTb+1 68 Figure 6: mfCNN &amp; MLP for matching score learning. s∗ = 10, fb = 5, kb = 2, cb = 4 in this example. increasing complexity from the basic interaction features computed by the match feature model. Finally, the output of the last block of mfCNN is the input to an MLP that computes the match score. MultiGranCNN bears resemblance to previous work on clause and sentence matching (e.g., Hu et al. (2014), Socher et al. (2011)), but it is more general and more flexible. It learns representations of g-phrases, i.e., representations of parts of the TEXTCHUNK at multiple granularities, not just for a single level such as the sentence as ARC-I does (Hu et al., 2014). MultiGranCNN explores the space of interactions between the two chunks more exhaustively by considering interactions between every unit in one chunk with every other unit in the other chunk, at all levels of granularity. Finally, MultiGranCNN supports a number of different match feature models; the corresponding module can be instanti</context>
+<context citStr="Hu et al. (2014)" endWordPosition="4360" position="25453" startWordPosition="4357">ization of the following ranking loss: l(x, y+, y−) = max(0,1 + s(x, y−) − s(x, y+)) where s(x, y) is the predicted match score for (x, y). We use stochastic gradient descent with Adagrad (Duchi et al., 2011), L2 regularization and minibatch training. We set initial learning rate to 0.05, batch size to 70, L2 weight to 5 · 10−4. Recall that we employ unsupervised pretraining of representations for g-phrases. We can either freeze these representations in subsequent supervised training; or we canfine-tune them. We study the performance of both regimes. 9.2 Clause Coherence Task As introduced by Hu et al. (2014), the clause coherence task determines for a pair (x, y) of clauses if the sentence “xy” is a coherent sentence. We construct a clause coherence dataset as follows (the set used by Hu et al. (2014) is not yet available). We consider all sentences from English Gigaword (Parker et al., 2009) that consist of two comma-separated clauses x and y, with each clause having between five and 30 words. For each y, we choose four clauses y0 ...y0000 randomly from the 1000 second clauses that have the highest similarity to y, where similarity is cosine similarity of TF-IDF vectors of the clauses; restricti</context>
+<context citStr="Hu et al., 2014" endWordPosition="4602" position="26853" startWordPosition="4599"> create 21 million examples, each consisting of a first clause x and five second clauses. This set is divided into a training set of 19 million and development and test sets of one million each. An example from the training set is given in Figure 1. Then, we study the performance variance of different MultiGranCNN setups from three perspectives: a) layers of CNN in both unsupervised (gpCNN) and supervised (mfCNN) training phases; b) different approaches for clause relation feature modeling; c) dynamic pooling methods for generating same-sized feature matrices. Figure 7 (top table) shows that (Hu et al., 2014)’s parameters are good choices for our setup as well. We get best result when both gpCNN and mfCNN have three blocks of convolution and 69 pooling. This suggests that multiple layers of convolution succeed in extracting high-level features that are beneficial for clause coherence. Figure 7 (2nd table) shows that INDIRECTSIM and CONCAT have comparable performance and both outperform DIRECTSIM. DIRECTSIM is expected to perform poorly because the contents in the two clauses usually have little or no overlapping meaning. In contrast, we can imagine that INDIRECTSIM first transforms the first claus</context>
+<context citStr="Hu et al. (2014)" endWordPosition="4884" position="28628" startWordPosition="4881">INDIRECTSIM 56.31 CONCAT 56.12 pooling method acc dynamic (Socher et al., 2011) grid-based phrase-focused Figure 7: Effect on dev acc (clause coherence) of different factors: # convolution blocks, match feature model, freeze vs. fine-tune, pooling method. Figure 7 (3rd table) demonstrates that finetuning g-phrase representations gives better performance than freezing them. Also, grid-based and phrase-focused pooling outperform dynamic pooling (Socher et al., 2011) (4th table). Phrasefocused pooling performs best. Table 1 compares MultiGranCNN to ARC-I and ARC-II, the architectures proposed by Hu et al. (2014). We also test the five baseline systems from their paper: DeepMatch, WordEmbed, SENMLP, SENNA+MLP, URAE+MLP. For MultiGranCNN, we use the best dev set settings: number of convolution layers in gpCNN and mfCNN is 3; INDIRECTSIM; phrase-focused pooling. Table 1 shows that MultiGranCNN outperforms all other approaches on clause coherence test set. 9.3 Paraphrase Identification Task We evaluate paraphrase identification (PI) on the PAN corpus (http://bit.ly/mt-para, (Madnani et al., 2012)), consisting of training and test sets of 10,000 and 3000 sentence pairs, respectively. Sentences are about 4</context>
+<context citStr="Hu et al., 2014" endWordPosition="5124" position="30104" startWordPosition="5121">choice of dynamic pooling is task independent. For parameter selection, we split the PAN training set into a core training set (core) of size 9000 and a development set (dev) of size 1000. We then train models on core and select parameters based on best performance on dev. The best results on dev are obtained for the following parameters: freezing g-phrase representations, DIRECTSIM, two convolution layers in gpCNN, no convolution layers in mfCNN. We use these parameter settings to train a model on the entire training set and report performance in Table 2. We compare MultiGranCNN to ARC-I/II (Hu et al., 2014), and two previous papers reporting performance on PAN. Madnani et al. (2012) used a combination of three basic MT metrics (BLEU, NIST and TER) and five complex MT metrics (TERp, METEOR, BADGER, MAXISIM, model acc Random Guess 20.00 DeepMatch 34.17 WordEmbed 38.28 SENMLP 34.57 SENNA+MLP 42.09 URAE+MLP 27.41 ARC-I 45.04 ARC-II 50.18 MultiGranCNN 56.27 Table 1: Performance on clause coherence test set. acc gpCNN freeze g-phrase represenations or not acc MultiGranCNN (freeze) 55.79 MultiGranCNN (fine-tune) 56.31 55.91 56.07 56.31 70 SEPIA), computed on entire sentences. Bach et al. (2014) applied</context>
+<context citStr="Hu et al. (2014)" endWordPosition="5399" position="31825" startWordPosition="5396">ned in unsupervised training (Figure 2) performs better thanfine-tuning them; also, Table 3 shows that the best result is achieved if no convolution is used in mfCNN. Thus, the best configuration for paraphrase identification is to “forward” fixed-size interaction matrices as input to the logistic regression, without any intermediate convolution layers. Freezing weights learned in unsupervised training and no convolution layers in mfCNN both protect against overfitting. Complex deep neural networks are in particular danger of overfitting when training sets are small as in the case of PAN (cf. Hu et al. (2014)). In contrast, fine-tuning weights and several convolution layers were the optimal setup for clause coherence. For clause coherence, we have a much larger training set and therefore can successfully train a much larger number of parameters. Table 3 shows that CONCAT performs badly for PI while DIRECTSIM and INDIRECTSIM perform well. We can conceptualize PI as the task of determining if each meaning element in 51 has a similar meaning element in 52. The s1 × s2 DIRECTSIM feature model directly models this task and the s1×s2 INDIRECTSIM feature model also models it, but learning a transformatio</context>
+</contexts>
+<marker>Hu, Lu, Li, Chen, 2014</marker>
+<rawString>Baotian Hu, Zhengdong Lu, Hang Li, and Qingcai Chen. 2014. Convolutional neural network architectures for matching natural language sentences. In Advances in Neural Information Processing Systems, pages 2042–2050.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mohit Iyyer</author>
+<author>Jordan Boyd-Graber</author>
+<author>Leonardo Claudino</author>
+<author>Richard Socher</author>
+<author>Hal Daum´e</author>
+</authors>
+<title>A neural network for factoid question answering over paragraphs.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>633--644</pages>
+<marker>Iyyer, Boyd-Graber, Claudino, Socher, Daum´e, 2014</marker>
+<rawString>Mohit Iyyer, Jordan Boyd-Graber, Leonardo Claudino, Richard Socher, and Hal Daum´e III. 2014. A neural network for factoid question answering over paragraphs. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing, pages 633–644.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yangfeng Ji</author>
+<author>Jacob Eisenstein</author>
+</authors>
+<title>Discriminative improvements to distributional sentence similarity.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>891--896</pages>
+<marker>Ji, Eisenstein, 2013</marker>
+<rawString>Yangfeng Ji and Jacob Eisenstein. 2013. Discriminative improvements to distributional sentence similarity. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, pages 891–896.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nal Kalchbrenner</author>
+<author>Edward Grefenstette</author>
+<author>Phil Blunsom</author>
+</authors>
+<title>A convolutional neural network for modelling sentences.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics. Association for Computational Linguistics.</booktitle>
+<contexts>
+<context citStr="Kalchbrenner et al. (2014)" endWordPosition="2236" position="13563" startWordPosition="2233">t of pooling from the previous layer of convolution – as we will explain presently. The configuration is the same (e.g., all Wl E Rdxwd) because, by design, all g-phrase representations have the same dimensionality d. This also ensures that each g-phrase representation can be directly compared with each other g-phrase representation. We use dynamic k-max pooling to extract the kl top values from each dimension after convolution in the lth block and the kL top values in the final block. We set kl = max(α, rL � l L |S|D (2) where l = 1, · · · , L is the block index, and α = 4 is a constant (cf. Kalchbrenner et al. (2014)) that makes sure a reasonable minimum number of values is passed on to the next layer. We set kL = 1 (not 4, cf. Kalchbrenner et al. (2014)) because our design dictates that all g-phrase representations, including the representation of the TEXTCHUNK itself, have the same dimensionality. Example: for L = 4, |S |= 20, the ki are [15,10, 5,1]. Dynamic k-max pooling keeps the most important features and allows us to stack multiple blocks to extract hiearchical features: units on consecutive layers correspond to larger and larger parts of the TEXTCHUNK thanks to the subset selection property of po</context>
+</contexts>
+<marker>Kalchbrenner, Grefenstette, Blunsom, 2014</marker>
+<rawString>Nal Kalchbrenner, Edward Grefenstette, and Phil Blunsom. 2014. A convolutional neural network for modelling sentences. In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Quoc V Le and Tomas Mikolov</author>
+</authors>
+<title>Distributed representations of sentences and documents.</title>
+<date>2014</date>
+<booktitle>Proceedings of The 31st International Conference on Machine Learning,</booktitle>
+<pages>1188--1196</pages>
+<contexts>
+<context citStr="Mikolov, 2014" endWordPosition="1559" position="9738" startWordPosition="1558">ic relevance, based mainly on the aggregated meaning of keywords, as opposed to more structural relationships as is the case for paraphrasing and clause coherence. We briefly discussed (Hu et al., 2014)’s ARC in Section 1. MultiGranCNN is partially inspired by ARC, but introduces multigranular comparability (thus enabling crosslevel matching) and supports a wider range of match feature models. Our unsupervised learning component (Section 4, last paragraph) resembles word2vec CBOW (Mikolov et al., 2013), but learns representations of TEXTCHUNKS as well as words. It also resembles PV-DM (Le and Mikolov, 2014), but our TEXTCHUNK representation is derived using a hierarchical architecture based on convolution and pooling. 3 Overview of MultiGranCNN We use convolution-plus-pooling in two different components of MultiGranCNN. The first component, the generalized phrase CNN (gpCNN), will be introduced in Section 4. This component learns representations for generalized phrases (gphrases) where a generalized phrase is a general term for subsequences of all granularities: words, short phrases, long phrases and the sentence itself. The gpCNN architecture has L layers of convolution, corresponding (for L = </context>
+</contexts>
+<marker>Mikolov, 2014</marker>
+<rawString>Quoc V Le and Tomas Mikolov. 2014. Distributed representations of sentences and documents. Proceedings of The 31st International Conference on Machine Learning, pages 1188–1196.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hang Li</author>
+<author>Jun Xu</author>
+</authors>
+<title>Beyond bag-of-words: machine learning for query-document matching in web search.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 35th international ACM SIGIR conference on Research and development in information retrieval,</booktitle>
+<pages>1177--1177</pages>
+<publisher>ACM.</publisher>
+<contexts>
+<context citStr="Li and Xu (2012)" endWordPosition="1313" position="8216" startWordPosition="1310">in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions between the two texts were obtained via LDA (Blei et al., 2003) and were then the basis for computing a matching score. Compared to MultiGranCNN, drawbacks of this approach are that LDA parameters are not optimized for the specific task and that the interactions are 64 formed on the level of single words only. Gao et al. </context>
+</contexts>
+<marker>Li, Xu, 2012</marker>
+<rawString>Hang Li and Jun Xu. 2012. Beyond bag-of-words: machine learning for query-document matching in web search. In Proceedings of the 35th international ACM SIGIR conference on Research and development in information retrieval, pages 1177–1177. ACM.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Xutao Li</author>
+<author>Michael K Ng</author>
+<author>Yunming Ye</author>
+</authors>
+<title>Har: Hub, authority and relevance scores in multirelational data for query search.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 12th SIAM International Conference on Data Mining,</booktitle>
+<pages>141--152</pages>
+<publisher>SIAM.</publisher>
+<contexts>
+<context citStr="Li et al. (2012)" endWordPosition="127" position="909" startWordPosition="124">ning architecture for matching text chunks. MultiGranCNN supports multigranular comparability of representations: shorter sequences in one chunk can be directly compared to longer sequences in the other chunk. MultiGranCNN also contains a flexible and modularized match feature component that is easily adaptable to different types of chunk matching. We demonstrate stateof-the-art performance of MultiGranCNN on clause coherence and paraphrase identification tasks. 1 Introduction Many natural language processing (NLP) tasks can be posed as classifying the relationship between two TEXTCHUNKS (cf. Li et al. (2012), Bordes et al. (2014b)) where a TEXTCHUNK can be a sentence, a clause, a paragraph or any other sequence of words that forms a unit. Paraphrasing (Figure 1, top) is one task that we address in this paper and that can be formalized as classifying a TEXTCHUNK relation. The two classes correspond to the sentences being (e.g., the pair &lt;p, q+&gt;) or not being (e.g., the pair &lt;p, q−&gt;) paraphrases of each other. Another task we look at is clause coherence (Figure 1, bottom). Here the two TEXTCHUNK relation classes correspond to the second clause being (e.g., the pair &lt;x, y+&gt;) or not being (e.g., the </context>
+</contexts>
+<marker>Li, Ng, Ye, 2012</marker>
+<rawString>Xutao Li, Michael K Ng, and Yunming Ye. 2012. Har: Hub, authority and relevance scores in multirelational data for query search. In Proceedings of the 12th SIAM International Conference on Data Mining, pages 141–152. SIAM.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chen Liu</author>
+</authors>
+<title>Probabilistic Siamese Network for Learning Representations.</title>
+<date>2013</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Toronto.</institution>
+<contexts>
+<context citStr="Liu (2013)" endWordPosition="1264" position="7897" startWordPosition="1263">tained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions betw</context>
+</contexts>
+<marker>Liu, 2013</marker>
+<rawString>Chen Liu. 2013. Probabilistic Siamese Network for Learning Representations. Ph.D. thesis, University of Toronto.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Zhengdong Lu</author>
+<author>Hang Li</author>
+</authors>
+<title>A deep architecture for matching short texts.</title>
+<date>2013</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>1367--1375</pages>
+<contexts>
+<context citStr="Lu and Li (2013)" endWordPosition="1348" position="8444" startWordPosition="1345"> 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sentence matching. Lu and Li (2013) addressed matching of short texts. Interactions between the two texts were obtained via LDA (Blei et al., 2003) and were then the basis for computing a matching score. Compared to MultiGranCNN, drawbacks of this approach are that LDA parameters are not optimized for the specific task and that the interactions are 64 formed on the level of single words only. Gao et al. (2014) modeled interestingness between two documents with deep NNs. They mapped source-target document pairs to feature vectors in a latent space in such a way that the distance between the source document and its corresponding </context>
+</contexts>
+<marker>Lu, Li, 2013</marker>
+<rawString>Zhengdong Lu and Hang Li. 2013. A deep architecture for matching short texts. In Advances in Neural Information Processing Systems, pages 1367–1375.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nitin Madnani</author>
+<author>Joel Tetreault</author>
+<author>Martin Chodorow</author>
+</authors>
+<title>Re-examining machine translation metrics for paraphrase identification.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 2012 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies,</booktitle>
+<pages>182--190</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Madnani et al., 2012" endWordPosition="839" position="5242" startWordPosition="836">NN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots of training data, then a richer match feature model may be the right choice. </context>
+<context citStr="Madnani et al., 2012" endWordPosition="1087" position="6778" startWordPosition="1084">MultiGranCNN; Section 4 shows how to learn representations for generalized phrases (gphrases); Section 5 describes the three matching models: DIRECTSIM, INDIRECTSIM and CONCAT; Section 6 describes the two 2D pooling methods: grid-based pooling and phrase-based pooling; Section 7 describes the match feature CNN; Section 8 summarizes the architecture of MultiGran CNN; and Section 9 presents experiments; finally, Section 10 concludes. 2 Related Work Paraphrase identification (PI) is a typical task of sentence matching and it has been frequently studied (Qiu et al., 2006; Blacoe and Lapata, 2012; Madnani et al., 2012; Ji and Eisenstein, 2013). Socher et al. (2011) utilized parsing to model the hierarchical structure of sentences and uses unfolding recursive autoencoders to learn representations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion als</context>
+<context citStr="Madnani et al., 2012" endWordPosition="4957" position="29118" startWordPosition="4954">asefocused pooling performs best. Table 1 compares MultiGranCNN to ARC-I and ARC-II, the architectures proposed by Hu et al. (2014). We also test the five baseline systems from their paper: DeepMatch, WordEmbed, SENMLP, SENNA+MLP, URAE+MLP. For MultiGranCNN, we use the best dev set settings: number of convolution layers in gpCNN and mfCNN is 3; INDIRECTSIM; phrase-focused pooling. Table 1 shows that MultiGranCNN outperforms all other approaches on clause coherence test set. 9.3 Paraphrase Identification Task We evaluate paraphrase identification (PI) on the PAN corpus (http://bit.ly/mt-para, (Madnani et al., 2012)), consisting of training and test sets of 10,000 and 3000 sentence pairs, respectively. Sentences are about 40 words long on average. Since PI is a binary classification task, we replace the MLP with a logistic regression layer. As phrase-focused pooling was proven to be optimal, we directly use phrase-focused pooling in PI task without comparison, assuming that the choice of dynamic pooling is task independent. For parameter selection, we split the PAN training set into a core training set (core) of size 9000 and a development set (dev) of size 1000. We then train models on core and select p</context>
+</contexts>
+<marker>Madnani, Tetreault, Chodorow, 2012</marker>
+<rawString>Nitin Madnani, Joel Tetreault, and Martin Chodorow. 2012. Re-examining machine translation metrics for paraphrase identification. In Proceedings of the 2012 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 182–190. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Tomas Mikolov</author>
+<author>Ilya Sutskever</author>
+<author>Kai Chen</author>
+<author>Greg S Corrado</author>
+<author>Jeff Dean</author>
+</authors>
+<title>Distributed representations of words and phrases and their compositionality.</title>
+<date>2013</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>3111--3119</pages>
+<contexts>
+<context citStr="Mikolov et al., 2013" endWordPosition="1541" position="9631" startWordPosition="1538">ce document and its corresponding interesting target in that space was minimized. Interestingness is more like topic relevance, based mainly on the aggregated meaning of keywords, as opposed to more structural relationships as is the case for paraphrasing and clause coherence. We briefly discussed (Hu et al., 2014)’s ARC in Section 1. MultiGranCNN is partially inspired by ARC, but introduces multigranular comparability (thus enabling crosslevel matching) and supports a wider range of match feature models. Our unsupervised learning component (Section 4, last paragraph) resembles word2vec CBOW (Mikolov et al., 2013), but learns representations of TEXTCHUNKS as well as words. It also resembles PV-DM (Le and Mikolov, 2014), but our TEXTCHUNK representation is derived using a hierarchical architecture based on convolution and pooling. 3 Overview of MultiGranCNN We use convolution-plus-pooling in two different components of MultiGranCNN. The first component, the generalized phrase CNN (gpCNN), will be introduced in Section 4. This component learns representations for generalized phrases (gphrases) where a generalized phrase is a general term for subsequences of all granularities: words, short phrases, long p</context>
+<context citStr="Mikolov et al., 2013" endWordPosition="2370" position="14352" startWordPosition="2367">s that all g-phrase representations, including the representation of the TEXTCHUNK itself, have the same dimensionality. Example: for L = 4, |S |= 20, the ki are [15,10, 5,1]. Dynamic k-max pooling keeps the most important features and allows us to stack multiple blocks to extract hiearchical features: units on consecutive layers correspond to larger and larger parts of the TEXTCHUNK thanks to the subset selection property of pooling. For many tasks, labeled data for training gpCNN is limited. We therefore employ unsupervised training to initialize gpCNN as shown in Figure 2. Similar to CBOW (Mikolov et al., 2013), we predict a sampled middle word vi from the average of seven vectors: the TEXTCHUNK representation (the final output of gpCNN) and the three words to the left and to the right of vi. We use noise-contrastive estimation (Mnih and Teh, 2012) for training: 10 noise words are sampled for each true example. Figure 3: General illustration of match feature model. In this example, both S1 and S2 have 10 gphrases, so the match feature matrix Fˆ E Rs1xs2 has size 10 x 10. 5 Match Feature Models Let g1, ... , gsk be an enumeration of the sk gphrases of TEXTCHUNK Sk. Let Sk E Rskxd be the matrix, const</context>
+</contexts>
+<marker>Mikolov, Sutskever, Chen, Corrado, Dean, 2013</marker>
+<rawString>Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg S Corrado, and Jeff Dean. 2013. Distributed representations of words and phrases and their compositionality. In Advances in Neural Information Processing Systems, pages 3111–3119.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Andriy Mnih</author>
+<author>Yee Whye Teh</author>
+</authors>
+<title>A fast and simple algorithm for training neural probabilistic language models.</title>
+<date>2012</date>
+<booktitle>In Proceedings of the 29th International Conference on Machine Learning,</booktitle>
+<pages>1751--1758</pages>
+<contexts>
+<context citStr="Mnih and Teh, 2012" endWordPosition="2414" position="14594" startWordPosition="2411">s to stack multiple blocks to extract hiearchical features: units on consecutive layers correspond to larger and larger parts of the TEXTCHUNK thanks to the subset selection property of pooling. For many tasks, labeled data for training gpCNN is limited. We therefore employ unsupervised training to initialize gpCNN as shown in Figure 2. Similar to CBOW (Mikolov et al., 2013), we predict a sampled middle word vi from the average of seven vectors: the TEXTCHUNK representation (the final output of gpCNN) and the three words to the left and to the right of vi. We use noise-contrastive estimation (Mnih and Teh, 2012) for training: 10 noise words are sampled for each true example. Figure 3: General illustration of match feature model. In this example, both S1 and S2 have 10 gphrases, so the match feature matrix Fˆ E Rs1xs2 has size 10 x 10. 5 Match Feature Models Let g1, ... , gsk be an enumeration of the sk gphrases of TEXTCHUNK Sk. Let Sk E Rskxd be the matrix, constructed by concatenating the four matrices of unigram, short phrase, long phrase and sentence representations shown in Figure 2 that contain the learned representations from Section 4 for these sk g-phrases; i.e., row Ski is the learned repres</context>
+</contexts>
+<marker>Mnih, Teh, 2012</marker>
+<rawString>Andriy Mnih and Yee Whye Teh. 2012. A fast and simple algorithm for training neural probabilistic language models. In Proceedings of the 29th International Conference on Machine Learning, pages 1751–1758.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Robert Parker</author>
+</authors>
+<title>Linguistic Data Consortium, et al.</title>
+<date>2009</date>
+<marker>Parker, 2009</marker>
+<rawString>Robert Parker, Linguistic Data Consortium, et al. 2009. English gigaword fourth edition. Linguistic Data Consortium.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Long Qiu</author>
+<author>Min-Yen Kan</author>
+<author>Tat-Seng Chua</author>
+</authors>
+<title>Paraphrase recognition via dissimilarity significance classification.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>18--26</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Qiu et al., 2006" endWordPosition="1079" position="6731" startWordPosition="1076">ection 3 gives an overview of the proposed MultiGranCNN; Section 4 shows how to learn representations for generalized phrases (gphrases); Section 5 describes the three matching models: DIRECTSIM, INDIRECTSIM and CONCAT; Section 6 describes the two 2D pooling methods: grid-based pooling and phrase-based pooling; Section 7 describes the match feature CNN; Section 8 summarizes the architecture of MultiGran CNN; and Section 9 presents experiments; finally, Section 10 concludes. 2 Related Work Paraphrase identification (PI) is a typical task of sentence matching and it has been frequently studied (Qiu et al., 2006; Blacoe and Lapata, 2012; Madnani et al., 2012; Ji and Eisenstein, 2013). Socher et al. (2011) utilized parsing to model the hierarchical structure of sentences and uses unfolding recursive autoencoders to learn representations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an impor</context>
+</contexts>
+<marker>Qiu, Kan, Chua, 2006</marker>
+<rawString>Long Qiu, Min-Yen Kan, and Tat-Seng Chua. 2006. Paraphrase recognition via dissimilarity significance classification. In Proceedings of the 2006 Conference on Empirical Methods in Natural Language Processing, pages 18–26. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Richard Socher</author>
+<author>Eric H Huang</author>
+<author>Jeffrey Pennin</author>
+<author>Christopher D Manning</author>
+<author>Andrew Y Ng</author>
+</authors>
+<title>Dynamic pooling and unfolding recursive autoencoders for paraphrase detection.</title>
+<date>2011</date>
+<booktitle>In Advances in Neural Information Processing Systems,</booktitle>
+<pages>801--809</pages>
+<contexts>
+<context citStr="Socher et al., 2011" endWordPosition="696" position="4361" startWordPosition="693"> and performed matching within fixed levels only, e.g., only words were 63 Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing, pages 63–73, Beijing, China, July 26-31, 2015. c�2015 Association for Computational Linguistics matched with words or only sentences with sentences. For a general solution to the problem of matching, we instead need the ability to match a unit on a lower level of granularity in one chunk with a unit on a higher level of granularity in the other chunk. Unlike (Socher et al., 2011), our model does not rely on parsing and it can more exhaustively search the hypothesis space of possible matchings, including matchings that correspond to conflicting segmentations of the input chunks (see Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be sw</context>
+<context citStr="Socher et al. (2011)" endWordPosition="1095" position="6826" startWordPosition="1092">sentations for generalized phrases (gphrases); Section 5 describes the three matching models: DIRECTSIM, INDIRECTSIM and CONCAT; Section 6 describes the two 2D pooling methods: grid-based pooling and phrase-based pooling; Section 7 describes the match feature CNN; Section 8 summarizes the architecture of MultiGran CNN; and Section 9 presents experiments; finally, Section 10 concludes. 2 Related Work Paraphrase identification (PI) is a typical task of sentence matching and it has been frequently studied (Qiu et al., 2006; Blacoe and Lapata, 2012; Madnani et al., 2012; Ji and Eisenstein, 2013). Socher et al. (2011) utilized parsing to model the hierarchical structure of sentences and uses unfolding recursive autoencoders to learn representations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work,</context>
+<context citStr="Socher et al., 2011" endWordPosition="3083" position="18457" startWordPosition="3080">) (5) where ei,j E R2d is the concatenation of S1i and S2j. We can learn different combination weights w to solve different types of TEXTCHUNK matching. We call this match feature model CONCAT because we implement it by concatenating g-phrase vectors to form a tensor as shown in Figure 4. The match feature models implement multigranular comparability: they match all units in one TEXTCHUNK with all units in the other TEXTCHUNK. This is necessary because a general solution to matching must match a low-level unit like “reignite” to a higher-level unit like “fan the flames of” (Figure 1). Unlike (Socher et al., 2011), our model does not rely on parsing; therefore, it can more exhaustively search the hypothesis space of possible matchings: mfCNN covers a wide variety of different, possibly overlapping units, not just those of a single parse tree. 6 Dynamic 2D Pooling The match feature models generate an s1 x s2 matrix. Since it has variable size, we apply two different dynamic 2D pooling methods, grid-based pooling and phrase-focused pooling, to transform it to a fixed size matrix. 6.1 Grid-based pooling We need to map Fˆ E Rs1×s2 into a matrix F of fixed size s∗ x s∗ where s∗ is a parameter. Gridbased poo</context>
+<context citStr="Socher et al. (2011)" endWordPosition="4110" position="23957" startWordPosition="4107">x by dynamic 2D pooling (Section 6). As shown in Figure 6, the resulting fixed size matrix is the input for mfCNN, which extracts interaction features of an element of ˆFr ( i Tm,1= max( ,j ˆTb+1 68 Figure 6: mfCNN &amp; MLP for matching score learning. s∗ = 10, fb = 5, kb = 2, cb = 4 in this example. increasing complexity from the basic interaction features computed by the match feature model. Finally, the output of the last block of mfCNN is the input to an MLP that computes the match score. MultiGranCNN bears resemblance to previous work on clause and sentence matching (e.g., Hu et al. (2014), Socher et al. (2011)), but it is more general and more flexible. It learns representations of g-phrases, i.e., representations of parts of the TEXTCHUNK at multiple granularities, not just for a single level such as the sentence as ARC-I does (Hu et al., 2014). MultiGranCNN explores the space of interactions between the two chunks more exhaustively by considering interactions between every unit in one chunk with every other unit in the other chunk, at all levels of granularity. Finally, MultiGranCNN supports a number of different match feature models; the corresponding module can be instantiated in a way that ens</context>
+<context citStr="Socher et al., 2011" endWordPosition="4807" position="28091" startWordPosition="4804">part and then matches this counterpart with the second clause y. In CONCAT, each of s1×s2 pairs of g-phrases is concatentated and supervised training can then learn an unrestricted function to assess the importance of this pair for clause coherence (cf. Eq. 5). Again, this is clearly a more promising TEXTCHUNK relation model for clause coherence than one that relies on DIRECTSIM. 0 mfCNN 3 1 2 0 38.02 44.08 47.81 48.43 1 40.91 45.31 51.73 52.13 2 43.10 48.06 54.14 54.86 3 45.62 51.77 55.97 56.31 match feature model acc DIRECTSIM 25.40 INDIRECTSIM 56.31 CONCAT 56.12 pooling method acc dynamic (Socher et al., 2011) grid-based phrase-focused Figure 7: Effect on dev acc (clause coherence) of different factors: # convolution blocks, match feature model, freeze vs. fine-tune, pooling method. Figure 7 (3rd table) demonstrates that finetuning g-phrase representations gives better performance than freezing them. Also, grid-based and phrase-focused pooling outperform dynamic pooling (Socher et al., 2011) (4th table). Phrasefocused pooling performs best. Table 1 compares MultiGranCNN to ARC-I and ARC-II, the architectures proposed by Hu et al. (2014). We also test the five baseline systems from their paper: Deep</context>
+</contexts>
+<marker>Socher, Huang, Pennin, Manning, Ng, 2011</marker>
+<rawString>Richard Socher, Eric H Huang, Jeffrey Pennin, Christopher D Manning, and Andrew Y Ng. 2011. Dynamic pooling and unfolding recursive autoencoders for paraphrase detection. In Advances in Neural Information Processing Systems, pages 801–809.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Pengcheng Wu</author>
+<author>Steven CH Hoi</author>
+<author>Hao Xia</author>
+<author>Peilin Zhao</author>
+<author>Dayong Wang</author>
+<author>Chunyan Miao</author>
+</authors>
+<title>Online multimodal deep similarity learning with application to image retrieval.</title>
+<date>2013</date>
+<booktitle>In Proceedings of the 21st ACM international conference on Multimedia,</booktitle>
+<pages>153--162</pages>
+<publisher>ACM.</publisher>
+<contexts>
+<context citStr="Wu et al. (2013)" endWordPosition="2797" position="16756" startWordPosition="2794">se coherence, we want a score that models how good a continuation one g-phrase is for the other. These considerations motivate us to define three different match feature models that we will introduce now. The first match feature model is DIRECTSIM. 1In response to a reviewer question, recall that si is the total number of g-phrases of Si, so there is only one s1 × s2 matrix, not several on different levels of granularity. 66 Figure 4: CONCAT match feature model This model computes the match score of two gphrases as their similarity using a radial basis function kernel: where we set β = 2 (cf. Wu et al. (2013)). DIRECTSIM is an appropriate feature model for TEXTCHUNK relations like paraphrasing because in that case direct similarity features are helpful in assessing meaning equivalence. The second match feature model is INDIRECTSIM. Instead of computing the similarity directly as we do for DIRECTSIM, we first transform the representation of the g-phrase in one TEXTCHUNK using a transformation matrix M E Rd×d, then compute the match score by inner product and sigmoid activation: ˆFi,j = σ(S1iMST2j + b), (4) Our motivation is that for a TEXTCHUNK relation like clause coherence, the two TEXTCHUNKS nee</context>
+</contexts>
+<marker>Wu, Hoi, Xia, Zhao, Wang, Miao, 2013</marker>
+<rawString>Pengcheng Wu, Steven CH Hoi, Hao Xia, Peilin Zhao, Dayong Wang, and Chunyan Miao. 2013. Online multimodal deep similarity learning with application to image retrieval. In Proceedings of the 21st ACM international conference on Multimedia, pages 153– 162. ACM.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Min-Chul Yang</author>
+<author>Nan Duan</author>
+<author>Ming Zhou</author>
+<author>HaeChang Rim</author>
+</authors>
+<title>Joint relational embeddings for knowledge-based question answering.</title>
+<date>2014</date>
+<booktitle>In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>645--650</pages>
+<contexts>
+<context citStr="Yang et al., 2014" endWordPosition="1249" position="7813" startWordPosition="1246">eral sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as well as sentence representations. Li and Xu (2012) gave a comprehensive introduction to query-document matching and argued that query and document match at different levels: term, phrase, word sense, topic, structure etc. This also applies to sent</context>
+</contexts>
+<marker>Yang, Duan, Zhou, Rim, 2014</marker>
+<rawString>Min-Chul Yang, Nan Duan, Ming Zhou, and HaeChang Rim. 2014. Joint relational embeddings for knowledge-based question answering. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing, pages 645–650.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lei Yu</author>
+<author>Karl Moritz Hermann</author>
+<author>Phil Blunsom</author>
+<author>Stephen Pulman</author>
+</authors>
+<title>Deep learning for answer sentence selection. NIPS deep learning workshop.</title>
+<date>2014</date>
+<contexts>
+<context citStr="Yu et al., 2014" endWordPosition="829" position="5183" startWordPosition="826"> Section 5). Our second contribution is that MultiGranCNN contains a flexible and modularized match feature component. This component computes the basic features that measure how well phrases of the two chunks match. We investigate three different match feature models that demonstrate that a wide variety of different match feature models can be implemented. The match feature models can be swapped in and out of MultiGranCNN, depending on the characteristics of the task to be solved. Prior work that has addressed matching tasks has usually focused on a single task like QA (Bordes et al., 2014a; Yu et al., 2014) or paraphrasing (Socher et al., 2011; Madnani et al., 2012; Ji and Eisenstein, 2013). The ARC architectures proposed by Hu et al. (2014) are intended to be more general, but seem to be somewhat limited in their flexibility to model different matching relations; e.g., they do not perform well for paraphrasing. Different match feature models may also be required by factors other than the characteristics of the task. If the amount of labeled training data is small, then we may prefer a match feature model with few parameters that is robust against overfitting. If there is lots of training data, </context>
+<context citStr="Yu et al. (2014)" endWordPosition="1209" position="7566" startWordPosition="1206">entations for single words and phrases acting as nonleaf nodes in the tree. The main difference to MultiGranCNN is that we stack multiple convolution layers to model flexible phrases and learn representations for them, and aim to address more general sentence correspondence. Bach et al. (2014) claimed that elementary discourse units obtained by segmenting sentences play an important role in paraphrasing. Their conclusion also endorses (Socher et al., 2011)’s and our work, for both take interactions between component phrases into account. QA is another representative sentence matching problem. Yu et al. (2014) modeled sentence representations in a simplified CNN, finally finding the match score by projecting question and answer candidates into the same space. Other relevant QA work includes (Bordes et al., 2014c; Bordes et al., 2014a; Yang et al., 2014; Iyyer et al., 2014) For more general matching, Chopra et al. (2005) and Liu (2013) used a Siamese architecture of shared-weight neural networks (NNs) to model two objects simultaneously, matching their representations and then learning a specific type of sentence relation. We adopt parts of their architecture, but we model phrase representations as </context>
+</contexts>
+<marker>Yu, Hermann, Blunsom, Pulman, 2014</marker>
+<rawString>Lei Yu, Karl Moritz Hermann, Phil Blunsom, and Stephen Pulman. 2014. Deep learning for answer sentence selection. NIPS deep learning workshop.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

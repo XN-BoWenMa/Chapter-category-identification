@@ -1,0 +1,929 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000024" no="0">
+<title confidence="0.985817">
+Identifying Generic Noun Phrases
+</title>
+<author confidence="0.97632">
+Nils Reiter and Anette Frank
+</author>
+<affiliation confidence="0.915775">
+Department of Computational Linguistics
+Heidelberg University, Germany
+</affiliation>
+<email confidence="0.99151">
+{reiter,frank}@cl.uni-heidelberg.de
+</email>
+<sectionHeader confidence="0.997289" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999976058823529">This paper presents a supervised approach for identifying generic noun phrases in context. Generic statements express rulelike knowledge about kinds or events. Therefore, their identification is important for the automatic construction of knowledge bases. In particular, the distinction between generic and non-generic statements is crucial for the correct encoding of generic and instance-level information. Generic expressions have been studied extensively in formal semantics. Building on this work, we explore a corpus-based learning approach for identifying generic NPs, using selections of linguistically motivated features. Our results perform well above the baseline and existing prior work.</bodyText>
+<sectionHeader confidence="0.999517" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.988801714285714">Generic expressions come in two basic forms: generic noun phrases and generic sentences. Both express rule-like knowledge, but in different ways. A generic noun phrase is a noun phrase that does not refer to a specific (set of) individual(s), but rather to a kind or class of individuals. Thus, the NP The lion in (1.a)1 is understood as a reference to the class “lion” instead of a specific individual. Generic NPs are not restricted to occur with kind-related predicates as in (1.a). As seen in (1.b), they may equally well be combined with predicates that denote specific actions. In contrast to (1.a), the property defined by the verb phrase in (1.b) may hold of individual lions.</bodyText>
+<listItem confidence="0.898049666666667">(1) a. The lion was the most widespread mammal. b. Lions eat up to 30 kg in one sitting.</listItem>
+<footnote confidence="0.836262">
+1All examples are taken from Wikipedia unless stated oth-
+erwise.
+</footnote>
+<bodyText confidence="0.945022380952381">Generic sentences are characterising sentences that quantify over situations or events, expressing rule-like knowledge about habitual actions or situations (2.a). This is in contrast with sentences that refer to specific events and individuals, as in (2.b). (2) a. After 1971 [Paul Erd˝os] also took amphetamines. b. Paul Erd˝os was born [...] on March 26, 1913. The genericity of an expression may arise from the generic (kind-referring, class-denoting) interpretation of the NP or the characterising interpretation of the sentence predicate. Both sources may concur in a single sentence, as illustrated in Table 1, where we have cross-classified the examples above according to the genericity of the NP and the sentence. This classification is extremely difficult, because (i) the criteria for generic interpretation are far from being clear-cut and (ii) both sources of genericity may freely interact.</bodyText>
+<equation confidence="0.646973333333333">
+S[gen+] S[gen-]
+NP[gen+] (1.b) (1.a)
+NP[gen-] (2.a) (2.b)
+</equation>
+<tableCaption confidence="0.989922">
+Table 1: Generic NPs and generic sentences
+</tableCaption>
+<bodyText confidence="0.999862777777778">The above classification of generic expressions is well established in traditional formal semantics (cf. Krifka et al. (1995))2. As we argue in this paper, these distinctions are relevant for semantic processing in computational linguistics, especially for information extraction and ontology learning and population tasks. With appropriate semantic analysis of generic statements, we can not only formally capture and exploit generic knowledge, but also distinguish between information pertaining to individuals vs. classes.</bodyText>
+<footnote confidence="0.994517">
+2The literature draws some finer distinctions including as-
+pects like specificity, which we will ignore in this work.
+</footnote>
+<page confidence="0.96569">
+40
+</page>
+<note confidence="0.9444435">
+Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 40–49,
+Uppsala, Sweden, 11-16 July 2010. c�2010 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.998830033333334">We will argue that the automatic identification of generic expressions should be cast as a machine learning problem instead of a rule-based approach, as there is (i) no transparent marking of genericity in English (as in most other European languages) and (ii) the phenomenon is highly context dependent. In this paper, we build on insights from formal semantics to establish a corpus-based machine learning approach for the automatic classification of generic expressions. In principle our approach is applicable to the detection of both generic NPs and generic sentences, and in fact it would be highly desirable and possibly advantageous to cover both types of genericity simultaneously. Our current work is confined to generic NPs, as there are no corpora available at present that contain annotations for genericity at the sentence level. The paper is organised as follows. Section 2 introduces generic expressions and motivates their relevance for knowledge acquisition and semantic processing tasks in computational linguistics. Section 3 reviews prior and related work. In section 4 we motivate the choice of feature sets for the automatic identification of generic NPs in context. Sections 5 and 6 present our experiments and results obtained for this task on the ACE-2 data set.Section 7 concludes.</bodyText>
+<sectionHeader confidence="0.947617" genericHeader="introduction">
+2 Generic Expressions &amp; their Relevance
+for Computational Linguistics
+</sectionHeader>
+<subsectionHeader confidence="0.999777">
+2.1 Interpretation of generic expressions
+</subsectionHeader>
+<bodyText confidence="0.9998554">Generic NPs There are two contrasting views on how to formally interpret generic NPs. According to the first one, a generic NP involves a special form of quantification. Quine (1960), for example, proposes a universally quantified reading for generic NPs. This view is confronted with the most important problem of all quantificationbased approaches, namely that the exact determination of the quantifier restriction (QR) is highly dependent on the context, as illustrated in (3)3.</bodyText>
+<listItem confidence="0.698735">(3) a. Lions are mammals. QR: all lions b. Mammals give birth to live young. QR: less than half of all mammals 3Some of these examples are taken from Carlson (1977). c. Rats are bothersome to people. QR: few rats4</listItem>
+<bodyText confidence="0.999427470588235">In view of this difficulty, several approaches restrict the quantification to only “relevant” (Declerck, 1991) or “normal” (Dahl, 1975) individuals. According to the second view, generic noun phrases denote kinds. Following Carlson (1977), a kind can be considered as an individual that has properties on its own. On this view, the generic NP cannot be analysed as a quantifier over individuals pertaining to the kind. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed to individual lions. Generic sentences are usually analysed using a special dyadic operator, as first proposed by Heim (1982). The dyadic operator relates two semantic constituents, the restrictor and the matrix:</bodyText>
+<equation confidence="0.987766333333333">
+; 3yi, ..., yi[x1, .., xi, y1, ..., yi] �
+ |{z }
+Matrix
+</equation>
+<bodyText confidence="0.9438992">By choosing GEN as a generic dyadic operator, it is possible to represent the two readings (a) and (b) of the characterising sentence (4) by variation in the specification of restrictor and matrix (Krifka et al., 1995).</bodyText>
+<listItem confidence="0.9975862">(4) Typhoons arise in this part of the pacific. (a) Typhoons in general have a common origin in this part of the pacific. (b) There arise typhoons in this part of the pacific.</listItem>
+<equation confidence="0.5831165">
+(a’) GEN[x; y](Typhoon(x);this-part-of-the-
+pacific(y)narise-in(x, y))
+(b’) GEN[x; y](this-part-of-the-
+pacific(x);Typhoon(y)narise-in(y, x))
+</equation>
+<bodyText confidence="0.9997466">In order to cope with characterising sentences as in (2.a), we must allow the generic operator to quantify over situations or events, in this case, “normal” situations which were such that Erd˝os took amphetamines.</bodyText>
+<subsectionHeader confidence="0.963152">
+2.2 Relevance for computational linguistics
+</subsectionHeader>
+<bodyText confidence="0.998559">Knowledge acquisition The automatic acquisition of formal knowledge for computational applications is a major endeavour in current research and could lead to big improvements of semanticsbased processing.</bodyText>
+<footnote confidence="0.774379">
+4Most rats are not even noticed by people.
+</footnote>
+<equation confidence="0.976436333333333">
+Q[x1,..., xi]([x)_, ..., xi]
+ |{z }
+Restrictor
+</equation>
+<page confidence="0.987066">
+41
+</page>
+<bodyText confidence="0.999502965116279">Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources in the form of generic expressions5. In view of the properties of generic expressions discussed above, this lack of attention bears two types of risks. The first concerns the distinction between classes and instances, regarding the attribution of properties. The second concerns modelling exceptions in both representation and inferencing. The distinction between classes and instances is a serious challenge even for the simplest methods in automatic ontology construction, e.g., Hearst (1992) patterns. The so-called IS-A patterns do not only identify subclasses, but also instances. Shakespeare, e.g., would be recognised as a hyponym of author in the same way as temple is recognised as a hyponym of civic building. Such a missing distinction between classes and instances is problematic. First, there are predicates that can only attribute properties to a kind (1.a). Second, even for properties that in principle can be attributed to individuals of the class, this is highly dependent on the selection of the quantifier’s restriction in context (3). In both cases, it holds that properties attributed to a class are not necessarily 5In the field of cognitive science, research on the acquisition of generic knowledge in humans has shown that adult speakers tend to use generic expressions very often when talking to children (Pappas and Gelman, 1998). We are not aware of any detailed assessment of the proportion of generic noun phrases in educational text genres or encyclopaedic resources like Wikipedia. Concerning generic sentences, Mathew and Katz (2009) report that 19.9% of the sentences in their annotated portion of the Penn Treebank are habitual (generic) and 80.1% episodic (non-generic).inherited by any or all instances pertaining to the class. Zirn et al.(2008) are the first to present fully automatic, heuristic methods to distinguish between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). They report an accuracy of 81.6% and 84.5% for different classification schemes. However, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exceptions is a cumbersome but necessary problem to be handled in ontology building, be it manually or by automatic means, and whether or not the genericity of knowledge is formalised explicitly. In artificial intelligence research, this area has been tackled for many years. Default reasoning (Reiter, 1980) is confronted with severe efficiency problems and therefore has not extended beyond experimental systems. However, the emerging paradigm of Answer Set Programming (ASP, Lifschitz (2008)) seems to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge.</bodyText>
+<sectionHeader confidence="0.99907" genericHeader="related work">
+3 Prior Work
+</sectionHeader>
+<bodyText confidence="0.9999016875">Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to the ACE corpus (described in more detail below), Herbelot and Copestake (2008) offer a study on annotating genericity in a corpus. Two annotators annotated 48 noun phrases from the British National Corpus for their genericity (and specificity) properties, obtaining a kappa value of 0.744. Herbelot and Copestake (2008) leave supervised learning for the identification of generic expressions as future work.</bodyText>
+<page confidence="0.994963">
+42
+</page>
+<bodyText confidence="0.999938769230769">Recent work by Mathew and Katz (2009) presents automatic classification of generic and non-generic sentences, yet restricted to habitual interpretations of generic sentences. They use a manually annotated part of the Penn TreeBank as training and evaluation set6. Using a selection of syntactic and semantic features operating mainly on the sentence level, they achieved precision between 81.2% and 84.3% and recall between 60.6% and 62.7% for the identification of habitual generic sentences.</bodyText>
+<sectionHeader confidence="0.980181" genericHeader="method">
+4 Characterising Generic Expressions
+for Automatic Classification
+</sectionHeader>
+<subsectionHeader confidence="0.999895">
+4.1 Properties of generic expressions
+</subsectionHeader>
+<bodyText confidence="0.999951">Generic NPs come in various syntactic forms. These include definite and indefinite singular count nouns, bare plural count and singular and plural mass nouns as in (5.a-f). (5.f) shows a construction that makes the kind reading unambiguous. As Carlson (1977) observed, the generic reading of “well-established” kinds seems to be more prominent (g vs. h).</bodyText>
+<listItem confidence="0.976993333333333">(5) a. The lion was the most widespread mammal. b. A lioness is weaker [...] than a male. c. Lions died out in northern Eurasia. d. Metals are good conductors. e. Metal is also used for heat sinks.</listItem>
+<bodyText confidence="0.890323857142857">f. The zoo has one kind of tiger. g. The Coke bottle has a narrow neck. h. The green bottle has a narrow neck. Apart from being all NPs, there is no obvious syntactic property that is shared by all examples. Similarly, generic sentences come in a range of syntactic forms (6).</bodyText>
+<listItem confidence="0.90387125">(6) a. John walks to work. b. John walked to work (when he lived in California). c. John will walk to work (when he moves to California).</listItem>
+<footnote confidence="0.969998">
+6The corpus has not been released.
+</footnote>
+<bodyText confidence="0.9998799">Although generic NPs and generic sentences can be combined freely (cf. Section 1; Table 1), both phenomena highly interact and quite often appear in the same sentence (Krifka et al., 1995). Also, genericity is highly dependent on contextual factors. Present tense, e.g., may be indicative for genericity, but with appropriate temporal modification, generic sentences may occur in past or future tense (6). Presence of a copular construction as in (5.a,b,d) may indicate a generic NP reading, but again we find generic NPs with event verbs, as in (5.e) or (1.b). Lexical semantic factors, such as the semantic type of the clause predicate (5.c,e), or “well-established” kinds (5.g) may favour a generic reading, but such lexical factors are difficult to capture in a rule-based setting. In our view, these observations call for a corpusbased machine learning approach that is able to capture a variety of factors indicating genericity in combination and in context.</bodyText>
+<subsectionHeader confidence="0.999058">
+4.2 Feature set and feature classes
+</subsectionHeader>
+<bodyText confidence="0.9997224">In Table 2 we give basic information about the individual features we investigate for identifying generic NPs. In the following, we will structure this feature space along two dimensions, distinguishing NPand sentence-level factors as well as syntactic and semantic (including lexical semantic) factors. Table 3 displays the grouping into corresponding feature classes. NP-level features are extracted from the local NP without consideration of the sentence context. Sentence-level features are extracted from the clause (in which the NP appears), as well as sentential and non-sentential adjuncts of the clause. We also included the (dependency) relations between the target NP and its governing clause. Syntactic features are extracted from a parse tree or shallow surface-level features. The feature set includes NP-local and global features. Semantic features include semantic features abstracted from syntax, such as tense and aspect or type of modification, but also lexical semantic features such as word sense classes, sense granularity or verbal predicates. Our aim is to determine indicators for genericity from combinations of these feature classes.</bodyText>
+<page confidence="0.998868">
+43
+</page>
+<table confidence="0.999743290322581">
+Feature Description
+Number sg, pl
+Person 1, 2, 3
+Countability ambig, no noun, count, uncount
+Noun Type common, proper, pronoun
+Determiner Type def, indef, demon
+Granularity The number of edges in the WordNet hypernymy graph between the synset of the entity and
+a top node
+Part of Speech POS-tag (Penn TreeBank tagset; Marcus et al. (1993)) of the head of the phrase
+Bare Plural false, true
+Sense[0-3] WordNet sense. Sense[0] represents the sense of the head of the entity, Sense[1] its direct
+hypernym sense and so forth.
+Sense[Top] The top sense in the hypernym hierarchy (often referred to as “super sense”)
+Dependency Relation [0-4] Dependency Relations. Relation[0] represents the relation between entity and its governor,
+Relation[1] the relation between the governor and its governor and so forth.
+Embedded Predicate.Pred Lemma of the head of the directly governing predicate of the entity
+C.Tense past, pres, fut
+C.Progressive false, true
+C.Perfective false, true
+C.Mood indicative, imperative, subjunctive
+C.Passive false, true
+C.Temporal Modifier? false, true
+C.Number of Modifiers numeric
+C.Part of Speech POS-tag (Penn TreeBank tagset; Marcus et al. (1993)) of the head of the phrase
+C.Pred Lemma of the head of the clause
+C.Adjunct.Time true, false
+C.Adjunct.VType main, copular
+C.Adjunct.Adverbial Type vpadv, sadv
+C.Adjunct.Degree positive, comparative, superlative
+C.Adjunct.Pred Lemma of the head of the adjunct of the clause
+XLE.Quality How complete is the parse by the XLE parser? fragmented, complete, no parse
+</table>
+<tableCaption confidence="0.871024">
+Table 2: The features used in our system. C stands for the clause in which the noun phrase appears,
+</tableCaption>
+<table confidence="0.94441575">
+“Embedding Predicate” its direct predicate. In most cases, we just give the value range, if necessary, we
+give descriptions. All features may have a NULL value.
+Syntactic Semantic
+NP-level Number, Person, Part of Speech, Determiner Type, Bare Plural Countability, Granularity, Sense[0-3, Top]
+S-level Clause.{Part of Speech, Passive, Number of Modifiers}, De- Clause.{Tense, Progressive, Perfective,
+pendency Relation[0-4], Clause.Adjunct.{Verbal Type, Adver- Mood, Pred, Has temporal Modifier},
+bial Type}, XLE.Quality Clause.Adjunct.{Time, Pred}, Embedded
+Predicate.Pred
+</table>
+<tableCaption confidence="0.825071">
+Table 3: Feature classes
+</tableCaption>
+<table confidence="0.9999228">
+Name Descriptions and Features
+Set 1 Five best single features: Bare Plural, Person, Sense [0], Clause.Pred, Embedding Predicate.Pred
+Set 2 Five best feature tuples:
+a. Number, Part of Speech
+b. Countability, Part of Speech
+c. Sense [0], Part of Speech
+d. Number, Countability
+e. Noun Type, Part of Speech
+Set 3 Five best feature triples:
+a. Number, Clause.Tense, Part of Speech
+b. Number, Clause.Tense, Noun Type
+c. Number, Clause.Part of Speech, Part of Speech
+d. Number, Part of Speech, Noun Type
+e. Number, Clause.Part of Speech, Noun Type
+Set 4 Features, that appear most often among the single, tuple and triple tests: Number, Noun Type,
+Part of Speech, Clause.Tense, Clause.Part of Speech, Clause.Pred, Embedding Predicate.Pred, Person, Sense
+[0], Sense [1], Sense[2]
+Set 5 Features performing best in the ablation test: Number, Person, Clause.Part of Speech, Clause.Pred,
+Embedding Predicate.Pred, Clause.Tense, Determiner Type, Part of Speech, Bare Plural, Dependency Relation
+[2], Sense [0]
+</table>
+<tableCaption confidence="0.998527">
+Table 4: Derived feature sets
+</tableCaption>
+<page confidence="0.983279">
+44
+</page>
+<sectionHeader confidence="0.377829" genericHeader="evaluation">
+5 Experiments
+</sectionHeader>
+<subsectionHeader confidence="0.995637">
+5.1 Dataset
+</subsectionHeader>
+<bodyText confidence="0.987372">b. Even more remarkable is the Internet, where information of all kinds is available about the government and the economy. As data set we are using the ACE-2 (Mitchell et al., 2003) corpus, a collection of newspaper texts annotated with entities marked for their genericity. In this version of the corpus, the classification of entities is a binary one. Annotation guidelines The ACE-2 annotation guidelines describe generic NPs as referring to an arbitrary member of the set in question, rather than to a particular individual. Thus, a property attributed to a generic NP is in principle applicable to arbitrary members of the set (although not to all of them). The guidelines list several tests that are either local syntactic tests involving determiners or tests that cannot be operationalised as they involve world knowledge and context information. The guidelines give a number of criteria to identify generic NPs referring to specific properties. These are (i) types of entities (lions in 3.a), (ii) suggested attributes of entities (mammals in 3.a), (iii) hypothetical entities (7) and (iv) generalisations across sets of entities (5.d).</bodyText>
+<listItem confidence="0.6956295">(7) If a person steps over the line, they must be punished.</listItem>
+<bodyText confidence="0.963711527777778">The general description of generic NPs as denoting arbitrary members of sets obviously does not capture kind-referring readings. However, the properties characterised (i) can be understood to admit kinds. Also, some illustrations in the guidelines explicitly characterise kind-referring NPs as generic. Thus, while at first sight the guidelines do not fully correspond to the characterisation of generics we find in the formal semantics literature, we argue that both characterisations have similar extensions, i.e., include largely overlapping sets of noun phrases. In fact, all of the examples for generic noun phrases presented in this paper would also be classified as generic according to the ACE-2 guidelines. We also find annotated examples of generic NPs that are not discussed in the formal semantics literature (8.a), but that are well captured by the ACE-2 guidelines. However, there are also cases that are questionable (8.b). (8) a. “It’s probably not the perfect world, but you kind of have to deal with what you have to work with,” he said. This shows that the annotation of generics is difficult, but also highlights the potential benefit of a corpus-driven approach that allows us to gather a wider range of realisations. This in turn can contribute to novel insights and discussion. Data analysis A first investigation of the corpus shows that generic NPs are much less common than non-generic ones, at least in the newspaper genre at hand. Of the 40,106 annotated entities, only 5,303 (13.2%) are marked as generic. In order to control for bias effects in our classifier, we will experiment with two different training sets, a balanced and an unbalanced one.</bodyText>
+<subsectionHeader confidence="0.995637">
+5.2 Preprocessing
+</subsectionHeader>
+<bodyText confidence="0.999965333333333">The texts have been (pre-)processed to add several layers of linguistic annotation (Table 5). We use MorphAdorner for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser.</bodyText>
+<table confidence="0.758131428571429">
+Task Tool
+MorphAdorner 7
+TreeTagger (Schmid, 1994)
+MFS (according to WordNet 3.0)
+Celex (Baayen et al., 1996)
+XLE (Crouch et al., 2010)
+Stanford (Klein and Manning, 2003)
+</table>
+<tableCaption confidence="0.996801">
+Table 5: Preprocessing pipeline
+</tableCaption>
+<bodyText confidence="0.999965">As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentation showed using the two parsers in tandem yields best results, compared to individual use.</bodyText>
+<footnote confidence="0.636593">
+7http://morphadorner.northwestern.edu
+</footnote>
+<figure confidence="0.5472592">
+Sentence splitting
+POS, lemmatisation
+WSD
+Countability
+Parsing
+</figure>
+<page confidence="0.989961">
+45
+</page>
+<table confidence="0.9999738">
+Feature Set P Generic F Non generic P Overall F
+R P R F R
+Baseline Majority 0 0 0 86.8 100 92.9 75.3 86.8 80.6
+Baseline Person 60.5 10.2 17.5 87.9 99.0 93.1 84.3 87.2 85.7
+Baseline Suh 28.9
+Feature Classes NP 31.7 56.6 40.7 92.5 81.4 86.6 84.5 78.2 81.2
+Balanced Unbalanced
+S 32.2 50.7 39.4 91.8 83.7 87.6 83.9 79.4 81.6
+NP/Syntactic 39.2 58.4 46.9 93.2 86.2 89.5 86.0 82.5 84.2
+S/Syntactic 31.9 22.1 26.1 88.7 92.8 90.7 81.2 83.5 82.3
+NP/Semantic 28.2 53.5 36.9 91.8 79.2 85 83.4 75.8 79.4
+S/Semantic 32.1 36.6 34.2 90.1 88.2 89.2 82.5 81.4 81.9
+Syntactic 40.1 66.6 50.1 94.3 84.8 89.3 87.2 82.4 84.7
+Semantic 34.5 56.0 42.7 92.6 83.8 88.0 84.9 80.1 82.4
+All 37.0 72.1 49.0 81.3 87.6 87.4 80.1 80.1 83.6
+NP 30.1 71.0 42.2 94.4 74.8 83.5 85.9 74.3 79.7
+S 26.9 73.1 39.3 94.4 69.8 80.3 85.5 70.2 77.1
+NP/Syntactic 35.4 76.3 48.4 95.6 78.8 86.4 87.7 78.5 82.8
+S/Syntactic 23.1 77.1 35.6 94.6 61.0 74.2 85.1 63.1 72.5
+NP/Semantic 24.7 60.0 35.0 92.2 72.1 80.9 83.3 70.5 76.4
+S/Semantic 26.4 66.3 37.7 93.3 71.8 81.2 84.5 71.1 77.2
+Syntactic 30.8 85.3 45.3 96.9 70.8 81.9 88.2 72.8 79.7
+Semantic 30.1 67.5 41.6 93.9 76.1 84.1 85.5 75.0 79.9
+All 33.7 81.0 47.6 96.3 75.8 84.8 88.0 76.5 81.8
+Feature Selection Set 1 49.5 37.4 42.6 90.8 94.2 92.5 85.3 86.7 86.0
+Balanced Unbalanced
+Set 2a 37.3 42.7 39.8 91.1 89.1 90.1 84.0 82.9 83.5
+Set 3a 42.6 54.1 47.7 92.7 88.9 90.8 86.1 84.3 85.2
+Set 4 42.7 69.6 52.9 94.9 85.8 90.1 88.0 83.6 85.7
+Set 5 45.7 64.8 53.6 94.3 88.3 91.2 87.9 85.2 86.5
+Set 1 29.7 71.1 41.9 94.4 74.4 83.2 85.9 73.9 79.5
+Set 2a 36.5 70.5 48.1 94.8 81.3 87.5 87.1 79.8 83.3
+Set 3a 36.2 70.8 47.9 94.8 81.0 87.4 87.1 79.7 83.2
+Set 4 35.9 83.1 50.1 96.8 77.4 86.0 88.7 78.2 83.1
+Set 5 37.0 81.9 51.0 96.6 78.7 86.8 88.8 79.2 83.7
+</table>
+<tableCaption confidence="0.999425">
+Table 6: Results of the classification, using different feature and training sets
+</tableCaption>
+<subsectionHeader confidence="0.99858">
+5.3 Experimental setup
+</subsectionHeader>
+<bodyText confidence="0.999966777777778">Given the unclear dependencies of features, we chose to use a Bayesian network. A Bayesian network represents the dependencies of random variables in a directed acyclic graph, where each node represents a random variable and each edge a dependency between variables. In fact, a number of feature selection tests uncovered feature dependencies (see below). We used the Weka (Witten and Frank, 2002) implementation BayesNet in all our experiments. To control for bias effects, we created balanced data sets by oversampling the number of generic entities and simultaneously undersampling nongeneric entities. This results in a dataset of 20,053 entities with approx. 10,000 entities for each class. All experiments are performed on balanced and unbalanced data sets using 10-fold crossvalidation, where balancing has been performed for each training fold separately (if any). Feature classes We performed evaluation runs for different combinations of feature sets: NPvs. S-level features (with further distinction between syntactic and semantic NP-/S-level features), as well as overall syntactic vs. semantic features. This was done in order to determine the effect of different types of linguistic factors for the detection of genericity (cf. Table 3).</bodyText>
+<page confidence="0.998458">
+46
+</page>
+<bodyText confidence="0.9997398125">Feature selection We experimented with two methods for feature selection. Table 4 shows the resulting feature sets. In ablation testing, a single feature in turn is temporarily omitted from the feature set. The feature whose omission causes the biggest drop in fmeasure is set aside as a strong feature. This process is repeated until we are left with an empty feature set. From the ranked list of features fi to f,,, we evaluate increasingly extended feature sets f1..fi for i = 2..n. We select the feature set that yields the best balanced performance, at 45.7% precision and 53.6% f-measure. The features are given as Set 5 in Table 4. As ablation testing does not uncover feature dependencies, we also experimented with single, tuple and triple feature combinations to determine features that perform well in combination. We ran evaluations using features in isolation and each possible pair and triple of features. We select the resulting five best features, tuples and triples of features. The respective feature sets are given as Set 1 to Set 3 in Table 4. The features that appear most often in Set 1 to Set 3 are grouped in Set 4. Baseline Our results are evaluated against three baselines. Since the class distribution is unequal, a majority baseline consists in classifying each entity as non-generic. As a second baseline we chose the performance of the feature Person, as this feature gave the best performance in precision among those that are similarly easy to extract. Finally, we compare our results to (Suh, 2006).</bodyText>
+<sectionHeader confidence="0.999486" genericHeader="result">
+6 Results and Discussion
+</sectionHeader>
+<bodyText confidence="0.999965184615385">The results of classification are summarised in Table 6. The columns Generic and Non-generic give the results for the respective class. Overall shows the weighted average of the classes. Comparison to baselines Given the bias for non-generic NPs in the unbalanced data, the majority baseline achieves high performance overall (F: 80.6). Of course, it does not detect any generic NPs. The Person-based baseline also suffers from very low recall (R: 10.2%), but achieves the highest precision (P: 60.5 %). (Suh, 2006) reported only precision of the generic class, so we can only compare against this value (28.9 %). Most of the features and feature sets yield precision values above the results of Suh. Feature classes, unbalanced data For the identification of generic NPs, syntactic features achieve the highest precision and recall (P: 40.1%, R: 66.6 %). Using syntactic features on the NPor sentence-level only, however, leads to a drop in precision as well as recall. The recall achieved by syntactic features can be improved at the cost of precision by adding semantic features (R: 66.6 —* 72.1, P: 40.1 —* 37). Semantic features in separation perform lower than the syntactic ones, in terms of recall and precision. Even though our results achieve a lower precision than the Person baseline, in terms of fmeasure, we achieve a result of over 50%, which is almost three times the baseline. Feature classes, balanced data Balancing the training data leads to a moderate drop in performance. All feature classes perform lower than on the unbalanced data set, yielding an increase in recall and a drop in precision. The overall performance differences between the balanced and unbalanced data for the best achieved values for the generic class are -4.7 (P), +13.2 (R) and -1.7 (F). This indicates that (i) the features prove to perform rather effectively, and (ii) the distributional bias in the data can be exploited in practical experiments, as long as the data distribution remains constant. We observe that generally, the recall for the generic class improves for the balanced data. This is most noticeable for the S-level features with an increase of 55 (syntactic) and 29.7 (semantic). This could indicate that S-level features are useful for detecting genericity, but are too sparse in the non-oversampled data to become prominent. This holds especially for the lexical semantic features. As a general conclusion, syntactic features prove most important in both setups. We also observe that the margin between syntactic and semantic features reduces in the balanced dataset, and that both NPand S-level features contribute to classification performance, with NP-features generally outperforming the S-level features. This confirms our hypothesis that all feature classes contribute important information. Feature selection While the above figures were obtained for the entire feature space, we now discuss the effects of feature selection both on performance and the distribution over feature classes. The results for each feature set are given in Table 6. In general, we find a behaviour similar to</bodyText>
+<page confidence="0.998391">
+47
+</page>
+<table confidence="0.997395166666667">
+Syntactic Semantic
+NP Number, Person, Part of Sense[0]
+Speech, Determiner Type, Bare
+Plural
+S Clause.Part of Speech, Depen- Clause.fTense,
+dency Relation[2] Pred}
+</table>
+<tableCaption confidence="0.996656">
+Table 7: Best performing features by feature class
+the homogeneous classes, in that balanced training data increases recall at the cost of precision.</tableCaption>
+<bodyText confidence="0.993792466666667">With respect to overall f-measure, the best single features are strong on the unbalanced data. They even yield a relatively high precision for the generic NPs (49.5%), the highest value among the selected feature sets. This, however, comes at the price of one of the lowest recalls. The best performing feature in terms of f-measure on both balanced and unbalanced data is Set 5 with Set 4 as a close follow-up. Set 5 achieves an f-score of 53.6 (unbalanced) and 51.0 (balanced). The highest recall is achieved using Set 4 (69.6% on the unbalanced and 83.1% on the balanced dataset). The results for Set 5 represent an improvement of 3.5 respectively 2.6 (unbalanced and balanced) over the best achieved results on homogeneous feature classes. In fact, Table 7 shows that these features, selected by ablation testing, distribute over all homogeneous classes. We trained a decision tree to gain insights into the dependencies among these features. Figure 1 shows an excerpt of the obtained tree. The classifier learned to classify singular proper names as non-generic, while the genericity of singular nouns depends on their predicate. At this point, the classifier can correctly classify some of the NPs in (5) as kind-referring (given the training data contains predicates like “widespread”, “die out”, ...).</bodyText>
+<sectionHeader confidence="0.998" genericHeader="conclusion">
+7 Conclusions and Future Work
+</sectionHeader>
+<bodyText confidence="0.999984083333333">This paper addresses a linguistic phenomenon that has been thoroughly studied in the formal semantics literature but only recently is starting to be addressed as a task in computational linguistics. We presented a data-driven machine learning approach for identifying generic NPs in context that in turn can be used to improve tasks such as knowledge acquisition and organisation. The classification of generic NPs has proven difficult even for humans. Therefore, a machine learning approach seemed promising, both for the identification of relevant features as for capturing contex-</bodyText>
+<figureCaption confidence="0.999761">
+Figure 1: A decision tree trained on feature Set 5
+tual factors.</figureCaption>
+<bodyText confidence="0.99992676923077">We explored a range of features using homogeneous and mixed classes gained by alternative methods of feature selection. In terms of f-measure on the generic class, all feature sets performed above the baseline(s). In the overall classification, the selected sets perform above the majority and close to or above the Person baseline. The final feature set that we established characterises generic NPs as a phenomenon that exhibits both syntactic and semantic as well as sentenceand NP-level properties. Although our results are satisfying, in future work we will extend the range of features for further improvements. In particular, we will address lexical semantic features, as they tend to be effected by sparsity. As a next step, we will apply our approach to the classification of generic sentences. Treating both cases simultaneously could reveal insights into dependencies between them. The classification of generic expressions is only a first step towards a full treatment of the challenges involved in their semantic processing. As discussed, this requires a contextually appropriate selection of the quantifier restriction8, as well as determining inheritance of properties from classes to individuals and the formalisation of defaults.</bodyText>
+<sectionHeader confidence="0.999334" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.9991586">
+R. Harald Baayen, Richard Piepenbrock, and Leon Gu-
+likers. 1996. CELEX2. Linguistic Data Consor-
+tium, Philadelphia.
+Johan Bos. 2009. Applying automated deduction to
+natural language understanding. Journal of Applied
+</reference>
+<footnote confidence="0.711281">
+8Consider example (1.a), which is contextually restricted
+to a certain time and space.
+</footnote>
+<page confidence="0.994354">
+48
+</page>
+<reference confidence="0.999857980392157">
+Logic, 7(1):100 – 112. Special Issue: Empirically
+Successful Computerized Reasoning.
+Miriam Butt, Helge Dyvik, Tracy Holloway King, Hi-
+roshi Marsuichi, and Christian Rohrer. 2002. The
+Parallel Grammar Project. In Proceedings of Gram-
+mar Engineering and Evaluation Workshop.
+Gregory Norman Carlson. 1977. Reference to Kinds in
+English. Ph.D. thesis, University of Massachusetts.
+Philipp Cimiano. 2006. Ontology Learning and Popu-
+lating from Text. Springer.
+Dick Crouch, Mary Dalrymple, Ron Ka-
+plan, Tracy King, John Maxwell, and Paula
+Newman, 2010. XLE Documentation.
+www2.parc.com/isl/groups/nltt/xle/doc/xle toc.html.
+¨Osten Dahl. 1975. On Generics. In Edward
+Keenan, editor, Formal Semantics of Natural Lan-
+guage, pages 99–111. Cambridge University Press,
+Cambridge.
+Renaat Declerck. 1991. The Origins of Genericity.
+Linguistics, 29:79–102.
+Christiane Fellbaum. 1998. WordNet: An Electronic
+Lexical Database. MIT Press.
+Lisa Ferro, Laurie Gerber, Janet Hitzeman, Eliza-
+beth Lima, and Beth Sundheim. 2005. ACE En-
+glish Training Data. Linguistic Data Consortium,
+Philadelphia.
+Michael Gelfond. 2007. Answer sets. In Handbook of
+Knowledge Representation. Elsevier Science.
+Marti A. Hearst. 1992. Automatic acquisition of hy-
+ponyms from large text corpora. In Proceedings of
+the 14th International Conference on Computational
+Linguistics, pages 539–545.
+Irene Heim. 1982. The Semantics of Definite and In-
+definite Noun Phrases. Ph.D. thesis, University of
+Massachusetts, Amherst.
+Aurelie Herbelot and Ann Copestake. 2008. Anno-
+tating genericity: How do humans decide? (a case
+study in ontology extraction). In Sam Featherston
+and Susanne Winkler, editors, The Fruits of Empiri-
+cal Linguistics, volume 1. de Gruyter.
+Dan Klein and Christopher Manning. 2003. Accurate
+unlexicalized parsing. In Proceedings of the 41st
+Meeting of the Association for Computational Lin-
+guistics, pages 423–430.
+Manfred Krifka, Francis Jeffry Pelletier, Gregory N.
+Carlson, Alice ter Meulen, Gennaro Chierchia, and
+Godehard Link. 1995. Genericity: An Introduc-
+tion. In Gregory Norman Carlson and Francis Jeffry
+Pelletier, editors, The Generic Book. University of
+Chicago Press, Chicago.
+Douglas B. Lenat. 1995. Cyc: a large-scale invest-
+ment in knowledge infrastructure. Commun. ACM,
+38(11):33–38.
+Vladimir Lifschitz. 2002. Answer set programming
+and plan generation. Artificial Intelligence, 138(1-
+2):39 – 54.
+Vladimir Lifschitz. 2008. What is Answer Set Pro-
+gramming? In Proceedings of AAAI.
+Mitchell P. Marcus, Mary Ann Marcinkiewicz, and
+Beatrice Santorini. 1993. Building a large anno-
+tated corpus of English: the Penn treebank. Compu-
+tational Linguistics, 19(2):313–330.
+Thomas Mathew and Graham Katz. 2009. Supervised
+Categorization of Habitual and Episodic Sentences.
+In Sixth Midwest Computational Linguistics Collo-
+quium. Bloomington, Indiana: Indiana University.
+Alexis Mitchell, Stephanie Strassel, Mark Przybocki,
+JK Davis, George Doddington, Ralph Grishman,
+Adam Meyers, Ada Brunstein, Lisa Ferro, and Beth
+Sundheim. 2003. ACE-2 Version 1.0. Linguistic
+Data Consortium, Philadelphia.
+Ian Niles and Adam Pease. 2001. Towards a Standard
+Upper Ontology. In Proceedings of the 2nd Interna-
+tional Conference on Formal Ontology in Informa-
+tion Systems.
+Athina Pappas and Susan A. Gelman. 1998. Generic
+noun phrases in mother–child conversations. Jour-
+nal of Child Language, 25(1):19–33.
+Simone Paolo Ponzetto and Michael Strube. 2007.
+Deriving a large scale taxonomy from wikipedia.
+In Proceedings of the 22nd Conference on the Ad-
+vancement of Artificial Intelligence, pages 1440–
+1445, Vancouver, B.C., Canada, July.
+Willard Van Orman Quine. 1960. Word and Object.
+MIT Press, Cambridge, Massachusetts.
+Raymond Reiter. 1980. A logic for default reasoning.
+Artificial Intelligence, 13:81–132.
+Helmut Schmid. 1994. Probabilistic part-of-speech
+tagging using decision trees. Proceedings of the
+conference on New Methods in Language Process-
+ing, 12.
+Sangweon Suh. 2006. Extracting Generic Statements
+for the Semantic Web. Master’s thesis, University of
+Edinburgh.
+Ian H. Witten and Eibe Frank. 2002. Data min-
+ing: practical machine learning tools and techniques
+with Java implementations. ACM SIGMOD Record,
+31(1):76–77.
+C¨acilia Zirn, Vivi Nastase, and Michael Strube. 2008.
+Distinguishing between instances and classes in the
+Wikipedia taxonomy. In Proceedings of the 5th Eu-
+ropean Semantic Web Conference.
+</reference>
+<page confidence="0.999543">
+49
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.960562" no="0">
+<title confidence="0.99956">Identifying Generic Noun Phrases</title>
+<author confidence="0.999518">Reiter Frank</author>
+<affiliation confidence="0.9825915">Department of Computational Linguistics Heidelberg University, Germany</affiliation>
+<abstract confidence="0.999761722222222">This paper presents a supervised approach for identifying generic noun phrases in context. Generic statements express rulelike knowledge about kinds or events. Therefore, their identification is important for the automatic construction of knowledge bases. In particular, the distinction between generic and non-generic statements is crucial for the correct encoding of generic and instance-level information. Generic expressions have been studied extensively in formal semantics. Building on this work, we explore a corpus-based learning approach for identifying generic NPs, using selections of linguistically motivated features. Our results perform well above the baseline and existing prior work.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>R Harald Baayen</author>
+<author>Richard Piepenbrock</author>
+<author>Leon Gulikers</author>
+</authors>
+<date>1996</date>
+<booktitle>CELEX2. Linguistic Data Consortium,</booktitle>
+<location>Philadelphia.</location>
+<contexts>
+<context citStr="Baayen et al., 1996" endWordPosition="3626" position="23187" startWordPosition="3623">s of linguistic annotation (Table 5). We use MorphAdorner for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser. Task Tool MorphAdorner 7 TreeTagger (Schmid, 1994) MFS (according to WordNet 3.0) Celex (Baayen et al., 1996) XLE (Crouch et al., 2010) Stanford (Klein and Manning, 2003) Table 5: Preprocessing pipeline As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentation showed using the two parsers in tandem yields best results, compared to individual use. 7http://morphadorner.northwestern.edu Sentence splitting POS, lemmatisati</context>
+</contexts>
+<marker>Baayen, Piepenbrock, Gulikers, 1996</marker>
+<rawString>R. Harald Baayen, Richard Piepenbrock, and Leon Gulikers. 1996. CELEX2. Linguistic Data Consortium, Philadelphia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Johan Bos</author>
+</authors>
+<title>Applying automated deduction to natural language understanding.</title>
+<date>2009</date>
+<journal>Journal of Applied Logic,</journal>
+<volume>7</volume>
+<issue>1</issue>
+<pages>112</pages>
+<contexts>
+<context citStr="Bos (2009)" endWordPosition="1185" position="7604" startWordPosition="1184">of-thepacific(x);Typhoon(y)narise-in(y, x)) In order to cope with characterising sentences as in (2.a), we must allow the generic operator to quantify over situations or events, in this case, “normal” situations which were such that Erd˝os took amphetamines. 2.2 Relevance for computational linguistics Knowledge acquisition The automatic acquisition of formal knowledge for computational applications is a major endeavour in current research 4Most rats are not even noticed by people. Q[x1,..., xi]([x)_, ..., xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopae</context>
+</contexts>
+<marker>Bos, 2009</marker>
+<rawString>Johan Bos. 2009. Applying automated deduction to natural language understanding. Journal of Applied Logic, 7(1):100 – 112. Special Issue: Empirically Successful Computerized Reasoning.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Miriam Butt</author>
+<author>Helge Dyvik</author>
+<author>Tracy Holloway King</author>
+<author>Hiroshi Marsuichi</author>
+<author>Christian Rohrer</author>
+</authors>
+<title>The Parallel Grammar Project.</title>
+<date>2002</date>
+<booktitle>In Proceedings of Grammar Engineering and Evaluation Workshop.</booktitle>
+<contexts>
+<context citStr="Butt et al. (2002)" endWordPosition="3599" position="23023" startWordPosition="3596"> we will experiment with two different training sets, a balanced and an unbalanced one. 5.2 Preprocessing The texts have been (pre-)processed to add several layers of linguistic annotation (Table 5). We use MorphAdorner for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser. Task Tool MorphAdorner 7 TreeTagger (Schmid, 1994) MFS (according to WordNet 3.0) Celex (Baayen et al., 1996) XLE (Crouch et al., 2010) Stanford (Klein and Manning, 2003) Table 5: Preprocessing pipeline As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentati</context>
+</contexts>
+<marker>Butt, Dyvik, King, Marsuichi, Rohrer, 2002</marker>
+<rawString>Miriam Butt, Helge Dyvik, Tracy Holloway King, Hiroshi Marsuichi, and Christian Rohrer. 2002. The Parallel Grammar Project. In Proceedings of Grammar Engineering and Evaluation Workshop.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Gregory Norman Carlson</author>
+</authors>
+<date>1977</date>
+<institution>University of Massachusetts.</institution>
+<note>Reference to Kinds in English. Ph.D. thesis,</note>
+<contexts>
+<context citStr="Carlson (1977)" endWordPosition="875" position="5636" startWordPosition="874">sting views on how to formally interpret generic NPs. According to the first one, a generic NP involves a special form of quantification. Quine (1960), for example, proposes a universally quantified reading for generic NPs. This view is confronted with the most important problem of all quantificationbased approaches, namely that the exact determination of the quantifier restriction (QR) is highly dependent on the context, as illustrated in (3)3. (3) a. Lions are mammals. QR: all lions b. Mammals give birth to live young. QR: less than half of all mammals 3Some of these examples are taken from Carlson (1977). c. Rats are bothersome to people. QR: few rats4 In view of this difficulty, several approaches restrict the quantification to only “relevant” (Declerck, 1991) or “normal” (Dahl, 1975) individuals. According to the second view, generic noun phrases denote kinds. Following Carlson (1977), a kind can be considered as an individual that has properties on its own. On this view, the generic NP cannot be analysed as a quantifier over individuals pertaining to the kind. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed </context>
+<context citStr="Carlson (1977)" endWordPosition="2082" position="13383" startWordPosition="2081"> and evaluation set6. Using a selection of syntactic and semantic features operating mainly on the sentence level, they achieved precision between 81.2% and 84.3% and recall between 60.6% and 62.7% for the identification of habitual generic sentences. 4 Characterising Generic Expressions for Automatic Classification 4.1 Properties of generic expressions Generic NPs come in various syntactic forms. These include definite and indefinite singular count nouns, bare plural count and singular and plural mass nouns as in (5.a-f). (5.f) shows a construction that makes the kind reading unambiguous. As Carlson (1977) observed, the generic reading of “well-established” kinds seems to be more prominent (g vs. h). (5) a. The lion was the most widespread mammal. b. A lioness is weaker [...] than a male. c. Lions died out in northern Eurasia. d. Metals are good conductors. e. Metal is also used for heat sinks. f. The zoo has one kind of tiger. g. The Coke bottle has a narrow neck. h. The green bottle has a narrow neck. Apart from being all NPs, there is no obvious syntactic property that is shared by all examples. Similarly, generic sentences come in a range of syntactic forms (6). (6) a. John walks to work. b</context>
+</contexts>
+<marker>Carlson, 1977</marker>
+<rawString>Gregory Norman Carlson. 1977. Reference to Kinds in English. Ph.D. thesis, University of Massachusetts.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Cimiano</author>
+</authors>
+<title>Ontology Learning and Populating from Text.</title>
+<date>2006</date>
+<publisher>Springer.</publisher>
+<contexts>
+<context citStr="Cimiano, 2006" endWordPosition="1261" position="8102" startWordPosition="1259"> xi]([x)_, ..., xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources in the form of generic expressions5. In view of the properties of generic expressions discussed above, this lack of attention bears two types of risks. The first concerns the distinction between classes and instances, regarding the attribution of properties. The second concerns modelling </context>
+</contexts>
+<marker>Cimiano, 2006</marker>
+<rawString>Philipp Cimiano. 2006. Ontology Learning and Populating from Text. Springer.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dick Crouch</author>
+<author>Mary Dalrymple</author>
+<author>Ron Kaplan</author>
+<author>Tracy King</author>
+<author>John Maxwell</author>
+<author>Paula Newman</author>
+</authors>
+<date>2010</date>
+<note>XLE Documentation. www2.parc.com/isl/groups/nltt/xle/doc/xle toc.html.</note>
+<contexts>
+<context citStr="Crouch et al., 2010" endWordPosition="3631" position="23213" startWordPosition="3628"> (Table 5). We use MorphAdorner for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser. Task Tool MorphAdorner 7 TreeTagger (Schmid, 1994) MFS (according to WordNet 3.0) Celex (Baayen et al., 1996) XLE (Crouch et al., 2010) Stanford (Klein and Manning, 2003) Table 5: Preprocessing pipeline As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentation showed using the two parsers in tandem yields best results, compared to individual use. 7http://morphadorner.northwestern.edu Sentence splitting POS, lemmatisation WSD Countability Parsin</context>
+</contexts>
+<marker>Crouch, Dalrymple, Kaplan, King, Maxwell, Newman, 2010</marker>
+<rawString>Dick Crouch, Mary Dalrymple, Ron Kaplan, Tracy King, John Maxwell, and Paula Newman, 2010. XLE Documentation. www2.parc.com/isl/groups/nltt/xle/doc/xle toc.html.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>¨Osten Dahl</author>
+</authors>
+<title>On Generics.</title>
+<date>1975</date>
+<booktitle>Formal Semantics of Natural Language,</booktitle>
+<pages>99--111</pages>
+<editor>In Edward Keenan, editor,</editor>
+<publisher>Cambridge University Press,</publisher>
+<location>Cambridge.</location>
+<contexts>
+<context citStr="Dahl, 1975" endWordPosition="904" position="5821" startWordPosition="903">quantified reading for generic NPs. This view is confronted with the most important problem of all quantificationbased approaches, namely that the exact determination of the quantifier restriction (QR) is highly dependent on the context, as illustrated in (3)3. (3) a. Lions are mammals. QR: all lions b. Mammals give birth to live young. QR: less than half of all mammals 3Some of these examples are taken from Carlson (1977). c. Rats are bothersome to people. QR: few rats4 In view of this difficulty, several approaches restrict the quantification to only “relevant” (Declerck, 1991) or “normal” (Dahl, 1975) individuals. According to the second view, generic noun phrases denote kinds. Following Carlson (1977), a kind can be considered as an individual that has properties on its own. On this view, the generic NP cannot be analysed as a quantifier over individuals pertaining to the kind. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed to individual lions. Generic sentences are usually analysed using a special dyadic operator, as first proposed by Heim (1982). The dyadic operator relates two semantic constituents, the</context>
+</contexts>
+<marker>Dahl, 1975</marker>
+<rawString>¨Osten Dahl. 1975. On Generics. In Edward Keenan, editor, Formal Semantics of Natural Language, pages 99–111. Cambridge University Press, Cambridge.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Renaat Declerck</author>
+</authors>
+<date>1991</date>
+<booktitle>The Origins of Genericity. Linguistics,</booktitle>
+<pages>29--79</pages>
+<contexts>
+<context citStr="Declerck, 1991" endWordPosition="900" position="5796" startWordPosition="898">mple, proposes a universally quantified reading for generic NPs. This view is confronted with the most important problem of all quantificationbased approaches, namely that the exact determination of the quantifier restriction (QR) is highly dependent on the context, as illustrated in (3)3. (3) a. Lions are mammals. QR: all lions b. Mammals give birth to live young. QR: less than half of all mammals 3Some of these examples are taken from Carlson (1977). c. Rats are bothersome to people. QR: few rats4 In view of this difficulty, several approaches restrict the quantification to only “relevant” (Declerck, 1991) or “normal” (Dahl, 1975) individuals. According to the second view, generic noun phrases denote kinds. Following Carlson (1977), a kind can be considered as an individual that has properties on its own. On this view, the generic NP cannot be analysed as a quantifier over individuals pertaining to the kind. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed to individual lions. Generic sentences are usually analysed using a special dyadic operator, as first proposed by Heim (1982). The dyadic operator relates two s</context>
+</contexts>
+<marker>Declerck, 1991</marker>
+<rawString>Renaat Declerck. 1991. The Origins of Genericity. Linguistics, 29:79–102.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Christiane Fellbaum</author>
+</authors>
+<title>WordNet: An Electronic Lexical Database.</title>
+<date>1998</date>
+<publisher>MIT Press.</publisher>
+<contexts>
+<context citStr="Fellbaum, 1998" endWordPosition="1225" position="7869" startWordPosition="1224">.2 Relevance for computational linguistics Knowledge acquisition The automatic acquisition of formal knowledge for computational applications is a major endeavour in current research 4Most rats are not even noticed by people. Q[x1,..., xi]([x)_, ..., xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources in the form of generic expressions5. In view of the prop</context>
+</contexts>
+<marker>Fellbaum, 1998</marker>
+<rawString>Christiane Fellbaum. 1998. WordNet: An Electronic Lexical Database. MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Lisa Ferro</author>
+<author>Laurie Gerber</author>
+<author>Janet Hitzeman</author>
+<author>Elizabeth Lima</author>
+<author>Beth Sundheim</author>
+</authors>
+<title>Training Data. Linguistic Data Consortium,</title>
+<date>2005</date>
+<journal>ACE English</journal>
+<location>Philadelphia.</location>
+<contexts>
+<context citStr="Ferro et al., 2005" endWordPosition="1868" position="11975" startWordPosition="1865">07). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge. 3 Prior Work Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to the ACE corpus (described in more detail below), Herbelot and Copestake (2008) offer a study on annotating genericity in a corpus. Two annotators annotated 48 noun phrases from the British National Corpus for their genericity (and specificity) properties, obtaining a kappa value of 0.744. Herbelot and Copestake (2008) leave su42 pervised learning for the identification of generic expressions as future work. Recent work by Mathew and Katz (2009) presents a</context>
+</contexts>
+<marker>Ferro, Gerber, Hitzeman, Lima, Sundheim, 2005</marker>
+<rawString>Lisa Ferro, Laurie Gerber, Janet Hitzeman, Elizabeth Lima, and Beth Sundheim. 2005. ACE English Training Data. Linguistic Data Consortium, Philadelphia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Gelfond</author>
+</authors>
+<title>Answer sets.</title>
+<date>2007</date>
+<booktitle>In Handbook of Knowledge Representation.</booktitle>
+<publisher>Elsevier Science.</publisher>
+<contexts>
+<context citStr="Gelfond, 2007" endWordPosition="1772" position="11359" startWordPosition="1771">is formalised explicitly. In artificial intelligence research, this area has been tackled for many years. Default reasoning (Reiter, 1980) is confronted with severe efficiency problems and therefore has not extended beyond experimental systems. However, the emerging paradigm of Answer Set Programming (ASP, Lifschitz (2008)) seems to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge. 3 Prior Work Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Fer</context>
+</contexts>
+<marker>Gelfond, 2007</marker>
+<rawString>Michael Gelfond. 2007. Answer sets. In Handbook of Knowledge Representation. Elsevier Science.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Marti A Hearst</author>
+</authors>
+<title>Automatic acquisition of hyponyms from large text corpora.</title>
+<date>1992</date>
+<booktitle>In Proceedings of the 14th International Conference on Computational Linguistics,</booktitle>
+<pages>539--545</pages>
+<contexts>
+<context citStr="Hearst (1992)" endWordPosition="1379" position="8907" startWordPosition="1378">ic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources in the form of generic expressions5. In view of the properties of generic expressions discussed above, this lack of attention bears two types of risks. The first concerns the distinction between classes and instances, regarding the attribution of properties. The second concerns modelling exceptions in both representation and inferencing. The distinction between classes and instances is a serious challenge even for the simplest methods in automatic ontology construction, e.g., Hearst (1992) patterns. The so-called IS-A patterns do not only identify subclasses, but also instances. Shakespeare, e.g., would be recognised as a hyponym of author in the same way as temple is recognised as a hyponym of civic building. Such a missing distinction between classes and instances is problematic. First, there are predicates that can only attribute properties to a kind (1.a). Second, even for properties that in principle can be attributed to individuals of the class, this is highly dependent on the selection of the quantifier’s restriction in context (3). In both cases, it holds that propertie</context>
+</contexts>
+<marker>Hearst, 1992</marker>
+<rawString>Marti A. Hearst. 1992. Automatic acquisition of hyponyms from large text corpora. In Proceedings of the 14th International Conference on Computational Linguistics, pages 539–545.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Irene Heim</author>
+</authors>
+<title>The Semantics of Definite and Indefinite Noun Phrases.</title>
+<date>1982</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Massachusetts,</institution>
+<location>Amherst.</location>
+<contexts>
+<context citStr="Heim (1982)" endWordPosition="991" position="6361" startWordPosition="990">tification to only “relevant” (Declerck, 1991) or “normal” (Dahl, 1975) individuals. According to the second view, generic noun phrases denote kinds. Following Carlson (1977), a kind can be considered as an individual that has properties on its own. On this view, the generic NP cannot be analysed as a quantifier over individuals pertaining to the kind. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed to individual lions. Generic sentences are usually analysed using a special dyadic operator, as first proposed by Heim (1982). The dyadic operator relates two semantic constituents, the restrictor and the matrix: ; 3yi, ..., yi[x1, .., xi, y1, ..., yi] � |{z } Matrix By choosing GEN as a generic dyadic operator, it is possible to represent the two readings (a) and (b) of the characterising sentence (4) by variation in the specification of restrictor and matrix (Krifka et al., 1995). (4) Typhoons arise in this part of the pacific. (a) Typhoons in general have a common origin in this part of the pacific. (b) There arise typhoons in this part of the pacific. (a’) GEN[x; y](Typhoon(x);this-part-of-thepacific(y)narise-in</context>
+</contexts>
+<marker>Heim, 1982</marker>
+<rawString>Irene Heim. 1982. The Semantics of Definite and Indefinite Noun Phrases. Ph.D. thesis, University of Massachusetts, Amherst.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Aurelie Herbelot</author>
+<author>Ann Copestake</author>
+</authors>
+<title>Annotating genericity: How do humans decide? (a case study in ontology extraction).</title>
+<date>2008</date>
+<booktitle>In Sam Featherston and Susanne Winkler, editors, The Fruits of Empirical Linguistics,</booktitle>
+<volume>1</volume>
+<note>de Gruyter.</note>
+<contexts>
+<context citStr="Herbelot and Copestake (2008)" endWordPosition="1905" position="12194" startWordPosition="1902">s an important precondition for the adequate representation and processing of generic knowledge. 3 Prior Work Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to the ACE corpus (described in more detail below), Herbelot and Copestake (2008) offer a study on annotating genericity in a corpus. Two annotators annotated 48 noun phrases from the British National Corpus for their genericity (and specificity) properties, obtaining a kappa value of 0.744. Herbelot and Copestake (2008) leave su42 pervised learning for the identification of generic expressions as future work. Recent work by Mathew and Katz (2009) presents automatic classification of generic and non-generic sentences, yet restricted to habitual interpretations of generic sentences. They use a manually annotated part of the Penn TreeBank as training and evaluation set6. Usi</context>
+</contexts>
+<marker>Herbelot, Copestake, 2008</marker>
+<rawString>Aurelie Herbelot and Ann Copestake. 2008. Annotating genericity: How do humans decide? (a case study in ontology extraction). In Sam Featherston and Susanne Winkler, editors, The Fruits of Empirical Linguistics, volume 1. de Gruyter.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dan Klein</author>
+<author>Christopher Manning</author>
+</authors>
+<title>Accurate unlexicalized parsing.</title>
+<date>2003</date>
+<booktitle>In Proceedings of the 41st Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>423--430</pages>
+<contexts>
+<context citStr="Klein and Manning, 2003" endWordPosition="3636" position="23248" startWordPosition="3633"> for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser. Task Tool MorphAdorner 7 TreeTagger (Schmid, 1994) MFS (according to WordNet 3.0) Celex (Baayen et al., 1996) XLE (Crouch et al., 2010) Stanford (Klein and Manning, 2003) Table 5: Preprocessing pipeline As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentation showed using the two parsers in tandem yields best results, compared to individual use. 7http://morphadorner.northwestern.edu Sentence splitting POS, lemmatisation WSD Countability Parsing 45 Feature Set P Generic F Non ge</context>
+</contexts>
+<marker>Klein, Manning, 2003</marker>
+<rawString>Dan Klein and Christopher Manning. 2003. Accurate unlexicalized parsing. In Proceedings of the 41st Meeting of the Association for Computational Linguistics, pages 423–430.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Manfred Krifka</author>
+<author>Francis Jeffry Pelletier</author>
+<author>Gregory N Carlson</author>
+</authors>
+<title>Alice ter Meulen, Gennaro Chierchia, and Godehard Link.</title>
+<date>1995</date>
+<editor>In Gregory Norman Carlson and Francis Jeffry Pelletier, editors,</editor>
+<publisher>University of Chicago Press,</publisher>
+<location>Chicago.</location>
+<contexts>
+<context citStr="Krifka et al. (1995)" endWordPosition="441" position="2862" startWordPosition="438">ation of the sentence predicate. Both sources may concur in a single sentence, as illustrated in Table 1, where we have cross-classified the examples above according to the genericity of the NP and the sentence. This classification is extremely difficult, because (i) the criteria for generic interpretation are far from being clear-cut and (ii) both sources of genericity may freely interact. S[gen+] S[gen-] NP[gen+] (1.b) (1.a) NP[gen-] (2.a) (2.b) Table 1: Generic NPs and generic sentences The above classification of generic expressions is well established in traditional formal semantics (cf. Krifka et al. (1995))2. As we argue in this paper, these distinctions are relevant for semantic processing in computational linguistics, especially for information extraction and ontology learning and population tasks. With appropriate semantic analysis of generic statements, we can not only formally capture and exploit generic knowledge, 2The literature draws some finer distinctions including aspects like specificity, which we will ignore in this work. 40 Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 40–49, Uppsala, Sweden, 11-16 July 2010. c�2010 Association for </context>
+<context citStr="Krifka et al., 1995" endWordPosition="1053" position="6722" startWordPosition="1050">d. For some predicates, this is clearly marked. (1.a), for instance, attributes a property to the kind lion that cannot be attributed to individual lions. Generic sentences are usually analysed using a special dyadic operator, as first proposed by Heim (1982). The dyadic operator relates two semantic constituents, the restrictor and the matrix: ; 3yi, ..., yi[x1, .., xi, y1, ..., yi] � |{z } Matrix By choosing GEN as a generic dyadic operator, it is possible to represent the two readings (a) and (b) of the characterising sentence (4) by variation in the specification of restrictor and matrix (Krifka et al., 1995). (4) Typhoons arise in this part of the pacific. (a) Typhoons in general have a common origin in this part of the pacific. (b) There arise typhoons in this part of the pacific. (a’) GEN[x; y](Typhoon(x);this-part-of-thepacific(y)narise-in(x, y)) (b’) GEN[x; y](this-part-of-thepacific(x);Typhoon(y)narise-in(y, x)) In order to cope with characterising sentences as in (2.a), we must allow the generic operator to quantify over situations or events, in this case, “normal” situations which were such that Erd˝os took amphetamines. 2.2 Relevance for computational linguistics Knowledge acquisition The</context>
+<context citStr="Krifka et al., 1995" endWordPosition="2252" position="14316" startWordPosition="2249"> kind of tiger. g. The Coke bottle has a narrow neck. h. The green bottle has a narrow neck. Apart from being all NPs, there is no obvious syntactic property that is shared by all examples. Similarly, generic sentences come in a range of syntactic forms (6). (6) a. John walks to work. b. John walked to work (when he lived in California). c. John will walk to work (when he moves to California). 6The corpus has not been released. Although generic NPs and generic sentences can be combined freely (cf. Section 1; Table 1), both phenomena highly interact and quite often appear in the same sentence (Krifka et al., 1995). Also, genericity is highly dependent on contextual factors. Present tense, e.g., may be indicative for genericity, but with appropriate temporal modification, generic sentences may occur in past or future tense (6). Presence of a copular construction as in (5.a,b,d) may indicate a generic NP reading, but again we find generic NPs with event verbs, as in (5.e) or (1.b). Lexical semantic factors, such as the semantic type of the clause predicate (5.c,e), or “well-established” kinds (5.g) may favour a generic reading, but such lexical factors are difficult to capture in a rule-based setting. In</context>
+</contexts>
+<marker>Krifka, Pelletier, Carlson, 1995</marker>
+<rawString>Manfred Krifka, Francis Jeffry Pelletier, Gregory N. Carlson, Alice ter Meulen, Gennaro Chierchia, and Godehard Link. 1995. Genericity: An Introduction. In Gregory Norman Carlson and Francis Jeffry Pelletier, editors, The Generic Book. University of Chicago Press, Chicago.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Douglas B Lenat</author>
+</authors>
+<title>Cyc: a large-scale investment in knowledge infrastructure.</title>
+<date>1995</date>
+<journal>Commun. ACM,</journal>
+<volume>38</volume>
+<issue>11</issue>
+<contexts>
+<context citStr="Lenat, 1995" endWordPosition="1217" position="7813" startWordPosition="1216">ions which were such that Erd˝os took amphetamines. 2.2 Relevance for computational linguistics Knowledge acquisition The automatic acquisition of formal knowledge for computational applications is a major endeavour in current research 4Most rats are not even noticed by people. Q[x1,..., xi]([x)_, ..., xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources </context>
+</contexts>
+<marker>Lenat, 1995</marker>
+<rawString>Douglas B. Lenat. 1995. Cyc: a large-scale investment in knowledge infrastructure. Commun. ACM, 38(11):33–38.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vladimir Lifschitz</author>
+</authors>
+<title>Answer set programming and plan generation.</title>
+<date>2002</date>
+<journal>Artificial Intelligence, 138(1-2):39 –</journal>
+<volume>54</volume>
+<contexts>
+<context citStr="Lifschitz, 2002" endWordPosition="1796" position="11516" startWordPosition="1795">th severe efficiency problems and therefore has not extended beyond experimental systems. However, the emerging paradigm of Answer Set Programming (ASP, Lifschitz (2008)) seems to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge. 3 Prior Work Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to </context>
+</contexts>
+<marker>Lifschitz, 2002</marker>
+<rawString>Vladimir Lifschitz. 2002. Answer set programming and plan generation. Artificial Intelligence, 138(1-2):39 – 54.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Vladimir Lifschitz</author>
+</authors>
+<title>What is Answer Set Programming?</title>
+<date>2008</date>
+<booktitle>In Proceedings of AAAI.</booktitle>
+<contexts>
+<context citStr="Lifschitz (2008)" endWordPosition="1723" position="11069" startWordPosition="1722">ver, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exceptions is a cumbersome but necessary problem to be handled in ontology building, be it manually or by automatic means, and whether or not the genericity of knowledge is formalised explicitly. In artificial intelligence research, this area has been tackled for many years. Default reasoning (Reiter, 1980) is confronted with severe efficiency problems and therefore has not extended beyond experimental systems. However, the emerging paradigm of Answer Set Programming (ASP, Lifschitz (2008)) seems to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge. 3 Prior</context>
+</contexts>
+<marker>Lifschitz, 2008</marker>
+<rawString>Vladimir Lifschitz. 2008. What is Answer Set Programming? In Proceedings of AAAI.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mitchell P Marcus</author>
+<author>Mary Ann Marcinkiewicz</author>
+<author>Beatrice Santorini</author>
+</authors>
+<title>Building a large annotated corpus of English: the Penn treebank.</title>
+<date>1993</date>
+<journal>Computational Linguistics,</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Marcus et al. (1993)" endWordPosition="2617" position="16633" startWordPosition="2614">eatures abstracted from syntax, such as tense and aspect or type of modification, but also lexical semantic features such as word sense classes, sense granularity or verbal predicates. Our aim is to determine indicators for genericity from combinations of these feature classes. 43 Feature Description Number sg, pl Person 1, 2, 3 Countability ambig, no noun, count, uncount Noun Type common, proper, pronoun Determiner Type def, indef, demon Granularity The number of edges in the WordNet hypernymy graph between the synset of the entity and a top node Part of Speech POS-tag (Penn TreeBank tagset; Marcus et al. (1993)) of the head of the phrase Bare Plural false, true Sense[0, 1, 2, 3] WordNet sense. Sense[0] represents the sense of the head of the entity, Sense[1] its direct hypernym sense and so forth. Sense[Top] The top sense in the hypernym hierarchy (often referred to as “super sense”) Dependency Relation [0, 1, 2, 3, 4] Dependency Relations. Relation[0] represents the relation between entity and its governor, Relation[1] the relation between the governor and its governor and so forth. Embedded Predicate.Pred Lemma of the head of the directly governing predicate of the entity C.Tense past, pres, fut C</context>
+</contexts>
+<marker>Marcus, Marcinkiewicz, Santorini, 1993</marker>
+<rawString>Mitchell P. Marcus, Mary Ann Marcinkiewicz, and Beatrice Santorini. 1993. Building a large annotated corpus of English: the Penn treebank. Computational Linguistics, 19(2):313–330.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Thomas Mathew</author>
+<author>Graham Katz</author>
+</authors>
+<title>Supervised Categorization of Habitual and Episodic Sentences.</title>
+<date>2009</date>
+<booktitle>In Sixth Midwest Computational Linguistics Colloquium.</booktitle>
+<location>Bloomington, Indiana: Indiana University.</location>
+<contexts>
+<context citStr="Mathew and Katz (2009)" endWordPosition="1554" position="9979" startWordPosition="1551">viduals of the class, this is highly dependent on the selection of the quantifier’s restriction in context (3). In both cases, it holds that properties attributed to a class are not necessarily 5In the field of cognitive science, research on the acquisition of generic knowledge in humans has shown that adult speakers tend to use generic expressions very often when talking to children (Pappas and Gelman, 1998). We are not aware of any detailed assessment of the proportion of generic noun phrases in educational text genres or encyclopaedic resources like Wikipedia. Concerning generic sentences, Mathew and Katz (2009) report that 19.9% of the sentences in their annotated portion of the Penn Treebank are habitual (generic) and 80.1% episodic (non-generic). inherited by any or all instances pertaining to the class. Zirn et al. (2008) are the first to present fully automatic, heuristic methods to distinguish between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). They report an accuracy of 81.6% and 84.5% for different classification schemes. However, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exce</context>
+<context citStr="Mathew and Katz (2009)" endWordPosition="1962" position="12564" startWordPosition="1959">the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to the ACE corpus (described in more detail below), Herbelot and Copestake (2008) offer a study on annotating genericity in a corpus. Two annotators annotated 48 noun phrases from the British National Corpus for their genericity (and specificity) properties, obtaining a kappa value of 0.744. Herbelot and Copestake (2008) leave su42 pervised learning for the identification of generic expressions as future work. Recent work by Mathew and Katz (2009) presents automatic classification of generic and non-generic sentences, yet restricted to habitual interpretations of generic sentences. They use a manually annotated part of the Penn TreeBank as training and evaluation set6. Using a selection of syntactic and semantic features operating mainly on the sentence level, they achieved precision between 81.2% and 84.3% and recall between 60.6% and 62.7% for the identification of habitual generic sentences. 4 Characterising Generic Expressions for Automatic Classification 4.1 Properties of generic expressions Generic NPs come in various syntactic f</context>
+</contexts>
+<marker>Mathew, Katz, 2009</marker>
+<rawString>Thomas Mathew and Graham Katz. 2009. Supervised Categorization of Habitual and Episodic Sentences. In Sixth Midwest Computational Linguistics Colloquium. Bloomington, Indiana: Indiana University.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Alexis Mitchell</author>
+<author>Stephanie Strassel</author>
+<author>Mark Przybocki</author>
+<author>JK Davis</author>
+<author>George Doddington</author>
+<author>Ralph Grishman</author>
+<author>Adam Meyers</author>
+<author>Ada Brunstein</author>
+<author>Lisa Ferro</author>
+<author>Beth Sundheim</author>
+</authors>
+<date>2003</date>
+<booktitle>ACE-2 Version 1.0. Linguistic Data Consortium,</booktitle>
+<location>Philadelphia.</location>
+<contexts>
+<context citStr="Mitchell et al., 2003" endWordPosition="3078" position="19791" startWordPosition="3075">ests: Number, Noun Type, Part of Speech, Clause.Tense, Clause.Part of Speech, Clause.Pred, Embedding Predicate.Pred, Person, Sense [0], Sense [1], Sense[2] Set 5 Features performing best in the ablation test: Number, Person, Clause.Part of Speech, Clause.Pred, Embedding Predicate.Pred, Clause.Tense, Determiner Type, Part of Speech, Bare Plural, Dependency Relation [2], Sense [0] Table 4: Derived feature sets 44 5 Experiments 5.1 Dataset b. Even more remarkable is the Internet, where information of all kinds is available about the government and the economy. As data set we are using the ACE-2 (Mitchell et al., 2003) corpus, a collection of newspaper texts annotated with entities marked for their genericity. In this version of the corpus, the classification of entities is a binary one. Annotation guidelines The ACE-2 annotation guidelines describe generic NPs as referring to an arbitrary member of the set in question, rather than to a particular individual. Thus, a property attributed to a generic NP is in principle applicable to arbitrary members of the set (although not to all of them). The guidelines list several tests that are either local syntactic tests involving determiners or tests that cannot be </context>
+</contexts>
+<marker>Mitchell, Strassel, Przybocki, Davis, Doddington, Grishman, Meyers, Brunstein, Ferro, Sundheim, 2003</marker>
+<rawString>Alexis Mitchell, Stephanie Strassel, Mark Przybocki, JK Davis, George Doddington, Ralph Grishman, Adam Meyers, Ada Brunstein, Lisa Ferro, and Beth Sundheim. 2003. ACE-2 Version 1.0. Linguistic Data Consortium, Philadelphia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ian Niles</author>
+<author>Adam Pease</author>
+</authors>
+<title>Towards a Standard Upper Ontology.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 2nd International Conference on Formal Ontology in Information Systems.</booktitle>
+<contexts>
+<context citStr="Niles and Pease, 2001" endWordPosition="1213" position="7792" startWordPosition="1210">, in this case, “normal” situations which were such that Erd˝os took amphetamines. 2.2 Relevance for computational linguistics Knowledge acquisition The automatic acquisition of formal knowledge for computational applications is a major endeavour in current research 4Most rats are not even noticed by people. Q[x1,..., xi]([x)_, ..., xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be foun</context>
+</contexts>
+<marker>Niles, Pease, 2001</marker>
+<rawString>Ian Niles and Adam Pease. 2001. Towards a Standard Upper Ontology. In Proceedings of the 2nd International Conference on Formal Ontology in Information Systems.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Athina Pappas</author>
+<author>Susan A Gelman</author>
+</authors>
+<title>Generic noun phrases in mother–child conversations.</title>
+<date>1998</date>
+<journal>Journal of Child Language,</journal>
+<volume>25</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Pappas and Gelman, 1998" endWordPosition="1521" position="9769" startWordPosition="1518">ng distinction between classes and instances is problematic. First, there are predicates that can only attribute properties to a kind (1.a). Second, even for properties that in principle can be attributed to individuals of the class, this is highly dependent on the selection of the quantifier’s restriction in context (3). In both cases, it holds that properties attributed to a class are not necessarily 5In the field of cognitive science, research on the acquisition of generic knowledge in humans has shown that adult speakers tend to use generic expressions very often when talking to children (Pappas and Gelman, 1998). We are not aware of any detailed assessment of the proportion of generic noun phrases in educational text genres or encyclopaedic resources like Wikipedia. Concerning generic sentences, Mathew and Katz (2009) report that 19.9% of the sentences in their annotated portion of the Penn Treebank are habitual (generic) and 80.1% episodic (non-generic). inherited by any or all instances pertaining to the class. Zirn et al. (2008) are the first to present fully automatic, heuristic methods to distinguish between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). T</context>
+</contexts>
+<marker>Pappas, Gelman, 1998</marker>
+<rawString>Athina Pappas and Susan A. Gelman. 1998. Generic noun phrases in mother–child conversations. Journal of Child Language, 25(1):19–33.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Simone Paolo Ponzetto</author>
+<author>Michael Strube</author>
+</authors>
+<title>Deriving a large scale taxonomy from wikipedia.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 22nd Conference on the Advancement of Artificial Intelligence,</booktitle>
+<pages>1440--1445</pages>
+<location>Vancouver, B.C., Canada,</location>
+<contexts>
+<context citStr="Ponzetto and Strube, 2007" endWordPosition="1265" position="8130" startWordPosition="1262"> xi] |{z } Restrictor 41 and could lead to big improvements of semanticsbased processing. Bos (2009), e.g., describes systems using automated deduction for language understanding tasks using formal knowledge. There are manually built formal ontologies such as SUMO (Niles and Pease, 2001) or Cyc (Lenat, 1995) and linguistic ontologies like WordNet (Fellbaum, 1998) that capture linguistic and world knowledge to a certain extent. However, these resources either lack coverage or depth. Automatically constructed ontologies or taxonomies, on the other hand, are still of poor quality (Cimiano, 2006; Ponzetto and Strube, 2007). Attempts to automatically induce knowledge bases from text or encyclopaedic sources are currently not concerned with the distinction between generic and non-generic expressions, concentrating mainly on factual knowledge. However, rulelike knowledge can be found in textual sources in the form of generic expressions5. In view of the properties of generic expressions discussed above, this lack of attention bears two types of risks. The first concerns the distinction between classes and instances, regarding the attribution of properties. The second concerns modelling exceptions in both represent</context>
+<context citStr="Ponzetto and Strube (2007)" endWordPosition="1616" position="10366" startWordPosition="1613">ren (Pappas and Gelman, 1998). We are not aware of any detailed assessment of the proportion of generic noun phrases in educational text genres or encyclopaedic resources like Wikipedia. Concerning generic sentences, Mathew and Katz (2009) report that 19.9% of the sentences in their annotated portion of the Penn Treebank are habitual (generic) and 80.1% episodic (non-generic). inherited by any or all instances pertaining to the class. Zirn et al. (2008) are the first to present fully automatic, heuristic methods to distinguish between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). They report an accuracy of 81.6% and 84.5% for different classification schemes. However, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exceptions is a cumbersome but necessary problem to be handled in ontology building, be it manually or by automatic means, and whether or not the genericity of knowledge is formalised explicitly. In artificial intelligence research, this area has been tackled for many years. Default reasoning (Reiter, 1980) is confronted with severe efficiency problems and therefore has not extended beyon</context>
+</contexts>
+<marker>Ponzetto, Strube, 2007</marker>
+<rawString>Simone Paolo Ponzetto and Michael Strube. 2007. Deriving a large scale taxonomy from wikipedia. In Proceedings of the 22nd Conference on the Advancement of Artificial Intelligence, pages 1440– 1445, Vancouver, B.C., Canada, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Willard Van Orman Quine</author>
+</authors>
+<title>Word and Object.</title>
+<date>1960</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Massachusetts.</location>
+<contexts>
+<context citStr="Quine (1960)" endWordPosition="798" position="5172" startWordPosition="797">cessing tasks in computational linguistics. Section 3 reviews prior and related work. In section 4 we motivate the choice of feature sets for the automatic identification of generic NPs in context. Sections 5 and 6 present our experiments and results obtained for this task on the ACE-2 data set. Section 7 concludes. 2 Generic Expressions &amp; their Relevance for Computational Linguistics 2.1 Interpretation of generic expressions Generic NPs There are two contrasting views on how to formally interpret generic NPs. According to the first one, a generic NP involves a special form of quantification. Quine (1960), for example, proposes a universally quantified reading for generic NPs. This view is confronted with the most important problem of all quantificationbased approaches, namely that the exact determination of the quantifier restriction (QR) is highly dependent on the context, as illustrated in (3)3. (3) a. Lions are mammals. QR: all lions b. Mammals give birth to live young. QR: less than half of all mammals 3Some of these examples are taken from Carlson (1977). c. Rats are bothersome to people. QR: few rats4 In view of this difficulty, several approaches restrict the quantification to only “re</context>
+</contexts>
+<marker>Quine, 1960</marker>
+<rawString>Willard Van Orman Quine. 1960. Word and Object. MIT Press, Cambridge, Massachusetts.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Raymond Reiter</author>
+</authors>
+<title>A logic for default reasoning.</title>
+<date>1980</date>
+<journal>Artificial Intelligence,</journal>
+<pages>13--81</pages>
+<contexts>
+<context citStr="Reiter, 1980" endWordPosition="1695" position="10883" startWordPosition="1694">sh between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). They report an accuracy of 81.6% and 84.5% for different classification schemes. However, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exceptions is a cumbersome but necessary problem to be handled in ontology building, be it manually or by automatic means, and whether or not the genericity of knowledge is formalised explicitly. In artificial intelligence research, this area has been tackled for many years. Default reasoning (Reiter, 1980) is confronted with severe efficiency problems and therefore has not extended beyond experimental systems. However, the emerging paradigm of Answer Set Programming (ASP, Lifschitz (2008)) seems to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default r</context>
+</contexts>
+<marker>Reiter, 1980</marker>
+<rawString>Raymond Reiter. 1980. A logic for default reasoning. Artificial Intelligence, 13:81–132.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Helmut Schmid</author>
+</authors>
+<title>Probabilistic part-of-speech tagging using decision trees.</title>
+<date>1994</date>
+<booktitle>Proceedings of the conference on New Methods in Language Processing,</booktitle>
+<pages>12</pages>
+<contexts>
+<context citStr="Schmid, 1994" endWordPosition="3616" position="23128" startWordPosition="3615">texts have been (pre-)processed to add several layers of linguistic annotation (Table 5). We use MorphAdorner for sentence splitting and TreeTagger with the standard parameter files for part of speech tagging and lemmatisation. As we do not have a word sense disambiguation system available that outperforms the most frequent sense baseline, we simply used the most frequent sense (MFS). The countability information is taken from Celex. Parsing was done using the English LFG grammar (cf. Butt et al. (2002)) in the XLE parsing platform and the Stanford Parser. Task Tool MorphAdorner 7 TreeTagger (Schmid, 1994) MFS (according to WordNet 3.0) Celex (Baayen et al., 1996) XLE (Crouch et al., 2010) Stanford (Klein and Manning, 2003) Table 5: Preprocessing pipeline As the LFG-grammar produced full parses only for the sentences of 56% of the entities (partial parses: 37% of the entities), we chose to integrate the Stanford parser as a fallback. If we are unable to extract feature values from the f-structure produced by the XLE parser, we extract them from the Stanford Parser, if possible. Experimentation showed using the two parsers in tandem yields best results, compared to individual use. 7http://morpha</context>
+</contexts>
+<marker>Schmid, 1994</marker>
+<rawString>Helmut Schmid. 1994. Probabilistic part-of-speech tagging using decision trees. Proceedings of the conference on New Methods in Language Processing, 12.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sangweon Suh</author>
+</authors>
+<title>Extracting Generic Statements for the Semantic Web. Master’s thesis,</title>
+<date>2006</date>
+<institution>University of Edinburgh.</institution>
+<contexts>
+<context citStr="Suh (2006)" endWordPosition="1821" position="11685" startWordPosition="1820">s to be able to model exceptions efficiently. In ASP a given problem is cast as a logic program, and an answer set solver calculates all possible answer sets, where an answer set corresponds to a solution of the problem. Efficient answer set solvers have been proposed (Gelfond, 2007). Although ASP may provide us with very efficient reasoning systems, it is still necessary to distinguish and mark default rules explicitly (Lifschitz, 2002). Hence, the recognition of generic expressions is an important precondition for the adequate representation and processing of generic knowledge. 3 Prior Work Suh (2006) applied a rule-based approach to automatically identify generic noun phrases. Suh used patterns based on part of speech tags that identify bare plural noun phrases, reporting a precision of 28.9% for generic entities, measured against an annotated corpus, the ACE 2005 (Ferro et al., 2005). Neither recall nor f-measure are reported. To our knowledge, this is the single prior work on the task of identifying generic NPs. Next to the ACE corpus (described in more detail below), Herbelot and Copestake (2008) offer a study on annotating genericity in a corpus. Two annotators annotated 48 noun phras</context>
+<context citStr="Suh, 2006" endWordPosition="4530" position="28449" startWordPosition="4529">e select the resulting five best features, tuples and triples of features. The respective feature sets are given as Set 1 to Set 3 in Table 4. The features that appear most often in Set 1 to Set 3 are grouped in Set 4. Baseline Our results are evaluated against three baselines. Since the class distribution is unequal, a majority baseline consists in classifying each entity as non-generic. As a second baseline we chose the performance of the feature Person, as this feature gave the best performance in precision among those that are similarly easy to extract. Finally, we compare our results to (Suh, 2006). 6 Results and Discussion The results of classification are summarised in Table 6. The columns Generic and Non-generic give the results for the respective class. Overall shows the weighted average of the classes. Comparison to baselines Given the bias for non-generic NPs in the unbalanced data, the majority baseline achieves high performance overall (F: 80.6). Of course, it does not detect any generic NPs. The Person-based baseline also suffers from very low recall (R: 10.2%), but achieves the highest precision (P: 60.5 %). (Suh, 2006) reported only precision of the generic class, so we can o</context>
+</contexts>
+<marker>Suh, 2006</marker>
+<rawString>Sangweon Suh. 2006. Extracting Generic Statements for the Semantic Web. Master’s thesis, University of Edinburgh.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ian H Witten</author>
+<author>Eibe Frank</author>
+</authors>
+<title>Data mining: practical machine learning tools and techniques with Java implementations.</title>
+<date>2002</date>
+<journal>ACM SIGMOD Record,</journal>
+<volume>31</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Witten and Frank, 2002" endWordPosition="4140" position="26058" startWordPosition="4137">7.4 87.1 79.7 83.2 Set 4 35.9 83.1 50.1 96.8 77.4 86.0 88.7 78.2 83.1 Set 5 37.0 81.9 51.0 96.6 78.7 86.8 88.8 79.2 83.7 Table 6: Results of the classification, using different feature and training sets 5.3 Experimental setup Given the unclear dependencies of features, we chose to use a Bayesian network. A Bayesian network represents the dependencies of random variables in a directed acyclic graph, where each node represents a random variable and each edge a dependency between variables. In fact, a number of feature selection tests uncovered feature dependencies (see below). We used the Weka (Witten and Frank, 2002) implementation BayesNet in all our experiments. To control for bias effects, we created balanced data sets by oversampling the number of generic entities and simultaneously undersampling nongeneric entities. This results in a dataset of 20,053 entities with approx. 10,000 entities for each class. All experiments are performed on balanced and unbalanced data sets using 10-fold crossvalidation, where balancing has been performed for each training fold separately (if any). Feature classes We performed evaluation runs for different combinations of feature sets: NP- vs. S-level features (with furt</context>
+</contexts>
+<marker>Witten, Frank, 2002</marker>
+<rawString>Ian H. Witten and Eibe Frank. 2002. Data mining: practical machine learning tools and techniques with Java implementations. ACM SIGMOD Record, 31(1):76–77.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C¨acilia Zirn</author>
+<author>Vivi Nastase</author>
+<author>Michael Strube</author>
+</authors>
+<title>Distinguishing between instances and classes in the Wikipedia taxonomy.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 5th European Semantic Web Conference.</booktitle>
+<contexts>
+<context citStr="Zirn et al. (2008)" endWordPosition="1590" position="10197" startWordPosition="1587">cience, research on the acquisition of generic knowledge in humans has shown that adult speakers tend to use generic expressions very often when talking to children (Pappas and Gelman, 1998). We are not aware of any detailed assessment of the proportion of generic noun phrases in educational text genres or encyclopaedic resources like Wikipedia. Concerning generic sentences, Mathew and Katz (2009) report that 19.9% of the sentences in their annotated portion of the Penn Treebank are habitual (generic) and 80.1% episodic (non-generic). inherited by any or all instances pertaining to the class. Zirn et al. (2008) are the first to present fully automatic, heuristic methods to distinguish between classes and instances in the Wikipedia taxonomy derived by Ponzetto and Strube (2007). They report an accuracy of 81.6% and 84.5% for different classification schemes. However, apart from a plural feature, all heuristics are tailored to specific properties of the Wikipedia resource. Modelling exceptions is a cumbersome but necessary problem to be handled in ontology building, be it manually or by automatic means, and whether or not the genericity of knowledge is formalised explicitly. In artificial intelligence</context>
+</contexts>
+<marker>Zirn, Nastase, Strube, 2008</marker>
+<rawString>C¨acilia Zirn, Vivi Nastase, and Michael Strube. 2008. Distinguishing between instances and classes in the Wikipedia taxonomy. In Proceedings of the 5th European Semantic Web Conference.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,917 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.008081" no="0">
+<title confidence="0.999049">
+What is the Minimal Set of Fragments that Achieves
+Maximal Parse Accuracy?
+</title>
+<author confidence="0.994276">
+Rens Bod
+</author>
+<affiliation confidence="0.99879575">
+School of Computing
+University of Leeds, Leeds LS2 9JT, &amp;
+Institute for Logic, Language and Computation
+University of Amsterdam, Spuistraat 134, 1012 VB Amsterdam
+</affiliation>
+<email confidence="0.996865">
+rens@comp.leeds.ac.uk
+</email>
+<sectionHeader confidence="0.995627" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999988153846154">We aim at finding the minimal set of fragments which achieves maximal parse accuracy in Data Oriented Parsing. Experiments with the Penn Wall Street Journal treebank show that counts of almost arbitrary fragments within parse trees are important, leading to improved parse accuracy over previous models tested on this treebank (a precis ion of 90.8% and a recall of 90.6%). We isolate some dependency relations which previous models neglect but which contribute to higher parse accuracy.</bodyText>
+<sectionHeader confidence="0.998993" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999984052631579">One of the goals in statistical natural language parsing is to find the minimal set of statistical dependencies (between words and syntactic structures) that achieves maximal parse accuracy. Many stochastic parsing models use linguistic intuitions to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational perspective we may wonder whether it is possible to impose constraints on the subtrees that are used, in such a way that the accuracy of the model does not deteriorate or perhaps even improves. That is the main question addressed in this paper. We report on experiments carried out with the Penn Wall Street Journal (WSJ) treebank to investigate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse accuracy consist in an upper bound of the number of words in the subtree frontiers and an upper bound on the depth of unlexicalized subtrees. We also found that counts of subtrees with several nonheadwords are important, resulting in improved parse accuracy over previous parsers tested on the WSJ.</bodyText>
+<sectionHeader confidence="0.931317" genericHeader="method">
+2 The DOP1 Model
+</sectionHeader>
+<bodyText confidence="0.999261428571429">To-date, the Data Oriented Parsing model has mainly been applied to corpora of trees whose labels consist of primitive symbols (but see Bod &amp; Kaplan 1998; Bod 2000c, 2001). Let us illustrate the original DOP model presented in Bod (1993), called DOP1, with a simple example. Assume a corpus consisting of only two trees:</bodyText>
+<figureCaption confidence="0.998184">
+Figure 1. A corpus of two trees
+</figureCaption>
+<bodyText confidence="0.999765285714286">New sentences may be derived by combining fragments, i.e. subtrees, from this corpus, by means of a node-substitution operation indicated as °. Node-substitution identifies the leftmost nonterminal frontier node of one subtree with the root node of a second subtree (i.e., the second subtree is substituted on the leftmost nonterminal frontier node of the first subtree).</bodyText>
+<figure confidence="0.995581384615385">
+S
+S
+John
+V
+NP
+Peter
+V
+NP
+likes
+Mary
+hates Susan
+NP VP
+NP VP
+</figure>
+<bodyText confidence="0.891129">Thus a new sentence such as Mary likes Susan can be derived by combining subtrees from this corpus:</bodyText>
+<figureCaption confidence="0.8187145">
+Figure 2. A derivation for Mary likes Susan
+Other derivations may yield the same tree, e.g.:
+Susan likes Susan
+Figure 3. Another derivation yielding same tree
+</figureCaption>
+<bodyText confidence="0.999979125">DOP1 computes the probability of a subtree t as the probability of selecting t among all corpus subtrees that can be substituted on the same node as t. This probability is equal to the number of occurrences of t,  |t |, divided by the total number of occurrences of all subtrees t' with the same root label as t. Let r(t) return the root label of t. Then we may write:</bodyText>
+<equation confidence="0.9987285">
+P(t) =  |t |
+Σ t': r(t')=r(t)  |t' |
+</equation>
+<bodyText confidence="0.9998379">In most applications of DOP1, the subtree probabilities are smoothed by the technique described in Bod (1996) which is based on Good-Turing. (The subtree probabilities are not smoothed by backing off to smaller subtrees, since these are taken into account by the parse tree probability, as we will see.) The probability of a derivation t1°...°tn is computed by the product of the probabilities of its subtrees ti:</bodyText>
+<equation confidence="0.999432">
+P(t1°...°tn) = Πi P(ti)
+</equation>
+<bodyText confidence="0.999741333333333">As we have seen, there may be several distinct derivations that generate the same parse tree. The probability of a parse tree T is thus the sum of the probabilities of its distinct derivations. Let tid be the i-th subtree in the derivation d that produces tree T, then the probability of T is given by</bodyText>
+<equation confidence="0.991964">
+P(T) = ΣdΠi P(tid)
+</equation>
+<bodyText confidence="0.999136">Thus the DOP1 model considers counts of subtrees of a wide range of sizes in computing the probability of a tree: everything from counts of single-level rules to counts of entire trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper formed by any other estimator for DOP1, we will stick to this estimator in the current paper.</bodyText>
+<sectionHeader confidence="0.99654" genericHeader="method">
+3 Computational Issues
+</sectionHeader>
+<bodyText confidence="0.999981648648649">Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are used to create a derivation forest for a sentence (using a CKY parser), and the most probable parse is computed by sampling a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo disambiguation&amp;quot;, see Bod 1998). While this technique has been successfully applied to parsing the ATIS portion in the Penn Treebank (Marcus et al. 1993), it is extremely time consuming. This is mainly because the number of random derivations that should be sampled to reliably estimate the most probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which contains exactly eight SCFG rules for each node in the training set trees. Although Goodman's method does still not allow for an efficient computation of the most probable parse (in fact, the problem of computing the most probable parse in DOP1 is NP-hard -see Sima'an 1999), his method does allow for an efficient computation of the &amp;quot;maximum constituents parse&amp;quot;, i.e. the parse tree that is most likely to have the largest number of correct constituents. Goodman has shown on the ATIS corpus that the maximum constituents parse performs at least as well as the most probable parse if all subtrees are used.</bodyText>
+<figure confidence="0.871529739130435">
+V
+NP
+likes
+S
+NP
+=
+° NP °
+S
+Mary
+NP VP
+Susan NP VP
+Mary V NP
+likes Susan
+° NP °
+Mary likes NP VP
+S
+V
+=
+NP VP
+S
+V
+NP
+Mary V NP
+</figure>
+<bodyText confidence="0.999836184210526">Unfortunately, Goodman's reduction method is only beneficial if indeed all subtrees are used. Sima'an (1999: 108) argues that there may still be an isomorphic SCFG for DOP1 if the corpus-subtrees are restricted in size or lexicalization, but that the number of the rules explodes in that case. In this paper we will use Bod's subtree-torule conversion method for studying the impact of various subtree restrictions on the WSJ corpus. However, we will not use Bod's Monte Carlo sampling technique from complete derivation forests, as this turned out to be prohibitive for WSJ sentences. Instead, we employ a Viterbi n-best search using a CKY algorithm and estimate the most probable parse from the 1,000 most probable derivations, summing up the probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart.</bodyText>
+<sectionHeader confidence="0.9828365" genericHeader="evaluation and result">
+4 What is the Minimal Subtree Set that
+Achieves Maximal Parse Accuracy?
+</sectionHeader>
+<subsectionHeader confidence="0.999565">
+4.1 The base line
+</subsectionHeader>
+<bodyText confidence="0.999989815384616">For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences ❑ 100 words); section 22 was used as development set. All trees were stripped off their semantic tags, co-reference information and quotation marks. We used all training set subtrees of depth 1, but due to memory limitations we used a subset of the subtrees larger than depth 1, by taking for each depth a random sample of 400,000 subtrees. These random subtree samples were not selected by first exhaustively computing the complete set of subtrees (this was computationally prohibit ive). Instead, for each particular depth &gt; 1 we sampled subtrees by randomly selecting a node in a random tree from the training set, after which we selected random expansions from that node until a subtree of the particular depth was obtained. We repeated this procedure 400,000 times for each depth &gt; 1 and ❑ 14. Thus no subtrees of depth &gt; 14 were used. This resulted in a base line subtree set of 5,217,529 subtrees which were smoothed by the technique described in Bod (1996) based on Good-Turing. Since our subtrees are allowed to be lexicalized (at their frontiers), we did not use a separate part-ofspeech tagger: the test sentences were directly parsed by the training set subtrees. For words that were unknown in our subtree set, we guessed their categories by means of the method described in Weischedel et al. (1993) which uses statistics on word-endings, hyphenation and capitalization. The guessed category for each unknown word was converted into a depth-1 subtree and assigned a probability by means of simple Good-Turing estimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Charniak 2000). The table shows that by using the base line subtree set, our parser outperforms most previous parsers but it performs worse than the parser in Charniak (2000). We will use our scores of 89.5% LP and 89.3% LR (for test sentences ❑ 40 words) as the base line result against which the effect of various subtree restrictions is investigated. While most subtree restrictions diminish the accuracy scores, we will see that there are restrictions that improve our scores, even beyond those of Charniak (2000).</bodyText>
+<footnote confidence="0.749512">
+1 http://www.cs.nyu.edu/cs/projects/proteus/evalb/
+</footnote>
+<bodyText confidence="0.9990976">We will initially study our subtree restrictions only for test sentences ≤ 40 words (2245 sentences), after which we will give in 4.6 our results for all test sentences ≤ 100 words (2416 sentences). While we have tested all subtree restrictions initially on the development set (section 22 in the WSJ), we believe that it is interesting and instructive to report these subtree restrictions on the test set (section 23) rather than reporting our best result only.</bodyText>
+<table confidence="0.99982975">
+Parser LP LR
+≤ 40 words
+Char97 87.4 87.5
+Coll99 88.7 88.5
+Char00 90.1 90.1
+Bod00 89.5 89.3
+≤ 100 words
+Char97 86.6 86.7
+Coll99 88.3 88.1
+Ratna99 87.5 86.3
+Char00 89.5 89.6
+Bod00 88.6 88.3
+</table>
+<tableCaption confidence="0.971434">
+Table 1. Parsing results with the base line subtree
+set compared to previous parsers
+</tableCaption>
+<subsectionHeader confidence="0.954838">
+4.2 The impact of subtree size
+</subsectionHeader>
+<bodyText confidence="0.998944">Our first subtree restriction is concerned with subtree size. We therefore performed experiments with versions of DOP1 where the base line subtree set is restricted to subtrees with a certain maximum depth. Table 2 shows the results of these experiments.</bodyText>
+<table confidence="0.999196916666667">
+depth of LP LR
+subtrees
+1 76.0 71.8
+≤2 80.1 76.5
+≤3 82.8 80.9
+≤4 84.7 84.1
+≤5 85.5 84.9
+≤6 86.2 86.0
+≤8 87.9 87.1
+≤10 88.6 88.0
+≤12 89.1 88.8
+≤14 89.5 89.3
+</table>
+<tableCaption confidence="0.9962025">
+Table 2. Parsing results for different subtree
+depths (for test sentences ≤ 40 words)
+</tableCaption>
+<bodyText confidence="0.999807692307693">Our scores for subtree-depth 1 are comparable to Charniak's treebank grammar if tested on word strings (see Charniak 1997). Our scores are slightly better, which may be due to the use of a different unknown word model. Note that the scores consistently improve if larger subtrees are taken into account. The highest scores are obtained if the full base line subtree set is used, but they remain behind the results of Charniak (2000). One might expect that our results further increase if even larger subtrees are used; but due to memory limitations we did not perform experiments with subtrees larger than depth 14.</bodyText>
+<subsectionHeader confidence="0.978004">
+4.3 The impact of lexical context
+</subsectionHeader>
+<bodyText confidence="0.999973">The more words a subtree contains in its frontier, the more lexical dependencies can be taken into account. To test the impact of the lexical context on the accuracy, we performed experiments with different versions of the model where the base line subtree set is restricted to subtrees whose frontiers contain a certain maximum number of words; the subtree depth in the base line subtree set was not constrained (though no subtrees deeper than 14 were in this base line set). Table 3 shows the results of our experiments.</bodyText>
+<table confidence="0.9994896">
+# words LP LR
+in subtrees
+≤1 84.4 84.0
+≤2 85.2 84.9
+≤3 86.6 86.3
+≤4 87.6 87.4
+≤6 88.0 87.9
+≤8 89.2 89.1
+≤10 90.2 90.1
+≤11 90.8 90.4
+≤12 90.8 90.5
+≤13 90.4 90.3
+≤14 90.3 90.3
+≤16 89.9 89.8
+unrestricted 89.5 89.3
+</table>
+<tableCaption confidence="0.9967535">
+Table 3. Parsing results for different subtree
+lexicalizations (for test sentences ≤ 40 words)
+</tableCaption>
+<bodyText confidence="0.9999847">We see that the accuracy initially increases when the lexical context is enlarged, but that the accuracy decreases if the number of words in the subtree frontiers exceeds 12 words. Our highest scores of 90.8% LP and 90.5% LR outperform the scores of the best previously published parser by Charniak (2000) who obtains 90.1% for both LP and LR. Moreover, our scores also outperform the reranking technique of Collins (2000) who reranks the output of the parser of Collins (1999) using a boosting method based on Schapire &amp; Singer (1998), obtaining 90.4% LP and 90.1% LR. We have thus found a subtree restriction which does not decrease the parse accuracy but even improves it. This restriction consists of an upper bound of 12 words in the subtree frontiers, for subtrees ≤ depth 14. (We have also tested this lexical restriction in combination with subtrees smaller than depth 14, but this led to a decrease in accuracy.)</bodyText>
+<subsectionHeader confidence="0.9903">
+4.4 The impact of structural context
+</subsectionHeader>
+<bodyText confidence="0.999685909090909">Instead of investigating the impact of lexical context, we may also be interested in studying the importance of structural context. We may raise the question as to whether we need all unlexicalized subtrees, since such subtrees do not contain any lexical information, although they may be useful to smooth lexicalized subtrees. We accomplished a set of experiments where unlexicalized subtrees of a certain minimal depth are deleted from the base line subtree set, while all lexicalized subtrees up to 12 words are retained.</bodyText>
+<table confidence="0.986554923076923">
+depth of deleted LP LR
+unlexicalized
+subtrees
+≥1 79.9 77.7
+≥2 86.4 86.1
+≥3 89.9 89.5
+≥4 90.6 90.2
+≥5 90.7 90.6
+≥6 90.8 90.6
+≥7 90.8 90.5
+≥8 90.8 90.5
+≥10 90.8 90.5
+≥12 90.8 90.5
+</table>
+<tableCaption confidence="0.9678615">
+Table 4. Parsing results for different structural
+context (for test sentences ≤ 40 words)
+</tableCaption>
+<bodyText confidence="0.974484947368421">Table 4 shows that the accuracy increases if unlexicalized subtrees are retained, but that unlexicalized subtrees larger than depth 6 do not contribute to any further increase in accuracy. On the contrary, these larger subtrees even slightly decrease the accuracy. The highest scores obtained are: 90.8% labeled precision and 90.6% labeled recall. We thus conclude that pure structural context without any lexical information contributes to higher parse accuracy (even if there exists an upper bound for the size of structural context). The importance of structural context is consonant with Johnson (1998) who showed that structural context from higher nodes in the tree (i.e. grandparent nodes) contributes to higher parse accuracy. This mirrors our result of the importance of unlexicalized subtrees of depth 2. But our results show that larger structural context (up to depth 6) also contributes to the accuracy.</bodyText>
+<subsectionHeader confidence="0.975654">
+4.5 The impact of nonheadword dependencies
+</subsectionHeader>
+<bodyText confidence="0.999838036363636">We may also raise the question as to whether we need almost arbitrarily large lexicalized subtrees (up to 12 words) to obtain our best results. It could be the case that DOP's gain in parse accuracy with increasing subtree depth is due to the model becoming sensitive to the influence of lexical heads higher in the tree, and that this gain could also be achieved by a more compact model which associates each nonterminal with its headword, such as a head-lexicalized SCFG. Head-lexicalized stochastic grammars have recently become increasingly popular (see Collins 1997, 1999; Charniak 1997, 2000). These grammars are based on Magerman's headpercolation scheme to determine the headword of each nonterminal (Magerman 1995). Unfortunately this means that head-lexicalized stochastic grammars are not able to capture dependency relations between words that according to Magerman's head-percolation scheme are &amp;quot;nonheadwords&amp;quot; -e.g. between more and than in the WSJ construction carry more people than cargo where neither more nor than are headwords of the NP constituent more people than cargo. A frontier-lexicalized DOP model, on the other hand, captures these dependencies since it includes subtrees in which more and than are the only frontier words. One may object that this example is somewhat far-fetched, but Chiang (2000) notes that head-lexicalized stochastic grammars fall short in encoding even simple dependency relations such as between left and John in the sentence John should have left. This is because Magerman's head-percolation scheme makes should and have the heads of their respective VPs so that there is no dependency relation between the verb left and its subject John. Chiang observes that almost a quarter of all nonempty subjects in the WSJ appear in such a configuration. In order to isolate the contribution of nonheadword dependencies to the parse accuracy, we eliminated all subtrees containing a certain maximum number of nonheadwords, where a nonheadword of a subtree is a word which according to Magerman's scheme is not a headword of the subtree's root nonterminal (although such a nonheadword may of course be a headword of one of the subtree's internal nodes). In the following experiments we used the subtree set for which maximum accuracy was obtained in our previous experiments, i.e. containing all lexicalized subtrees with maximally 12 frontier words and all unlexicalized subtrees up to depth 6.</bodyText>
+<table confidence="0.998723583333333">
+# nonheadwords LP LR
+in subtrees
+0 89.6 89.6
+≤1 90.2 90.1
+≤2 90.4 90.2
+≤3 90.3 90.2
+≤4 90.6 90.4
+≤5 90.6 90.6
+≤6 90.6 90.5
+≤7 90.7 90.7
+≤8 90.8 90.6
+unrestricted 90.8 90.6
+</table>
+<tableCaption confidence="0.994452">
+Table 5. Parsing results for different number of
+nonheadwords (for test sentences ≤ 40 words)
+</tableCaption>
+<bodyText confidence="0.99369025">Table 5 shows that nonheadwords contribute to higher parse accuracy: the difference between using no and all nonheadwords is 1.2% in LP and 1.0% in LR. Although this difference is relatively small, it does indicate that nonheadword dependencies should preferably not be discarded in the WSJ. We should note, however, that most other stochastic parsers do include counts of single nonheadwords: they appear in the backed-off statistics of these parsers (see Collins 1997, 1999; Charniak 1997; Goodman 1998). But our parser is the first parser that also includes counts between two or more nonheadwords, to the best of our knowledge, and these counts lead to improved performance, as can be seen in table 5.</bodyText>
+<subsectionHeader confidence="0.607935">
+4.6 Results for all sentences
+</subsectionHeader>
+<bodyText confidence="0.9997186">We have seen that for test sentences ≤ 40 words, maximal parse accuracy was obtained by a subtree set which is restricted to subtrees with not more than 12 words and which does not contain unlexicalized subtrees deeper than 6.2 We used these restrictions to test our model on all sentences ≤ 100 words from the WSJ test set.</bodyText>
+<footnote confidence="0.990612">
+2 It may be noteworthy that for the development
+set (section 22 of WSJ), maximal parse accuracy
+was obtained with exactly the same subtree
+restrictions. As explained in 4.1, we initially tested
+all restrictions on the development set, but we
+preferred to report the effects of these restrictions
+for the test set.
+</footnote>
+<bodyText confidence="0.9990689">This resulted in an LP of 89.7% and an LR of 89.7%. These scores slightly outperform the best previously published parser by Charniak (2000), who obtained 89.5% LP and 89.6% LR for test sentences ≤ 100 words. Only the reranking technique proposed by Collins (2000) slightly outperforms our precision score, but not our recall score: 89.9% LP and 89.6% LR.</bodyText>
+<sectionHeader confidence="0.985253" genericHeader="result">
+5 Discussion: Converging Approaches
+</sectionHeader>
+<bodyText confidence="0.999996027777779">The main goal of this paper was to find the minimal set of fragments which achieves maximal parse accuracy in Data Oriented Parsing. We have found that this minimal set of fragments is very large and extremely redundant: highest parse accuracy is obtained by employing only two constraints on the fragment set: a restriction of the number of words in the fragment frontiers to 12 and a restriction of the depth of unlexicalized fragments to 6. No other constraints were warranted. There is an important question why maximal parse accuracy occurs with exactly these constraints. Although we do not know the answer to this question, we surmise that these constraints differ from corpus to corpus and are related to general data sparseness effects. In previous experiments with DOP1 on smaller and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non terminal with its lexical head -see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts a stochastic tree-insertion grammar or STIG (Schabes &amp; Waters 1996) from the WSJ, obtaining 86.6% LP and 86.9% LR for sentences ≤ 40 words. However, Chiang's approach is limited in at least two respects. First, each elementary tree in his STIG is lexicalized with exactly one lexical item, while our results show that there is an increase in parse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account only one derivation, while in STIG, like in DOP1, there can be several derivations that generate the same tree. Another difference between our approach and most other models is that the underlying grammar of DOP is based on a treebank grammar (cf. Charniak 1996, 1997), while most current stochastic parsing models use a &amp;quot;markov grammar&amp;quot; (e.g. Collins 1999; Charniak 2000). While a treebank grammar only assigns probabilities to rules or subtrees that are seen in a treebank, a markov grammar assigns probabilities to any possible rule, resulting in a more robust model. We expect that the application of the markov grammar approach to DOP will further improve our results. Research in this direction is already ongoing, though it has been tested for rather limited subtree depths only (see Sima'an 2000). Although we believe that our main result is to have shown that almost arbitrary fragments within parse trees are important, it is surprising that a relatively simple model like DOP1 outperforms most other stochastic parsers on the WSJ. Yet, to the best of our knowledge, DOP is the only model which does not a priori restrict the fragments that are used to compute the most probable parse. Instead, it starts out by taking into account all fragments seen in a treebank and then investigates fragment restrictions to discover the set of relevant fragments. From this perspective, the DOP approach can be seen as striving for the same goal as other approaches but from a different direction. While other approaches usually limit the statistical dependencies beforehand (for example to headword dependencies) and then try to improve parse accuracy by gradually letting in more dependencies, the DOP approach starts out by taking into account as many dependencies as possible and then tries to constrain them without losing parse accuracy. It is not unlikely that these two opposite directions will finally converge to the same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top).</bodyText>
+<subsectionHeader confidence="0.810895">
+Scope of Statistical
+Dependencies
+</subsectionHeader>
+<figure confidence="0.939585857142857">
+Charniak (1996) context-free rules
+Collins (1996), context-free rules,
+Eisner (1996) headwords
+Charniak (1997) context-free rules,
+headwords,
+grandparent nodes
+Collins (2000) context-free rules,
+headwords,
+grandparent nodes/rules,
+bigrams, two-level rules,
+two-level bigrams,
+nonheadwords
+Bod (1992) all fragments within
+parse trees
+</figure>
+<figureCaption confidence="0.8773615">
+Figure 4. Schematic overview of the increase of
+statistical dependencies by stochastic parsers
+</figureCaption>
+<bodyText confidence="0.993458190476191">Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; Eisner 1996), later models showed the importance of including context from higher nodes in the tree (Charniak 1997; Johnson 1998). This mirrors our result of the utility of (unlexicalized) fragments of depth 2 and larger. The importance of including single nonheadwords is now also uncontroversial (e.g. Collins 1997, 1999; Charniak 2000), and the current paper has shown the importance of including two and more nonheadwords. Recently, Collins (2000) observed that &amp;quot;In an ideal situation we would be able to encode arbitrary features hs, Model thereby keeping track of counts of arbitrary fragments within parse trees&amp;quot;. This is in perfect correspondence with the DOP philosophy.</bodyText>
+<sectionHeader confidence="0.990281" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999936883928572">
+R. Bod, 1992. Data Oriented Parsing, Proceedings
+COLING'92, Nantes, France.
+R. Bod, 1993. Using an Annotated Language
+Corpus as a Virtual Stochastic Grammar,
+Proceedings AAAI'93, Washington D.C.
+R. Bod, 1996. Two Questions about Data-Oriented
+Parsing, Proceedings 4th Workshop on Very
+Large Corpora, COLING'96, Copenhagen,
+Denmark.
+R. Bod, 1998. Beyond Grammar: An Experience-
+Based Theory of Language, Stanford, CSLI
+Publications, distributed by Cambridge Uni-
+versity Press.
+R. Bod, 2000a. Parsing with the Shortest
+Derivation, Proceedings COLING'2000,
+Saarbrücken, Germany.
+R. Bod, 2000b. Combining Semantic and Syntactic
+Structure for Language Modeling, Proceed-
+ings ICSLP-2000, Beijing, China.
+R. Bod, 2000c. An Improved Parser for Data-
+Oriented Lexical-Functional Analysis, Proc-
+eedings ACL-2000, Hong Kong, China.
+R. Bod, 2001. Using Natural Language Processing
+Techniques for Musical Parsing, Proceed-
+ings ACH/ALLC'2001, New York, NY.
+R. Bod and R. Kaplan, 1998. A Probabilistic
+Corpus-Driven Model for Lexical-Functional
+Analysis, Proceedings COLING-ACL'98,
+Montreal, Canada.
+R. Bonnema, P. Buying and R. Scha, 1999. A New
+Probability Model for Data-Oriented Parsing,
+Proceedings of the Amsterdam Colloqui-
+um'99, Amsterdam, Holland.
+J. Carroll and D. Weir, 2000. Encoding Frequency
+Information in Lexicalized Grammars, in H.
+Bunt and A. Nijholt (eds.), Advances in
+Probabilistic and Other Parsing Technolo-
+gies, Kluwer Academic Publishers.
+E. Charniak, 1996. Tree-bank Grammars, Procee-
+dings AAAI'96, Menlo Park, Ca.
+E. Charniak, 1997. Statistical Parsing with a
+Context-Free Grammar and Word Statistics,
+Proceedings AAAI-97, Menlo Park, Ca.
+E. Charniak, 2000. A Maximum-Entropy-Inspired
+Parser. Proceedings ANLP-NAACL'2000,
+Seattle, Washington.
+D. Chiang, 2000. Statistical parsing with an
+automatically extracted tree adjoining
+grammar, Proceedings ACL'2000, Hong
+Kong, China.
+M. Collins 1996. A new statistical parser based on
+bigram lexical dependencies, Proceedings
+ACL'96, Santa Cruz, Ca.
+M. Collins, 1997. Three generative lexicalised
+models for statistical parsing, Proceedings
+ACL'97, Madrid, Spain.
+M. Collins, 1999. Head-Driven Statistical Models
+for Natural Language Parsing, PhD thesis,
+University of Pennsylvania, PA.
+M. Collins, 2000. Discriminative Reranking for
+Natural Language Parsing, Proceedings
+ICML-2000, Stanford, Ca.
+J. Eisner, 1996. Three new probabilistic models for
+dependency parsing: an exploration, Proc-
+eedings COLING-96, Copenhagen, Denmark.
+J. Eisner, 1997. Bilexical Grammars and a Cubic-
+Time Probabilistic Parser, Proceedings Fifth
+International Workshop on Parsing Techno-
+logies, Boston, Mass.
+J. Goodman, 1996. Efficient Algorithms for Parsing
+the DOP Model, Proceedings Empirical
+Methods in Natural Language Processing,
+Philadelphia, PA.
+J. Goodman, 1997. Global Thresholding and
+Multiple-Pass Parsing, Proceedings EMNLP-
+2, Boston, Mass.
+J. Goodman, 1998. Parsing Inside-Out, Ph.D. thesis,
+Harvard University, Mass.
+M. Johnson, 1998. PCFG Models of Linguistic
+Tree Representations, Computational Ling-
+uistics 24(4), 613-632.
+D. Magerman, 1995. Statistical Decision-Tree
+Models for Parsing, Proceedings ACL'95,
+Cambridge, Mass.
+M. Marcus, B. Santorini and M. Marcinkiewicz,
+1993. Building a Large Annotated Corpus of
+English: the Penn Treebank, Computational
+Linguistics 19(2).
+A. Ratnaparkhi, 1999. Learning to Parse Natural
+Language with Maximum Entropy Models,
+Machine Learning 34, 151-176.
+Y. Schabes and R. Waters, 1996. Stochastic
+Lexicalized Tree-Insertion Grammar. In H.
+Bunt and M. Tomita (eds.) Recent Advances
+in Parsing Technology. Kluwer Academic
+Publishers.
+R. Schapire and Y. Singer, 1998. Improved
+Boosting Algorithms Using Confedence-
+Rated Predictions, Proceedings 11th Annual
+Conference on Computational Learning
+Theory. Morgan Kaufmann, San Francisco.
+K. Sima'an, 1999. Learning Efficient Disambig-
+uation. PhD thesis, University of Amster-
+dam, The Netherlands.
+K. Sima'an, 2000. Tree-gram Parsing: Lexical
+Dependencies and Structural Relations,
+Proceedings ACL'2000, Hong Kong, China.
+R. Weischedel, M. Meteer, R, Schwarz, L.
+Ramshaw and J. Palmucci, 1993. Coping
+with Ambiguity and Unknown Words through
+Probabilistic Models, Computational
+Linguistics, 19(2).
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.677734" no="0">
+<title confidence="0.9924195">What is the Minimal Set of Fragments that Achieves Maximal Parse Accuracy?</title>
+<author confidence="0.954121">Rens Bod</author>
+<affiliation confidence="0.934976">School of Computing University of Leeds, Leeds LS2 9JT, &amp; Institute for Logic, Language and Computation University of Amsterdam, Spuistraat 134, 1012 VB Amsterdam</affiliation>
+<email confidence="0.999124">rens@comp.leeds.ac.uk</email>
+<abstract confidence="0.997341214285714">We aim at finding the minimal set of fragments which achieves maximal parse accuracy in Data Oriented Parsing. Experiments with the Penn Wall Street Journal treebank show that counts of almost arbitrary fragments within parse trees are important, leading to improved parse accuracy over previous models tested on this treebank (a precis ion of 90.8% and a recall of 90.6%). We isolate some dependency relations which previous models neglect but which contribute to higher parse accuracy.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Data Oriented Parsing,</title>
+<date>1992</date>
+<booktitle>Proceedings COLING'92,</booktitle>
+<location>Nantes, France.</location>
+<contexts>
+<context citStr="Bod (1992)" endWordPosition="4530" position="27370" startWordPosition="4529">ent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; Eisner 1996), later models showed the importance of including context from higher nodes in the tree (Charniak 1997; Johnson 1998). This mirrors our result of the utility of (unlexicalized) fragments of depth 2 and l</context>
+</contexts>
+<marker>Bod, 1992</marker>
+<rawString>R. Bod, 1992. Data Oriented Parsing, Proceedings COLING'92, Nantes, France.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Using an Annotated Language Corpus as a Virtual Stochastic Grammar,</title>
+<date>1993</date>
+<booktitle>Proceedings AAAI'93,</booktitle>
+<location>Washington D.C.</location>
+<contexts>
+<context citStr="Bod 1993" endWordPosition="242" position="1605" startWordPosition="241"> models use linguistic intuitions to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational perspective we may wonder whether it is possible to impose constraints on the subtrees that are used, in such a way that the accuracy of the model does not deteriorate or perhaps even improves. That is the main question addressed in this paper. We report on experiments carried out with the Penn Wall Street Journal (WSJ) treebank to investigate several strategies for constraining the set of subtrees. We found that the only constraints</context>
+<context citStr="Bod (1993)" endWordPosition="919" position="5545" startWordPosition="918">re trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper - formed by any other estimator for DOP1, we will stick to this estimator in the current paper. 3 Computational Issues Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are used to create a derivation forest for a sentence (using a CKY parser), and the most probable parse is computed by sampling a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo </context>
+</contexts>
+<marker>Bod, 1993</marker>
+<rawString>R. Bod, 1993. Using an Annotated Language Corpus as a Virtual Stochastic Grammar, Proceedings AAAI'93, Washington D.C.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Two Questions about Data-Oriented Parsing,</title>
+<date>1996</date>
+<booktitle>Proceedings 4th Workshop on Very Large Corpora, COLING'96,</booktitle>
+<location>Copenhagen, Denmark.</location>
+<contexts>
+<context citStr="Bod (1996)" endWordPosition="676" position="4109" startWordPosition="675"> may yield the same tree, e.g.: Susan likes Susan Figure 3. Another derivation yielding same tree DOP1 computes the probability of a subtree t as the probability of selecting t among all corpus subtrees that can be substituted on the same node as t. This probability is equal to the number of occurrences of t, |t |, divided by the total number of occurrences of all subtrees t' with the same root label as t. Let r(t) return the root label of t. Then we may write: P(t) = |t | Σ t': r(t')=r(t) |t' | In most applications of DOP1, the subtree probabilities are smoothed by the technique described in Bod (1996) which is based on Good-Turing. (The subtree probabilities are not smoothed by backing off to smaller subtrees, since these are taken into account by the parse tree probability, as we will see.) The probability of a derivation t1°...°tn is computed by the product of the probabilities of its subtrees ti: P(t1°...°tn) = Πi P(ti) As we have seen, there may be several distinct derivations that generate the same parse tree. The probability of a parse tree T is thus the sum of the probabilities of its distinct derivations. Let tid be the i-th subtree in the derivation d that produces tree T, then th</context>
+<context citStr="Bod (1996)" endWordPosition="1756" position="10413" startWordPosition="1755">btree samples were not selected by first exhaustively computing the complete set of subtrees (this was computationally prohibit - ive). Instead, for each particular depth &gt; 1 we sampled subtrees by randomly selecting a node in a random tree from the training set, after which we selected random expansions from that node until a subtree of the particular depth was obtained. We repeated this procedure 400,000 times for each depth &gt; 1 and ❑ 14. Thus no subtrees of depth &gt; 14 were used. This resulted in a base line subtree set of 5,217,529 subtrees which were smoothed by the technique described in Bod (1996) based on Good-Turing. Since our subtrees are allowed to be lexicalized (at their frontiers), we did not use a separate part-ofspeech tagger: the test sentences were directly parsed by the training set subtrees. For words that were unknown in our subtree set, we guessed their categories by means of the method described in Weischedel et al. (1993) which uses statistics on word-endings, hyphenation and capitalization. The guessed category for each unknown word was converted into a depth-1 subtree and assigned a probability by means of simple Good-Turing estimation (see Bod 1998). The most probab</context>
+</contexts>
+<marker>Bod, 1996</marker>
+<rawString>R. Bod, 1996. Two Questions about Data-Oriented Parsing, Proceedings 4th Workshop on Very Large Corpora, COLING'96, Copenhagen, Denmark.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Beyond Grammar: An ExperienceBased Theory of Language, Stanford, CSLI Publications, distributed by Cambridge</title>
+<date>1998</date>
+<publisher>University Press.</publisher>
+<contexts>
+<context citStr="Bod 1998" endWordPosition="1026" position="6175" startWordPosition="1025">chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are used to create a derivation forest for a sentence (using a CKY parser), and the most probable parse is computed by sampling a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo disambiguation&amp;quot;, see Bod 1998). While this technique has been successfully applied to parsing the ATIS portion in the Penn Treebank (Marcus et al. 1993), it is extremely time consuming. This is mainly because the number of random derivations that should be sampled to reliably estimate the most probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which co</context>
+<context citStr="Bod 1998" endWordPosition="1848" position="10996" startWordPosition="1847">ue described in Bod (1996) based on Good-Turing. Since our subtrees are allowed to be lexicalized (at their frontiers), we did not use a separate part-ofspeech tagger: the test sentences were directly parsed by the training set subtrees. For words that were unknown in our subtree set, we guessed their categories by means of the method described in Weischedel et al. (1993) which uses statistics on word-endings, hyphenation and capitalization. The guessed category for each unknown word was converted into a depth-1 subtree and assigned a probability by means of simple Good-Turing estimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Ch</context>
+<context citStr="Bod 1998" endWordPosition="3842" position="23010" startWordPosition="3841"> a restriction of the number of words in the fragment frontiers to 12 and a restriction of the depth of unlexicalized fragments to 6. No other constraints were warranted. There is an important question why maximal parse accuracy occurs with exactly these constraints. Although we do not know the answer to this question, we surmise that these constraints differ from corpus to corpus and are related to general data sparseness effects. In previous experiments with DOP1 on smaller and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non - terminal with its lexical head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalizat</context>
+<context citStr="Bod 1998" endWordPosition="4571" position="27637" startWordPosition="4570">e top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; Eisner 1996), later models showed the importance of including context from higher nodes in the tree (Charniak 1997; Johnson 1998). This mirrors our result of the utility of (unlexicalized) fragments of depth 2 and larger. The importance of including single nonheadwords is now also uncontroversial (e.g. Collins 1997, 1999; Charniak 2000), and the current paper has shown the importance of including two and more nonheadwords. Recently, Collins (2000) observed that &amp;quot;In an ideal sit</context>
+</contexts>
+<marker>Bod, 1998</marker>
+<rawString>R. Bod, 1998. Beyond Grammar: An ExperienceBased Theory of Language, Stanford, CSLI Publications, distributed by Cambridge University Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Parsing with the Shortest Derivation,</title>
+<date>2000</date>
+<booktitle>Proceedings COLING'2000,</booktitle>
+<location>Saarbrücken, Germany.</location>
+<contexts>
+<context citStr="Bod 2000" endWordPosition="429" position="2716" startWordPosition="428">igate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse accuracy consist in an upper bound of the number of words in the subtree frontiers and an upper bound on the depth of unlexicalized subtrees. We also found that counts of subtrees with several nonheadwords are important, resulting in improved parse accuracy over previous parsers tested on the WSJ. 2 The DOP1 Model To-date, the Data Oriented Parsing model has mainly been applied to corpora of trees whose labels consist of primitive symbols (but see Bod &amp; Kaplan 1998; Bod 2000c, 2001). Let us illustrate the original DOP model presented in Bod (1993), called DOP1, with a simple example. Assume a corpus consisting of only two trees: Figure 1. A corpus of two trees New sentences may be derived by combining fragments, i.e. subtrees, from this corpus, by means of a node-substitution operation indicated as °. Node-substitution identifies the leftmost nonterminal frontier node of one subtree with the root node of a second subtree (i.e., the second subtree is substituted on the leftmost nonterminal S S John V NP Peter V NP likes Mary hates Susan NP VP NP VP frontier node o</context>
+<context citStr="Bod 2000" endWordPosition="884" position="5342" startWordPosition="883">en by P(T) = ΣdΠi P(tid) Thus the DOP1 model considers counts of subtrees of a wide range of sizes in computing the probability of a tree: everything from counts of single-level rules to counts of entire trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper - formed by any other estimator for DOP1, we will stick to this estimator in the current paper. 3 Computational Issues Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are u</context>
+<context citStr="Bod (2000" endWordPosition="1412" position="8426" startWordPosition="1411">e will use Bod's subtree-torule conversion method for studying the impact of various subtree restrictions on the WSJ corpus. However, we will not use Bod's Monte Carlo sampling technique from complete derivation forests, as this turned out to be prohibitive for WSJ sentences. Instead, we employ a Viterbi n-best search using a CKY algorithm and estimate the most probable parse from the 1,000 most probable derivations, summing up the probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a </context>
+</contexts>
+<marker>Bod, 2000</marker>
+<rawString>R. Bod, 2000a. Parsing with the Shortest Derivation, Proceedings COLING'2000, Saarbrücken, Germany.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Combining Semantic and Syntactic Structure for Language Modeling,</title>
+<date>2000</date>
+<booktitle>Proceedings ICSLP-2000,</booktitle>
+<location>Beijing, China.</location>
+<contexts>
+<context citStr="Bod 2000" endWordPosition="429" position="2716" startWordPosition="428">igate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse accuracy consist in an upper bound of the number of words in the subtree frontiers and an upper bound on the depth of unlexicalized subtrees. We also found that counts of subtrees with several nonheadwords are important, resulting in improved parse accuracy over previous parsers tested on the WSJ. 2 The DOP1 Model To-date, the Data Oriented Parsing model has mainly been applied to corpora of trees whose labels consist of primitive symbols (but see Bod &amp; Kaplan 1998; Bod 2000c, 2001). Let us illustrate the original DOP model presented in Bod (1993), called DOP1, with a simple example. Assume a corpus consisting of only two trees: Figure 1. A corpus of two trees New sentences may be derived by combining fragments, i.e. subtrees, from this corpus, by means of a node-substitution operation indicated as °. Node-substitution identifies the leftmost nonterminal frontier node of one subtree with the root node of a second subtree (i.e., the second subtree is substituted on the leftmost nonterminal S S John V NP Peter V NP likes Mary hates Susan NP VP NP VP frontier node o</context>
+<context citStr="Bod 2000" endWordPosition="884" position="5342" startWordPosition="883">en by P(T) = ΣdΠi P(tid) Thus the DOP1 model considers counts of subtrees of a wide range of sizes in computing the probability of a tree: everything from counts of single-level rules to counts of entire trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper - formed by any other estimator for DOP1, we will stick to this estimator in the current paper. 3 Computational Issues Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are u</context>
+<context citStr="Bod (2000" endWordPosition="1412" position="8426" startWordPosition="1411">e will use Bod's subtree-torule conversion method for studying the impact of various subtree restrictions on the WSJ corpus. However, we will not use Bod's Monte Carlo sampling technique from complete derivation forests, as this turned out to be prohibitive for WSJ sentences. Instead, we employ a Viterbi n-best search using a CKY algorithm and estimate the most probable parse from the 1,000 most probable derivations, summing up the probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a </context>
+</contexts>
+<marker>Bod, 2000</marker>
+<rawString>R. Bod, 2000b. Combining Semantic and Syntactic Structure for Language Modeling, Proceedings ICSLP-2000, Beijing, China.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>An Improved Parser for DataOriented Lexical-Functional Analysis,</title>
+<date>2000</date>
+<booktitle>Proceedings ACL-2000,</booktitle>
+<location>Hong Kong, China.</location>
+<contexts>
+<context citStr="Bod 2000" endWordPosition="429" position="2716" startWordPosition="428">igate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse accuracy consist in an upper bound of the number of words in the subtree frontiers and an upper bound on the depth of unlexicalized subtrees. We also found that counts of subtrees with several nonheadwords are important, resulting in improved parse accuracy over previous parsers tested on the WSJ. 2 The DOP1 Model To-date, the Data Oriented Parsing model has mainly been applied to corpora of trees whose labels consist of primitive symbols (but see Bod &amp; Kaplan 1998; Bod 2000c, 2001). Let us illustrate the original DOP model presented in Bod (1993), called DOP1, with a simple example. Assume a corpus consisting of only two trees: Figure 1. A corpus of two trees New sentences may be derived by combining fragments, i.e. subtrees, from this corpus, by means of a node-substitution operation indicated as °. Node-substitution identifies the leftmost nonterminal frontier node of one subtree with the root node of a second subtree (i.e., the second subtree is substituted on the leftmost nonterminal S S John V NP Peter V NP likes Mary hates Susan NP VP NP VP frontier node o</context>
+<context citStr="Bod 2000" endWordPosition="884" position="5342" startWordPosition="883">en by P(T) = ΣdΠi P(tid) Thus the DOP1 model considers counts of subtrees of a wide range of sizes in computing the probability of a tree: everything from counts of single-level rules to counts of entire trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper - formed by any other estimator for DOP1, we will stick to this estimator in the current paper. 3 Computational Issues Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are u</context>
+<context citStr="Bod (2000" endWordPosition="1412" position="8426" startWordPosition="1411">e will use Bod's subtree-torule conversion method for studying the impact of various subtree restrictions on the WSJ corpus. However, we will not use Bod's Monte Carlo sampling technique from complete derivation forests, as this turned out to be prohibitive for WSJ sentences. Instead, we employ a Viterbi n-best search using a CKY algorithm and estimate the most probable parse from the 1,000 most probable derivations, summing up the probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a </context>
+</contexts>
+<marker>Bod, 2000</marker>
+<rawString>R. Bod, 2000c. An Improved Parser for DataOriented Lexical-Functional Analysis, Proceedings ACL-2000, Hong Kong, China.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+</authors>
+<title>Using Natural Language Processing Techniques for Musical Parsing,</title>
+<date>2001</date>
+<booktitle>Proceedings ACH/ALLC'2001,</booktitle>
+<location>New York, NY.</location>
+<marker>Bod, 2001</marker>
+<rawString>R. Bod, 2001. Using Natural Language Processing Techniques for Musical Parsing, Proceedings ACH/ALLC'2001, New York, NY.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bod</author>
+<author>R Kaplan</author>
+</authors>
+<title>A Probabilistic Corpus-Driven Model for Lexical-Functional Analysis,</title>
+<date>1998</date>
+<booktitle>Proceedings COLING-ACL'98,</booktitle>
+<location>Montreal, Canada.</location>
+<contexts>
+<context citStr="Bod &amp; Kaplan 1998" endWordPosition="427" position="2706" startWordPosition="424"> treebank to investigate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse accuracy consist in an upper bound of the number of words in the subtree frontiers and an upper bound on the depth of unlexicalized subtrees. We also found that counts of subtrees with several nonheadwords are important, resulting in improved parse accuracy over previous parsers tested on the WSJ. 2 The DOP1 Model To-date, the Data Oriented Parsing model has mainly been applied to corpora of trees whose labels consist of primitive symbols (but see Bod &amp; Kaplan 1998; Bod 2000c, 2001). Let us illustrate the original DOP model presented in Bod (1993), called DOP1, with a simple example. Assume a corpus consisting of only two trees: Figure 1. A corpus of two trees New sentences may be derived by combining fragments, i.e. subtrees, from this corpus, by means of a node-substitution operation indicated as °. Node-substitution identifies the leftmost nonterminal frontier node of one subtree with the root node of a second subtree (i.e., the second subtree is substituted on the leftmost nonterminal S S John V NP Peter V NP likes Mary hates Susan NP VP NP VP front</context>
+</contexts>
+<marker>Bod, Kaplan, 1998</marker>
+<rawString>R. Bod and R. Kaplan, 1998. A Probabilistic Corpus-Driven Model for Lexical-Functional Analysis, Proceedings COLING-ACL'98, Montreal, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Bonnema</author>
+<author>P Buying</author>
+<author>R Scha</author>
+</authors>
+<title>A New Probability Model for Data-Oriented Parsing,</title>
+<date>1999</date>
+<booktitle>Proceedings of the Amsterdam Colloquium'99,</booktitle>
+<location>Amsterdam, Holland.</location>
+<contexts>
+<context citStr="Bonnema et al 1999" endWordPosition="878" position="5291" startWordPosition="875">ation d that produces tree T, then the probability of T is given by P(T) = ΣdΠi P(tid) Thus the DOP1 model considers counts of subtrees of a wide range of sizes in computing the probability of a tree: everything from counts of single-level rules to counts of entire trees. This means that the model is sensitive to the frequency of large subtrees while taking into account the smoothing effects of counts of small subtrees. Note that the subtree probabilities in DOP1 are directly estimated from their relative frequencies. A number of alternative subtree estimators have been proposed for DOP1 (cf. Bonnema et al 1999), including maximum likelihood estimation (Bod 2000b). But since the relative frequency estimator has so far not been outper - formed by any other estimator for DOP1, we will stick to this estimator in the current paper. 3 Computational Issues Bod (1993) showed how standard chart parsing techniques can be applied to DOP1. Each corpussubtree t is converted into a context-free rule r where the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's in</context>
+</contexts>
+<marker>Bonnema, Buying, Scha, 1999</marker>
+<rawString>R. Bonnema, P. Buying and R. Scha, 1999. A New Probability Model for Data-Oriented Parsing, Proceedings of the Amsterdam Colloquium'99, Amsterdam, Holland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Carroll</author>
+<author>D Weir</author>
+</authors>
+<title>Encoding Frequency Information in Lexicalized Grammars,</title>
+<date>2000</date>
+<booktitle>Advances in Probabilistic and Other Parsing Technologies,</booktitle>
+<editor>in H. Bunt and A. Nijholt (eds.),</editor>
+<publisher>Kluwer Academic Publishers.</publisher>
+<contexts>
+<context citStr="Carroll &amp; Weir 2000" endWordPosition="4473" position="26933" startWordPosition="4470"> in more dependencies, the DOP approach starts out by taking into account as many dependencies as possible and then tries to constrain them without losing parse accuracy. It is not unlikely that these two opposite directions will finally converge to the same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergen</context>
+</contexts>
+<marker>Carroll, Weir, 2000</marker>
+<rawString>J. Carroll and D. Weir, 2000. Encoding Frequency Information in Lexicalized Grammars, in H. Bunt and A. Nijholt (eds.), Advances in Probabilistic and Other Parsing Technologies, Kluwer Academic Publishers.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Charniak</author>
+</authors>
+<title>Tree-bank Grammars,</title>
+<date>1996</date>
+<booktitle>Proceedings AAAI'96,</booktitle>
+<location>Menlo Park, Ca.</location>
+<contexts>
+<context citStr="Charniak 1996" endWordPosition="4147" position="24904" startWordPosition="4146"> his STIG is lexicalized with exactly one lexical item, while our results show that there is an increase in parse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account only one derivation, while in STIG, like in DOP1, there can be several derivations that generate the same tree. Another difference between our approach and most other models is that the underlying grammar of DOP is based on a treebank grammar (cf. Charniak 1996, 1997), while most current stochastic parsing models use a &amp;quot;markov grammar&amp;quot; (e.g. Collins 1999; Charniak 2000). While a treebank grammar only assigns probabilities to rules or subtrees that are seen in a treebank, a markov grammar assigns probabilities to any possible rule, resulting in a more robust model. We expect that the application of the markov grammar approach to DOP will further improve our results. Research in this direction is already ongoing, though it has been tested for rather limited subtree depths only (see Sima'an 2000). Although we believe that our main result is to have sho</context>
+<context citStr="Charniak (1996)" endWordPosition="4499" position="27086" startWordPosition="4498">rse accuracy. It is not unlikely that these two opposite directions will finally converge to the same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restr</context>
+</contexts>
+<marker>Charniak, 1996</marker>
+<rawString>E. Charniak, 1996. Tree-bank Grammars, Proceedings AAAI'96, Menlo Park, Ca.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Charniak</author>
+</authors>
+<title>Statistical Parsing with a Context-Free Grammar and Word Statistics,</title>
+<date>1997</date>
+<booktitle>Proceedings AAAI-97,</booktitle>
+<location>Menlo Park, Ca.</location>
+<contexts>
+<context citStr="Charniak 1997" endWordPosition="1570" position="9311" startWordPosition="1569"> for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart. 4 What is the Minimal Subtree Set that Achieves Maximal Parse Accuracy? 4.1 The base line For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences ❑ 100 words); section 22 was used as development set. All trees were stripped off their semantic tags, co-reference information and quotation marks. We used all training set subtrees of depth 1, but due to memory limitations we used a subset of the subtrees larger than depth 1, by taking for each depth a random sample of 400,000 subtrees. These random subtree samples were not selected by first exhaustively computing the complete set of subtrees (this was compu</context>
+<context citStr="Charniak 1997" endWordPosition="1942" position="11556" startWordPosition="1941">means of simple Good-Turing estimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Charniak 2000). The table shows that by using the base line subtree set, our parser outperforms most previous parsers but it performs worse than the parser in Charniak (2000). We will use our scores of 89.5% LP and 89.3% LR (for test sentences ❑ 40 words) as the base line result against which the effect of various subtree restrictions is investigated. While most subtree restrictions diminish the accuracy scores, we will see that there are restrictions that improve our scores, even beyond those of Charniak (2000). 1 http://www.cs.nyu.edu/cs/projects/proteus</context>
+<context citStr="Charniak 1997" endWordPosition="2277" position="13550" startWordPosition="2276">irst subtree restriction is concerned with subtree size. We therefore performed experiments with versions of DOP1 where the base line subtree set is restricted to subtrees with a certain maximum depth. Table 2 shows the results of these experiments. depth of LP LR subtrees 1 76.0 71.8 ≤2 80.1 76.5 ≤3 82.8 80.9 ≤4 84.7 84.1 ≤5 85.5 84.9 ≤6 86.2 86.0 ≤8 87.9 87.1 ≤10 88.6 88.0 ≤12 89.1 88.8 ≤14 89.5 89.3 Table 2. Parsing results for different subtree depths (for test sentences ≤ 40 words) Our scores for subtree-depth 1 are comparable to Charniak's treebank grammar if tested on word strings (see Charniak 1997). Our scores are slightly better, which may be due to the use of a different unknown word model. Note that the scores consistently improve if larger subtrees are taken into account. The highest scores are obtained if the full base line subtree set is used, but they remain behind the results of Charniak (2000). One might expect that our results further increase if even larger subtrees are used; but due to memory limitations we did not perform experiments with subtrees larger than depth 14. 4.3 The impact of lexical context The more words a subtree contains in its frontier, the more lexical depe</context>
+<context citStr="Charniak 1997" endWordPosition="3056" position="18210" startWordPosition="3055">headword dependencies We may also raise the question as to whether we need almost arbitrarily large lexicalized subtrees (up to 12 words) to obtain our best results. It could be the case that DOP's gain in parse accuracy with increasing subtree depth is due to the model becoming sensitive to the influence of lexical heads higher in the tree, and that this gain could also be achieved by a more compact model which associates each nonterminal with its headword, such as a head-lexicalized SCFG. Head-lexicalized stochastic grammars have recently become increasingly popular (see Collins 1997, 1999; Charniak 1997, 2000). These grammars are based on Magerman's headpercolation scheme to determine the headword of each nonterminal (Magerman 1995). Unfortunately this means that head-lexicalized stochastic grammars are not able to capture dependency relations between words that according to Magerman's head-percolation scheme are &amp;quot;nonheadwords&amp;quot; -- e.g. between more and than in the WSJ construction carry more people than cargo where neither more nor than are headwords of the NP constituent more people than cargo. A frontier-lexicalized DOP model, on the other hand, captures these dependencies since it include</context>
+<context citStr="Charniak 1997" endWordPosition="3472" position="20815" startWordPosition="3471"> 90.6 unrestricted 90.8 90.6 Table 5. Parsing results for different number of nonheadwords (for test sentences ≤ 40 words) Table 5 shows that nonheadwords contribute to higher parse accuracy: the difference between using no and all nonheadwords is 1.2% in LP and 1.0% in LR. Although this difference is relatively small, it does indicate that nonheadword dependencies should preferably not be discarded in the WSJ. We should note, however, that most other stochastic parsers do include counts of single nonheadwords: they appear in the backed-off statistics of these parsers (see Collins 1997, 1999; Charniak 1997; Goodman 1998). But our parser is the first parser that also includes counts between two or more nonheadwords, to the best of our knowledge, and these counts lead to improved performance, as can be seen in table 5. 4.6 Results for all sentences We have seen that for test sentences ≤ 40 words, maximal parse accuracy was obtained by a subtree set which is restricted to subtrees with not more than 12 words and which does not contain unlexicalized subtrees deeper than 6.2 We used 2 It may be noteworthy that for the development set (section 22 of WSJ), maximal parse accuracy was obtained with exac</context>
+<context citStr="Charniak 1997" endWordPosition="3921" position="23477" startWordPosition="3920">th DOP1 on smaller and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non - terminal with its lexical head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts a stochastic tree-in</context>
+<context citStr="Charniak (1997)" endWordPosition="4510" position="27181" startWordPosition="4509">e same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; Eisner 1996), later models</context>
+</contexts>
+<marker>Charniak, 1997</marker>
+<rawString>E. Charniak, 1997. Statistical Parsing with a Context-Free Grammar and Word Statistics, Proceedings AAAI-97, Menlo Park, Ca.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Charniak</author>
+</authors>
+<title>A Maximum-Entropy-Inspired Parser.</title>
+<date>2000</date>
+<booktitle>Proceedings ANLP-NAACL'2000,</booktitle>
+<location>Seattle, Washington.</location>
+<contexts>
+<context citStr="Charniak 2000" endWordPosition="1949" position="11608" startWordPosition="1948">8). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Charniak 2000). The table shows that by using the base line subtree set, our parser outperforms most previous parsers but it performs worse than the parser in Charniak (2000). We will use our scores of 89.5% LP and 89.3% LR (for test sentences ❑ 40 words) as the base line result against which the effect of various subtree restrictions is investigated. While most subtree restrictions diminish the accuracy scores, we will see that there are restrictions that improve our scores, even beyond those of Charniak (2000). 1 http://www.cs.nyu.edu/cs/projects/proteus/evalb/ We will initially study our subtree restrict</context>
+<context citStr="Charniak (2000)" endWordPosition="2331" position="13860" startWordPosition="2330">.9 ≤4 84.7 84.1 ≤5 85.5 84.9 ≤6 86.2 86.0 ≤8 87.9 87.1 ≤10 88.6 88.0 ≤12 89.1 88.8 ≤14 89.5 89.3 Table 2. Parsing results for different subtree depths (for test sentences ≤ 40 words) Our scores for subtree-depth 1 are comparable to Charniak's treebank grammar if tested on word strings (see Charniak 1997). Our scores are slightly better, which may be due to the use of a different unknown word model. Note that the scores consistently improve if larger subtrees are taken into account. The highest scores are obtained if the full base line subtree set is used, but they remain behind the results of Charniak (2000). One might expect that our results further increase if even larger subtrees are used; but due to memory limitations we did not perform experiments with subtrees larger than depth 14. 4.3 The impact of lexical context The more words a subtree contains in its frontier, the more lexical dependencies can be taken into account. To test the impact of the lexical context on the accuracy, we performed experiments with different versions of the model where the base line subtree set is restricted to subtrees whose frontiers contain a certain maximum number of words; the subtree depth in the base line s</context>
+<context citStr="Charniak (2000)" endWordPosition="2566" position="15212" startWordPosition="2565">ts. # words LP LR in subtrees ≤1 84.4 84.0 ≤2 85.2 84.9 ≤3 86.6 86.3 ≤4 87.6 87.4 ≤6 88.0 87.9 ≤8 89.2 89.1 ≤10 90.2 90.1 ≤11 90.8 90.4 ≤12 90.8 90.5 ≤13 90.4 90.3 ≤14 90.3 90.3 ≤16 89.9 89.8 unrestricted 89.5 89.3 Table 3. Parsing results for different subtree lexicalizations (for test sentences ≤ 40 words) We see that the accuracy initially increases when the lexical context is enlarged, but that the accuracy decreases if the number of words in the subtree frontiers exceeds 12 words. Our highest scores of 90.8% LP and 90.5% LR outperform the scores of the best previously published parser by Charniak (2000) who obtains 90.1% for both LP and LR. Moreover, our scores also outperform the reranking technique of Collins (2000) who reranks the output of the parser of Collins (1999) using a boosting method based on Schapire &amp; Singer (1998), obtaining 90.4% LP and 90.1% LR. We have thus found a subtree restriction which does not decrease the parse accuracy but even improves it. This restriction consists of an upper bound of 12 words in the subtree frontiers, for subtrees ≤ depth 14. (We have also tested this lexical restriction in combination with subtrees smaller than depth 14, but this led to a decrea</context>
+<context citStr="Charniak (2000)" endWordPosition="3651" position="21840" startWordPosition="3650">d which does not contain unlexicalized subtrees deeper than 6.2 We used 2 It may be noteworthy that for the development set (section 22 of WSJ), maximal parse accuracy was obtained with exactly the same subtree restrictions. As explained in 4.1, we initially tested all restrictions on the development set, but we preferred to report the effects of these restrictions for the test set. these restrictions to test our model on all sentences ≤ 100 words from the WSJ test set. This resulted in an LP of 89.7% and an LR of 89.7%. These scores slightly outperform the best previously published parser by Charniak (2000), who obtained 89.5% LP and 89.6% LR for test sentences ≤ 100 words. Only the reranking technique proposed by Collins (2000) slightly outperforms our precision score, but not our recall score: 89.9% LP and 89.6% LR. 5 Discussion: Converging Approaches The main goal of this paper was to find the minimal set of fragments which achieves maximal parse accuracy in Data Oriented Parsing. We have found that this minimal set of fragments is very large and extremely redundant: highest parse accuracy is obtained by employing only two constraints on the fragment set: a restriction of the number of words </context>
+<context citStr="Charniak 2000" endWordPosition="4163" position="25015" startWordPosition="4162">rse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account only one derivation, while in STIG, like in DOP1, there can be several derivations that generate the same tree. Another difference between our approach and most other models is that the underlying grammar of DOP is based on a treebank grammar (cf. Charniak 1996, 1997), while most current stochastic parsing models use a &amp;quot;markov grammar&amp;quot; (e.g. Collins 1999; Charniak 2000). While a treebank grammar only assigns probabilities to rules or subtrees that are seen in a treebank, a markov grammar assigns probabilities to any possible rule, resulting in a more robust model. We expect that the application of the markov grammar approach to DOP will further improve our results. Research in this direction is already ongoing, though it has been tested for rather limited subtree depths only (see Sima'an 2000). Although we believe that our main result is to have shown that almost arbitrary fragments within parse trees are important, it is surprising that a relatively simple </context>
+</contexts>
+<marker>Charniak, 2000</marker>
+<rawString>E. Charniak, 2000. A Maximum-Entropy-Inspired Parser. Proceedings ANLP-NAACL'2000, Seattle, Washington.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Chiang</author>
+</authors>
+<title>Statistical parsing with an automatically extracted tree adjoining grammar,</title>
+<date>2000</date>
+<booktitle>Proceedings ACL'2000,</booktitle>
+<location>Hong Kong, China.</location>
+<contexts>
+<context citStr="Chiang (2000)" endWordPosition="3168" position="18948" startWordPosition="3167">n 1995). Unfortunately this means that head-lexicalized stochastic grammars are not able to capture dependency relations between words that according to Magerman's head-percolation scheme are &amp;quot;nonheadwords&amp;quot; -- e.g. between more and than in the WSJ construction carry more people than cargo where neither more nor than are headwords of the NP constituent more people than cargo. A frontier-lexicalized DOP model, on the other hand, captures these dependencies since it includes subtrees in which more and than are the only frontier words. One may object that this example is somewhat far-fetched, but Chiang (2000) notes that head-lexicalized stochastic grammars fall short in encoding even simple dependency relations such as between left and John in the sentence John should have left. This is because Magerman's head-percolation scheme makes should and have the heads of their respective VPs so that there is no dependency relation between the verb left and its subject John. Chiang observes that almost a quarter of all nonempty subjects in the WSJ appear in such a configuration. In order to isolate the contribution of nonheadword dependencies to the parse accuracy, we eliminated all subtrees containing a c</context>
+<context citStr="Chiang (2000)" endWordPosition="4006" position="24043" startWordPosition="4005">l head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts a stochastic tree-insertion grammar or STIG (Schabes &amp; Waters 1996) from the WSJ, obtaining 86.6% LP and 86.9% LR for sentences ≤ 40 words. However, Chiang's approach is limited in at least two respects. First, each elementary tree in his STIG is lexicalized with exactly one lexical item, while our results show that there is an increase in parse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account </context>
+</contexts>
+<marker>Chiang, 2000</marker>
+<rawString>D. Chiang, 2000. Statistical parsing with an automatically extracted tree adjoining grammar, Proceedings ACL'2000, Hong Kong, China.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+</authors>
+<title>A new statistical parser based on bigram lexical dependencies,</title>
+<date>1996</date>
+<booktitle>Proceedings ACL'96,</booktitle>
+<location>Santa Cruz, Ca.</location>
+<contexts>
+<context citStr="Collins 1996" endWordPosition="3918" position="23456" startWordPosition="3917">vious experiments with DOP1 on smaller and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non - terminal with its lexical head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts</context>
+<context citStr="Collins (1996)" endWordPosition="4503" position="27120" startWordPosition="4502">at these two opposite directions will finally converge to the same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the localit</context>
+</contexts>
+<marker>Collins, 1996</marker>
+<rawString>M. Collins 1996. A new statistical parser based on bigram lexical dependencies, Proceedings ACL'96, Santa Cruz, Ca.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+</authors>
+<title>Three generative lexicalised models for statistical parsing,</title>
+<date>1997</date>
+<booktitle>Proceedings ACL'97,</booktitle>
+<location>Madrid,</location>
+<contexts>
+<context citStr="Collins 1997" endWordPosition="175" position="1171" startWordPosition="174"> over previous models tested on this treebank (a precis - ion of 90.8% and a recall of 90.6%). We isolate some dependency relations which previous models neglect but which contribute to higher parse accuracy. 1 Introduction One of the goals in statistical natural language parsing is to find the minimal set of statistical dependencies (between words and syntactic structures) that achieves maximal parse accuracy. Many stochastic parsing models use linguistic intuitions to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational per</context>
+<context citStr="Collins 1997" endWordPosition="1567" position="9290" startWordPosition="1566"> the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart. 4 What is the Minimal Subtree Set that Achieves Maximal Parse Accuracy? 4.1 The base line For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences ❑ 100 words); section 22 was used as development set. All trees were stripped off their semantic tags, co-reference information and quotation marks. We used all training set subtrees of depth 1, but due to memory limitations we used a subset of the subtrees larger than depth 1, by taking for each depth a random sample of 400,000 subtrees. These random subtree samples were not selected by first exhaustively computing the complete set of sub</context>
+<context citStr="Collins 1997" endWordPosition="3053" position="18189" startWordPosition="3052">.5 The impact of nonheadword dependencies We may also raise the question as to whether we need almost arbitrarily large lexicalized subtrees (up to 12 words) to obtain our best results. It could be the case that DOP's gain in parse accuracy with increasing subtree depth is due to the model becoming sensitive to the influence of lexical heads higher in the tree, and that this gain could also be achieved by a more compact model which associates each nonterminal with its headword, such as a head-lexicalized SCFG. Head-lexicalized stochastic grammars have recently become increasingly popular (see Collins 1997, 1999; Charniak 1997, 2000). These grammars are based on Magerman's headpercolation scheme to determine the headword of each nonterminal (Magerman 1995). Unfortunately this means that head-lexicalized stochastic grammars are not able to capture dependency relations between words that according to Magerman's head-percolation scheme are &amp;quot;nonheadwords&amp;quot; -- e.g. between more and than in the WSJ construction carry more people than cargo where neither more nor than are headwords of the NP constituent more people than cargo. A frontier-lexicalized DOP model, on the other hand, captures these dependen</context>
+<context citStr="Collins 1997" endWordPosition="3469" position="20794" startWordPosition="3468">≤7 90.7 90.7 ≤8 90.8 90.6 unrestricted 90.8 90.6 Table 5. Parsing results for different number of nonheadwords (for test sentences ≤ 40 words) Table 5 shows that nonheadwords contribute to higher parse accuracy: the difference between using no and all nonheadwords is 1.2% in LP and 1.0% in LR. Although this difference is relatively small, it does indicate that nonheadword dependencies should preferably not be discarded in the WSJ. We should note, however, that most other stochastic parsers do include counts of single nonheadwords: they appear in the backed-off statistics of these parsers (see Collins 1997, 1999; Charniak 1997; Goodman 1998). But our parser is the first parser that also includes counts between two or more nonheadwords, to the best of our knowledge, and these counts lead to improved performance, as can be seen in table 5. 4.6 Results for all sentences We have seen that for test sentences ≤ 40 words, maximal parse accuracy was obtained by a subtree set which is restricted to subtrees with not more than 12 words and which does not contain unlexicalized subtrees deeper than 6.2 We used 2 It may be noteworthy that for the development set (section 22 of WSJ), maximal parse accuracy w</context>
+</contexts>
+<marker>Collins, 1997</marker>
+<rawString>M. Collins, 1997. Three generative lexicalised models for statistical parsing, Proceedings ACL'97, Madrid, Spain.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+</authors>
+<title>Head-Driven Statistical Models for Natural Language Parsing, PhD thesis,</title>
+<date>1999</date>
+<institution>University of Pennsylvania, PA.</institution>
+<contexts>
+<context citStr="Collins (1999" endWordPosition="1487" position="8865" startWordPosition="1486"> probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart. 4 What is the Minimal Subtree Set that Achieves Maximal Parse Accuracy? 4.1 The base line For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences ❑ 100 words); sect</context>
+<context citStr="Collins 1999" endWordPosition="1944" position="11570" startWordPosition="1943"> Good-Turing estimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Charniak 2000). The table shows that by using the base line subtree set, our parser outperforms most previous parsers but it performs worse than the parser in Charniak (2000). We will use our scores of 89.5% LP and 89.3% LR (for test sentences ❑ 40 words) as the base line result against which the effect of various subtree restrictions is investigated. While most subtree restrictions diminish the accuracy scores, we will see that there are restrictions that improve our scores, even beyond those of Charniak (2000). 1 http://www.cs.nyu.edu/cs/projects/proteus/evalb/ We wil</context>
+<context citStr="Collins (1999)" endWordPosition="2596" position="15384" startWordPosition="2595">90.3 ≤16 89.9 89.8 unrestricted 89.5 89.3 Table 3. Parsing results for different subtree lexicalizations (for test sentences ≤ 40 words) We see that the accuracy initially increases when the lexical context is enlarged, but that the accuracy decreases if the number of words in the subtree frontiers exceeds 12 words. Our highest scores of 90.8% LP and 90.5% LR outperform the scores of the best previously published parser by Charniak (2000) who obtains 90.1% for both LP and LR. Moreover, our scores also outperform the reranking technique of Collins (2000) who reranks the output of the parser of Collins (1999) using a boosting method based on Schapire &amp; Singer (1998), obtaining 90.4% LP and 90.1% LR. We have thus found a subtree restriction which does not decrease the parse accuracy but even improves it. This restriction consists of an upper bound of 12 words in the subtree frontiers, for subtrees ≤ depth 14. (We have also tested this lexical restriction in combination with subtrees smaller than depth 14, but this led to a decrease in accuracy.) 4.4 The impact of structural context Instead of investigating the impact of lexical context, we may also be interested in studying the importance of struct</context>
+<context citStr="Collins 1999" endWordPosition="4161" position="24999" startWordPosition="4160">increase in parse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account only one derivation, while in STIG, like in DOP1, there can be several derivations that generate the same tree. Another difference between our approach and most other models is that the underlying grammar of DOP is based on a treebank grammar (cf. Charniak 1996, 1997), while most current stochastic parsing models use a &amp;quot;markov grammar&amp;quot; (e.g. Collins 1999; Charniak 2000). While a treebank grammar only assigns probabilities to rules or subtrees that are seen in a treebank, a markov grammar assigns probabilities to any possible rule, resulting in a more robust model. We expect that the application of the markov grammar approach to DOP will further improve our results. Research in this direction is already ongoing, though it has been tested for rather limited subtree depths only (see Sima'an 2000). Although we believe that our main result is to have shown that almost arbitrary fragments within parse trees are important, it is surprising that a re</context>
+</contexts>
+<marker>Collins, 1999</marker>
+<rawString>M. Collins, 1999. Head-Driven Statistical Models for Natural Language Parsing, PhD thesis, University of Pennsylvania, PA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+</authors>
+<title>Discriminative Reranking for Natural Language Parsing,</title>
+<date>2000</date>
+<booktitle>Proceedings ICML-2000,</booktitle>
+<location>Stanford, Ca.</location>
+<contexts>
+<context citStr="Collins (2000)" endWordPosition="2586" position="15329" startWordPosition="2585">0.1 ≤11 90.8 90.4 ≤12 90.8 90.5 ≤13 90.4 90.3 ≤14 90.3 90.3 ≤16 89.9 89.8 unrestricted 89.5 89.3 Table 3. Parsing results for different subtree lexicalizations (for test sentences ≤ 40 words) We see that the accuracy initially increases when the lexical context is enlarged, but that the accuracy decreases if the number of words in the subtree frontiers exceeds 12 words. Our highest scores of 90.8% LP and 90.5% LR outperform the scores of the best previously published parser by Charniak (2000) who obtains 90.1% for both LP and LR. Moreover, our scores also outperform the reranking technique of Collins (2000) who reranks the output of the parser of Collins (1999) using a boosting method based on Schapire &amp; Singer (1998), obtaining 90.4% LP and 90.1% LR. We have thus found a subtree restriction which does not decrease the parse accuracy but even improves it. This restriction consists of an upper bound of 12 words in the subtree frontiers, for subtrees ≤ depth 14. (We have also tested this lexical restriction in combination with subtrees smaller than depth 14, but this led to a decrease in accuracy.) 4.4 The impact of structural context Instead of investigating the impact of lexical context, we may </context>
+<context citStr="Collins (2000)" endWordPosition="3672" position="21964" startWordPosition="3671">section 22 of WSJ), maximal parse accuracy was obtained with exactly the same subtree restrictions. As explained in 4.1, we initially tested all restrictions on the development set, but we preferred to report the effects of these restrictions for the test set. these restrictions to test our model on all sentences ≤ 100 words from the WSJ test set. This resulted in an LP of 89.7% and an LR of 89.7%. These scores slightly outperform the best previously published parser by Charniak (2000), who obtained 89.5% LP and 89.6% LR for test sentences ≤ 100 words. Only the reranking technique proposed by Collins (2000) slightly outperforms our precision score, but not our recall score: 89.9% LP and 89.6% LR. 5 Discussion: Converging Approaches The main goal of this paper was to find the minimal set of fragments which achieves maximal parse accuracy in Data Oriented Parsing. We have found that this minimal set of fragments is very large and extremely redundant: highest parse accuracy is obtained by employing only two constraints on the fragment set: a restriction of the number of words in the fragment frontiers to 12 and a restriction of the depth of unlexicalized fragments to 6. No other constraints were wa</context>
+<context citStr="Collins (2000)" endWordPosition="4517" position="27245" startWordPosition="4516"> parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; Eisner 1996), later models showed the importance of including context from higher nodes in</context>
+</contexts>
+<marker>Collins, 2000</marker>
+<rawString>M. Collins, 2000. Discriminative Reranking for Natural Language Parsing, Proceedings ICML-2000, Stanford, Ca.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Eisner</author>
+</authors>
+<title>Three new probabilistic models for dependency parsing: an exploration,</title>
+<date>1996</date>
+<booktitle>Proceedings COLING-96,</booktitle>
+<location>Copenhagen, Denmark.</location>
+<contexts>
+<context citStr="Eisner (1996)" endWordPosition="4507" position="27155" startWordPosition="4506">l finally converge to the same, true set of statistical dependencies for natural language parsing. As it happens, quite some convergence has already taken place. The history of stochastic parsing models shows a consistent increase in the scope of statistical dependencies that are captured by these models. Figure 4 gives a (very) schematic overview of this increase (see Carroll &amp; Weir 2000, for a more detailed account of a subsumption lattice where SCFG is at the bottom and DOP at the top). Scope of Statistical Dependencies Charniak (1996) context-free rules Collins (1996), context-free rules, Eisner (1996) headwords Charniak (1997) context-free rules, headwords, grandparent nodes Collins (2000) context-free rules, headwords, grandparent nodes/rules, bigrams, two-level rules, two-level bigrams, nonheadwords Bod (1992) all fragments within parse trees Figure 4. Schematic overview of the increase of statistical dependencies by stochastic parsers Thus there seems to be a convergence towards a maximalist model which &amp;quot;takes all fragments [...] and lets the statistics decide&amp;quot; (Bod 1998: 5). While early head-lexicalized grammars restricted the fragments to the locality of headwords (e.g. Collins 1996; </context>
+</contexts>
+<marker>Eisner, 1996</marker>
+<rawString>J. Eisner, 1996. Three new probabilistic models for dependency parsing: an exploration, Proceedings COLING-96, Copenhagen, Denmark.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Eisner</author>
+</authors>
+<title>Bilexical Grammars and a CubicTime Probabilistic Parser,</title>
+<date>1997</date>
+<booktitle>Proceedings Fifth International Workshop on Parsing Technologies,</booktitle>
+<location>Boston, Mass.</location>
+<contexts>
+<context citStr="Eisner 1997" endWordPosition="178" position="1191" startWordPosition="177">s tested on this treebank (a precis - ion of 90.8% and a recall of 90.6%). We isolate some dependency relations which previous models neglect but which contribute to higher parse accuracy. 1 Introduction One of the goals in statistical natural language parsing is to find the minimal set of statistical dependencies (between words and syntactic structures) that achieves maximal parse accuracy. Many stochastic parsing models use linguistic intuitions to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational perspective we may wond</context>
+<context citStr="Eisner 1997" endWordPosition="3923" position="23491" startWordPosition="3922">ler and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non - terminal with its lexical head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts a stochastic tree-insertion gramma</context>
+</contexts>
+<marker>Eisner, 1997</marker>
+<rawString>J. Eisner, 1997. Bilexical Grammars and a CubicTime Probabilistic Parser, Proceedings Fifth International Workshop on Parsing Technologies, Boston, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Goodman</author>
+</authors>
+<title>Efficient Algorithms for Parsing the DOP Model,</title>
+<date>1996</date>
+<booktitle>Proceedings Empirical Methods in Natural Language Processing,</booktitle>
+<location>Philadelphia, PA.</location>
+<contexts>
+<context citStr="Goodman (1996" endWordPosition="1105" position="6677" startWordPosition="1104"> a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo disambiguation&amp;quot;, see Bod 1998). While this technique has been successfully applied to parsing the ATIS portion in the Penn Treebank (Marcus et al. 1993), it is extremely time consuming. This is mainly because the number of random derivations that should be sampled to reliably estimate the most probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which contains exactly eight SCFG rules for each node in the training set trees. Although Goodman's method does still not allow for an efficient computation of the most probable parse (in fact, the problem of computing the most probable parse in DOP1 is NP-hard -- see Sima'an 1999), his method does allow for an efficient computation of the &amp;quot;maximum constituents parse&amp;quot;, i.e. the parse tree that is most likely to have the largest number of correct constituents. Goodman has shown on the ATIS corpus that V NP</context>
+</contexts>
+<marker>Goodman, 1996</marker>
+<rawString>J. Goodman, 1996. Efficient Algorithms for Parsing the DOP Model, Proceedings Empirical Methods in Natural Language Processing, Philadelphia, PA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Goodman</author>
+</authors>
+<title>Global Thresholding and Multiple-Pass Parsing,</title>
+<date>1997</date>
+<booktitle>Proceedings EMNLP2,</booktitle>
+<location>Boston, Mass.</location>
+<contexts>
+<context citStr="Goodman (1997)" endWordPosition="1484" position="8847" startWordPosition="1483">ons, summing up the probabilities of derivations that generate the same tree. Although this heuristic does not guarantee that the most probable parse is actually found, it is shown in Bod (2000a) to perform at least as well as the estimation of the most probable parse with Monte Carlo techniques. However, in computing the 1,000 most probable derivations by means of Viterbi it is prohibitive to keep track of all subderivations at each edge in the chart (at least for such a large corpus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart. 4 What is the Minimal Subtree Set that Achieves Maximal Parse Accuracy? 4.1 The base line For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences </context>
+</contexts>
+<marker>Goodman, 1997</marker>
+<rawString>J. Goodman, 1997. Global Thresholding and Multiple-Pass Parsing, Proceedings EMNLP2, Boston, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Goodman</author>
+</authors>
+<date>1998</date>
+<tech>Parsing Inside-Out, Ph.D. thesis,</tech>
+<institution>Harvard University,</institution>
+<location>Mass.</location>
+<contexts>
+<context citStr="Goodman 1998" endWordPosition="245" position="1625" startWordPosition="244">uistic intuitions to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational perspective we may wonder whether it is possible to impose constraints on the subtrees that are used, in such a way that the accuracy of the model does not deteriorate or perhaps even improves. That is the main question addressed in this paper. We report on experiments carried out with the Penn Wall Street Journal (WSJ) treebank to investigate several strategies for constraining the set of subtrees. We found that the only constraints that do not decreas</context>
+<context citStr="Goodman 1998" endWordPosition="1080" position="6522" startWordPosition="1079">nd probability. These rules are used to create a derivation forest for a sentence (using a CKY parser), and the most probable parse is computed by sampling a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo disambiguation&amp;quot;, see Bod 1998). While this technique has been successfully applied to parsing the ATIS portion in the Penn Treebank (Marcus et al. 1993), it is extremely time consuming. This is mainly because the number of random derivations that should be sampled to reliably estimate the most probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which contains exactly eight SCFG rules for each node in the training set trees. Although Goodman's method does still not allow for an efficient computation of the most probable parse (in fact, the problem of computing the most probable parse in DOP1 is NP-hard -- see Sima'an 1999), his method does allow for an efficient computation of the &amp;quot;maximum cons</context>
+<context citStr="Goodman 1998" endWordPosition="3474" position="20830" startWordPosition="3473">ted 90.8 90.6 Table 5. Parsing results for different number of nonheadwords (for test sentences ≤ 40 words) Table 5 shows that nonheadwords contribute to higher parse accuracy: the difference between using no and all nonheadwords is 1.2% in LP and 1.0% in LR. Although this difference is relatively small, it does indicate that nonheadword dependencies should preferably not be discarded in the WSJ. We should note, however, that most other stochastic parsers do include counts of single nonheadwords: they appear in the backed-off statistics of these parsers (see Collins 1997, 1999; Charniak 1997; Goodman 1998). But our parser is the first parser that also includes counts between two or more nonheadwords, to the best of our knowledge, and these counts lead to improved performance, as can be seen in table 5. 4.6 Results for all sentences We have seen that for test sentences ≤ 40 words, maximal parse accuracy was obtained by a subtree set which is restricted to subtrees with not more than 12 words and which does not contain unlexicalized subtrees deeper than 6.2 We used 2 It may be noteworthy that for the development set (section 22 of WSJ), maximal parse accuracy was obtained with exactly the same su</context>
+</contexts>
+<marker>Goodman, 1998</marker>
+<rawString>J. Goodman, 1998. Parsing Inside-Out, Ph.D. thesis, Harvard University, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Johnson</author>
+</authors>
+<date>1998</date>
+<journal>PCFG Models of Linguistic Tree Representations, Computational Linguistics</journal>
+<volume>24</volume>
+<issue>4</issue>
+<pages>613--632</pages>
+<contexts>
+<context citStr="Johnson (1998)" endWordPosition="2905" position="17265" startWordPosition="2904"> words) Table 4 shows that the accuracy increases if unlexicalized subtrees are retained, but that unlexicalized subtrees larger than depth 6 do not contribute to any further increase in accuracy. On the contrary, these larger subtrees even slightly decrease the accuracy. The highest scores obtained are: 90.8% labeled precision and 90.6% labeled recall. We thus conclude that pure structural context without any lexical information contributes to higher parse accuracy (even if there exists an upper bound for the size of structural context). The importance of structural context is consonant with Johnson (1998) who showed that structural context from higher nodes in the tree (i.e. grandparent nodes) contributes to higher parse accuracy. This mirrors our result of the importance of unlexicalized subtrees of depth 2. But our results show that larger structural context (up to depth 6) also contributes to the accuracy. 4.5 The impact of nonheadword dependencies We may also raise the question as to whether we need almost arbitrarily large lexicalized subtrees (up to 12 words) to obtain our best results. It could be the case that DOP's gain in parse accuracy with increasing subtree depth is due to the mod</context>
+</contexts>
+<marker>Johnson, 1998</marker>
+<rawString>M. Johnson, 1998. PCFG Models of Linguistic Tree Representations, Computational Linguistics 24(4), 613-632.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Magerman</author>
+</authors>
+<title>Statistical Decision-Tree Models for Parsing,</title>
+<date>1995</date>
+<booktitle>Proceedings ACL'95,</booktitle>
+<location>Cambridge, Mass.</location>
+<contexts>
+<context citStr="Magerman 1995" endWordPosition="3075" position="18342" startWordPosition="3074">words) to obtain our best results. It could be the case that DOP's gain in parse accuracy with increasing subtree depth is due to the model becoming sensitive to the influence of lexical heads higher in the tree, and that this gain could also be achieved by a more compact model which associates each nonterminal with its headword, such as a head-lexicalized SCFG. Head-lexicalized stochastic grammars have recently become increasingly popular (see Collins 1997, 1999; Charniak 1997, 2000). These grammars are based on Magerman's headpercolation scheme to determine the headword of each nonterminal (Magerman 1995). Unfortunately this means that head-lexicalized stochastic grammars are not able to capture dependency relations between words that according to Magerman's head-percolation scheme are &amp;quot;nonheadwords&amp;quot; -- e.g. between more and than in the WSJ construction carry more people than cargo where neither more nor than are headwords of the NP constituent more people than cargo. A frontier-lexicalized DOP model, on the other hand, captures these dependencies since it includes subtrees in which more and than are the only frontier words. One may object that this example is somewhat far-fetched, but Chiang </context>
+</contexts>
+<marker>Magerman, 1995</marker>
+<rawString>D. Magerman, 1995. Statistical Decision-Tree Models for Parsing, Proceedings ACL'95, Cambridge, Mass.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Marcus</author>
+<author>B Santorini</author>
+<author>M Marcinkiewicz</author>
+</authors>
+<title>Building a Large Annotated Corpus of English: the Penn Treebank,</title>
+<date>1993</date>
+<journal>Computational Linguistics</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Marcus et al. 1993" endWordPosition="1046" position="6297" startWordPosition="1043">ere the lefthand side of r corresponds to the root label of t and the righthand side of r corresponds to the frontier labels of t. Indices link the rules to the original subtrees so as to maintain the subtree's internal structure and probability. These rules are used to create a derivation forest for a sentence (using a CKY parser), and the most probable parse is computed by sampling a sufficiently large number of random derivations from the forest (&amp;quot;Monte Carlo disambiguation&amp;quot;, see Bod 1998). While this technique has been successfully applied to parsing the ATIS portion in the Penn Treebank (Marcus et al. 1993), it is extremely time consuming. This is mainly because the number of random derivations that should be sampled to reliably estimate the most probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which contains exactly eight SCFG rules for each node in the training set trees. Although Goodman's method does still not allow fo</context>
+</contexts>
+<marker>Marcus, Santorini, Marcinkiewicz, 1993</marker>
+<rawString>M. Marcus, B. Santorini and M. Marcinkiewicz, 1993. Building a Large Annotated Corpus of English: the Penn Treebank, Computational Linguistics 19(2).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Ratnaparkhi</author>
+</authors>
+<title>Learning to Parse Natural Language with Maximum Entropy Models,</title>
+<date>1999</date>
+<journal>Machine Learning</journal>
+<volume>34</volume>
+<pages>151--176</pages>
+<contexts>
+<context citStr="Ratnaparkhi 1999" endWordPosition="1573" position="9336" startWordPosition="1572">pus as the WSJ). As in most other statistical parsing systems we therefore use the pruning technique described in Goodman (1997) and Collins (1999: 263-264) which assigns a score to each item in the chart equal to the product of the inside probability of the item and its prior probability. Any item with a score less than 10−5 times of that of the best item is pruned from the chart. 4 What is the Minimal Subtree Set that Achieves Maximal Parse Accuracy? 4.1 The base line For our base line parse accuracy, we used the now standard division of the WSJ (see Collins 1997, 1999; Charniak 1997, 2000; Ratnaparkhi 1999) with sections 2 through 21 for training (approx. 40,000 sentences) and section 23 for testing (2416 sentences ❑ 100 words); section 22 was used as development set. All trees were stripped off their semantic tags, co-reference information and quotation marks. We used all training set subtrees of depth 1, but due to memory limitations we used a subset of the subtrees larger than depth 1, by taking for each depth a random sample of 400,000 subtrees. These random subtree samples were not selected by first exhaustively computing the complete set of subtrees (this was computationally prohibit - ive</context>
+<context citStr="Ratnaparkhi 1999" endWordPosition="1946" position="11588" startWordPosition="1945">stimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing systems. Table 1 shows the LP and LR scores obtained with our base line subtree set, and compares these scores with those of previous stochastic parsers tested on the WSJ (respectively Charniak 1997, Collins 1999, Ratnaparkhi 1999, and Charniak 2000). The table shows that by using the base line subtree set, our parser outperforms most previous parsers but it performs worse than the parser in Charniak (2000). We will use our scores of 89.5% LP and 89.3% LR (for test sentences ❑ 40 words) as the base line result against which the effect of various subtree restrictions is investigated. While most subtree restrictions diminish the accuracy scores, we will see that there are restrictions that improve our scores, even beyond those of Charniak (2000). 1 http://www.cs.nyu.edu/cs/projects/proteus/evalb/ We will initially study </context>
+</contexts>
+<marker>Ratnaparkhi, 1999</marker>
+<rawString>A. Ratnaparkhi, 1999. Learning to Parse Natural Language with Maximum Entropy Models, Machine Learning 34, 151-176.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Schabes</author>
+<author>R Waters</author>
+</authors>
+<title>Stochastic Lexicalized Tree-Insertion Grammar.</title>
+<date>1996</date>
+<booktitle>Recent Advances in Parsing Technology.</booktitle>
+<editor>In H. Bunt and M. Tomita (eds.)</editor>
+<publisher>Kluwer Academic Publishers.</publisher>
+<contexts>
+<context citStr="Schabes &amp; Waters 1996" endWordPosition="4018" position="24124" startWordPosition="4015">ts in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our results also show that the linguistically motivated constraint which limits the statistical dependencies to the locality of headwords of constituents is too narrow. Not only are counts of subtrees with nonheadwords important, also counts of unlexicalized subtrees up to depth 6 increase the parse accuracy. The only other model that uses frontier lexicalization and that was tested on the standard WSJ split is Chiang (2000) who extracts a stochastic tree-insertion grammar or STIG (Schabes &amp; Waters 1996) from the WSJ, obtaining 86.6% LP and 86.9% LR for sentences ≤ 40 words. However, Chiang's approach is limited in at least two respects. First, each elementary tree in his STIG is lexicalized with exactly one lexical item, while our results show that there is an increase in parse accuracy if more lexical items and also if unlexicalized trees are included (in his conclusion Chiang acknowledges that &amp;quot;multiply anchored trees&amp;quot; may be important). Second, Chiang computes the probability of a tree by taking into account only one derivation, while in STIG, like in DOP1, there can be several derivation</context>
+</contexts>
+<marker>Schabes, Waters, 1996</marker>
+<rawString>Y. Schabes and R. Waters, 1996. Stochastic Lexicalized Tree-Insertion Grammar. In H. Bunt and M. Tomita (eds.) Recent Advances in Parsing Technology. Kluwer Academic Publishers.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Schapire</author>
+<author>Y Singer</author>
+</authors>
+<title>Improved Boosting Algorithms Using ConfedenceRated Predictions,</title>
+<date>1998</date>
+<booktitle>Proceedings 11th Annual Conference on Computational Learning Theory.</booktitle>
+<publisher>Morgan Kaufmann,</publisher>
+<location>San Francisco.</location>
+<contexts>
+<context citStr="Schapire &amp; Singer (1998)" endWordPosition="2606" position="15442" startWordPosition="2603">3. Parsing results for different subtree lexicalizations (for test sentences ≤ 40 words) We see that the accuracy initially increases when the lexical context is enlarged, but that the accuracy decreases if the number of words in the subtree frontiers exceeds 12 words. Our highest scores of 90.8% LP and 90.5% LR outperform the scores of the best previously published parser by Charniak (2000) who obtains 90.1% for both LP and LR. Moreover, our scores also outperform the reranking technique of Collins (2000) who reranks the output of the parser of Collins (1999) using a boosting method based on Schapire &amp; Singer (1998), obtaining 90.4% LP and 90.1% LR. We have thus found a subtree restriction which does not decrease the parse accuracy but even improves it. This restriction consists of an upper bound of 12 words in the subtree frontiers, for subtrees ≤ depth 14. (We have also tested this lexical restriction in combination with subtrees smaller than depth 14, but this led to a decrease in accuracy.) 4.4 The impact of structural context Instead of investigating the impact of lexical context, we may also be interested in studying the importance of structural context. We may raise the question as to whether we n</context>
+</contexts>
+<marker>Schapire, Singer, 1998</marker>
+<rawString>R. Schapire and Y. Singer, 1998. Improved Boosting Algorithms Using ConfedenceRated Predictions, Proceedings 11th Annual Conference on Computational Learning Theory. Morgan Kaufmann, San Francisco.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Sima'an</author>
+</authors>
+<title>Learning Efficient Disambiguation.</title>
+<date>1999</date>
+<tech>PhD thesis,</tech>
+<institution>University of Amsterdam, The Netherlands.</institution>
+<contexts>
+<context citStr="Sima'an 1999" endWordPosition="247" position="1640" startWordPosition="246">ons to find this minimal set, for example by restricting the statistical dependencies to the locality of headwords of constituents (Collins 1997, 1999; Eisner 1997), leaving it as an open question whether there exist important statistical dependencies that go beyond linguistically motivated dependencies. The Data Oriented Parsing (DOP) model, on the other hand, takes a rather extreme view on this issue: given an annotated corpus, all fragments (i.e. subtrees) seen in that corpus, regardless of size and lexicalization, are in principle taken to form a grammar (see Bod 1993, 1998; Goodman 1998; Sima'an 1999). The set of subtrees that is used is thus very large and extremely redundant. Both from a theoretical and from a computational perspective we may wonder whether it is possible to impose constraints on the subtrees that are used, in such a way that the accuracy of the model does not deteriorate or perhaps even improves. That is the main question addressed in this paper. We report on experiments carried out with the Penn Wall Street Journal (WSJ) treebank to investigate several strategies for constraining the set of subtrees. We found that the only constraints that do not decrease the parse acc</context>
+<context citStr="Sima'an 1999" endWordPosition="1168" position="7049" startWordPosition="1167">ost probable parse increases exponentially with the sentence length (see Goodman 1998). It is therefore questionable whether Bod's sampling technique can be scaled to larger domains such as the WSJ portion in the Penn Treebank. Goodman (1996, 1998) showed how DOP1 can be reduced to a compact stochastic contextfree grammar (SCFG) which contains exactly eight SCFG rules for each node in the training set trees. Although Goodman's method does still not allow for an efficient computation of the most probable parse (in fact, the problem of computing the most probable parse in DOP1 is NP-hard -- see Sima'an 1999), his method does allow for an efficient computation of the &amp;quot;maximum constituents parse&amp;quot;, i.e. the parse tree that is most likely to have the largest number of correct constituents. Goodman has shown on the ATIS corpus that V NP likes S NP = ° NP ° S Mary NP VP Susan NP VP Mary V NP likes Susan ° NP ° Mary likes NP VP S V = NP VP S V NP Mary V NP the maximum constituents parse performs at least as well as the most probable parse if all subtrees are used. Unfortunately, Goodman's reduction method is only beneficial if indeed all subtrees are used. Sima'an (1999: 108) argues that there may still</context>
+<context citStr="Sima'an 1999" endWordPosition="3844" position="23025" startWordPosition="3843">tion of the number of words in the fragment frontiers to 12 and a restriction of the depth of unlexicalized fragments to 6. No other constraints were warranted. There is an important question why maximal parse accuracy occurs with exactly these constraints. Although we do not know the answer to this question, we surmise that these constraints differ from corpus to corpus and are related to general data sparseness effects. In previous experiments with DOP1 on smaller and more restricted domains we found that the parse accuracy decreases also after a certain maximum subtree depth (see Bod 1998; Sima'an 1999). We expect that also for the WSJ the parse accuracy will decrease after a certain depth, although we have not been able to find this depth so far. A major difference between our approach and most other models tested on the WSJ is that the DOP model uses frontier lexicalization while most other models use constituent lexicalization (in that they associate each constituent non - terminal with its lexical head -- see Collins 1996, 1999; Charniak 1997; Eisner 1997). The results in this paper indicate that frontier lexicalization is a promising alternative to constituent lexicalization. Our result</context>
+</contexts>
+<marker>Sima'an, 1999</marker>
+<rawString>K. Sima'an, 1999. Learning Efficient Disambiguation. PhD thesis, University of Amsterdam, The Netherlands.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Sima'an</author>
+</authors>
+<title>Tree-gram Parsing: Lexical Dependencies and Structural Relations,</title>
+<date>2000</date>
+<booktitle>Proceedings ACL'2000,</booktitle>
+<location>Hong Kong, China.</location>
+<contexts>
+<context citStr="Sima'an 2000" endWordPosition="4234" position="25447" startWordPosition="4233">lying grammar of DOP is based on a treebank grammar (cf. Charniak 1996, 1997), while most current stochastic parsing models use a &amp;quot;markov grammar&amp;quot; (e.g. Collins 1999; Charniak 2000). While a treebank grammar only assigns probabilities to rules or subtrees that are seen in a treebank, a markov grammar assigns probabilities to any possible rule, resulting in a more robust model. We expect that the application of the markov grammar approach to DOP will further improve our results. Research in this direction is already ongoing, though it has been tested for rather limited subtree depths only (see Sima'an 2000). Although we believe that our main result is to have shown that almost arbitrary fragments within parse trees are important, it is surprising that a relatively simple model like DOP1 outperforms most other stochastic parsers on the WSJ. Yet, to the best of our knowledge, DOP is the only model which does not a priori restrict the fragments that are used to compute the most probable parse. Instead, it starts out by taking into account all fragments seen in a treebank and then investigates fragment restrictions to discover the set of relevant fragments. From this perspective, the DOP approach ca</context>
+</contexts>
+<marker>Sima'an, 2000</marker>
+<rawString>K. Sima'an, 2000. Tree-gram Parsing: Lexical Dependencies and Structural Relations, Proceedings ACL'2000, Hong Kong, China.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Weischedel</author>
+<author>M Meteer</author>
+<author>R Schwarz</author>
+<author>L Ramshaw</author>
+<author>J Palmucci</author>
+</authors>
+<date>1993</date>
+<booktitle>Coping with Ambiguity and Unknown Words through Probabilistic Models, Computational Linguistics,</booktitle>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Weischedel et al. (1993)" endWordPosition="1814" position="10761" startWordPosition="1811">ee of the particular depth was obtained. We repeated this procedure 400,000 times for each depth &gt; 1 and ❑ 14. Thus no subtrees of depth &gt; 14 were used. This resulted in a base line subtree set of 5,217,529 subtrees which were smoothed by the technique described in Bod (1996) based on Good-Turing. Since our subtrees are allowed to be lexicalized (at their frontiers), we did not use a separate part-ofspeech tagger: the test sentences were directly parsed by the training set subtrees. For words that were unknown in our subtree set, we guessed their categories by means of the method described in Weischedel et al. (1993) which uses statistics on word-endings, hyphenation and capitalization. The guessed category for each unknown word was converted into a depth-1 subtree and assigned a probability by means of simple Good-Turing estimation (see Bod 1998). The most probable parse for each test sentence was estimated from the 1,000 most probable derivations of that sentence, as described in section 3. We used &amp;quot;evalb&amp;quot;1 to compute the standard PARSEVAL scores for our parse results. We focus on the Labeled Precision (LP) and Labeled Recall (LR) scores only in this paper, as these are commonly used to rank parsing sys</context>
+</contexts>
+<marker>Weischedel, Meteer, Schwarz, Ramshaw, Palmucci, 1993</marker>
+<rawString>R. Weischedel, M. Meteer, R, Schwarz, L. Ramshaw and J. Palmucci, 1993. Coping with Ambiguity and Unknown Words through Probabilistic Models, Computational Linguistics, 19(2).</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

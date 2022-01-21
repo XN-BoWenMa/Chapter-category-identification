@@ -1,0 +1,826 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000006" no="0">
+<title confidence="0.974583">
+Deciphering Foreign Language
+</title>
+<author confidence="0.991917">
+Sujith Ravi and Kevin Knight
+</author>
+<affiliation confidence="0.851112666666667">
+University of Southern California
+Information Sciences Institute
+Marina del Rey, California 90292
+</affiliation>
+<email confidence="0.999507">
+{sravi,knight}@isi.edu
+</email>
+<sectionHeader confidence="0.998601" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.99848">In this work, we tackle the task of machine translation (MT) without parallel training data. We frame the MT problem as a decipherment task, treating the foreign text as a cipher for English and present novel methods for training translation models from nonparallel text.</bodyText>
+<sectionHeader confidence="0.999392" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.998475294117647">Bilingual corpora are a staple of statistical machine translation (SMT) research. From these corpora, we estimate translation model parameters: wordto-word translation tables, fertilities, distortion parameters, phrase tables, syntactic transformations, etc. Starting with the classic IBM work (Brown et al., 1993), training has been viewed as a maximization problem involving hidden word alignments (a) that are assumed to underlie observed sentence pairs (e, f): Brown et al. (1993) give various formulas that boil Pθ(f, a|e) down to the specific parameters to be estimated. Of course, for many language pairs and domains, parallel data is not available. In this paper, we address the problem of learning a full translation model from non-parallel data, and we use the learned model to translate new foreign strings.</bodyText>
+<page confidence="0.980598">
+12
+</page>
+<bodyText confidence="0.966158285714286">As successful work develops along this line, we expect more domains and language pairs to be conquered by SMT. How can we learn a translation model from nonparallel data? Intuitively, we try to construct translation model tables which, when applied to observed foreign text, consistently yield sensible English. This is essentially the same approach taken by cryptanalysts and epigraphers when they deal with source texts. In our case, we observe a large number of foreign strings f, and we apply maximum likelihood training:</bodyText>
+<equation confidence="0.777448666666667">
+Y
+arg max Pθ(f) (3)
+θ f
+</equation>
+<bodyText confidence="0.999230333333333">Following Weaver (1955), we imagine that this corpus of foreign strings “is really written in English, but has been coded in some strange symbols,” thus:</bodyText>
+<equation confidence="0.920808666666667">
+Y X
+arg max P (e) · Pθ(f|e) (4)
+θ f e
+</equation>
+<bodyText confidence="0.964587">The variable e ranges over all possible English strings, and P(e) is a language model built from large amounts of English text that is unrelated to the foreign strings. Re-writing for hidden alignments, we get: a Note that this formula has the same free Pθ(f, a|e) parameters as expression (2). We seek to manipulate these parameters in order to learn the same full translation model.</bodyText>
+<figure confidence="0.975967125">
+Yarg max Pθ(f|e) (1)
+θ e,f
+Y= arg max X
+θ e,f Pθ(f, a|e) (2)
+a
+Y X X
+arg max P(e) · Pθ(f, a|e) (5)
+θ f e
+</figure>
+<note confidence="0.9482275">
+Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 12–21,
+Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.9996828125">We note that for each f, not only is the alignment a still hidden, but now the English translation e is hidden as well. A language model P(e) is typically used in SMT decoding (Koehn, 2009), but here P(e) actually plays a central role in training translation model parameters. To distinguish the two, we refer to (5) as decipherment, rather than decoding. We can now draw on previous decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore:</bodyText>
+<listItem confidence="0.731737615384615">• We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems.</listItem>
+<sectionHeader confidence="0.979774" genericHeader="other">
+2 Word Substitution Decipherment
+</sectionHeader>
+<bodyText confidence="0.999408">Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in the natural language (plaintext) sequence is substituted by a cipher token, according to a substitution key. The key is deterministic—there exists a 1-to-1 mapping between cipher units and the plaintext words they encode. For example, the following English plaintext sequences:</bodyText>
+<equation confidence="0.704752">
+I SAW THE BOY .
+THE BOY RAN .
+</equation>
+<bodyText confidence="0.89203775">may be enciphered as: xyzz fxyy crqq tmnz lxwz crqq tmnz gdxx lxwz according to the key:</bodyText>
+<equation confidence="0.6889655">
+THE crqq, SAW fxyy, RAN gdxx,
+. �lxwz, BOY tmnz, I xyzz
+</equation>
+<bodyText confidence="0.8444410625">The goal of word substitution decipherment is to guess the original plaintext from given cipher data without any knowledge of the substitution key. Word substitution decipherment is a good test-bed for unsupervised statistical NLP techniques for two reasons—(1) we face large vocabularies and corpora sizes typically seen in large-scale MT problems, so our methods need to scale well, (2) similar decipherment techniques can be applied for solving NLP problems such as unsupervised part-of-speech tagging. Probabilistic decipherment: Our decipherment method follows a noisy-channel approach. We first model the process by which the ciphertext sequence c = c1...cn is generated. The generative story for decipherment is described here:</bodyText>
+<listItem confidence="0.9427778">1. Generate an English plaintext sequence e = e1...en, with probability P(e). 2. Substitute each plaintext word ei with a ciphertext token ci, with probability Pθ(ci|ei) in order to generate the ciphertext sequence c = c1...cn.</listItem>
+<bodyText confidence="0.999423272727273">We model P(e) using a statistical word n-gram English language model (LM). During decipherment, our goal is to estimate the channel model parameters 0. Re-writing Equations 3 and 4 for word substitution decipherment, we get: Challenges: Unlike letter substitution ciphers (having only 26 plaintext letters), here we have to deal with large-scale vocabularies (10k-1M word types) and corpora sizes (100k cipher tokens). This poses some serious scalability challenges for word substitution decipherment.</bodyText>
+<figure confidence="0.93773475">
+Harg max Pθ(c) (6)
+θ c
+H= arg max � P(e) · n Pθ(ci|ei) (7)
+θ c e i=1
+</figure>
+<page confidence="0.997691">
+13
+</page>
+<bodyText confidence="0.991697333333333">We propose novel methods that can deal with these challenges effectively and solve word substitution ciphers:</bodyText>
+<listItem confidence="0.9714883">1. EM solution: We would like to use the Expectation Maximization (EM) algorithm (Dempster et al., 1977) to estimate 0 from Equation 7, but EM training is not feasible in our case. First, EM cannot scale to such large vocabulary sizes (running the forward-backward algorithm for each iteration requires O(V 2) time). Secondly, we need to instantiate the entire channel and resulting derivation lattice before we can run EM, and this is too big to be stored in memory. So, we introduce a new training method (Iterative EM) that fixes these problems. 2. Bayesian decipherment: We also propose a novel decipherment approach using Bayesian inference. Typically, Bayesian inference is very slow when applied to such large-scale problems. Our method overcomes these challenges and does fast, efficient inference using (a) a novel strategy for selecting sampling choices, and (b) a parallelized sampling scheme.</listItem>
+<bodyText confidence="0.9801415">In the next two sections, we describe these methods in detail.</bodyText>
+<subsectionHeader confidence="0.962607">
+2.1 Iterative EM
+</subsectionHeader>
+<bodyText confidence="0.9999746">We devise a method which overcomes memory and running time efficiency issues faced by EM. Instead of instantiating the entire channel model (with all its parameters), we iteratively train the model in small steps. The training procedure is described here:</bodyText>
+<listItem confidence="0.997405217391305">1. Identify the top K frequent word types in both the plaintext and ciphertext data. Replace all other word tokens with Unknown. Now, instantiate a small channel with just (K + 1)2 parameters and use the EM algorithm to train this model to maximize likelihood of cipher data. 2. Extend the plaintext and ciphertext vocabularies from the previous step by adding the next K most frequent word types (so the new vocabulary size becomes 2K + 1). Regenerate the plaintext and ciphertext data. 3. Instantiate a new (2K + 1) x (2K + 1) channel model. From the previous EM-trained channel, identify all the e —* c mappings that were assigned a probability P(c|e) &gt; 0.5. Fix these mappings in the new channel, i.e. set P(c|e) = 1.0. From the new channel, eliminate all other parameters e —* cj associated with the plaintext word type e (where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage.</listItem>
+<bodyText confidence="0.99999225">Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006).</bodyText>
+<subsectionHeader confidence="0.998803">
+2.2 Bayesian Decipherment
+</subsectionHeader>
+<bodyText confidence="0.999844037037037">Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we use higher-order n-gram LMs, (3) there are no memory bottlenecks since the full channel model and derivation lattice are never instantiated during training, and (4) prior specification allows us to learn skewed distributions that are useful here—word substitution ciphers exhibit 1-to-1 correspondence between plaintext and cipher types. We use the same generative story as before for decipherment, except that we use Chinese Restaurant Process (CRP) formulations for the source and channel probabilities. We use an English word bigram LM as the base distribution (P0) for the source model and specify a uniform P0 distribution for the channel.1 We perform inference using point-wise Gibbs sampling (Geman and Geman, 1984).</bodyText>
+<page confidence="0.994377">
+14
+</page>
+<bodyText confidence="0.999441424242424">We define a sampling operator that samples plaintext word choices for every cipher token, one at a time. Using the exchangeability property, we efficiently score the probability of each derivation in an incremental fashion. In addition, we make further improvements to the sampling procedure which makes it faster. Smart sample-choice selection: In the original sampling step, for each cipher token we have to sample from a list of all possible plaintext choices (10k1M English words). There are 100k cipher tokens in our data which means we have to perform — 109 sampling operations to make one entire pass through the data. We have to then repeat this process for 2000 iterations. Instead, we now reduce our choices in each sampling step. Say that our current plaintext hypothesis contains English words X, Y and Z at positions i — 1, i and i+1 respectively. In order to sample at position i, we choose the top K English words Y ranked by P(X Y Z), which can be computed offline from a statistical word bigram LM. If this probability is 0 (i.e., X and Z never co-occurred), we randomly pick K words from the plaintext vocabulary. We set K = 100 in our experiments. This significantly reduces the sampling possibilities (10k-1M reduces to 100) at each step and allows us to scale to large plaintext vocabulary sizes without enumerating all possible choices at every cipher position.2 Parallelized Gibbs sampling: Secondly, we parallelize our sampling step using a Map-Reduce framework. In the past, others have proposed parallelized sampling schemes for topic modeling applications (Newman et al., 2009). In our method, we split the entire corpus into separate chunks and we run the sampling procedure on each chunk in parallel. At 1For word substitution decipherment, we want to keep the language model probabilities fixed during training, and hence we set the prior on that model to be high (α = 104). We use a sparse Dirichlet prior for the channel ((I = 0.01). We use the output from Iterative EM decoding (using 101 x 101 channel) as initial sample and run the sampler for 2000 iterations. During sampling, we use a linear annealing schedule decreasing the temperature from 1 --+ 0.08.2Since we now sample from an approximate distribution, we have to correct this with the Metropolis-Hastings algorithm. But in practice we observe that samples from our proposal distribution are accepted with probability &gt; 0.99, so we skip this step.the end of each sampling iteration, we combine the samples corresponding to each chunk and collect the counts of all events—this forms our cache for the next sampling iteration. In practice, we observe that the parallelized sampling run converges quickly and runs much faster than the conventional point-wise sampling—for example, 3.1 hours (using 10 nodes) versus 11 hours for one of the word substitution experiments. We also notice a higher speedup when scaling to larger vocabularies.3 Decoding the ciphertext: After the sampling run has finished, we choose the final sample and extract a trained version of the channel model PB(c|e) from this sample following the technique of Chiang et al.(2010). We then use the Viterbi algorithm to choose the English plaintext e that maximizes P(e) � Petrained(c|e)3.</bodyText>
+<subsectionHeader confidence="0.911169">
+2.3 Experiments and Results
+</subsectionHeader>
+<bodyText confidence="0.6135795">Data: For the word substitution experiments, we use two corpora:</bodyText>
+<listItem confidence="0.838788">• Temporal expression corpus containing short English temporal expressions such as “THE NEXT MONTH”, “THE LAST THREE YEARS”, etc. The cipher data contains 5000 expressions (9619 tokens, 153 word types). We also have access to a separate English corpus (which is not parallel to the ciphertext) containing 125k temporal expressions (242k word tokens, 201 word types) for LM training. • Transtac corpus containing full English sentences.</listItem>
+<bodyText confidence="0.860873066666667">The data consists of 10k cipher sentences (102k tokens, 3397 word types); and a plaintext corpus of 402k English sentences (2.7M word tokens, 25761 word types) for LM training. We use all the cipher data for decipherment training but evaluate on the first 1000 cipher sentences. The cipher data was originally generated from English text by substituting each English word with a unique cipher word. We use the plaintext corpus to 3Type sampling could be applied on top of our methods to further optimize performance. But more complex problems like MT do not follow the same principles (1-to-1 key mappings) as seen in word substitution ciphers, which makes it difficult to identify type dependencies.</bodyText>
+<page confidence="0.943947">
+15
+</page>
+<table confidence="0.999244555555556">
+Method Decipherment Accuracy (%)
+Temporal expr. Transtac
+9k 100k
+0. EM with 2-gram LM 87.8 Intractable
+1. Iterative EM 87.8 70.5 71.8
+with 2-gram LM
+2. Bayesian 88.6 60.1 80.0
+with 2-gram LM 82.5
+with 3-gram LM
+</table>
+<figureCaption confidence="0.9644426">
+Figure 1: Comparison of word substitution decipherment
+results using (1) Iterative EM, and (2) Bayesian method.
+For the Transtac corpus, decipherment performance is
+also shown for different training data sizes (9k versus
+100k cipher tokens).
+</figureCaption>
+<bodyText confidence="0.998913444444444">build an English word n-gram LM, which is used in the decipherment process. Evaluation: We compute the accuracy of a particular decipherment as the percentage of cipher tokens that were correctly deciphered from the whole corpus. We run the two methods (Iterative EM4 and Bayesian) and then compare them in terms of word substitution decipherment accuracies. Results: Figure 1 compares the word substitution results from Iterative EM and Bayesian decipherment. Both methods achieve high accuracies, decoding 70-90% of the two word substitution ciphers. Overall, Bayesian decipherment (with sparse priors) performs better than Iterative EM and achieves the best results on this task. We also observe that both methods benefit from better LMs and more (cipher) training data. Figure 2 shows sample outputs from Bayesian decipherment.</bodyText>
+<sectionHeader confidence="0.9850745" genericHeader="other">
+3 Machine Translation as a Decipherment
+Task
+</sectionHeader>
+<bodyText confidence="0.999924375">We now turn to the problem of MT without parallel data. From a decipherment perspective, machine translation is a much more complex task than word substitution decipherment and poses several technical challenges: (1) scalability due to large corpora sizes and huge translation tables, (2) nondeterminism in translation mappings (a word can have multiple translations), (3) re-ordering of words or phrases, (4) a single word can translate into a phrase, and (5) insertion/deletion of words.</bodyText>
+<footnote confidence="0.95911925">
+4For Iterative EM, we start with a channel of size 101x101
+(K=100) and in every pass we iteratively increase the vocabu-
+lary sizes by 50, repeating the training procedure until the chan-
+nel size becomes 351x351.
+</footnote>
+<table confidence="0.993751125">
+O: 3894 9411 4357 8446 5433
+a diploma that’s good.
+a fence that’s good.
+O: 8593 7932 3627 9166 3671
+three families living here ?
+three brothers living here ?
+O: 6283 8827 7592 6959 5120 6137 9723 3671
+okay and what did they tell you ?
+okay and what did they tell you ?
+O: 9723 3601 5834 5838 3805 4887 7961 9723 3174 4518
+9067 4488 9551 7538 7239 9166 3671
+you mean if we come to see you in the afternoon after
+five you’ll be here ?
+i mean if we come to see you in the afternoon after thirty
+you’ll be here ?
+...
+</table>
+<figureCaption confidence="0.99277925">
+Figure 2: Comparison of the original (O) English plain-
+text with output from Bayesian word substitution deci-
+pherment (D) for a few samples cipher (C) sentences
+from the Transtac corpus.
+</figureCaption>
+<bodyText confidence="0.998154785714286">Problem Formulation: We formulate the MT decipherment problem as—given a foreign text f (i.e., foreign word sequences f1...fm) and a monolingual English corpus, our goal is to decipher the foreign text and produce an English translation. Probabilistic decipherment: Unlike parallel training, here we have to estimate the translation model PB(f|e) parameters using only monolingual data. During decipherment training, our objective is to estimate the model parameters 0 in order to maximize the probability of the foreign corpus f. From Equation 4 we have:</bodyText>
+<equation confidence="0.91079">
+arg maxH�P(e) · PB(f|e)
+f e
+</equation>
+<listItem confidence="0.83791675">For P(e), we use a word n-gram LM trained on monolingual English data. We then estimate parameters of the translation model PB(f|e) during training. Next, we present two novel decipherment approaches for MT training without parallel data. 1. EM Decipherment: We propose a new translation model for MT decipherment which can be efficiently trained using the EM algorithm. 2. Bayesian Decipherment: We introduce a novel method for estimating IBM Model 3 parameters without parallel data, using Bayesian learning. Unlike EM, this method does not face any memory issues and we use sampling to perform efficient inference during training.</listItem>
+<page confidence="0.995076">
+16
+</page>
+<subsectionHeader confidence="0.993168">
+3.1 EM Decipherment
+</subsectionHeader>
+<bodyText confidence="0.999561733333333">For the translation model Pθ(f|e), we would like to use a well-known statistical model such as IBM Model 3 and subsequently train it using the EM algorithm. But without parallel training data, EM training for IBM Model 3 becomes intractable due to (1) scalability and efficiency issues because of large-sized fertility and distortion parameter tables, and (2) the resulting derivation lattices become too big to be stored in memory. Instead, we propose a simpler generative story for MT without parallel data. Our model accounts for (word) substitutions, insertions, deletions and local re-ordering during the translation process but does not incorporate fertilities or global re-ordering. We describe the generative process here:</bodyText>
+<listItem confidence="0.996938615384615">1. Generate an English string e = e1...el, with probability P(e). 2. Insert a NULL word at any position in the English string, with uniform probability. 3. For each English word token ei (including NULLs), choose a foreign word translation fi, with probability Pθ(fi|ei). The foreign word may be NULL. 4. Swap any pair of adjacent foreign words fi−1, fi, with probability Pθ(swap). We set this value to 0.1. 5. Output the foreign string f = f1...fm, skipping over NULLs.</listItem>
+<bodyText confidence="0.999069346153846">We use the EM algorithm to estimate all the parameters θ in order to maximize likelihood of the foreign corpus. Finally, we use the Viterbi algorithm to decode the foreign sentence f and produce an English translation e that maximizes P(e) · Pθtrained(f|e). Linguistic knowledge for decipherment: To help limit translation model size and deal with data sparsity problem, we use prior linguistic knowledge. We use identity mappings for numeric values (for example, “8” maps to “8”), and we split nouns into morpheme units prior to decipherment training (for example, “YEARS” —* “YEAR” “+S”). Whole-segment Language Models: When using word n-gram models of English for decipherment, we find that some of the foreign sentences are decoded into sequences (such as “THANK YOU TALKING ABOUT ?”) that are not good English. This stems from the fact that n-gram LMs have no global information about what constitutes a valid English segment. To learn this information automatically, we build a P(e) model that only recognizes English whole-segments (entire sentences or expressions) observed in the monolingual training data. We then use this model (in place of word ngram LMs) for decipherment training and decoding.</bodyText>
+<subsectionHeader confidence="0.998495">
+3.2 Bayesian Method
+</subsectionHeader>
+<bodyText confidence="0.9999188">Brown et al. (1993) provide an efficient algorithm for training IBM Model 3 translation model when parallel sentence pairs are available. But we wish to perform IBM Model 3 training under non-parallel conditions, which is intractable using EM training. Instead, we take a Bayesian approach. Following Equation 5, we represent the translation model as Pθ(f, a|e) in terms of hidden alignments a. Recall the generative story for IBM Model 3 translation which has the following formula:</bodyText>
+<equation confidence="0.997166625">
+Pθ(f, a|e) =
+m
+· Y
+aj=,40,j=1
+1 m − φ0
+φ0! ·φ0
+·pφ0 p0om− 2φ0 (8)
+e
+</equation>
+<bodyText confidence="0.999724111111111">The alignment a is represented as a vector; aj = i implies that the foreign word fj is produced by the English word ei during translation. Bayesian Formulation: Our goal is to learn the probability tables t (translation parameters) n (fertility parameters), d (distortion parameters), and p (English NULL word probabilities) without parallel data. In order to apply Bayesian inference for decipherment, we model each of these tables using a</bodyText>
+<equation confidence="0.992660538461538">
+l
+Yl
+i=1
+nθ(φi|ei)
+Y
+i=0
+tθ(faj|ei) ·
+dθ(aj|i, l, m) ·
+l
+φi!
+Y
+i=0
+·
+</equation>
+<page confidence="0.985066">
+17
+</page>
+<bodyText confidence="0.984080333333333">Chinese Restaurant Process (CRP) formulation. For example, to model the translation probabilities, we use the formula:</bodyText>
+<equation confidence="0.997015">
+to(fj |ei) = a· P0(fj  |ei) + Chistory(ei, fj)(9)
+a + Chistory(ei)
+</equation>
+<bodyText confidence="0.9837721875">where, P0 represents the base distribution (which is set to uniform) and Chistory represents the count of events occurring in the history (cache). Similarly, we use CRP formulations for the other probabilities (n, d and p). We use sparse Dirichlet priors for all these models (i.e., low values for a) and plug these probabilities into Equation 8 to get PB(f, a|e). Sampling IBM Model 3: We use point-wise Gibbs sampling to estimate the IBM Model 3 parameters. The sampler is seeded with an initial English sample translation and a corresponding alignment for every foreign sentence. We define several sampling operators, which are applied in sequence one after the other to generate English samples for the entire foreign corpus. Some of the sampling operators are described below:</bodyText>
+<listItem confidence="0.999209428571428">• TranslateWord(j): Sample a new English word translation for foreign word fj, from all possibilities (including NULL). • SwapSegment(i1, i2): Swap the alignment links for English words ei1 and ei2. • JoinWords(i1, i2): Eliminate the English word ei1 and transfer its links to the word ei2.</listItem>
+<bodyText confidence="0.999680869565217">During sampling, we apply each of these operators to generate a new derivation e, a for the foreign text f and compute its score as P(e) · Po(f, a|e). These small-change operators are similar to the heuristic techniques used for greedy decoding by German et al. (2001). But unlike the greedy method, which can easily get stuck, our Bayesian approach guarantees that once the sampler converges we will be sampling from the true posterior distribution. As with Bayesian decipherment for word substitution, we compute the probability of each new derivation incrementally, which makes sampling efficient. We also apply blocked sampling on top of point-wise sampling—we treat all occurrences of a particular foreign sentence as a single block and sample a single derivation for the entire block. We also parallelize the sampling procedure (as described in Section 2.2).5 Choosing the best translation: Once the sampling run finishes, we select the final sample and extract the corresponding English translations for every foreign sentence. This yields the final decipherment output.</bodyText>
+<subsectionHeader confidence="0.999841">
+3.3 MT Experiments and Results
+</subsectionHeader>
+<bodyText confidence="0.996958">Data: We work with the Spanish/English language pair and use the following corpora in our MT experiments:</bodyText>
+<listItem confidence="0.818784166666667">• Time corpus: We mined English newswire text on the Web and collected 295k temporal expressions such as “LAST YEAR”, “THE FOURTH QUARTER”, “IN JAN 1968”, etc. We first process the data and normalize numbers and names of months/weekdays—for example, “1968” is replaced with “NNNN”, “JANUARY” with “[MONTH]”, and soon.</listItem>
+<bodyText confidence="0.871609125">We then translate the English temporal phrases into Spanish using an automatic translation software (Google Translate) followed by manual annotation to correct mistakes made by the software. We create the following splits out of the resulting parallel corpus:</bodyText>
+<listItem confidence="0.923322642857143">TRAIN (English): 195k temporal expressions (7588 unique), 382k word tokens, 163 types. TEST (Spanish): 100k temporal expressions (2343 unique), 204k word tokens, 269 types. • OPUS movie subtitle corpus: This is a large open source collection of parallel corpora available for multiple language pairs (Tiedemann, 2009). We downloaded the parallel Spanish/English subtitle corpus which consists of aligned Spanish/English sentences from a collection of movie subtitles. For our MT experiments, we select only Spanish/English sentences with frequency &gt; 10 and create the following train/test splits:</listItem>
+<footnote confidence="0.838346">
+5For Bayesian MT decipherment, we set a high prior value
+on the language model (104) and use sparse priors for the IBM 3
+model parameters t, n, d, p (0.01, 0.01, 0.01, 0.01). We use the
+output from EM decipherment as the initial sample and run the
+sampler for 2000 iterations, during which we apply annealing
+with a linear schedule (2 --+ 0.08).
+</footnote>
+<page confidence="0.990902">
+18
+</page>
+<table confidence="0.999442384615384">
+Method Decipherment Accuracy
+Time expressions OPUS subtitles
+1a. Parallel training (MOSES)
+with 2-gram LM 5.6 (85.6) 26.8 (63.6)
+with 5-gram LM 4.7 (88.0)
+1b. Parallel training (IBM 3 without distortion)
+with 2-gram LM 10.1 (78.9) 29.9 (59.6)
+with whole-segment LM 9.0 (79.2)
+2a. Decipherment (EM)
+with 2-gram LM 37.6 (44.6) 67.2 (15.3)
+with whole-segment LM 28.7 (48.7) 65.1 (19.3)
+2b. Decipherment (Bayesian IBM 3)
+with 2-gram LM 34.0 (30.2) 66.6 (15.1)
+</table>
+<figureCaption confidence="0.981408">
+Figure 3: Comparison of Spanish/English MT performance on the Time and OPUS test corpora achieved by various
+MT systems trained under (1) parallel—(a) MOSES, (b) IBM 3 without distortion, and (2) decipherment settings—
+(a) EM, (b) Bayesian. The scores reported here are normalized edit distance values with BLEU scores shown in
+parentheses.
+</figureCaption>
+<table confidence="0.582305333333333">
+TRAIN (English): 19770 sentences (1128
+unique), 62k word tokens, 411 word types.
+TEST (Spanish): 13181 sentences (1127
+</table>
+<bodyText confidence="0.890914166666667">unique), 39k word tokens, 562 word types. Both Spanish/English sides of TRAIN are used for parallel MT training, whereas decipherment uses only monolingual English data for training LMs. MT Systems: We build and compare different MT systems under two training scenarios:</bodyText>
+<listItem confidence="0.970421111111111">1. Parallel training using: (a) MOSES, a phrase translation system (Koehn et al., 2007) widely used in MT literature, and (b) a simpler version of IBM Model 3 (without distortion parameters) which can be trained tractably using the strategy of Knight and Al-Onaizan (1998). 2. Decipherment without parallel data using: (a) EM method (from Section 3.1), and (b) Bayesian method (from Section 3.2).</listItem>
+<bodyText confidence="0.958250605263158">Evaluation: All the MT systems are run on the Spanish test data and the quality of the resulting English translations are evaluated using two different measures—(1) Normalized edit distance score (Navarro, 2001),6 and (2) BLEU (Papineni et 6When computing edit distance, we account for substitutions, insertions, deletions as well as local-swap edit operations required to convert a given English string into the (gold) reference translation. al., 2002), a standard MT evaluation measure. Results: Figure 3 compares the results of various MT systems (using parallel versus decipherment training) on the two test corpora in terms of edit distance scores (a lower score indicates closer match to the gold translation). The figure also shows the corresponding BLEU scores in parentheses for comparison (higher scores indicate better MT output). We observe that even without parallel training data, our decipherment strategies achieve MT accuracies comparable to parallel-trained systems. On the Time corpus, the best decipherment (Method 2a in the figure) achieves an edit distance score of 28.7 (versus 4.7 for MOSES). Better LMs yield better MT results for both parallel and decipherment training—for example, using a segment-based English LM instead of a 2-gram LM yields a 24% reduction in edit distance and a 9% improvement in BLEU score for EM decipherment. We also investigate how the performance of different MT systems vary with the size of the training data. Figure 4 plots the BLEU scores versus training sizes for different MT systems on the Time corpus. Clearly, using more training data yields better performance for all systems. However, higher improvements are observed when using parallel data in comparison to decipherment training which only uses monolingual data. We also notice that the scores do not improve much when going beyond 10,000 training instances for this domain.</bodyText>
+<page confidence="0.998343">
+19
+</page>
+<figureCaption confidence="0.9934622">
+Figure 4: Comparison of training data size versus MT ac-
+curacy in terms of BLEU score under different training
+conditions: (1) Parallel training—(a) MOSES, (b) IBM
+Model 3 without distortion, and (2) Decipherment with-
+out parallel data using EM method (from Section 3.1).
+</figureCaption>
+<bodyText confidence="0.9990982">It is interesting to quantify the value of parallel versus non-parallel data for any given MT task. In other words, “how much non-parallel data is worth how much parallel data in order to achieve the same MT accuracy?” Figure 4 provides a reasonable answer to this question for the Spanish/English MT task described here. We see that deciphering with 10k monolingual Spanish sentences yields the same performance as training with around 200-500 parallel English/Spanish sentence pairs. This is the first attempt at such a quantitative comparison for MT and our results are encouraging. We envision that further developments in unsupervised methods will help reduce this gap further.</bodyText>
+<sectionHeader confidence="0.999492" genericHeader="conclusion">
+4 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999935375">Our work is the first attempt at doing MT without parallel data. We discussed several novel decipherment approaches for achieving this goal. Along the way, we developed efficient training methods that can deal with large-scale vocabularies and data sizes. For future work, it will be interesting to see if we can exploit both parallel and non-parallel data to improve on both.</bodyText>
+<sectionHeader confidence="0.997713" genericHeader="acknowledgments">
+Acknowledgments
+</sectionHeader>
+<bodyText confidence="0.999749666666667">This material is based in part upon work supported by the National Science Foundation (NSF) under Grant No. IIS-0904684 and the Defense Advanced Research Projects Agency (DARPA) through the Department of Interior/National Business Center under Contract No. NBCHD040058. Any opinion, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Defense Advanced Research Projects Agency (DARPA), or the Department of the Interior/National Business Center.</bodyText>
+<sectionHeader confidence="0.999399" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999719794117647">
+Friedrich L. Bauer. 2006. Decrypted Secrets: Methods
+and Maxims of Cryptology. Springer-Verlag.
+Phil Blunsom, Trevor Cohn, Chris Dyer, and Miles Os-
+borne. 2009. A Gibbs sampler for phrasal syn-
+chronous grammar induction. In Proceedings of the
+Joint Conference of the 47th Annual Meeting of the
+ACL and the 4th International Joint Conference on
+Natural Language Processing of the Asian Federa-
+tion of Natural Language Processing (ACL-IJCNLP),
+pages 782–790.
+Peter Brown, Vincent Della Pietra, Stephen Della Pietra,
+and Robert Mercer. 1993. The mathematics of statis-
+tical machine translation: Parameter estimation. Com-
+putational linguistics, 19(2):263–311.
+David Chiang, Jonathan Graehl, Kevin Knight, Adam
+Pauls, and Sujith Ravi. 2010. Bayesian inference for
+finite-state transducers. In Proceedings of the Confer-
+ence of the North American Chapter of the Associa-
+tion for Computational Linguistics - Human Language
+Technologies (NAACL/HLT), pages 447–455.
+Arthur P. Dempster, Nan M. Laird, and Donald B. Ru-
+bin. 1977. Maximum likelihood from incomplete data
+via the EM algorithm. Journal of the Royal Statistical
+Society, Series B, 39(1):1–38.
+Jenny Finkel, Trond Grenager, and Christopher Manning.
+2005. Incorporating non-local information into infor-
+mation extraction systems by Gibbs sampling. In Pro-
+ceedings of the 43rd Annual Meeting of the Associa-
+tion for Computational Linguistics (ACL), pages 363–
+370.
+Pascal Fung and Kathleen McKeown. 1997. Finding ter-
+minology translations from non-parallel corpora. In
+Proceedings of the Fifth Annual Workshop on Very
+Large Corpora, pages 192–202.
+</reference>
+<page confidence="0.903013">
+20
+</page>
+<reference confidence="0.99988625">
+Stuart Geman and Donald Geman. 1984. Stochastic re-
+laxation, Gibbs distributions and the Bayesian restora-
+tion of images. IEEE Transactions on Pattern Analysis
+and Machine Intelligence, 6(6):721–741.
+Ulrich Germann, Michael Jahr, Kevin Knight, Daniel
+Marcu, and Kenji Yamada. 2001. Fast decoding and
+optimal decoding for machine translation. In Proceed-
+ings of the 39th Annual Meeting on Association for
+Computational Linguistics, pages 228–235.
+Sharon Goldwater and Thomas Griffiths. 2007. A fully
+Bayesian approach to unsupervised part-of-speech tag-
+ging. In Proceedings of the 45th Annual Meeting of the
+Association of Computational Linguistics, pages 744–
+751.
+Aria Haghighi, Percy Liang, Taylor Berg-Kirkpatrick,
+and Dan Klein. 2008. Learning bilingual lexi-
+cons from monolingual corpora. In Proceedings of
+the Annual Meeting of the Association for Compu-
+tational Linguistics - Human Language Technologies
+(ACL/HLT), pages 771–779.
+Kevin Knight and Yaser Al-Onaizan. 1998. Transla-
+tion with finite-state devices. In David Farwell, Laurie
+Gerber, and Eduard Hovy, editors, Machine Transla-
+tion and the Information Soup, volume 1529 of Lecture
+Notes in Computer Science, pages 421–437. Springer
+Berlin / Heidelberg.
+Kevin Knight, Anish Nair, Nishit Rathod, and Kenji Ya-
+mada. 2006. Unsupervised analysis for decipherment
+problems. In Proceedings of the Joint Conference of
+the International Committee on Computational Lin-
+guistics and the Association for Computational Lin-
+guistics, pages 499–506.
+Philipp Koehn and Kevin Knight. 2000. Estimating word
+translation probabilities from unrelated monolingual
+corpora using the EM algorithm. In Proceedings of
+the Seventeenth National Conference on Artificial In-
+telligence and Twelfth Conference on Innovative Ap-
+plications of Artificial Intelligence, pages 711–715.
+Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris
+Callison-Burch, Marcello Federico, Nicola Bertoldi,
+Brooke Cowan, Wade Shen, Christine Moran, Richard
+Zens, Chris Dyer, Ondˇrej Bojar, Alexandra Con-
+stantin, and Evan Herbst. 2007. Moses: open source
+toolkit for statistical machine translation. In Proceed-
+ings of the 45th Annual Meeting of the ACL on Inter-
+active Poster and Demonstration Sessions.
+Philip Koehn. 2009. Statistical Machine Translation.
+Cambridge University Press.
+David McClosky, Eugene Charniak, and Mark Johnson.
+2006. Effective self-training for parsing. In Proceed-
+ings of the main conference on Human Language Tech-
+nology Conference of the North American Chapter of
+the Association of Computational Linguistics, pages
+152–159.
+Gonzalo Navarro. 2001. A guided tour to approximate
+string matching. ACM Computing Surveys, 33:31–88,
+March.
+David Newman, Arthur Asuncion, Padhraic Smyth, and
+Max Welling. 2009. Distributed algorithms for
+topic models. Journal of Machine Learning Research,
+10:1801–1828.
+Kishore Papineni, Salim Roukos, Todd Ward, and Wei-
+Jing Zhu. 2002. Bleu: a method for automatic eval-
+uation of machine translation. In Proceedings of the
+40th Annual Meeting on Association for Computa-
+tional Linguistics, pages 311–318.
+Reinhard Rapp. 1995. Identifying word translations in
+non-parallel texts. In Proceedings of the Conference of
+the Association for Computational Linguistics, pages
+320–322.
+Benjamin Snyder, Regina Barzilay, and Kevin Knight.
+2010. A statistical model for lost language decipher-
+ment. In Proceedings of the 48th Annual Meeting of
+the Association for Computational Linguistics, pages
+1048–1057.
+J¨org Tiedemann. 2009. News from OPUS - A collec-
+tion of multilingual parallel corpora with tools and in-
+terfaces. In N. Nicolov, K. Bontcheva, G. Angelova,
+and R. Mitkov, editors, Recent Advances in Natural
+Language Processing, volume V, pages 237–248. John
+Benjamins, Amsterdam/Philadelphia.
+Warren Weaver. 1955. Translation (1949). Reproduced
+in W.N. Locke, A.D. Booth (eds.). In Machine Trans-
+lation of Languages, pages 15–23. MIT Press.
+</reference>
+<page confidence="0.999439">
+21
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.411811" no="0">
+<title confidence="0.999763">Deciphering Foreign Language</title>
+<author confidence="0.994497">Sujith Ravi</author>
+<author confidence="0.994497">Kevin</author>
+<affiliation confidence="0.999778">University of Southern California</affiliation>
+<title confidence="0.47177">Information Sciences</title>
+<author confidence="0.591436">Marina del Rey</author>
+<author confidence="0.591436">California</author>
+<abstract confidence="0.98540125">In this work, we tackle the task of machine translation (MT) without parallel training data. We frame the MT problem as a decipherment task, treating the foreign text as a cipher for English and present novel methods for training translation models from nonparallel text.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Friedrich L Bauer</author>
+</authors>
+<title>Decrypted Secrets: Methods and Maxims of Cryptology.</title>
+<date>2006</date>
+<publisher>Springer-Verlag.</publisher>
+<contexts>
+<context citStr="Bauer, 2006" endWordPosition="529" position="3185" startWordPosition="528">l Linguistics, pages 12–21, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics same full translation model. We note that for each f, not only is the alignment a still hidden, but now the English translation e is hidden as well. A language model P(e) is typically used in SMT decoding (Koehn, 2009), but here P(e) actually plays a central role in training translation model parameters. To distinguish the two, we refer to (5) as decipherment, rather than decoding. We can now draw on previous decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contras</context>
+</contexts>
+<marker>Bauer, 2006</marker>
+<rawString>Friedrich L. Bauer. 2006. Decrypted Secrets: Methods and Maxims of Cryptology. Springer-Verlag.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Phil Blunsom</author>
+<author>Trevor Cohn</author>
+<author>Chris Dyer</author>
+<author>Miles Osborne</author>
+</authors>
+<title>A Gibbs sampler for phrasal synchronous grammar induction.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the Asian Federation of Natural Language Processing (ACL-IJCNLP),</booktitle>
+<pages>782--790</pages>
+<contexts>
+<context citStr="Blunsom et al., 2009" endWordPosition="1491" position="9064" startWordPosition="1488">laintext word type e (where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we use higher-order n-gram LMs, (3) there are </context>
+</contexts>
+<marker>Blunsom, Cohn, Dyer, Osborne, 2009</marker>
+<rawString>Phil Blunsom, Trevor Cohn, Chris Dyer, and Miles Osborne. 2009. A Gibbs sampler for phrasal synchronous grammar induction. In Proceedings of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint Conference on Natural Language Processing of the Asian Federation of Natural Language Processing (ACL-IJCNLP), pages 782–790.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Peter Brown</author>
+<author>Vincent Della Pietra</author>
+<author>Stephen Della Pietra</author>
+<author>Robert Mercer</author>
+</authors>
+<title>The mathematics of statistical machine translation: Parameter estimation.</title>
+<date>1993</date>
+<journal>Computational linguistics,</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Brown et al., 1993" endWordPosition="114" position="789" startWordPosition="111">@isi.edu Abstract In this work, we tackle the task of machine translation (MT) without parallel training data. We frame the MT problem as a decipherment task, treating the foreign text as a cipher for English and present novel methods for training translation models from nonparallel text. 1 Introduction Bilingual corpora are a staple of statistical machine translation (SMT) research. From these corpora, we estimate translation model parameters: wordto-word translation tables, fertilities, distortion parameters, phrase tables, syntactic transformations, etc. Starting with the classic IBM work (Brown et al., 1993), training has been viewed as a maximization problem involving hidden word alignments (a) that are assumed to underlie observed sentence pairs (e, f): Brown et al. (1993) give various formulas that boil Pθ(f, a|e) down to the specific parameters to be estimated. Of course, for many language pairs and domains, parallel data is not available. In this paper, we address the problem of learning a full translation model from non-parallel data, and we use the 12 learned model to translate new foreign strings. As successful work develops along this line, we expect more domains and language pairs to be</context>
+<context citStr="Brown et al. (1993)" endWordPosition="3489" position="21252" startWordPosition="3486">sing word n-gram models of English for decipherment, we find that some of the foreign sentences are decoded into sequences (such as “THANK YOU TALKING ABOUT ?”) that are not good English. This stems from the fact that n-gram LMs have no global information about what constitutes a valid English segment. To learn this information automatically, we build a P(e) model that only recognizes English whole-segments (entire sentences or expressions) observed in the monolingual training data. We then use this model (in place of word ngram LMs) for decipherment training and decoding. 3.2 Bayesian Method Brown et al. (1993) provide an efficient algorithm for training IBM Model 3 translation model when parallel sentence pairs are available. But we wish to perform IBM Model 3 training under non-parallel conditions, which is intractable using EM training. Instead, we take a Bayesian approach. Following Equation 5, we represent the translation model as Pθ(f, a|e) in terms of hidden alignments a. Recall the generative story for IBM Model 3 translation which has the following formula: Pθ(f, a|e) = m · Y aj=,40,j=1 1 m − φ0 φ0! ·φ0 ·pφ0 p0om− 2φ0 (8) e The alignment a is represented as a vector; aj = i implies that the</context>
+</contexts>
+<marker>Brown, Pietra, Pietra, Mercer, 1993</marker>
+<rawString>Peter Brown, Vincent Della Pietra, Stephen Della Pietra, and Robert Mercer. 1993. The mathematics of statistical machine translation: Parameter estimation. Computational linguistics, 19(2):263–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Chiang</author>
+<author>Jonathan Graehl</author>
+<author>Kevin Knight</author>
+<author>Adam Pauls</author>
+<author>Sujith Ravi</author>
+</authors>
+<title>Bayesian inference for finite-state transducers.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the Conference of the North American Chapter of the Association for Computational Linguistics - Human Language Technologies (NAACL/HLT),</booktitle>
+<pages>447--455</pages>
+<contexts>
+<context citStr="Chiang et al., 2010" endWordPosition="1495" position="9085" startWordPosition="1492">where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we use higher-order n-gram LMs, (3) there are no memory bottlenecks</context>
+<context citStr="Chiang et al. (2010)" endWordPosition="2215" position="13492" startWordPosition="2211">hunk and collect the counts of all events—this forms our cache for the next sampling iteration. In practice, we observe that the parallelized sampling run converges quickly and runs much faster than the conventional point-wise sampling—for example, 3.1 hours (using 10 nodes) versus 11 hours for one of the word substitution experiments. We also notice a higher speedup when scaling to larger vocabularies.3 Decoding the ciphertext: After the sampling run has finished, we choose the final sample and extract a trained version of the channel model PB(c|e) from this sample following the technique of Chiang et al. (2010). We then use the Viterbi algorithm to choose the English plaintext e that maximizes P(e) � Petrained(c|e)3. 2.3 Experiments and Results Data: For the word substitution experiments, we use two corpora: • Temporal expression corpus containing short English temporal expressions such as “THE NEXT MONTH”, “THE LAST THREE YEARS”, etc. The cipher data contains 5000 expressions (9619 tokens, 153 word types). We also have access to a separate English corpus (which is not parallel to the ciphertext) containing 125k temporal expressions (242k word tokens, 201 word types) for LM training. • Transtac corp</context>
+</contexts>
+<marker>Chiang, Graehl, Knight, Pauls, Ravi, 2010</marker>
+<rawString>David Chiang, Jonathan Graehl, Kevin Knight, Adam Pauls, and Sujith Ravi. 2010. Bayesian inference for finite-state transducers. In Proceedings of the Conference of the North American Chapter of the Association for Computational Linguistics - Human Language Technologies (NAACL/HLT), pages 447–455.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Arthur P Dempster</author>
+<author>Nan M Laird</author>
+<author>Donald B Rubin</author>
+</authors>
+<title>Maximum likelihood from incomplete data via the EM algorithm.</title>
+<date>1977</date>
+<journal>Journal of the Royal Statistical Society, Series B,</journal>
+<volume>39</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Dempster et al., 1977" endWordPosition="1058" position="6501" startWordPosition="1055">ations 3 and 4 for word substitution decipherment, we get: Challenges: Unlike letter substitution ciphers (having only 26 plaintext letters), here we have to deal with large-scale vocabularies (10k-1M word types) and corpora sizes (100k cipher tokens). This poses some serious scalability challenges for word substitution decipherment. Harg max Pθ(c) (6) θ c H= arg max � P(e) · n Pθ(ci|ei) (7) θ c e i=1 13 We propose novel methods that can deal with these challenges effectively and solve word substitution ciphers: 1. EM solution: We would like to use the Expectation Maximization (EM) algorithm (Dempster et al., 1977) to estimate 0 from Equation 7, but EM training is not feasible in our case. First, EM cannot scale to such large vocabulary sizes (running the forward-backward algorithm for each iteration requires O(V 2) time). Secondly, we need to instantiate the entire channel and resulting derivation lattice before we can run EM, and this is too big to be stored in memory. So, we introduce a new training method (Iterative EM) that fixes these problems. 2. Bayesian decipherment: We also propose a novel decipherment approach using Bayesian inference. Typically, Bayesian inference is very slow when applied t</context>
+</contexts>
+<marker>Dempster, Laird, Rubin, 1977</marker>
+<rawString>Arthur P. Dempster, Nan M. Laird, and Donald B. Rubin. 1977. Maximum likelihood from incomplete data via the EM algorithm. Journal of the Royal Statistical Society, Series B, 39(1):1–38.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Jenny Finkel</author>
+<author>Trond Grenager</author>
+<author>Christopher Manning</author>
+</authors>
+<title>Incorporating non-local information into information extraction systems by Gibbs sampling.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL),</booktitle>
+<pages>363--370</pages>
+<contexts>
+<context citStr="Finkel et al., 2005" endWordPosition="1487" position="9042" startWordPosition="1484">associated with the plaintext word type e (where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we use higher-order n-gr</context>
+</contexts>
+<marker>Finkel, Grenager, Manning, 2005</marker>
+<rawString>Jenny Finkel, Trond Grenager, and Christopher Manning. 2005. Incorporating non-local information into information extraction systems by Gibbs sampling. In Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL), pages 363– 370.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Pascal Fung</author>
+<author>Kathleen McKeown</author>
+</authors>
+<title>Finding terminology translations from non-parallel corpora.</title>
+<date>1997</date>
+<booktitle>In Proceedings of the Fifth Annual Workshop on Very Large Corpora,</booktitle>
+<pages>192--202</pages>
+<contexts>
+<context citStr="Fung and McKeown, 1997" endWordPosition="612" position="3720" startWordPosition="609">s decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems. 2 Word Substitution Decipherment Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in the natural language (p</context>
+</contexts>
+<marker>Fung, McKeown, 1997</marker>
+<rawString>Pascal Fung and Kathleen McKeown. 1997. Finding terminology translations from non-parallel corpora. In Proceedings of the Fifth Annual Workshop on Very Large Corpora, pages 192–202.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Stuart Geman</author>
+<author>Donald Geman</author>
+</authors>
+<title>Stochastic relaxation, Gibbs distributions and the Bayesian restoration of images.</title>
+<date>1984</date>
+<journal>IEEE Transactions on Pattern Analysis and Machine Intelligence,</journal>
+<volume>6</volume>
+<issue>6</issue>
+<contexts>
+<context citStr="Geman and Geman, 1984" endWordPosition="1686" position="10346" startWordPosition="1683">ation lattice are never instantiated during training, and (4) prior specification allows us to learn skewed distributions that are useful here—word substitution ciphers exhibit 1-to-1 correspondence between plaintext and cipher types. We use the same generative story as before for decipherment, except that we use Chinese Restaurant Process (CRP) formulations for the source and channel probabilities. We use an English word bigram LM as the base distribution (P0) for the source model and specify a uniform P0 distribution for the 14 channel.1 We perform inference using point-wise Gibbs sampling (Geman and Geman, 1984). We define a sampling operator that samples plaintext word choices for every cipher token, one at a time. Using the exchangeability property, we efficiently score the probability of each derivation in an incremental fashion. In addition, we make further improvements to the sampling procedure which makes it faster. Smart sample-choice selection: In the original sampling step, for each cipher token we have to sample from a list of all possible plaintext choices (10k1M English words). There are 100k cipher tokens in our data which means we have to perform — 109 sampling operations to make one en</context>
+</contexts>
+<marker>Geman, Geman, 1984</marker>
+<rawString>Stuart Geman and Donald Geman. 1984. Stochastic relaxation, Gibbs distributions and the Bayesian restoration of images. IEEE Transactions on Pattern Analysis and Machine Intelligence, 6(6):721–741.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ulrich Germann</author>
+<author>Michael Jahr</author>
+<author>Kevin Knight</author>
+<author>Daniel Marcu</author>
+<author>Kenji Yamada</author>
+</authors>
+<title>Fast decoding and optimal decoding for machine translation.</title>
+<date>2001</date>
+<booktitle>In Proceedings of the 39th Annual Meeting on Association for Computational Linguistics,</booktitle>
+<pages>228--235</pages>
+<marker>Germann, Jahr, Knight, Marcu, Yamada, 2001</marker>
+<rawString>Ulrich Germann, Michael Jahr, Kevin Knight, Daniel Marcu, and Kenji Yamada. 2001. Fast decoding and optimal decoding for machine translation. In Proceedings of the 39th Annual Meeting on Association for Computational Linguistics, pages 228–235.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Sharon Goldwater</author>
+<author>Thomas Griffiths</author>
+</authors>
+<title>A fully Bayesian approach to unsupervised part-of-speech tagging.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics,</booktitle>
+<pages>744--751</pages>
+<contexts>
+<context citStr="Goldwater and Griffiths, 2007" endWordPosition="1483" position="9021" startWordPosition="1479">e all other parameters e —* cj associated with the plaintext word type e (where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we </context>
+</contexts>
+<marker>Goldwater, Griffiths, 2007</marker>
+<rawString>Sharon Goldwater and Thomas Griffiths. 2007. A fully Bayesian approach to unsupervised part-of-speech tagging. In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 744– 751.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Aria Haghighi</author>
+<author>Percy Liang</author>
+<author>Taylor Berg-Kirkpatrick</author>
+<author>Dan Klein</author>
+</authors>
+<title>Learning bilingual lexicons from monolingual corpora.</title>
+<date>2008</date>
+<booktitle>In Proceedings of the Annual Meeting of the Association for Computational Linguistics - Human Language Technologies (ACL/HLT),</booktitle>
+<pages>771--779</pages>
+<contexts>
+<context citStr="Haghighi et al., 2008" endWordPosition="620" position="3768" startWordPosition="617">tion/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems. 2 Word Substitution Decipherment Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in the natural language (plaintext) sequence is substituted by a cipher to</context>
+</contexts>
+<marker>Haghighi, Liang, Berg-Kirkpatrick, Klein, 2008</marker>
+<rawString>Aria Haghighi, Percy Liang, Taylor Berg-Kirkpatrick, and Dan Klein. 2008. Learning bilingual lexicons from monolingual corpora. In Proceedings of the Annual Meeting of the Association for Computational Linguistics - Human Language Technologies (ACL/HLT), pages 771–779.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kevin Knight</author>
+<author>Yaser Al-Onaizan</author>
+</authors>
+<title>Translation with finite-state devices.</title>
+<date>1998</date>
+<booktitle>Machine Translation and the Information Soup,</booktitle>
+<volume>1529</volume>
+<pages>421--437</pages>
+<editor>In David Farwell, Laurie Gerber, and Eduard Hovy, editors,</editor>
+<publisher>Springer</publisher>
+<location>Berlin / Heidelberg.</location>
+<contexts>
+<context citStr="Knight and Al-Onaizan (1998)" endWordPosition="4542" position="27754" startWordPosition="4539">1128 unique), 62k word tokens, 411 word types. TEST (Spanish): 13181 sentences (1127 unique), 39k word tokens, 562 word types. Both Spanish/English sides of TRAIN are used for parallel MT training, whereas decipherment uses only monolingual English data for training LMs. MT Systems: We build and compare different MT systems under two training scenarios: 1. Parallel training using: (a) MOSES, a phrase translation system (Koehn et al., 2007) widely used in MT literature, and (b) a simpler version of IBM Model 3 (without distortion parameters) which can be trained tractably using the strategy of Knight and Al-Onaizan (1998). 2. Decipherment without parallel data using: (a) EM method (from Section 3.1), and (b) Bayesian method (from Section 3.2). Evaluation: All the MT systems are run on the Spanish test data and the quality of the resulting English translations are evaluated using two different measures—(1) Normalized edit distance score (Navarro, 2001),6 and (2) BLEU (Papineni et 6When computing edit distance, we account for substitutions, insertions, deletions as well as local-swap edit operations required to convert a given English string into the (gold) reference translation. al., 2002), a standard MT evalua</context>
+</contexts>
+<marker>Knight, Al-Onaizan, 1998</marker>
+<rawString>Kevin Knight and Yaser Al-Onaizan. 1998. Translation with finite-state devices. In David Farwell, Laurie Gerber, and Eduard Hovy, editors, Machine Translation and the Information Soup, volume 1529 of Lecture Notes in Computer Science, pages 421–437. Springer Berlin / Heidelberg.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kevin Knight</author>
+<author>Anish Nair</author>
+<author>Nishit Rathod</author>
+<author>Kenji Yamada</author>
+</authors>
+<title>Unsupervised analysis for decipherment problems.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the Joint Conference of the International Committee on Computational Linguistics and the Association for Computational Linguistics,</booktitle>
+<pages>499--506</pages>
+<contexts>
+<context citStr="Knight et al., 2006" endWordPosition="533" position="3207" startWordPosition="530">, pages 12–21, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics same full translation model. We note that for each f, not only is the alignment a still hidden, but now the English translation e is hidden as well. A language model P(e) is typically used in SMT decoding (Koehn, 2009), but here P(e) actually plays a central role in training translation model parameters. To distinguish the two, we refer to (5) as decipherment, rather than decoding. We can now draw on previous decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training </context>
+<context citStr="Knight et al., 2006" endWordPosition="1465" position="8885" startWordPosition="1462">signed a probability P(c|e) &gt; 0.5. Fix these mappings in the new channel, i.e. set P(c|e) = 1.0. From the new channel, eliminate all other parameters e —* cj associated with the plaintext word type e (where cj 7� c). This yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us </context>
+</contexts>
+<marker>Knight, Nair, Rathod, Yamada, 2006</marker>
+<rawString>Kevin Knight, Anish Nair, Nishit Rathod, and Kenji Yamada. 2006. Unsupervised analysis for decipherment problems. In Proceedings of the Joint Conference of the International Committee on Computational Linguistics and the Association for Computational Linguistics, pages 499–506.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+<author>Kevin Knight</author>
+</authors>
+<title>Estimating word translation probabilities from unrelated monolingual corpora using the EM algorithm.</title>
+<date>2000</date>
+<booktitle>In Proceedings of the Seventeenth National Conference on Artificial Intelligence and Twelfth Conference on Innovative Applications of Artificial Intelligence,</booktitle>
+<pages>711--715</pages>
+<contexts>
+<context citStr="Koehn and Knight, 2000" endWordPosition="616" position="3744" startWordPosition="613">solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems. 2 Word Substitution Decipherment Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in the natural language (plaintext) sequence is su</context>
+</contexts>
+<marker>Koehn, Knight, 2000</marker>
+<rawString>Philipp Koehn and Kevin Knight. 2000. Estimating word translation probabilities from unrelated monolingual corpora using the EM algorithm. In Proceedings of the Seventeenth National Conference on Artificial Intelligence and Twelfth Conference on Innovative Applications of Artificial Intelligence, pages 711–715.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philipp Koehn</author>
+<author>Hieu Hoang</author>
+<author>Alexandra Birch</author>
+<author>Chris Callison-Burch</author>
+<author>Marcello Federico</author>
+<author>Nicola Bertoldi</author>
+<author>Brooke Cowan</author>
+<author>Wade Shen</author>
+<author>Christine Moran</author>
+<author>Richard Zens</author>
+</authors>
+<title>Chris Dyer, Ondˇrej Bojar,</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the ACL on Interactive Poster and Demonstration Sessions.</booktitle>
+<location>Alexandra</location>
+<contexts>
+<context citStr="Koehn et al., 2007" endWordPosition="4511" position="27569" startWordPosition="4508">ipherment settings— (a) EM, (b) Bayesian. The scores reported here are normalized edit distance values with BLEU scores shown in parentheses. TRAIN (English): 19770 sentences (1128 unique), 62k word tokens, 411 word types. TEST (Spanish): 13181 sentences (1127 unique), 39k word tokens, 562 word types. Both Spanish/English sides of TRAIN are used for parallel MT training, whereas decipherment uses only monolingual English data for training LMs. MT Systems: We build and compare different MT systems under two training scenarios: 1. Parallel training using: (a) MOSES, a phrase translation system (Koehn et al., 2007) widely used in MT literature, and (b) a simpler version of IBM Model 3 (without distortion parameters) which can be trained tractably using the strategy of Knight and Al-Onaizan (1998). 2. Decipherment without parallel data using: (a) EM method (from Section 3.1), and (b) Bayesian method (from Section 3.2). Evaluation: All the MT systems are run on the Spanish test data and the quality of the resulting English translations are evaluated using two different measures—(1) Normalized edit distance score (Navarro, 2001),6 and (2) BLEU (Papineni et 6When computing edit distance, we account for subs</context>
+</contexts>
+<marker>Koehn, Hoang, Birch, Callison-Burch, Federico, Bertoldi, Cowan, Shen, Moran, Zens, 2007</marker>
+<rawString>Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris Callison-Burch, Marcello Federico, Nicola Bertoldi, Brooke Cowan, Wade Shen, Christine Moran, Richard Zens, Chris Dyer, Ondˇrej Bojar, Alexandra Constantin, and Evan Herbst. 2007. Moses: open source toolkit for statistical machine translation. In Proceedings of the 45th Annual Meeting of the ACL on Interactive Poster and Demonstration Sessions.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Philip Koehn</author>
+</authors>
+<title>Statistical Machine Translation.</title>
+<date>2009</date>
+<publisher>Cambridge University Press.</publisher>
+<contexts>
+<context citStr="Koehn, 2009" endWordPosition="487" position="2905" startWordPosition="486">Pθ(f, a|e) parameters as expression (2). We seek to manipulate these parameters in order to learn the Yarg max Pθ(f|e) (1) θ e,f Y= arg max X θ e,f Pθ(f, a|e) (2) a Y X X arg max P(e) · Pθ(f, a|e) (5) θ f e Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics, pages 12–21, Portland, Oregon, June 19-24, 2011. c�2011 Association for Computational Linguistics same full translation model. We note that for each f, not only is the alignment a still hidden, but now the English translation e is hidden as well. A language model P(e) is typically used in SMT decoding (Koehn, 2009), but here P(e) actually plays a central role in training translation model parameters. To distinguish the two, we refer to (5) as decipherment, rather than decoding. We can now draw on previous decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, </context>
+</contexts>
+<marker>Koehn, 2009</marker>
+<rawString>Philip Koehn. 2009. Statistical Machine Translation. Cambridge University Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David McClosky</author>
+<author>Eugene Charniak</author>
+<author>Mark Johnson</author>
+</authors>
+<title>Effective self-training for parsing.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the main conference on Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics,</booktitle>
+<pages>152--159</pages>
+<contexts>
+<context citStr="McClosky et al., 2006" endWordPosition="629" position="3830" startWordPosition="626"> We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems. 2 Word Substitution Decipherment Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in the natural language (plaintext) sequence is substituted by a cipher token, according to a substitution key. The key is deterministic</context>
+</contexts>
+<marker>McClosky, Charniak, Johnson, 2006</marker>
+<rawString>David McClosky, Eugene Charniak, and Mark Johnson. 2006. Effective self-training for parsing. In Proceedings of the main conference on Human Language Technology Conference of the North American Chapter of the Association of Computational Linguistics, pages 152–159.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Gonzalo Navarro</author>
+</authors>
+<title>A guided tour to approximate string matching.</title>
+<date>2001</date>
+<journal>ACM Computing Surveys,</journal>
+<pages>33--31</pages>
+<contexts>
+<context citStr="Navarro, 2001" endWordPosition="4594" position="28090" startWordPosition="4593">rios: 1. Parallel training using: (a) MOSES, a phrase translation system (Koehn et al., 2007) widely used in MT literature, and (b) a simpler version of IBM Model 3 (without distortion parameters) which can be trained tractably using the strategy of Knight and Al-Onaizan (1998). 2. Decipherment without parallel data using: (a) EM method (from Section 3.1), and (b) Bayesian method (from Section 3.2). Evaluation: All the MT systems are run on the Spanish test data and the quality of the resulting English translations are evaluated using two different measures—(1) Normalized edit distance score (Navarro, 2001),6 and (2) BLEU (Papineni et 6When computing edit distance, we account for substitutions, insertions, deletions as well as local-swap edit operations required to convert a given English string into the (gold) reference translation. al., 2002), a standard MT evaluation measure. Results: Figure 3 compares the results of various MT systems (using parallel versus decipherment training) on the two test corpora in terms of edit distance scores (a lower score indicates closer match to the gold translation). The figure also shows the corresponding BLEU scores in parentheses for comparison (higher scor</context>
+</contexts>
+<marker>Navarro, 2001</marker>
+<rawString>Gonzalo Navarro. 2001. A guided tour to approximate string matching. ACM Computing Surveys, 33:31–88, March.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Newman</author>
+<author>Arthur Asuncion</author>
+<author>Padhraic Smyth</author>
+<author>Max Welling</author>
+</authors>
+<title>Distributed algorithms for topic models.</title>
+<date>2009</date>
+<journal>Journal of Machine Learning Research,</journal>
+<pages>10--1801</pages>
+<contexts>
+<context citStr="Newman et al., 2009" endWordPosition="1957" position="11952" startWordPosition="1954">m a statistical word bigram LM. If this probability is 0 (i.e., X and Z never co-occurred), we randomly pick K words from the plaintext vocabulary. We set K = 100 in our experiments. This significantly reduces the sampling possibilities (10k-1M reduces to 100) at each step and allows us to scale to large plaintext vocabulary sizes without enumerating all possible choices at every cipher position.2 Parallelized Gibbs sampling: Secondly, we parallelize our sampling step using a Map-Reduce framework. In the past, others have proposed parallelized sampling schemes for topic modeling applications (Newman et al., 2009). In our method, we split the entire corpus into separate chunks and we run the sampling procedure on each chunk in parallel. At 1For word substitution decipherment, we want to keep the language model probabilities fixed during training, and hence we set the prior on that model to be high (α = 104). We use a sparse Dirichlet prior for the channel ((I = 0.01). We use the output from Iterative EM decoding (using 101 x 101 channel) as initial sample and run the sampler for 2000 iterations. During sampling, we use a linear annealing schedule decreasing the temperature from 1 --+ 0.08. 2Since we no</context>
+</contexts>
+<marker>Newman, Asuncion, Smyth, Welling, 2009</marker>
+<rawString>David Newman, Arthur Asuncion, Padhraic Smyth, and Max Welling. 2009. Distributed algorithms for topic models. Journal of Machine Learning Research, 10:1801–1828.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kishore Papineni</author>
+<author>Salim Roukos</author>
+<author>Todd Ward</author>
+<author>WeiJing Zhu</author>
+</authors>
+<title>Bleu: a method for automatic evaluation of machine translation.</title>
+<date>2002</date>
+<booktitle>In Proceedings of the 40th Annual Meeting on Association for Computational Linguistics,</booktitle>
+<pages>311--318</pages>
+<marker>Papineni, Roukos, Ward, Zhu, 2002</marker>
+<rawString>Kishore Papineni, Salim Roukos, Todd Ward, and WeiJing Zhu. 2002. Bleu: a method for automatic evaluation of machine translation. In Proceedings of the 40th Annual Meeting on Association for Computational Linguistics, pages 311–318.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Reinhard Rapp</author>
+</authors>
+<title>Identifying word translations in non-parallel texts.</title>
+<date>1995</date>
+<booktitle>In Proceedings of the Conference of the Association for Computational Linguistics,</booktitle>
+<pages>320--322</pages>
+<contexts>
+<context citStr="Rapp, 1995" endWordPosition="608" position="3696" startWordPosition="607">w on previous decipherment work for solving simpler substitution/transposition ciphers (Bauer, 2006; Knight et al., 2006). We must keep in mind, however, that foreign language is a much more demanding code, involving highly nondeterministic mappings and very large substitution tables. The contributions of this paper are therefore: • We give first results for training a full translation model from non-parallel text, and we apply the model to translate previously-unseen text. This work is thus distinguished from prior work on extracting or augmenting partial lexicons using non-parallel corpora (Rapp, 1995; Fung and McKeown, 1997; Koehn and Knight, 2000; Haghighi et al., 2008). It also contrasts with self-training (McClosky et al., 2006), which requires a parallel seed and often does not engage in iterative maximization. • We develop novel methods to deal with largescale vocabularies inherent in MT problems. 2 Word Substitution Decipherment Before we tackle machine translation without parallel data, we first solve a simpler problem—word substitution decipherment. Here, we do not have to worry about hidden alignments since there is only one alignment. In a word substitution cipher, every word in</context>
+</contexts>
+<marker>Rapp, 1995</marker>
+<rawString>Reinhard Rapp. 1995. Identifying word translations in non-parallel texts. In Proceedings of the Conference of the Association for Computational Linguistics, pages 320–322.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Benjamin Snyder</author>
+<author>Regina Barzilay</author>
+<author>Kevin Knight</author>
+</authors>
+<title>A statistical model for lost language decipherment.</title>
+<date>2010</date>
+<booktitle>In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>1048--1057</pages>
+<contexts>
+<context citStr="Snyder et al., 2010" endWordPosition="1499" position="9107" startWordPosition="1496">yields a much smaller channel with size &lt; (2K + 1)2. Retrain the new channel using EM algorithm. 4. Goto Step 2 and repeat the procedure, extending the channel size iteratively in each stage. Finally, we decode the given ciphertext c by using the Viterbi algorithm to choose the plaintext decoding e that maximizes P(e) · P01,az..ed(c|e)3, stretching the channel probabilities (Knight et al., 2006). 2.2 Bayesian Decipherment Bayesian inference methods have become popular in natural language processing (Goldwater and Griffiths, 2007; Finkel et al., 2005; Blunsom et al., 2009; Chiang et al., 2010; Snyder et al., 2010). These methods are attractive for their ability to manage uncertainty about model parameters and allow one to incorporate prior knowledge during inference. Here, we propose a novel decipherment approach using Bayesian learning. Our method holds several other advantages over the EM approach—(1) inference using smart sampling strategies permits efficient training, allowing us to scale to large data/vocabulary sizes, (2) incremental scoring of derivations during sampling allows efficient inference even when we use higher-order n-gram LMs, (3) there are no memory bottlenecks since the full channe</context>
+</contexts>
+<marker>Snyder, Barzilay, Knight, 2010</marker>
+<rawString>Benjamin Snyder, Regina Barzilay, and Kevin Knight. 2010. A statistical model for lost language decipherment. In Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 1048–1057.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J¨org Tiedemann</author>
+</authors>
+<title>News from OPUS - A collection of multilingual parallel corpora with tools and interfaces.</title>
+<date>2009</date>
+<booktitle>Recent Advances in Natural Language Processing,</booktitle>
+<volume>volume V,</volume>
+<pages>237--248</pages>
+<editor>In N. Nicolov, K. Bontcheva, G. Angelova, and R. Mitkov, editors,</editor>
+<publisher>John Benjamins, Amsterdam/Philadelphia.</publisher>
+<contexts>
+<context citStr="Tiedemann, 2009" endWordPosition="4209" position="25666" startWordPosition="4208">”, “JANUARY” with “[MONTH]”, and soon. We then translate the English temporal phrases into Spanish using an automatic translation software (Google Translate) followed by manual annotation to correct mistakes made by the software. We create the following splits out of the resulting parallel corpus: TRAIN (English): 195k temporal expressions (7588 unique), 382k word tokens, 163 types. TEST (Spanish): 100k temporal expressions (2343 unique), 204k word tokens, 269 types. • OPUS movie subtitle corpus: This is a large open source collection of parallel corpora available for multiple language pairs (Tiedemann, 2009). We downloaded the parallel Spanish/English subtitle corpus which consists of aligned Spanish/English sentences from a collection of movie subtitles. For our MT experiments, we select only Spanish/English sentences with frequency &gt; 10 and create the following train/test splits: 5For Bayesian MT decipherment, we set a high prior value on the language model (104) and use sparse priors for the IBM 3 model parameters t, n, d, p (0.01, 0.01, 0.01, 0.01). We use the output from EM decipherment as the initial sample and run the sampler for 2000 iterations, during which we apply annealing with a line</context>
+</contexts>
+<marker>Tiedemann, 2009</marker>
+<rawString>J¨org Tiedemann. 2009. News from OPUS - A collection of multilingual parallel corpora with tools and interfaces. In N. Nicolov, K. Bontcheva, G. Angelova, and R. Mitkov, editors, Recent Advances in Natural Language Processing, volume V, pages 237–248. John Benjamins, Amsterdam/Philadelphia.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Warren Weaver</author>
+</authors>
+<title>Translation</title>
+<date>1955</date>
+<booktitle>In Machine Translation of Languages,</booktitle>
+<pages>15--23</pages>
+<editor>in W.N. Locke, A.D. Booth (eds.).</editor>
+<publisher>MIT Press.</publisher>
+<contexts>
+<context citStr="Weaver (1955)" endWordPosition="298" position="1870" startWordPosition="297">model to translate new foreign strings. As successful work develops along this line, we expect more domains and language pairs to be conquered by SMT. How can we learn a translation model from nonparallel data? Intuitively, we try to construct translation model tables which, when applied to observed foreign text, consistently yield sensible English. This is essentially the same approach taken by cryptanalysts and epigraphers when they deal with source texts. In our case, we observe a large number of foreign strings f, and we apply maximum likelihood training: Y arg max Pθ(f) (3) θ f Following Weaver (1955), we imagine that this corpus of foreign strings “is really written in English, but has been coded in some strange symbols,” thus: Y X arg max P (e) · Pθ(f|e) (4) θ f e The variable e ranges over all possible English strings, and P(e) is a language model built from large amounts of English text that is unrelated to the foreign strings. Re-writing for hidden alignments, we get: a Note that this formula has the same free Pθ(f, a|e) parameters as expression (2). We seek to manipulate these parameters in order to learn the Yarg max Pθ(f|e) (1) θ e,f Y= arg max X θ e,f Pθ(f, a|e) (2) a Y X X arg ma</context>
+</contexts>
+<marker>Weaver, 1955</marker>
+<rawString>Warren Weaver. 1955. Translation (1949). Reproduced in W.N. Locke, A.D. Booth (eds.). In Machine Translation of Languages, pages 15–23. MIT Press.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

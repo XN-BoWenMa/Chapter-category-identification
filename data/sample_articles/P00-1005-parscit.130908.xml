@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.012792" no="0">
+<title confidence="0.9736825">
+Phrase-Pattern-based Korean to English Machine Translation
+using Two Level Translation Pattern Selection
+</title>
+<author confidence="0.920302">
+Kim, Jung-jae and Choi, Key-Sun Chae, Young-Soog
+</author>
+<affiliation confidence="0.90991">
+Computer Science Division, KAIST KORTERM, KAIST
+</affiliation>
+<email confidence="0.833474">
+jjkimAnlp.kaist.ac.kr, kschoi©cs.kaist.ac.kr yschaeAkorterm.kaist.ac.kr
+</email>
+<sectionHeader confidence="0.992308" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.996582034482759">Pattern-Based Machine Translation is one of the machine translation methods which performs syntactic analysis and structure transfer at the same time using bilingual patterns. PBMT is used to expand the length of patterns up to sentencelength in order to reduce ambiguities in translation, but it brought out the problem of rapidly increased patterns. We propose a model which shortens the length of patterns to phrase-length and reduces ambiguities in translation by using twolevel translation pattern selection method. In the first level, the proper translation patterns are selected by using a hybrid method of exact example matching and semantic constraint by thesaurus. In the second level, the most natural translation pattern for the verb phrase is selected among the selected translation pattern categories by using statistic information of the target language. By using this proposed model, we could shorten the length of patterns without raising the ambiguities in translation.</bodyText>
+<sectionHeader confidence="0.997664" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999838139534884">A Transfer-Based Machine Translation method generally has four steps (Kim, 1994); morphological analysis of source language, syntactic analysis of source language, structure transfer to the target language, and sentence generation of the target language. In structure transfer step, transfer patterns used to be greatly lexicalized in order to raise the accuracy of translation. Pattern-Based Machine Translation (PBMT) performs both syntactic analysis and structure transfer simultaneously using this lexicalized patterns (Takeda, 1996). PBMT can shorten the translation time and raise the accuracy of syntactic analysis by using the lexicalized patterns. At first, since all patterns were short phrase-length patterns, many syntactic ambiguities occurred in pattern matching. As a result, patterns became longer to sentencelength to reduce ambiguities. But, sentencelength patterns cause pattern sparseness problem, because the same number of sentence-length patterns can cover less sentences than the same number of phrase-length patterns. To overcome this problem, Watanabe and Takeda (1998) adopted example-based approach. However, examplebased approach has some problems. One of the problems is that two different verbs of target language take two semantically similar nouns as objects respectively although a verb of source language takes the nouns as its objects. For example, a Korean verb ta-da' with objects ' bus(bus)' and ' ma/(horse)' is translated into English verbs 'take' and 'ride' respectively. Many researches were done to solve them. They used syntactic collocation (Kim et al., 1996; Lee et al., 1999), semantic constraint by thesaurus (Moon et al., 1998), semantic features (Palmer et al., 1999) and statistical information (Brown et al., 1991; Dagan and Itai, 1994). But when syntactic collocation is used, each example for a verb has the same effect to select the proper word sense of the verb. Consequently, it is difﬁcult to obtain the representative examples and to describe senses which have domains of different size. In addition, when only semantic constraint by thesaurus is used, it is difﬁcult to obtain good translated words because of the insufﬁ— cient thesaurus problem. As a result, we use a hybrid method of both exact example match— ing technique with syntactic collocation and semantic constraint by thesaurus. We use phrase—length patterns to solve pat— tern sparseness problem and propose two level selection method of translation pattern to re— duce the ambiguities of pattern matching.</bodyText>
+<sectionHeader confidence="0.943108" genericHeader="method">
+2 Two level Translation Pattern
+Selection Method
+</sectionHeader>
+<bodyText confidence="0.98840504">We use only mono—lingual resources to re— duce translation ambiguities. It is almost im— possible to incorporate semantic knowledge of two languages. The mutual information between two different languages can be de— scribed not by one—to—one mapping but by coarse—mapping (Palmer et al., 1999). For ex— ample, a Korean verb phrase pattern ‘NP+lul ssu-da’ can be translated into ‘wear NP’, ‘write NP’, ‘compose NP’, ‘use NP’, or ‘spend NP’. If NP has a meaning [head—gear], then the Korean verb phrase pattern can be trans— lated into ‘wear NP’ or ‘put on NP’. If the headword of NP is ‘don(money)’, then the verb phrase patterns are changed into ‘spend money’. In this way, ‘NP+lul ssu-da’ has ﬁve translation pattern categories. It takes two steps to select the most natural English trans— lation pattern as a corresponding pattern of a Korean pattern: 1) to select possible translation pattern cat— egories, 2) to select the most natural English transla— tion pattern among possible translation pat— tern categories. The ﬁrst step is performed in pattern matching, and the second step in pattern transfer. Among the ambiguities in Korean to En— glish Machine Translation, the ambiguities in Korean pattern matching are reduced by us— ing a hybrid method of exact example match— ing and semantic constraint by thesaurus, and the ambiguities in Korean to English pattern transfer are reduced by using syntactic col— locational information of English (Lee et al., 1999)</bodyText>
+<subsectionHeader confidence="0.814043">
+2.1 Pattern Matching
+</subsectionHeader>
+<bodyText confidence="0.98840504">There are several English translation pat— terns of a Korean verb phrase pattern (e.g. ‘NP+lul ssu-da’ can be translated into ‘wear NP’, ‘write NP’, ‘use NP’ and so on.). We fo— cus on selecting the most natural translation pattern among them. In the ﬁrst step, we divide them into several translation pattern categories with both examples and semantic constraint by Korean thesaurus.</bodyText>
+<figure confidence="0.534305">
+Figure 1: A example of applying two level
+translation pattern selection method
+</figure>
+<bodyText confidence="0.996965583333333">Figure 1 shows ﬁve translation pattern cat— egories of ‘NP+lul ssu-da’ by the proposed hybrid method. First three categories are se— mantically constrained by Korean thesaurus. In this case, if the meaning of headword of a noun phrase NP1 is a hyponym or a hyper— nym of the semantic constraint for NP, then NP1 can be matched to NP. For example, ‘32" can be an object of ‘ssu-da’ because the mean— ing [production(language)] of the meanings of ‘32", is a hyponym of [production], (i.e. ‘silul ssu-da’ is matched to ‘NP [production]+lul ssu-da' with the possible translation patterns { 'write NP', 'compose NP'}). At the same time, si' is translated into 'poem' among all English words for the Korean word ' si' , because only 'poem' has the meaning of [production(language)]. Last two translation pattern categories of `NP-k/u/ ssu-da' are constrained by exact example matching method. For example, if and only if the headword of a noun phrase NP1 is ' chun-/yak(strategy)', NP1+ /u/ ssuda' takes { 'adopt a stratagem'} as its translation pattern category. Because the exact example matching method is too rigid, it's better to adopt example-based approach (Watanabe and Takeda, 1998). But, in this paper, we only implemented exact example matching method. The proposed hybrid method of exact example matching and semantic constraint by thesaurus can reduce the number of possible translation patterns and also the ambiguities of pattern matching. Exl) na-nun si-mi chom muk-ko nan daum-e ssu-go sip-da. (I want to write a poem after eating something.) For example, both Korean verbs 'rankda(eat)' and ssu-da(write)' can take si-/u/' as objects in example Exl. muk-da' takes only nouns with meaning [something to eat] as objects, but ssu-da' can take nouns with meaning [production] as an object. As a result, si-/u/' is regared as an object of 'ssu-da', because si' does not have the meaning [something to eat] but has the meaning [production(language)], a hyponymy of [production].</bodyText>
+<subsectionHeader confidence="0.998055">
+2.2 Pattern Transfer
+</subsectionHeader>
+<bodyText confidence="0.999429790697675">After the selection of possible translation pattern categories in pattern matching, the most natural translation pattern among those patterns is selected in pattern transfer. To acquire the most natural English sentence, we use English syntactic collocational information, especially for subject-verb relation and verb-object relation. We regard the English pattern of the most frequent syntactically related pair as the most natural translation pattern. As explained above, 'write NP', 'compose NP' are selected as the translation patterns for NP+ /u/ ssuda', and 'poem' is selected as the translated word for si' in pattern matching. Therefore, 'write poem' and 'compose poem' are the possible translation for si-lul ssu-da'. English verb 'write, compose' and English noun 'poem' appear as verb-object relation in the corpus four times and zero times respectively. Therefore, 'write poem' is selected as the most natural translation for simul ssu-da'. Pattern transfer is needed especially when a verb of source language can translated into several words of target language according to objects, although the verb takes semantically similar nouns as objects. For example, NP in `NP+ /u/ ta-go ka-da' must have the meaning [something to ride], and its translation patterns can be 'ride NP' or 'go by NP'. There are many Korean nouns with the meaning [something to ride] like 'horse', 'car', 'bus', 'train' and so on. When the headword of NP is 'horse' or 'car', NP+ /u/ ta-go ka-da' is usually translated into 'ride NP', but when the headword of NP is 'bus' or 'train', NP+ /u/ ta-go ka-da' is usually translated as 'go by NP'. But the Korean thesaurus, which we used, does not bring out the differences. This problem shows that Korean and English have very different semantic hierarchies of thesaurus construction (Palmer et al., 1999).</bodyText>
+<subsectionHeader confidence="0.989777">
+2.3 Pattern Scoring
+</subsectionHeader>
+<bodyText confidence="0.999996">We used Generalized LR parsing (GLR) algorithm (Tomita, 1991) for pattern matching. To prune out nodes made by GLR algorithm during pattern matching, we score each node and remove nodes which have lower score than those of the top ten nodes with the same range and the same syntactic category. To score each node, several methods can be used; the frequency of each pattern in the corpus (Sorniertlamvanich, 1998) and the Korean syntactic collocational information (Yoon, 1998). Since we use very lexicalized patterns, the frequency of each pattern in the corpus is not available. Also we didn't describe syntactic information of the Korean pattern, the Korean syntactic collo— cational information is not useful yet. There— fore, we used following preferences for scoring patterns. A pattern scoring method according to these preferences is shown at Fig— ure 3. In the case of Figure 2, score(VPS) is the sum of (P(c)+a&gt;&lt;score(c)) of all child node 0 of VPS. If c is lexical, then score( 0) 277, otherwise, score( 0) is calculated recursively. For example, score(‘ga’)2score(‘lul’)2score(‘33uda’)277, and score(NP1) and score(NP2) are calcu— lated recursively. P(c) is determined by the constraints for c. If c is lexical, P(c)2ﬂ. If 5 is higher, lexicalized patterns are more preferred. If c is semantically constrained by thesaurus with SC, P(c) is determined by the distance between SC and the real semantic code of c in the thesaurus. If they are closer, P(c) is higher, i.e. second scoring prefence is applied. Function distance(p, SC) means the distance between the semantic code of p and SC. For example, if p has semantic code [111120(human role)] and SC is [111000(hu— man)], distance(111120,111000)22 If c is constrained by exact example matching with EC and the headword of c is included in EC, high score is given to P(c). If c has no constraint, then P(c) is given as a penalty. Let @210, £220, 723.0, 623.0, 6123.0, p=1.0, 77:0.0, $20.8 and NTTLENG261.</bodyText>
+<figure confidence="0.7389524">
+score(p) = � (P(c) + a x score(c))
+Vc
+• c : p’s child node
+• N : the number of p’s child nodes
+•
+if c is lexical, score(c) = Tj
+1. if c is lexical, /i
+2. if c is semantically constrained by thesaurus with SC,
+Y x sem(c, SC)
+3. if c is constrained by exact example method with ES,
+1) if headword(c) r ES, S
+2) if headword(c) o ES, -01
+4. if c has no constraint, -p
+NTTLENG – distance(p, SC)
+sem (p, SC) _ 4 + (1–4) x
+NTTLENG
+P(c)
+NP1 ga NP2 lul ssu-da
+VPS
+[111000(person)] [‘don(money)’]
+</figure>
+<bodyText confidence="0.98840504">For example, if score(NP1)24.0 and score(NP2)27.0 and NP1 is semantically con— strained by [111000(human)] and NP2 is con— strained by examples {‘d0n(money)’}, and the real semantic code of NP1 is [111120(hu— man role)] and the headword of NP2 is ‘don’, then score(VPS) is 2.0 X 3 + 3.0 X (0.8 + 0.2 x %) + 3.0 + 4.0 + 7.0 = 22.8. After all the nodes are scored recursively with the pattern scoring method, the root node of the best score is regarded as the root of the best Korean pattern tree. After the best Korean pattern tree is selected, this tree is transferred to English pattern tree in pat— tern transfer and the English pattern tree is transferred to the English phrase structure automatically. Then, according to the En— glish phrase structure, the ﬁnal English sen— tence is generated.</bodyText>
+<sectionHeader confidence="0.943108" genericHeader="evaluation">
+3 Experiment
+</sectionHeader>
+<subsectionHeader confidence="0.814043">
+3.1 Experimental Environment
+</subsectionHeader>
+<bodyText confidence="0.9911865">We translated 100 sentences in letters of trade ﬁeld. The thesaurus has six levels and in— cludes about 1,800 words2. And we manu— ally made 486 translation patterns for test sentences. These also include much general patterns such as N+N, Subj+Verb, and Object+Verb. The English syntactic collocational information (about 54,000 different subject-verb pairs and about 75,000 different verb-object pairs included) was obtained from Penn Treebank3.</bodyText>
+<subsectionHeader confidence="0.943494">
+3.2 Pattern Length Comparison
+Experiment
+</subsectionHeader>
+<bodyText confidence="0.968655666666667">Experiment I (ExT) means the system of Seo et al. (1998) and Experiment II (ExII) means our system.</bodyText>
+<table confidence="0.997957875">
+ExI ExII
+Average length of sentence 21.7 22.3
+The number of patterns 364 415
+Average length of pattern 6 4
+The number of patterns 2184 1660
+x Average length
+of pattern
+The number of errors 125 115
+</table>
+<tableCaption confidence="0.826658666666667">
+Table 1: The result of pattern length compar-
+ison experiment
+Table 14 shows the result of comparison be-
+tween two systems.</tableCaption>
+<bodyText confidence="0.998004133333333">The table shows that proposed model reduce the length of pattern to than Experiment I and the number of ambiguities of the proposed model is less than Experiment I. Therefore, we concluded that our proposed model is effective to reduce the length of pattern and translation ambiguities. The number of patterns of the proposed model is more than the number of patterns of Experiment I. But as the number of patterns x average length of pattern of the proposed model is less than that of Experiment I, it is expected that as the size of corpus is bigger, the number of patterns of the proposed model will be fewer.</bodyText>
+<footnote confidence="0.933826">
+NTT thesaurus is 10. But we use only 6 levels which
+seem to be useful in Korean
+3http://www.cis.upenn.edu/treebank/home.html
+4The length of pattern was calculated by the num-
+ber of morphems and the length of sentence was cal-
+culated by the number of words.
+</footnote>
+<subsectionHeader confidence="0.957075">
+3.3 Error Analysis
+</subsectionHeader>
+<bodyText confidence="0.998532833333333">The errors of our system are roughly divided into the errors in pattern matching and the errors in pattern transfer and sentence generation. The errors appeared in pattern matching are almost the errors of govern and governor relation.</bodyText>
+<table confidence="0.998378571428571">
+Relation The number of
+errors
+Subject:Verb 9
+Adverb(phrase):Verb 7
+Adjective(phrase):Verb 6
+Noun(phrase):Noun 2
+Total 26
+</table>
+<tableCaption confidence="0.939863">
+Table 2: The error analysis result of pattern
+matching
+</tableCaption>
+<bodyText confidence="0.933756666666666">Table 2 shows the error analysis result of pattern matching. To solve these problems, it is needed to use the Korean syntactic analysis (Yoon, 1998). We counted the errors in pattern transfer and sentence generation subjectively. Thus, the number of errors may not be exact, but the error ratio of error types seems be meaningful.</bodyText>
+<table confidence="0.998958545454546">
+Error type The number
+of errors
+Restoration error 64
+Analysis error 26
+Dictionary construction 22
+error
+Translated word selection 5
+error
+Sentence generation 3
+error
+Total 112
+</table>
+<tableCaption confidence="0.980645">
+Table 3: The error analysis result of pattern
+transfer and sentence generation
+</tableCaption>
+<bodyText confidence="0.8993086">Table 3 shows the error analysis result of pattern transfer and sentence generation. Restoration error has occurred when the necessary information in English sentence was not restored, e.g. article, tense, number.</bodyText>
+<sectionHeader confidence="0.995295" genericHeader="conclusion">
+4 Conclusion
+</sectionHeader>
+<bodyText confidence="0.99997905">We proposed two-level translation pattern selection model to reduce the length of pattern and reduce the ambiguities occurred due to short patterns. In the first step, the ambiguities in the pattern matching is reduced and several translation pattern categories are selected by the hybrid method of exact example matching and semantic constraint by thesaurus. In the second step, the most natural translation pattern is selected by the English syntactic collocational information. In the future, it is needed to use the syntactic collocational information of Korean to reduce ambiguities in pattern matching step. Also it is needed to expand the syntactic collocational information of English, e.g. adjective-noun relation and verb-adverb relation. And research on restoring the necessary information in English sentence has to be done.</bodyText>
+<sectionHeader confidence="0.967903" genericHeader="acknowledgments">
+Acknowledgement
+</sectionHeader>
+<bodyText confidence="0.999873428571428">This research is supported by the Korea Science and Engineering Foundation(KOSEF) through the &amp;quot;Multilingual Informaton Retrieval&amp;quot; project at the Advanced Information Technology Research Center(AITrc), and also supported by Korea Terminology Research Center for Language and Knowledge Engineering, under the project &amp;quot;On Development of Deep-Level Processing and Quality Management Technology for Very Large Korean Information Base&amp;quot;, a project of plan STEP2000 by the fund of Ministry of Science and Technology, during the period from 1997 through 2000.</bodyText>
+<sectionHeader confidence="0.998452" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.997931754716981">
+Brown, Peter F., Stephen A. Della, and Vincent
+J. Della Pertra. 1991. Word Sense Disambigua-
+tion using Statistical Methods. In Proceedings
+of Annual Meeting of the Association for Com-
+putational Linguistics, pages 264-270.
+Dagan, Ido and Alon Itai. 1994. Word Sense Dis-
+ambiguation using a Second Language Mono-
+lingual Corpus. In Computational Linguistics,
+20(4):563-596.
+Kim, Nan i and Yung Taek Kim. 1996. Ambi-
+guity Resolution of Korean Sentence Analysis
+and Korean-English Transfer Based on Korean
+Verb Patterns. In Journal of KISS, 23(7):766—
+775.(in Korean).
+Kim, Yung Taek. 1994. Natural Language Pro-
+cessing. Kyo-Hak-Sa.
+Lee, Hyun Ah, Jong C. Park, and Gil Chang Kim.
+1999. Lexical Selection with a Target Language
+Monolingual Corpus and an MRD. In Pro-
+ceedings of the 8th International Conference on
+Theoretical and Methodological Issues in Ma-
+chine Translation, pages 150-160.
+Moon, Kyong-Hi, Jong-Hyeok Lee, Jung-In Kim,
+and Gijoo Yang. 1998. Resolution of Word
+Sense Ambiguities using Collocation Patterns
+in Japanese-to-Korean MT System. Journal of
+KISS, 25(8). (in Korean).
+Palmer, Martha, Dania Egedi, Chunghye Han, Fei
+Xia, and Joseph Rosenzweig. 1999. Constrain-
+ing Lexical Selection Across Languages using
+Tree Adjoining Grammars. TAG+3 Workshop
+Proceedings, CSLI volume.
+Seo, Kwang-joon et al. 1998. A Study on
+Example-Based Korean to English Machine
+Translation System Development. KAIST.(in
+Korean)
+Sorniertlamvanich, Virach. 1998. Probabilistic
+Language Modeling for Generalized LR Pars-
+ing. Department of Computer Science Tokyo
+Institute of Technology, Technical Report.
+Takeda, Koichi. 1996. Pattern-based Machine
+Translation. COLING-96, pages 1155-1158.
+Tomita, Masaru. 1991. Generalized LR Parsing.
+Kluwer Academic Publishers.
+Watanabe, Hideo and Koichi Takeda. 1998.
+A Pattern-based Machine Translation Sys-
+tem Extended by Example-based Processing.
+COLING-98, pages 1369-1373.
+Yoon, Juntae. 1998. Syntactic Analysis for Ko-
+rean Sentences Using Lexical Association Based
+on Co-occurrence Relation. Ph.D. thesis, Yon-
+sei University, Dept. of Computer Science.(in
+Korean)
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.738903" no="0">
+<title confidence="0.998316">Phrase-Pattern-based Korean to English Machine Translation using Two Level Translation Pattern Selection</title>
+<author confidence="0.981864">Jung-jae Kim</author>
+<author confidence="0.981864">Key-Sun Chae Choi</author>
+<author confidence="0.981864">Young-Soog</author>
+<affiliation confidence="0.906562">Computer Science Division, KAIST KORTERM, KAIST</affiliation>
+<email confidence="0.846643">jjkimAnlp.kaist.ac.kr,kschoi©cs.kaist.ac.kryschaeAkorterm.kaist.ac.kr</email>
+<abstract confidence="0.998753033333333">Pattern-Based Machine Translation is one of the machine translation methods which performs syntactic analysis and structure transfer at the same time using bilingual patterns. PBMT is used to expand the length of patterns up to sentencelength in order to reduce ambiguities in translation, but it brought out the problem of rapidly increased patterns. We propose a model which shortens the length of patterns to phrase-length and reduces ambiguities in translation by using twolevel translation pattern selection method. In the first level, the proper translation patterns are selected by using a hybrid method of exact example matching and semantic constraint by thesaurus. In the second level, the most natural translation pattern for the verb phrase is selected among the selected translation pattern categories by using statistic information of the target language. By using this proposed model, we could shorten the length of patterns without raising the ambiguities in translation.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Peter F Brown</author>
+<author>Stephen A Della</author>
+<author>Vincent J Della Pertra</author>
+</authors>
+<title>Word Sense Disambiguation using Statistical Methods.</title>
+<date>1991</date>
+<booktitle>In Proceedings of Annual Meeting of the Association for Computational Linguistics,</booktitle>
+<pages>264--270</pages>
+<marker>Brown, Della, Pertra, 1991</marker>
+<rawString>Brown, Peter F., Stephen A. Della, and Vincent J. Della Pertra. 1991. Word Sense Disambiguation using Statistical Methods. In Proceedings of Annual Meeting of the Association for Computational Linguistics, pages 264-270.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Ido Dagan</author>
+<author>Alon Itai</author>
+</authors>
+<title>Word Sense Disambiguation using a Second Language Monolingual Corpus.</title>
+<date>1994</date>
+<booktitle>In Computational Linguistics,</booktitle>
+<pages>20--4</pages>
+<marker>Dagan, Itai, 1994</marker>
+<rawString>Dagan, Ido and Alon Itai. 1994. Word Sense Disambiguation using a Second Language Monolingual Corpus. In Computational Linguistics, 20(4):563-596.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nan i Kim</author>
+<author>Yung Taek Kim</author>
+</authors>
+<title>Ambiguity Resolution of Korean Sentence Analysis and Korean-English Transfer Based on Korean Verb Patterns.</title>
+<date>1996</date>
+<journal>In Journal of KISS,</journal>
+<volume>23</volume>
+<issue>7</issue>
+<note>775.(in Korean).</note>
+<marker>Kim, Kim, 1996</marker>
+<rawString>Kim, Nan i and Yung Taek Kim. 1996. Ambiguity Resolution of Korean Sentence Analysis and Korean-English Transfer Based on Korean Verb Patterns. In Journal of KISS, 23(7):766— 775.(in Korean).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yung Taek Kim</author>
+</authors>
+<date>1994</date>
+<journal>Natural Language Processing. Kyo-Hak-Sa.</journal>
+<contexts>
+<context citStr="Kim, 1994" endWordPosition="200" position="1366" startWordPosition="199"> twolevel translation pattern selection method. In the first level, the proper translation patterns are selected by using a hybrid method of exact example matching and semantic constraint by thesaurus. In the second level, the most natural translation pattern for the verb phrase is selected among the selected translation pattern categories by using statistic information of the target language. By using this proposed model, we could shorten the length of patterns without raising the ambiguities in translation. 1 Introduction A Transfer-Based Machine Translation method generally has four steps (Kim, 1994); morphological analysis of source language, syntactic analysis of source language, structure transfer to the target language, and sentence generation of the target language. In structure transfer step, transfer patterns used to be greatly lexicalized in order to raise the accuracy of translation. Pattern-Based Machine Translation (PBMT) performs both syntactic analysis and structure transfer simultaneously using this lexicalized patterns (Takeda, 1996). PBMT can shorten the translation time and raise the accuracy of syntactic analysis by using the lexicalized patterns. At first, since all pat</context>
+</contexts>
+<marker>Kim, 1994</marker>
+<rawString>Kim, Yung Taek. 1994. Natural Language Processing. Kyo-Hak-Sa.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hyun Ah Lee</author>
+<author>Jong C Park</author>
+<author>Gil Chang Kim</author>
+</authors>
+<title>Lexical Selection with a Target Language Monolingual Corpus and an MRD.</title>
+<date>1999</date>
+<booktitle>In Proceedings of the 8th International Conference on Theoretical and Methodological Issues in Machine Translation,</booktitle>
+<pages>150--160</pages>
+<contexts>
+<context citStr="Lee et al., 1999" endWordPosition="426" position="2909" startWordPosition="423">me number of phrase-length patterns. To overcome this problem, Watanabe and Takeda (1998) adopted example-based approach. However, examplebased approach has some problems. One of the problems is that two different verbs of target language take two semantically similar nouns as objects respectively although a verb of source language takes the nouns as its objects. For example, a Korean verb ta-da' with objects ' bus(bus)' and ' ma/(horse)' is translated into English verbs 'take' and 'ride' respectively. Many researches were done to solve them. They used syntactic collocation (Kim et al., 1996; Lee et al., 1999), semantic constraint by thesaurus (Moon et al., 1998), semantic features (Palmer et al., 1999) and statistical ‘’ ‘’ ‘ ’ ‘ ’ ssu-da' with the possible translation patterns { 'write NP', 'compose NP'}). At the same time, si' is translated into 'poem' among all English words for the Korean word ' si' , because only 'poem' has the meaning of [production(language)]. Last two translation pattern categories of `NP-k/u/ ssu-da' are constrained by exact example matching method. For example, if and only if the headword of a noun phrase NP1 is ' chun-/yak(strategy)', NP1+ /u/ ssuda' takes { 'adopt a st</context>
+</contexts>
+<marker>Lee, Park, Kim, 1999</marker>
+<rawString>Lee, Hyun Ah, Jong C. Park, and Gil Chang Kim. 1999. Lexical Selection with a Target Language Monolingual Corpus and an MRD. In Proceedings of the 8th International Conference on Theoretical and Methodological Issues in Machine Translation, pages 150-160.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kyong-Hi Moon</author>
+<author>Jong-Hyeok Lee</author>
+<author>Jung-In Kim</author>
+<author>Gijoo Yang</author>
+</authors>
+<title>Resolution of Word Sense Ambiguities using Collocation Patterns in Japanese-to-Korean MT System.</title>
+<date>1998</date>
+<journal>Journal of KISS,</journal>
+<volume>25</volume>
+<issue>8</issue>
+<note>(in Korean).</note>
+<contexts>
+<context citStr="Moon et al., 1998" endWordPosition="434" position="2963" startWordPosition="431"> problem, Watanabe and Takeda (1998) adopted example-based approach. However, examplebased approach has some problems. One of the problems is that two different verbs of target language take two semantically similar nouns as objects respectively although a verb of source language takes the nouns as its objects. For example, a Korean verb ta-da' with objects ' bus(bus)' and ' ma/(horse)' is translated into English verbs 'take' and 'ride' respectively. Many researches were done to solve them. They used syntactic collocation (Kim et al., 1996; Lee et al., 1999), semantic constraint by thesaurus (Moon et al., 1998), semantic features (Palmer et al., 1999) and statistical ‘’ ‘’ ‘ ’ ‘ ’ ssu-da' with the possible translation patterns { 'write NP', 'compose NP'}). At the same time, si' is translated into 'poem' among all English words for the Korean word ' si' , because only 'poem' has the meaning of [production(language)]. Last two translation pattern categories of `NP-k/u/ ssu-da' are constrained by exact example matching method. For example, if and only if the headword of a noun phrase NP1 is ' chun-/yak(strategy)', NP1+ /u/ ssuda' takes { 'adopt a stratagem'} as its translation pattern category. Because</context>
+</contexts>
+<marker>Moon, Lee, Kim, Yang, 1998</marker>
+<rawString>Moon, Kyong-Hi, Jong-Hyeok Lee, Jung-In Kim, and Gijoo Yang. 1998. Resolution of Word Sense Ambiguities using Collocation Patterns in Japanese-to-Korean MT System. Journal of KISS, 25(8). (in Korean).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Martha Palmer</author>
+<author>Dania Egedi</author>
+<author>Chunghye Han</author>
+<author>Fei Xia</author>
+<author>Joseph Rosenzweig</author>
+</authors>
+<title>Constraining Lexical Selection Across Languages using Tree Adjoining Grammars.</title>
+<date>1999</date>
+<booktitle>TAG+3 Workshop Proceedings, CSLI volume.</booktitle>
+<contexts>
+<context citStr="Palmer et al., 1999" endWordPosition="440" position="3004" startWordPosition="437">opted example-based approach. However, examplebased approach has some problems. One of the problems is that two different verbs of target language take two semantically similar nouns as objects respectively although a verb of source language takes the nouns as its objects. For example, a Korean verb ta-da' with objects ' bus(bus)' and ' ma/(horse)' is translated into English verbs 'take' and 'ride' respectively. Many researches were done to solve them. They used syntactic collocation (Kim et al., 1996; Lee et al., 1999), semantic constraint by thesaurus (Moon et al., 1998), semantic features (Palmer et al., 1999) and statistical ‘’ ‘’ ‘ ’ ‘ ’ ssu-da' with the possible translation patterns { 'write NP', 'compose NP'}). At the same time, si' is translated into 'poem' among all English words for the Korean word ' si' , because only 'poem' has the meaning of [production(language)]. Last two translation pattern categories of `NP-k/u/ ssu-da' are constrained by exact example matching method. For example, if and only if the headword of a noun phrase NP1 is ' chun-/yak(strategy)', NP1+ /u/ ssuda' takes { 'adopt a stratagem'} as its translation pattern category. Because the exact example matching method is too</context>
+<context citStr="Palmer et al., 1999" endWordPosition="996" position="6341" startWordPosition="993">eaning [something to ride], and its translation patterns can be 'ride NP' or 'go by NP'. There are many Korean nouns with the meaning [something to ride] like 'horse', 'car', 'bus', 'train' and so on. When the headword of NP is 'horse' or 'car', NP+ /u/ ta-go ka-da' is usually translated into 'ride NP', but when the headword of NP is 'bus' or 'train', NP+ /u/ ta-go ka-da' is usually translated as 'go by NP'. But the Korean thesaurus, which we used, does not bring out the differences. This problem shows that Korean and English have very different semantic hierarchies of thesaurus construction (Palmer et al., 1999). 2.3 Pattern Scoring We used Generalized LR parsing (GLR) algorithm (Tomita, 1991) for pattern matching. To prune out nodes made by GLR algorithm during pattern matching, we score each node and remove nodes which have lower score than those of the top ten nodes with the same range and the same syntactic category. To score each node, several methods can be used; the frequency of each pattern in the corpus (Sorniertlamvanich, 1998) and the Korean syntactic collocational information (Yoon, 1998). Since we use very lexicalized patterns, the frequency of each pattern in the corpus is not available</context>
+</contexts>
+<marker>Palmer, Egedi, Han, Xia, Rosenzweig, 1999</marker>
+<rawString>Palmer, Martha, Dania Egedi, Chunghye Han, Fei Xia, and Joseph Rosenzweig. 1999. Constraining Lexical Selection Across Languages using Tree Adjoining Grammars. TAG+3 Workshop Proceedings, CSLI volume.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Kwang-joon Seo</author>
+</authors>
+<title>A Study on Example-Based Korean to English Machine Translation System Development.</title>
+<date>1998</date>
+<note>KAIST.(in Korean)</note>
+<marker>Seo, 1998</marker>
+<rawString>Seo, Kwang-joon et al. 1998. A Study on Example-Based Korean to English Machine Translation System Development. KAIST.(in Korean)</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Virach Sorniertlamvanich</author>
+</authors>
+<title>Probabilistic Language Modeling for Generalized LR Parsing.</title>
+<date>1998</date>
+<tech>Technical Report.</tech>
+<institution>Department of Computer Science Tokyo Institute of Technology,</institution>
+<contexts>
+<context citStr="Sorniertlamvanich, 1998" endWordPosition="1072" position="6775" startWordPosition="1071">saurus, which we used, does not bring out the differences. This problem shows that Korean and English have very different semantic hierarchies of thesaurus construction (Palmer et al., 1999). 2.3 Pattern Scoring We used Generalized LR parsing (GLR) algorithm (Tomita, 1991) for pattern matching. To prune out nodes made by GLR algorithm during pattern matching, we score each node and remove nodes which have lower score than those of the top ten nodes with the same range and the same syntactic category. To score each node, several methods can be used; the frequency of each pattern in the corpus (Sorniertlamvanich, 1998) and the Korean syntactic collocational information (Yoon, 1998). Since we use very lexicalized patterns, the frequency of each pattern in the corpus is not available. Also we didn't describe syntactic information of the score(p) = � (P(c) + a x score(c)) Vc • c : p’s child node • N : the number of p’s child nodes • if c is lexical, score(c) = Tj 1. if c is lexical, /i 2. if c is semantically constrained by thesaurus with SC, Y x sem(c, SC) 3. if c is constrained by exact example method with ES, 1) if headword(c) r ES, S 2) if headword(c) o ES, -01 4. if c has no constraint, -p NTTLENG – dista</context>
+</contexts>
+<marker>Sorniertlamvanich, 1998</marker>
+<rawString>Sorniertlamvanich, Virach. 1998. Probabilistic Language Modeling for Generalized LR Parsing. Department of Computer Science Tokyo Institute of Technology, Technical Report.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Koichi Takeda</author>
+</authors>
+<date>1996</date>
+<booktitle>Pattern-based Machine Translation. COLING-96,</booktitle>
+<pages>1155--1158</pages>
+<contexts>
+<context citStr="Takeda, 1996" endWordPosition="261" position="1823" startWordPosition="260"> of patterns without raising the ambiguities in translation. 1 Introduction A Transfer-Based Machine Translation method generally has four steps (Kim, 1994); morphological analysis of source language, syntactic analysis of source language, structure transfer to the target language, and sentence generation of the target language. In structure transfer step, transfer patterns used to be greatly lexicalized in order to raise the accuracy of translation. Pattern-Based Machine Translation (PBMT) performs both syntactic analysis and structure transfer simultaneously using this lexicalized patterns (Takeda, 1996). PBMT can shorten the translation time and raise the accuracy of syntactic analysis by using the lexicalized patterns. At first, since all patterns were short phrase-length patterns, many syntactic ambiguities occurred in pattern matching. As a result, patterns became longer to sentencelength to reduce ambiguities. But, sentencelength patterns cause pattern sparseness problem, because the same number of sentence-length patterns can cover less sentences than the same number of phrase-length patterns. To overcome this problem, Watanabe and Takeda (1998) adopted example-based approach. However, </context>
+</contexts>
+<marker>Takeda, 1996</marker>
+<rawString>Takeda, Koichi. 1996. Pattern-based Machine Translation. COLING-96, pages 1155-1158.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Masaru Tomita</author>
+</authors>
+<title>Generalized LR Parsing.</title>
+<date>1991</date>
+<publisher>Kluwer Academic Publishers.</publisher>
+<contexts>
+<context citStr="Tomita, 1991" endWordPosition="1009" position="6424" startWordPosition="1008">here are many Korean nouns with the meaning [something to ride] like 'horse', 'car', 'bus', 'train' and so on. When the headword of NP is 'horse' or 'car', NP+ /u/ ta-go ka-da' is usually translated into 'ride NP', but when the headword of NP is 'bus' or 'train', NP+ /u/ ta-go ka-da' is usually translated as 'go by NP'. But the Korean thesaurus, which we used, does not bring out the differences. This problem shows that Korean and English have very different semantic hierarchies of thesaurus construction (Palmer et al., 1999). 2.3 Pattern Scoring We used Generalized LR parsing (GLR) algorithm (Tomita, 1991) for pattern matching. To prune out nodes made by GLR algorithm during pattern matching, we score each node and remove nodes which have lower score than those of the top ten nodes with the same range and the same syntactic category. To score each node, several methods can be used; the frequency of each pattern in the corpus (Sorniertlamvanich, 1998) and the Korean syntactic collocational information (Yoon, 1998). Since we use very lexicalized patterns, the frequency of each pattern in the corpus is not available. Also we didn't describe syntactic information of the score(p) = � (P(c) + a x sco</context>
+</contexts>
+<marker>Tomita, 1991</marker>
+<rawString>Tomita, Masaru. 1991. Generalized LR Parsing. Kluwer Academic Publishers.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hideo Watanabe</author>
+<author>Koichi Takeda</author>
+</authors>
+<title>A Pattern-based Machine Translation System Extended by Example-based Processing.</title>
+<date>1998</date>
+<booktitle>COLING-98,</booktitle>
+<pages>1369--1373</pages>
+<contexts>
+<context citStr="Watanabe and Takeda (1998)" endWordPosition="343" position="2381" startWordPosition="340">ansfer simultaneously using this lexicalized patterns (Takeda, 1996). PBMT can shorten the translation time and raise the accuracy of syntactic analysis by using the lexicalized patterns. At first, since all patterns were short phrase-length patterns, many syntactic ambiguities occurred in pattern matching. As a result, patterns became longer to sentencelength to reduce ambiguities. But, sentencelength patterns cause pattern sparseness problem, because the same number of sentence-length patterns can cover less sentences than the same number of phrase-length patterns. To overcome this problem, Watanabe and Takeda (1998) adopted example-based approach. However, examplebased approach has some problems. One of the problems is that two different verbs of target language take two semantically similar nouns as objects respectively although a verb of source language takes the nouns as its objects. For example, a Korean verb ta-da' with objects ' bus(bus)' and ' ma/(horse)' is translated into English verbs 'take' and 'ride' respectively. Many researches were done to solve them. They used syntactic collocation (Kim et al., 1996; Lee et al., 1999), semantic constraint by thesaurus (Moon et al., 1998), semantic feature</context>
+<context citStr="Watanabe and Takeda, 1998" endWordPosition="558" position="3683" startWordPosition="554">ble translation patterns { 'write NP', 'compose NP'}). At the same time, si' is translated into 'poem' among all English words for the Korean word ' si' , because only 'poem' has the meaning of [production(language)]. Last two translation pattern categories of `NP-k/u/ ssu-da' are constrained by exact example matching method. For example, if and only if the headword of a noun phrase NP1 is ' chun-/yak(strategy)', NP1+ /u/ ssuda' takes { 'adopt a stratagem'} as its translation pattern category. Because the exact example matching method is too rigid, it's better to adopt example-based approach (Watanabe and Takeda, 1998). But, in this paper, we only implemented exact example matching method. The proposed hybrid method of exact example matching and semantic constraint by thesaurus can reduce the number of possible translation patterns and also the ambiguities of pattern matching. Exl) na-nun si-mi chom muk-ko nan daum-e ssu-go sip-da. (I want to write a poem after eating something.) For example, both Korean verbs 'rankda(eat)' and ssu-da(write)' can take si-/u/' as objects in example Exl. muk-da' takes only nouns with meaning [something to eat] as objects, but ssu-da' can take nouns with meaning [production] a</context>
+</contexts>
+<marker>Watanabe, Takeda, 1998</marker>
+<rawString>Watanabe, Hideo and Koichi Takeda. 1998. A Pattern-based Machine Translation System Extended by Example-based Processing. COLING-98, pages 1369-1373.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Juntae Yoon</author>
+</authors>
+<title>Syntactic Analysis for Korean Sentences Using Lexical Association Based on Co-occurrence Relation.</title>
+<date>1998</date>
+<tech>Ph.D. thesis,</tech>
+<institution>Yonsei University, Dept. of Computer Science.(in Korean)</institution>
+<contexts>
+<context citStr="Yoon, 1998" endWordPosition="1081" position="6839" startWordPosition="1080"> that Korean and English have very different semantic hierarchies of thesaurus construction (Palmer et al., 1999). 2.3 Pattern Scoring We used Generalized LR parsing (GLR) algorithm (Tomita, 1991) for pattern matching. To prune out nodes made by GLR algorithm during pattern matching, we score each node and remove nodes which have lower score than those of the top ten nodes with the same range and the same syntactic category. To score each node, several methods can be used; the frequency of each pattern in the corpus (Sorniertlamvanich, 1998) and the Korean syntactic collocational information (Yoon, 1998). Since we use very lexicalized patterns, the frequency of each pattern in the corpus is not available. Also we didn't describe syntactic information of the score(p) = � (P(c) + a x score(c)) Vc • c : p’s child node • N : the number of p’s child nodes • if c is lexical, score(c) = Tj 1. if c is lexical, /i 2. if c is semantically constrained by thesaurus with SC, Y x sem(c, SC) 3. if c is constrained by exact example method with ES, 1) if headword(c) r ES, S 2) if headword(c) o ES, -01 4. if c has no constraint, -p NTTLENG – distance(p, SC) sem (p, SC) _ 4 + (1–4) x NTTLENG P(c) NP1 ga NP2 lul</context>
+<context citStr="Yoon, 1998" endWordPosition="1589" position="9706" startWordPosition="1588">culated by the number of words. 3.3 Error Analysis The errors of our system are roughly divided into the errors in pattern matching and the errors in pattern transfer and sentence generation. The errors appeared in pattern matching are almost the errors of govern and governor relation. Relation The number of errors Subject:Verb 9 Adverb(phrase):Verb 7 Adjective(phrase):Verb 6 Noun(phrase):Noun 2 Total 26 Table 2: The error analysis result of pattern matching Table 2 shows the error analysis result of pattern matching. To solve these problems, it is needed to use the Korean syntactic analysis (Yoon, 1998). We counted the errors in pattern transfer and sentence generation subjectively. Thus, the number of errors may not be exact, but the error ratio of error types seems be meaningful. Error type The number of errors Restoration error 64 Analysis error 26 Dictionary construction 22 error Translated word selection 5 error Sentence generation 3 error Total 112 Table 3: The error analysis result of pattern transfer and sentence generation Table 3 shows the error analysis result of pattern transfer and sentence generation. Restoration error has occurred when the necessary information in English sent</context>
+</contexts>
+<marker>Yoon, 1998</marker>
+<rawString>Yoon, Juntae. 1998. Syntactic Analysis for Korean Sentences Using Lexical Association Based on Co-occurrence Relation. Ph.D. thesis, Yonsei University, Dept. of Computer Science.(in Korean)</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

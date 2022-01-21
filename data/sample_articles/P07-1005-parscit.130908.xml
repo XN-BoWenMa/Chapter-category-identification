@@ -1,0 +1,619 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000088" no="0">
+<title confidence="0.970905">
+Word Sense Disambiguation Improves Statistical Machine Translation
+</title>
+<author confidence="0.987467">
+Yee Seng Chan and Hwee Tou Ng
+</author>
+<affiliation confidence="0.86325">
+Department of Computer Science
+National University of Singapore
+3 Science Drive 2
+</affiliation>
+<address confidence="0.981385">
+Singapore 117543
+</address>
+<email confidence="0.9971">
+{chanys, nght}@comp.nus.edu.sg
+</email>
+<author confidence="0.997416">
+David Chiang
+</author>
+<affiliation confidence="0.7732845">
+Information Sciences Institute
+University of Southern California
+4676 Admiralty Way, Suite 1001
+Marina del Rey, CA 90292, USA
+</affiliation>
+<email confidence="0.998911">
+chiang@isi.edu
+</email>
+<sectionHeader confidence="0.995643" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999839153846154">Recent research presents conflicting evidence on whether word sense disambiguation (WSD) systems can help to improve the performance of statistical machine translation (MT) systems. In this paper, we successfully integrate a state-of-the-art WSD system into a state-of-the-art hierarchical phrase-based MT system, Hiero. We show for the first time that integrating a WSD system improves the performance of a state-ofthe-art statistical MT system on an actual translation task. Furthermore, the improvement is statistically significant.</bodyText>
+<sectionHeader confidence="0.998992" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.991217188679246">Many words have multiple meanings, depending on the context in which they are used. Word sense disambiguation (WSD) is the task of determining the correct meaning or sense of a word in context. WSD is regarded as an important research problem and is assumed to be helpful for applications such as machine translation (MT) and information retrieval. In translation, different senses of a word w in a source language may have different translations in a target language, depending on the particular meaning of w in context. Hence, the assumption is that in resolving sense ambiguity, a WSD system will be able to help an MT system to determine the correct translation for an ambiguous word. To determine the correct sense of a word, WSD systems typically use a wide array of features that are not limited to the local context of w, and some of these features may not be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as the WSD model’s predicted translation. They did not incorporate their WSD model or its predictions into their translation model; rather, they used the WSD predictions either to constrain the options available to their decoder, or to postedit the output of their decoder. They reported the negative result that WSD decreased the performance of MT based on their experiments. In another work (Vickrey et al., 2005), the WSD problem was recast as a word translation task. The translation choices for a word w were defined as the set of words or phrases aligned to w, as gathered from a word-aligned parallel corpus.</bodyText>
+<subsectionHeader confidence="0.3269375">
+Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 33–40,
+Prague, Czech Republic, June 2007. c�2007 Association for Computational Linguistics
+</subsectionHeader>
+<bodyText confidence="0.997692446428571">The authors showed that they were able to improve their model’s accuracy on two simplified translation tasks: word translation and blank-filling. Recently, Cabezas and Resnik (2005) experimented with incorporating WSD translations into Pharaoh, a state-of-the-art phrase-based MT system (Koehn et al., 2003). Their WSD system provided additional translations to the phrase table of Pharaoh, which fired a new model feature, so that the decoder could weigh the additional alternative translations against its own. However, they could not automatically tune the weight of this feature in the same way as the others. They obtained a relatively small improvement, and no statistical significance test was reported to determine if the improvement was statistically significant. Note that the experiments in (Carpuat and Wu, 2005) did not use a state-of-the-art MT system, while the experiments in (Vickrey et al., 2005) were not done using a full-fledged MT system and the evaluation was not on how well each source sentence was translated as a whole. The relatively small improvement reported by Cabezas and Resnik (2005) without a statistical significance test appears to be inconclusive. Considering the conflicting results reported by prior work, it is not clear whether a WSD system can help to improve the performance of a state-of-the-art statistical MT system. In this paper, we successfully integrate a stateofthe-art WSD system into the state-of-the-art hierarchical phrase-based MT system, Hiero (Chiang, 2005). The integration is accomplished by introducing two additional features into the MT model which operate on the existing rules of the grammar, without introducing competing rules. These features are treated, both in feature-weight tuning and in decoding, on the same footing as the rest of the model, allowing it to weigh the WSD model predictions against other pieces of evidence so as to optimize translation accuracy (as measured by BLEU). The contribution of our work lies in showing for the first time that integrating a WSD system significantly improves the performance of a state-of-the-art statistical MT system on an actual translation task. In the next section, we describe our WSD system. Then, in Section 3, we describe the Hiero MT system and introduce the two new features used to integrate the WSD system into Hiero. In Section 4, we describe the training data used by the WSD system. In Section 5, we describe how the WSD translations provided are used by the decoder of the MT system. In Section 6 and 7, we present and analyze our experimental results, before concluding in Section 8.</bodyText>
+<sectionHeader confidence="0.943108" genericHeader="method">
+2 Word Sense Disambiguation
+</sectionHeader>
+<bodyText confidence="0.98840504">Prior research has shown that using Support Vector Machines (SVM) as the learning algorithm for WSD achieves good results (Lee and Ng, 2002). For our experiments, we use the SVM implementation of (Chang and Lin, 2001) as it is able to work on multiclass problems to output the classification probability for each class. Our implemented WSD classifier uses the knowledge sources of local collocations, parts-of-speech (POS), and surrounding words, following the successful approach of (Lee and Ng, 2002). For local collocations, we use 3 features, w−1w+1, w−1, and w+1, where w−1 (w+1) is the token immediately to the left (right) of the current ambiguous word occurrence w. For parts-of-speech, we use 3 features, P−1, P0, and P+1, where P0 is the POS of w, and P−1 (P+1) is the POS of w−1 (w+1). For surrounding words, we consider all unigrams (single words) in the surrounding context of w. These unigrams can be in a different sentence from w. We perform feature selection on surrounding words by including a unigram only if it occurs 3 or more times in some sense of w in the training data. To measure the accuracy of our WSD classifier, we evaluate it on the test data of SENSEVAL-3 Chinese lexical-sample task. We obtain accuracy that compares favorably to the best participating system in the task (Carpuat et al., 2004).</bodyText>
+<sectionHeader confidence="0.943108" genericHeader="method">
+3 Hiero
+</sectionHeader>
+<bodyText confidence="0.98840504">Hiero (Chiang, 2005) is a hierarchical phrase-based model for statistical machine translation, based on weighted synchronous context-free grammar (CFG) (Lewis and Stearns, 1968). A synchronous CFG consists of rewrite rules such as the following: where X is a non-terminal symbol, ° (®) is a string of terminal and non-terminal symbols in the source (target) language, and there is a one-to-one correspondence between the non-terminals in ° and ® indicated by co-indexation. Hence, ° and ® always have the same number of non-terminal symbols. For instance, we could have the following grammar rule:</bodyText>
+<equation confidence="0.995454">
+X -* (4 A Y�j X1, go to X1 every month to) (2)
+</equation>
+<bodyText confidence="0.9965067">where boxed indices represent the correspondences between non-terminal symbols. Hiero extracts the synchronous CFG rules automatically from a word-aligned parallel corpus. To translate a source sentence, the goal is to find its most probable derivation using the extracted grammar rules. Hiero uses a general log-linear model (Och and Ney, 2002) where the weight of a derivation D for a particular source sentence and its translation is where Oi is a feature function and Ai is the weight for feature Oi.</bodyText>
+<equation confidence="0.999019">
+w(D) = � Oi(D)λa (3)
+i
+</equation>
+<bodyText confidence="0.999879466666667">To ensure efficient decoding, the Oi are subject to certain locality restrictions. Essentially, they should be defined as products of functions defined on isolated synchronous CGF rules; however, it is possible to extend the domain of locality of the features somewhat. A n-gram language model adds a dependence on (n−1) neighboring target-side words (Wu, 1996; Chiang, 2007), making decoding much more difficult but still polynomial; in this paper, we add features that depend on the neighboring source-side words, which does not affect decoding complexity at all because the source string is fixed. In principle we could add features that depend on arbitrary source-side context.</bodyText>
+<subsectionHeader confidence="0.999824">
+3.1 New Features in Hiero for WSD
+</subsectionHeader>
+<bodyText confidence="0.986542">To incorporate WSD into Hiero, we use the translations proposed by the WSD system to help Hiero obtain a better or more probable derivation during the translation of each source sentence. To achieve this, when a grammar rule R is considered during decoding, and we recognize that some of the terminal symbols (words) in α are also chosen by the WSD system as translations for some terminal symbols (words) in -y, we compute the following features:</bodyText>
+<listItem confidence="0.9464345">• Pwsd(t  |s) gives the contextual probability of the WSD classifier choosing t as a translation for s, where t (s) is some substring of terminal symbols in α (-y). Because this probability only applies to some rules, and we don’t want to penalize those rules, we must add another feature, • Ptywsd = exp(−|t|), where t is the translation chosen by the WSD system. This feature, with a negative weight, rewards rules that use translations suggested by the WSD module.</listItem>
+<bodyText confidence="0.9330634">Note that we can take the negative logarithm of the rule/derivation weights and think of them as costs rather than probabilities.</bodyText>
+<sectionHeader confidence="0.935564" genericHeader="evaluation">
+4 Gathering Training Examples for WSD
+</sectionHeader>
+<bodyText confidence="0.999972451612903">Our experiments were for Chinese to English translation. Hence, in the context of our work, a synchronous CFG grammar rule X —* (-y, α) gathered by Hiero consists of a Chinese portion -y and a corresponding English portion α, where each portion is a sequence of words and non-terminal symbols. Our WSD classifier suggests a list of English phrases (where each phrase consists of one or more English words) with associated contextual probabilities as possible translations for each particular Chinese phrase. In general, the Chinese phrase may consist of k Chinese words, where k = 1, 2, 3, .... However, we limit k to 1 or 2 for experiments reported in this paper. Future work can explore enlarging k. Whenever Hiero is about to extract a grammar rule where its Chinese portion is a phrase of one or two Chinese words with no non-terminal symbols, we note the location (sentence and token offset) in the Chinese half of the parallel corpus from which the Chinese portion of the rule is extracted. The actual sentence in the corpus containing the Chinese phrase, and the one sentence before and the one sentence after that actual sentence, will serve as the context for one training example for the Chinese phrase, with the corresponding English phrase of the grammar rule as its translation. Hence, unlike traditional WSD where the sense classes are tied to a specific sense inventory, our “senses” here consist of the English phrases extracted as translations for each Chinese phrase. Since the extracted training data may be noisy, for each Chinese phrase, we remove English translations that occur only once.</bodyText>
+<page confidence="0.995943">
+35
+</page>
+<bodyText confidence="0.999741086956522">Furthermore, we only attempt WSD classification for those Chinese phrases with at least 10 training examples. Using the WSD classifier described in Section 2, we classified the words in each Chinese source sentence to be translated. We first performed WSD on all single Chinese words which are either noun, verb, or adjective. Next, we classified the Chinese phrases consisting of 2 consecutive Chinese words by simply treating the phrase as a single unit. When performing classification, we give as output the set of English translations with associated context-dependent probabilities, which are the probabilities of a Chinese word (phrase) translating into each English phrase, depending on the context of the Chinese word (phrase). After WSD, the ith word ci in every Chinese sentence may have up to 3 sets of associated translations provided by the WSD system: a set of translations for ci as a single word, a second set of translations for ci_1ci considered as a single unit, and a third set of translations for cici+1 considered as a single unit.</bodyText>
+<sectionHeader confidence="0.993923" genericHeader="evaluation">
+5 Incorporating WSD during Decoding
+</sectionHeader>
+<bodyText confidence="0.9978715">The following tasks are done for each rule that is considered during decoding:</bodyText>
+<listItem confidence="0.9990268">• identify Chinese words to suggest translations for • match suggested translations against the English side of the rule • compute features for the rule</listItem>
+<bodyText confidence="0.999325344827586">The WSD system is able to predict translations only for a subset of Chinese words or phrases. Hence, we must first identify which parts of the Chinese side of the rule have suggested translations available. Here, we consider substrings of length up to two, and we give priority to longer substrings. Next, we want to know, for each Chinese substring considered, whether the WSD system supports the Chinese-English translation represented by the rule. If the rule is finally chosen as part of the best derivation for translating the Chinese sentence, then all the words in the English side of the rule will appear in the translated English sentence. Hence, we need to match the translations suggested by the WSD system against the English side of the rule. It is for these matching rules that the WSD features will apply. The translations proposed by the WSD system may be more than one word long. In order for a proposed translation to match the rule, we require two conditions. First, the proposed translation must be a substring of the English side of the rule. For example, the proposed translation “every to” would not match the chunk “every month to”. Second, the match must contain at least one aligned ChineseEnglish word pair, but we do not make any other requirements about the alignment of the other Chinese or English words.1 If there are multiple possible matches, we choose the longest proposed translation; in the case of a tie, we choose the proposed translation with the highest score according to the WSD model. Define a chunk of a rule to be a maximal substring of terminal symbols on the English side of the rule. For example, in Rule (2), the chunks would be “go to” and “every month to”. Whenever we find a matching WSD translation, we mark the whole chunk on the English side as consumed. Finally, we compute the feature values for the rule. The feature P,sd(t  |s) is the sum of the costs (according to the WSD model) of all the matched translations, and the feature Pty,sd is the sum of the lengths of all the matched translations. Figure 1 shows the pseudocode for the rule scoring algorithm in more detail, particularly with regards to resolving conflicts between overlapping matches. To illustrate the algorithm given in Figure 1, consider Rule (2). Hereafter, we will use symbols to represent the Chinese and English words in the rule: c1, c2, and c3 will represent the Chinese words “4”, “�”, and “YI” respectively. Similarly, e1, e2, e3, e4, and e5 will represent the English words go, to, every, month, and to respectively. Hence, Rule (2) has two chunks: e1e2 and e3e4e5. When the rule is extracted from the parallel corpus, it has these alignments between the words of its Chinese and English portion: {c1–e3,c2–e4,c3–e1,c3–e2,c3–e5}, which means that c1 is aligned to e3, c2 is aligned to</bodyText>
+<footnote confidence="0.968998">
+1In order to check this requirement, we extended Hiero to
+make word alignment information available to the decoder.
+</footnote>
+<page confidence="0.992679">
+36
+</page>
+<bodyText confidence="0.56691">Input: rule R considered during decoding with its own associated cOstR e4, and c3 is aligned to e1, e2, and e5.</bodyText>
+<equation confidence="0.967723909090909">
+Lc = list of symbols in Chinese portion of R
+WSDcost = 0
+i = 1
+while i &lt; len(Lc):
+ci = ith symbol in Lc
+if ci is a Chinese word (i.e., not a non-terminal symbol):
+seenChunk = 0 // seenChunk is a global variable and is passed by reference to matchWSD
+if (ci is not the last symbol in Lc) and (ci+1 is a terminal symbol): then ci+1=(i+1)th symbol in Lc, else ci+1 = NULL
+if (ci+1!=NULL) and (ci, ci+1) as a single unit has WSD translations:
+W SDc = set of WSD translations for (ci, ci+1) as a single unit with context-dependent probabilities
+WSDcost = WSDcost+ matchWSD(ci, WSDc, seenChunk)
+WSDcost = WSDcost+ matchWSD(ci+1, WSDc, seenChunk)
+i = i + 1
+else:
+W SDc = set of WSD translations for ci with context-dependent probabilities
+WSDcost = WSDcost+ matchWSD(ci, WSDc, seenChunk)
+i = i + 1
+cOstR = cOstR + WSDcost
+matchWSD(c, WSDc, seenChunk):
+// seenChunk is the set of chunks of R already examined for possible matching WSD translations
+cost = 0
+ChunkSet = set of chunks in R aligned to c
+for chunkj in ChunkSet:
+if chunkj not in seenChunk:
+seenChunk = seenChunk U { chunkj }
+Echunkj = set of English words in chunkj aligned to c
+Candidatewsd = 0
+for wsdk in WSDc:
+if (wsdk is sub-sequence of chunkj) and (wsdk contains at least one word in Echunkj )
+Candidatewsd = Candidatewsd U { wsdk }
+wsdbest = best matching translation in Candidatewsd against chunkj
+cost = cost + costByWSDfeatures(wsdbest) // costByWSDfeatures sums up the cost of the two WSD features
+return cost
+</equation>
+<figureCaption confidence="0.997296">
+Figure 1: WSD translations affecting the cost of a rule R considered during decoding.
+</figureCaption>
+<bodyText confidence="0.998891571428572">Although all words are aligned here, in general for a rule, some of its Chinese or English words may not be associated with any alignments. In our experiment, c1c2 as a phrase has a list of translations proposed by the WSD system, including the English phrase “every month”.matchWSD will first be invoked for c1, which is aligned to only one chunk e3e4e5 via its alignment with e3. Since “every month” is a sub-sequence of the chunk and also contains the word e3 (“every”), it is noted as a candidate translation. Later, it is determined that the most number of words any candidate translation has is two words. Since among all the 2-word candidate translations, the translation “every month” has the highest translation probability as assigned by the WSD classifier, it is chosen as the best matching translation for the chunk.matchWSD is then invoked for c2, which is aligned to only one chunk e3e4e5. However, since this chunk has already been examined by c1 with which it is considered as a phrase, no further matching is done for c2. Next, matchWSD is invoked for c3, which is aligned to both chunks of R. The English phrases “go to” and “to” are among the list of translations proposed by the WSD system for c3, and they are eventually chosen as the best matching translations for the chunks e1e2 and e3e4e5, respectively.</bodyText>
+<sectionHeader confidence="0.999694" genericHeader="evaluation and result">
+6 Experiments
+</sectionHeader>
+<bodyText confidence="0.9938445">As mentioned, our experiments were on Chinese to English translation. Similar to (Chiang, 2005), we trained the Hiero system on the FBIS corpus, used the NIST MT 2002 evaluation test set as our development set to tune the feature weights, and the NIST MT 2003 evaluation test set as our test data. Using the English portion of the FBIS corpus and the Xinhua portion of the Gigaword corpus, we trained a trigram language model using the SRI Language Modelling Toolkit (Stolcke, 2002).</bodyText>
+<page confidence="0.998211">
+37
+</page>
+<table confidence="0.99938825">
+System BLEU-4 Individual n-gram precisions
+1 2 3 4
+Hiero 29.73 74.73 40.14 21.83 11.93
+Hiero+WSD 30.30 74.82 40.40 22.45 12.42
+</table>
+<tableCaption confidence="0.956101">
+Table 1: BLEU scores
+</tableCaption>
+<table confidence="0.99911925">
+System Features
+P�.(e) P(-y|α) P(α|y) P.(-y|α) P.(α|y) Ptyph,. Glue Pty,,,o,.d P.sd(t|s) Pty,,,sd
+Hiero 0.2337 0.0882 0.1666 0.0393 0.1357 0.0665 −0.0582 −0.4806 - -
+Hiero+WSD 0.1937 0.0770 0.1124 0.0487 0.0380 0.0988 −0.0305 −0.1747 0.1051 −0.1611
+</table>
+<tableCaption confidence="0.9786825">
+Table 2: Weights for each feature obtained by MERT training. The first eight features are those used by
+Hiero in (Chiang, 2005).
+</tableCaption>
+<bodyText confidence="0.999159444444445">Following (Chiang, 2005), we used the version 11a NIST BLEU script with its default settings to calculate the BLEU scores (Papineni et al., 2002) based on case-insensitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al.(2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gathered WSD training data by following the procedure described in section 4.</bodyText>
+<subsectionHeader confidence="0.999411">
+6.1 Hiero Results
+</subsectionHeader>
+<bodyText confidence="0.999865266666667">Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these weights, we run Hiero’s decoder to perform the actual translation of the MT 2003 test sentences and obtained a BLEU score of 29.73, as shown in the row Hiero of Table 1. This is higher than the score of 28.77 reported in (Chiang, 2005), perhaps due to differences in word segmentation, etc. Note that comparing with the MT systems used in (Carpuat and Wu, 2005) and (Cabezas and Resnik, 2005), the Hiero system we are using represents a much stronger baseline MT system upon which the WSD system must improve.</bodyText>
+<subsectionHeader confidence="0.996722">
+6.2 Hiero+WSD Results
+</subsectionHeader>
+<bodyText confidence="0.999976666666667">We then added the WSD features of Section 3.1 into Hiero and reran the experiment. The weights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score of 30.30, as shown in the row Hiero+WSD of Table 1. The improvement of 0.57 is statistically significant at p &lt; 0.05 using the sign-test as described by Collins et al. (2005), with 374 (+1), 318 (−1) and 227 (0). Using the bootstrap-sampling test described in (Koehn, 2004b), the improvement is statistically significant atp &lt; 0.05. Though the improvement is modest, it is statistically significant and this positive result is important in view of the negative findings in (Carpuat and Wu, 2005) that WSD does not help MT. Furthermore, note that Hiero+WSD has higher n-gram precisions than Hiero.</bodyText>
+<sectionHeader confidence="0.954803" genericHeader="result">
+7 Analysis
+</sectionHeader>
+<bodyText confidence="0.9993504">Ideally, the WSD system should be suggesting highquality translations which are frequently part of the reference sentences. To determine this, we note the set of grammar rules used in the best derivation for translating each test sentence. From the rules of each test sentence, we tabulated the set of translations proposed by the WSD system and check whether they are found in the associated reference sentences. On the entire set of NIST MT 2003 evaluation test sentences, an average of 10.36 translations proposed by the WSD system were used for each sentence.</bodyText>
+<page confidence="0.996844">
+38
+</page>
+<table confidence="0.994635">
+No. of All test sentences +1 from Collins sign-test
+words in
+WSD translations
+No. of % match No. of % match
+WSD translations used reference WSD translations used reference
+1 7087 77.31 3078 77.68
+2 1930 66.11 861 64.92
+3 371 43.13 171 48.54
+4 124 26.61 52 28.85
+</table>
+<tableCaption confidence="0.827329">
+Table 3: Number of WSD translations used and proportion that matches against respective reference sen-
+tences. WSD translations longer than 4 words are very sparse (less than 10 occurrences) and thus they are
+not shown.
+</tableCaption>
+<bodyText confidence="0.9938283125">When limited to the set of 374 sentences which were judged by the Collins sign-test to have better translations from Hiero+WSD than from Hiero, a higher number (11.14) of proposed translations were used on average. Further, for the entire set of test sentences, 73.01% of the proposed translations are found in the reference sentences. This increased to a proportion of 73.22% when limited to the set of 374 sentences. These figures show that having more, and higher-quality proposed translations contributed to the set of 374 sentences being better translations than their respective original translations from Hiero. Table 3 gives a detailed breakdown of these figures according to the number of words in each proposed translation. For instance, over all the test sentences, the WSD module gave 7087 translations of single-word length, and 77.31% of these translations match their respective reference sentences. We note that although the proportion of matching 2word translations is slightly lower for the set of 374 sentences, the proportion increases for translations having more words. After the experiments in Section 6 were completed, we visually inspected the translation output of Hiero and Hiero+WSD to categorize the ways in which integrating WSD contributes to better translations. The first way in which WSD helps is when it enables the integrated Hiero+WSD system to output extra appropriate English words. For example, the translations for the Chinese sentence “...� 41t r -�.�3 li• J , 4 Ãm Rz Í õ WtPI • Hiero:... or other bad behavior ”, will be more aid and other concessions.• Hiero+WSD:... or other bad behavior ”, will</bodyText>
+<equation confidence="0.593379">
+I 1ht -” are as follows.
+</equation>
+<bodyText confidence="0.984853">be unable to obtain more aid and other concessions. Here, the Chinese words “Ã� Rz” are not translated by Hiero at all. By providing the correct translation of “unable to obtain” for “ÃM Rz”, the translation output of Hiero+WSD is more complete. A second way in which WSD helps is by correcting a previously incorrect translation. For example, for the Chinese sentence “.. . , ;i!�E -i-tQ È &amp; A F� ,... ”, the WSD system helps to correct Hiero’s original translation by providing the correct translation of “all ethnic groups” for the Chinese phrase “È &amp;”:</bodyText>
+<listItem confidence="0.98791675">• Hiero: ..., and people of all nationalities across the country, ... • Hiero+WSD: .. . , and people of all ethnic groups across the country, ...</listItem>
+<bodyText confidence="0.997715125">We also looked at the set of 318 sentences that were judged by the Collins sign-test to be worse translations. We found that in some situations, Hiero+WSD has provided extra appropriate English words, but those particular words are not used in the reference sentences. An interesting example is the translation of the Chinese sentence “A� i� IRR �� �� Ã~ Rz Í õ �� ”.</bodyText>
+<listItem confidence="0.9873248">• Hiero: Australian foreign minister said that North Korea bad behavior will be more aid • Hiero+WSD: Australian foreign minister said that North Korea bad behavior will be unable to obtain more aid</listItem>
+<bodyText confidence="0.924987666666667">This is similar to the example mentioned earlier. In this case however, those extra English words provided by Hiero+WSD, though appropriate, do not result in more n-gram matches as the reference sentences used phrases such as “will not gain”, “will not get”, etc.</bodyText>
+<page confidence="0.997996">
+39
+</page>
+<bodyText confidence="0.986389">Since the BLEU metric is precision based, the longer sentence translation by Hiero+WSD gets a lower BLEU score instead.D. Chiang.2005. A hierarchical phrase-based model for statistical machine translation. In Proc.of ACL05, pages 263– 270.</bodyText>
+<note confidence="0.5614635">
+D. Chiang. 2007. Hierarchical phrase-based translation. To
+appear in Computational Linguistics, 33(2).
+</note>
+<sectionHeader confidence="0.992897" genericHeader="conclusion">
+8 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999975611111111">We have shown that WSD improves the translation performance of a state-of-the-art hierarchical phrase-based statistical MT system and this improvement is statistically significant. We have also demonstrated one way to integrate a WSD system into an MT system without introducing any rules that compete against existing rules, and where the feature-weight tuning and decoding place the WSD system on an equal footing with the other model components. For future work, an immediate step would be for the WSD classifier to provide translations for longer Chinese phrases. Also, different alternatives could be tried to match the translations provided by the WSD classifier against the chunks of rules. Finally, besides our proposed approach of integrating WSD into statistical MT via the introduction of two new features, we could explore other alternative ways of integration.</bodyText>
+<sectionHeader confidence="0.997162" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.6913745">Yee Seng Chan is supported by a Singapore Millennium Foundation Scholarship (ref no. SMF-20041076). David Chiang was partially supported under the GALE program of the Defense Advanced Research Projects Agency, contract HR0011-06-C0022.</bodyText>
+<sectionHeader confidence="0.983238" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999932857142857">
+C. Cabezas and P. Resnik. 2005. Using WSD techniques for
+lexical selection in statistical machine translation. Technical
+report, University of Maryland.
+M. Carpuat and D. Wu. 2005. Word sense disambiguation
+vs. statistical machine translation. In Proc. ofACL05, pages
+387–394.
+M. Carpuat, W. Su, and D. Wu. 2004. Augmenting ensemble
+classification for word sense disambiguation with a kernel
+PCA model. In Proc. of SENSEVAL-3, pages 88–92.
+C. C. Chang and C. J. Lin, 2001. LIBSVM: a library for sup-
+port vector machines. Software available at http://www.
+csie.ntu.edu.tw/˜cjlin/libsvm.
+M. Collins, P. Koehn, and I. Kucerova. 2005. Clause restruc-
+turing for statistical machine translation. In Proc. ofACL05,
+pages 531–540.
+U. Germann. 2003. Greedy decoding for statistical machine
+translation in almost linear time. In Proc. ofHLT-NAACL03,
+pages 72–79.
+P. Koehn, F. J. Och, and D. Marcu. 2003. Statistical phrase-
+based translation. In Proc. of HLT-NAACL03, pages 48–54.
+P. Koehn. 2003. Noun Phrase Translation. Ph.D. thesis, Uni-
+versity of Southern California.
+P. Koehn. 2004a. Pharaoh: A beam search decoder for phrase-
+based statistical machine translation models. In Proc. of
+AMTA04, pages 115–124.
+P. Koehn. 2004b. Statistical significance tests for machine
+translation evaluation. In Proc. of EMNLP04, pages 388–
+395.
+Y. K. Lee and H. T. Ng. 2002. An empirical evaluation of
+knowledge sources and learning algorithms for word sense
+disambiguation. In Proc. of EMNLP02, pages 41–48.
+P. M. II Lewis and R. E. Stearns. 1968. Syntax-directed trans-
+duction. Journal of the ACM, 15(3):465–488.
+D. Marcu and W. Wong. 2002. A phrase-based, joint proba-
+bility model for statistical machine translation. In Proc. of
+EMNLP02, pages 133–139.
+F. J. Och and H. Ney. 2000. Improved statistical alignment
+models. In Proc. ofACL00, pages 440–447.
+F. J. Och and H. Ney. 2002. Discriminative training and max-
+imum entropy models for statistical machine translation. In
+Proc. ofACL02, pages 295–302.
+F. J. Och and H. Ney. 2004. The alignment template approach
+to statistical machine translation. Computational Linguis-
+tics, 30(4):417–449.
+F. J. Och. 2003. Minimum error rate training in statistical ma-
+chine translation. In Proc. ofACL03, pages 160–167.
+K. Papineni, S. Roukos, T. Ward, and W. J. Zhu. 2002. BLEU:
+A method for automatic evaluation of machine translation.
+In Proc. ofACL02, pages 311–318.
+A. Stolcke. 2002. SRILM - an extensible language modeling
+toolkit. In Proc. ofICSLP02, pages 901–904.
+D. Vickrey, L. Biewald, M. Teyssier, and D. Koller. 2005.
+Word-sense disambiguation for machine translation. In
+Proc. ofEMNLP05, pages 771–778.
+D. Wu. 1996. A polynomial-time algorithm for statistical ma-
+chine translation. In Proc. ofACL96, pages 152–158.
+</reference>
+<page confidence="0.998639">
+40
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.450514" no="0">
+<title confidence="0.999553">Word Sense Disambiguation Improves Statistical Machine Translation</title>
+<author confidence="0.998106">Seng Chan Tou Ng</author>
+<affiliation confidence="0.862088666666667">Department of Computer Science National University of Singapore 3 Science Drive 2</affiliation>
+<address confidence="0.59759">Singapore 117543</address>
+<author confidence="0.999364">David Chiang</author>
+<affiliation confidence="0.998674">Information Sciences Institute University of Southern California</affiliation>
+<address confidence="0.997753">4676 Admiralty Way, Suite 1001 Marina del Rey, CA 90292, USA</address>
+<email confidence="0.999737">chiang@isi.edu</email>
+<abstract confidence="0.998890142857143">Recent research presents conflicting evidence on whether word sense disambiguation (WSD) systems can help to improve the performance of statistical machine translation (MT) systems. In this paper, we successfully integrate a state-of-the-art WSD system into a state-of-the-art hierarchical phrase-based MT system, Hiero. We show for the first time that integrating a WSD system improves the performance of a state-ofthe-art statistical MT system on an actual translation task. Furthermore, the improvement is statistically significant.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>C Cabezas</author>
+<author>P Resnik</author>
+</authors>
+<title>Using WSD techniques for lexical selection in statistical machine translation.</title>
+<date>2005</date>
+<tech>Technical report,</tech>
+<institution>University of Maryland.</institution>
+<contexts>
+<context citStr="Cabezas and Resnik (2005)" endWordPosition="683" position="4294" startWordPosition="680">s translation choices for a word w were defined as the Then, in Section 3, we describe the Hiero MT sysset of words or phrases aligned to w, as gathered tem and introduce the two new features used to intefrom a word-aligned parallel corpus. The authors grate the WSD system into Hiero. In Section 4, we showed that they were able to improve their model’s describe the training data used by the WSD system. accuracy on two simplified translation tasks: word In Section 5, we describe how the WSD translations translation and blank-filling. provided are used by the decoder of the MT system. Recently, Cabezas and Resnik (2005) experi- In Section 6 and 7, we present and analyze our exmented with incorporating WSD translations into perimental results, before concluding in Section 8. Pharaoh, a state-of-the-art phrase-based MT sys- 2 Word Sense Disambiguation tem (Koehn et al., 2003). Their WSD system pro- Prior research has shown that using Support Vector vided additional translations to the phrase table of Machines (SVM) as the learning algorithm for WSD Pharaoh, which fired a new model feature, so that achieves good results (Lee and Ng, 2002). For our the decoder could weigh the additional alternative experiments, </context>
+<context citStr="Cabezas and Resnik (2005)" endWordPosition="986" position="6135" startWordPosition="983">iments in (Carpuat and Wu, cessful approach of (Lee and Ng, 2002). For local 2005) did not use a state-of-the-art MT system, collocations, we use 3 features, w_1w+1, w_1, and while the experiments in (Vickrey et al., 2005) were w+1, where w_1 (w+1) is the token immediately to not done using a full-fledged MT system and the the left (right) of the current ambiguous word ocevaluation was not on how well each source sentence currence w. For parts-of-speech, we use 3 features, was translated as a whole. The relatively small im- P_1, P0, and P+1, where P0 is the POS of w, and provement reported by Cabezas and Resnik (2005) P_1 (P+1) is the POS of w_1 (w+1). For surroundwithout a statistical significance test appears to be ing words, we consider all unigrams (single words) inconclusive. Considering the conflicting results re- in the surrounding context of w. These unigrams can ported by prior work, it is not clear whether a WSD be in a different sentence from w. We perform feasystem can help to improve the performance of a ture selection on surrounding words by including a state-of-the-art statistical MT system. unigram only if it occurs 3 or more times in some In this paper, we successfully integrate a state- s</context>
+<context citStr="Cabezas and Resnik, 2005" endWordPosition="3725" position="22020" startWordPosition="3722">4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these weights, we run Hiero’s decoder to perform the actual translation of the MT 2003 test sentences and obtained a BLEU score of 29.73, as shown in the row Hiero of Table 1. This is higher than the score of 28.77 reported in (Chiang, 2005), perhaps due to differences in word segmentation, etc. Note that comparing with the MT systems used in (Carpuat and Wu, 2005) and (Cabezas and Resnik, 2005), the Hiero system we are using represents a much stronger baseline MT system upon which the WSD system must improve. 6.2 Hiero+WSD Results We then added the WSD features of Section 3.1 into Hiero and reran the experiment. The weights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score of 30.30, as shown in the row Hi</context>
+</contexts>
+<marker>Cabezas, Resnik, 2005</marker>
+<rawString>C. Cabezas and P. Resnik. 2005. Using WSD techniques for lexical selection in statistical machine translation. Technical report, University of Maryland.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Carpuat</author>
+<author>D Wu</author>
+</authors>
+<title>Word sense disambiguation vs. statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proc. ofACL05,</booktitle>
+<pages>387--394</pages>
+<contexts>
+<context citStr="Carpuat and Wu (2005)" endWordPosition="407" position="2620" startWordPosition="404"> and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as the WSD model’s predicted translation. They did not incorporate their WSD model or its predictions into their translation model; rather, they used the WSD predictions either to constrain the options availabl</context>
+<context citStr="Carpuat and Wu, 2005" endWordPosition="3720" position="21989" startWordPosition="3717">edure described in section 4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these weights, we run Hiero’s decoder to perform the actual translation of the MT 2003 test sentences and obtained a BLEU score of 29.73, as shown in the row Hiero of Table 1. This is higher than the score of 28.77 reported in (Chiang, 2005), perhaps due to differences in word segmentation, etc. Note that comparing with the MT systems used in (Carpuat and Wu, 2005) and (Cabezas and Resnik, 2005), the Hiero system we are using represents a much stronger baseline MT system upon which the WSD system must improve. 6.2 Hiero+WSD Results We then added the WSD features of Section 3.1 into Hiero and reran the experiment. The weights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score o</context>
+</contexts>
+<marker>Carpuat, Wu, 2005</marker>
+<rawString>M. Carpuat and D. Wu. 2005. Word sense disambiguation vs. statistical machine translation. In Proc. ofACL05, pages 387–394.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Carpuat</author>
+<author>W Su</author>
+<author>D Wu</author>
+</authors>
+<title>Augmenting ensemble classification for word sense disambiguation with a kernel PCA model.</title>
+<date>2004</date>
+<booktitle>In Proc. of SENSEVAL-3,</booktitle>
+<pages>88--92</pages>
+<contexts>
+<context citStr="Carpuat et al., 2004" endWordPosition="420" position="2708" startWordPosition="417"> a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as the WSD model’s predicted translation. They did not incorporate their WSD model or its predictions into their translation model; rather, they used the WSD predictions either to constrain the options available to their decoder, or to postedit the output of their decoder. They reported the negati</context>
+<context citStr="Carpuat et al., 2004" endWordPosition="1172" position="7257" startWordPosition="1169">igram only if it occurs 3 or more times in some In this paper, we successfully integrate a state- sense of w in the training data. of-the-art WSD system into the state-of-the-art hi- To measure the accuracy of our WSD classifier, erarchical phrase-based MT system, Hiero (Chiang, we evaluate it on the test data of SENSEVAL-3 Chi2005). The integration is accomplished by introduc- nese lexical-sample task. We obtain accuracy that ing two additional features into the MT model which compares favorably to the best participating system operate on the existing rules of the grammar, with- in the task (Carpuat et al., 2004). out introducing competing rules. These features are 3 Hiero treated, both in feature-weight tuning and in decod- Hiero (Chiang, 2005) is a hierarchical phrase-based ing, on the same footing as the rest of the model, model for statistical machine translation, based on allowing it to weigh the WSD model predictions weighted synchronous context-free grammar (CFG) against other pieces of evidence so as to optimize (Lewis and Stearns, 1968). A synchronous CFG translation accuracy (as measured by BLEU). The consists of rewrite rules such as the following: contribution of our work lies in showing f</context>
+</contexts>
+<marker>Carpuat, Su, Wu, 2004</marker>
+<rawString>M. Carpuat, W. Su, and D. Wu. 2004. Augmenting ensemble classification for word sense disambiguation with a kernel PCA model. In Proc. of SENSEVAL-3, pages 88–92.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C C Chang</author>
+<author>C J Lin</author>
+</authors>
+<title>LIBSVM: a library for support vector machines. Software available at http://www.</title>
+<date>2001</date>
+<tech>csie.ntu.edu.tw/˜cjlin/libsvm.</tech>
+<contexts>
+<context citStr="Chang and Lin, 2001" endWordPosition="794" position="4998" startWordPosition="791">WSD translations into perimental results, before concluding in Section 8. Pharaoh, a state-of-the-art phrase-based MT sys- 2 Word Sense Disambiguation tem (Koehn et al., 2003). Their WSD system pro- Prior research has shown that using Support Vector vided additional translations to the phrase table of Machines (SVM) as the learning algorithm for WSD Pharaoh, which fired a new model feature, so that achieves good results (Lee and Ng, 2002). For our the decoder could weigh the additional alternative experiments, we use the SVM implementation of translations against its own. However, they could (Chang and Lin, 2001) as it is able to work on multinot automatically tune the weight of this feature in class problems to output the classification probabilthe same way as the others. They obtained a rela- ity for each class. tively small improvement, and no statistical signifi- Our implemented WSD classifier uses the knowlcance test was reported to determine if the improve- edge sources of local collocations, parts-of-speech ment was statistically significant. (POS), and surrounding words, following the sucNote that the experiments in (Carpuat and Wu, cessful approach of (Lee and Ng, 2002). For local 2005) did n</context>
+</contexts>
+<marker>Chang, Lin, 2001</marker>
+<rawString>C. C. Chang and C. J. Lin, 2001. LIBSVM: a library for support vector machines. Software available at http://www. csie.ntu.edu.tw/˜cjlin/libsvm.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>M Collins</author>
+<author>P Koehn</author>
+<author>I Kucerova</author>
+</authors>
+<title>Clause restructuring for statistical machine translation.</title>
+<date>2005</date>
+<booktitle>In Proc. ofACL05,</booktitle>
+<pages>531--540</pages>
+<contexts>
+<context citStr="Collins et al. (2005)" endWordPosition="3858" position="22762" startWordPosition="3855"> Hiero+WSD Results We then added the WSD features of Section 3.1 into Hiero and reran the experiment. The weights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score of 30.30, as shown in the row Hiero+WSD of Table 1. The improvement of 0.57 is statistically significant at p &lt; 0.05 using the sign-test as described by Collins et al. (2005), with 374 (+1), 318 (−1) and 227 (0). Using the bootstrap-sampling test described in (Koehn, 2004b), the improvement is statistically significant atp &lt; 0.05. Though the improvement is modest, it is statistically significant and this positive result is important in view of the negative findings in (Carpuat and Wu, 2005) that WSD does not help MT. Furthermore, note that Hiero+WSD has higher n-gram precisions than Hiero. 7 Analysis Ideally, the WSD system should be suggesting highquality translations which are frequently part of the reference sentences. To determine this, we note the set of gram</context>
+</contexts>
+<marker>Collins, Koehn, Kucerova, 2005</marker>
+<rawString>M. Collins, P. Koehn, and I. Kucerova. 2005. Clause restructuring for statistical machine translation. In Proc. ofACL05, pages 531–540.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>U Germann</author>
+</authors>
+<title>Greedy decoding for statistical machine translation in almost linear time.</title>
+<date>2003</date>
+<booktitle>In Proc. ofHLT-NAACL03,</booktitle>
+<pages>72--79</pages>
+<contexts>
+<context citStr="Germann, 2003" endWordPosition="435" position="2809" startWordPosition="434">izing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as the WSD model’s predicted translation. They did not incorporate their WSD model or its predictions into their translation model; rather, they used the WSD predictions either to constrain the options available to their decoder, or to postedit the output of their decoder. They reported the negative result that WSD decreased the performance of MT based on their experiments. In another work (Vickr</context>
+</contexts>
+<marker>Germann, 2003</marker>
+<rawString>U. Germann. 2003. Greedy decoding for statistical machine translation in almost linear time. In Proc. ofHLT-NAACL03, pages 72–79.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+<author>F J Och</author>
+<author>D Marcu</author>
+</authors>
+<title>Statistical phrasebased translation.</title>
+<date>2003</date>
+<booktitle>In Proc. of HLT-NAACL03,</booktitle>
+<pages>48--54</pages>
+<contexts>
+<context citStr="Koehn et al., 2003" endWordPosition="314" position="1994" startWordPosition="311">ranslations in a target language, depending on the particular meaning of w in context. Hence, the assumption is that in resolving sense ambiguity, a WSD system will be able to help an MT system to determine the correct translation for an ambiguous word. To determine the correct sense of a word, WSD systems typically use a wide array of features that are not limited to the local context of w, and some of these features may not be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT sys</context>
+<context citStr="Koehn et al., 2003" endWordPosition="723" position="4553" startWordPosition="720">D system into Hiero. In Section 4, we showed that they were able to improve their model’s describe the training data used by the WSD system. accuracy on two simplified translation tasks: word In Section 5, we describe how the WSD translations translation and blank-filling. provided are used by the decoder of the MT system. Recently, Cabezas and Resnik (2005) experi- In Section 6 and 7, we present and analyze our exmented with incorporating WSD translations into perimental results, before concluding in Section 8. Pharaoh, a state-of-the-art phrase-based MT sys- 2 Word Sense Disambiguation tem (Koehn et al., 2003). Their WSD system pro- Prior research has shown that using Support Vector vided additional translations to the phrase table of Machines (SVM) as the learning algorithm for WSD Pharaoh, which fired a new model feature, so that achieves good results (Lee and Ng, 2002). For our the decoder could weigh the additional alternative experiments, we use the SVM implementation of translations against its own. However, they could (Chang and Lin, 2001) as it is able to work on multinot automatically tune the weight of this feature in class problems to output the classification probabilthe same way as the</context>
+<context citStr="Koehn et al. (2003)" endWordPosition="3575" position="21189" startWordPosition="3572">he FBIS corpus and the Xinhua portion of the Gigaword corpus, we trained a trigram language model using the SRI Language Modelling Toolkit (Stolcke, 2002). Following (Chiang, 2005), we used the version 11a NIST BLEU script with its default settings to calculate the BLEU scores (Papineni et al., 2002) based on case-insensitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al. (2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gathered WSD training data by following the procedure described in section 4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these weights, we run Hiero’s decoder to perform the actual translation of the MT 2003 test sentences and obtained a BLEU score of 29.73, as shown in the row Hiero of </context>
+</contexts>
+<marker>Koehn, Och, Marcu, 2003</marker>
+<rawString>P. Koehn, F. J. Och, and D. Marcu. 2003. Statistical phrasebased translation. In Proc. of HLT-NAACL03, pages 48–54.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+</authors>
+<title>Noun Phrase Translation.</title>
+<date>2003</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Southern California.</institution>
+<marker>Koehn, 2003</marker>
+<rawString>P. Koehn. 2003. Noun Phrase Translation. Ph.D. thesis, University of Southern California.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+</authors>
+<title>Pharaoh: A beam search decoder for phrasebased statistical machine translation models.</title>
+<date>2004</date>
+<booktitle>In Proc. of AMTA04,</booktitle>
+<pages>115--124</pages>
+<contexts>
+<context citStr="Koehn, 2004" endWordPosition="376" position="2415" startWordPosition="375">t be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as th</context>
+<context citStr="Koehn, 2004" endWordPosition="3875" position="22860" startWordPosition="3874">ights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score of 30.30, as shown in the row Hiero+WSD of Table 1. The improvement of 0.57 is statistically significant at p &lt; 0.05 using the sign-test as described by Collins et al. (2005), with 374 (+1), 318 (−1) and 227 (0). Using the bootstrap-sampling test described in (Koehn, 2004b), the improvement is statistically significant atp &lt; 0.05. Though the improvement is modest, it is statistically significant and this positive result is important in view of the negative findings in (Carpuat and Wu, 2005) that WSD does not help MT. Furthermore, note that Hiero+WSD has higher n-gram precisions than Hiero. 7 Analysis Ideally, the WSD system should be suggesting highquality translations which are frequently part of the reference sentences. To determine this, we note the set of grammar rules used in the best derivation for translating each test sentence. From the rules of each t</context>
+</contexts>
+<marker>Koehn, 2004</marker>
+<rawString>P. Koehn. 2004a. Pharaoh: A beam search decoder for phrasebased statistical machine translation models. In Proc. of AMTA04, pages 115–124.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+</authors>
+<title>Statistical significance tests for machine translation evaluation.</title>
+<date>2004</date>
+<booktitle>In Proc. of EMNLP04,</booktitle>
+<pages>388--395</pages>
+<contexts>
+<context citStr="Koehn, 2004" endWordPosition="376" position="2415" startWordPosition="375">t be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu (2005) integrated the translation predictions from a Chinese WSD system (Carpuat et al., 2004) into a ChineseEnglish word-based statistical MT system using the ISI ReWrite decoder (Germann, 2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as th</context>
+<context citStr="Koehn, 2004" endWordPosition="3875" position="22860" startWordPosition="3874">ights obtained by MERT are shown in the row Hiero+WSD of Table 2. We note that a negative weight is learnt for Ptywsd. This means that in general, the model prefers grammar rules having chunks that matches WSD translations. This matches our intuition. Using the weights obtained, we translated the test sentences and obtained a BLEU score of 30.30, as shown in the row Hiero+WSD of Table 1. The improvement of 0.57 is statistically significant at p &lt; 0.05 using the sign-test as described by Collins et al. (2005), with 374 (+1), 318 (−1) and 227 (0). Using the bootstrap-sampling test described in (Koehn, 2004b), the improvement is statistically significant atp &lt; 0.05. Though the improvement is modest, it is statistically significant and this positive result is important in view of the negative findings in (Carpuat and Wu, 2005) that WSD does not help MT. Furthermore, note that Hiero+WSD has higher n-gram precisions than Hiero. 7 Analysis Ideally, the WSD system should be suggesting highquality translations which are frequently part of the reference sentences. To determine this, we note the set of grammar rules used in the best derivation for translating each test sentence. From the rules of each t</context>
+</contexts>
+<marker>Koehn, 2004</marker>
+<rawString>P. Koehn. 2004b. Statistical significance tests for machine translation evaluation. In Proc. of EMNLP04, pages 388– 395.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y K Lee</author>
+<author>H T Ng</author>
+</authors>
+<title>An empirical evaluation of knowledge sources and learning algorithms for word sense disambiguation.</title>
+<date>2002</date>
+<booktitle>In Proc. of EMNLP02,</booktitle>
+<pages>41--48</pages>
+<contexts>
+<context citStr="Lee and Ng, 2002" endWordPosition="767" position="4820" startWordPosition="764">ing. provided are used by the decoder of the MT system. Recently, Cabezas and Resnik (2005) experi- In Section 6 and 7, we present and analyze our exmented with incorporating WSD translations into perimental results, before concluding in Section 8. Pharaoh, a state-of-the-art phrase-based MT sys- 2 Word Sense Disambiguation tem (Koehn et al., 2003). Their WSD system pro- Prior research has shown that using Support Vector vided additional translations to the phrase table of Machines (SVM) as the learning algorithm for WSD Pharaoh, which fired a new model feature, so that achieves good results (Lee and Ng, 2002). For our the decoder could weigh the additional alternative experiments, we use the SVM implementation of translations against its own. However, they could (Chang and Lin, 2001) as it is able to work on multinot automatically tune the weight of this feature in class problems to output the classification probabilthe same way as the others. They obtained a rela- ity for each class. tively small improvement, and no statistical signifi- Our implemented WSD classifier uses the knowlcance test was reported to determine if the improve- edge sources of local collocations, parts-of-speech ment was sta</context>
+</contexts>
+<marker>Lee, Ng, 2002</marker>
+<rawString>Y. K. Lee and H. T. Ng. 2002. An empirical evaluation of knowledge sources and learning algorithms for word sense disambiguation. In Proc. of EMNLP02, pages 41–48.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P M Lewis</author>
+<author>R E Stearns</author>
+</authors>
+<title>Syntax-directed transduction.</title>
+<date>1968</date>
+<journal>Journal of the ACM,</journal>
+<volume>15</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Lewis and Stearns, 1968" endWordPosition="1240" position="7698" startWordPosition="1237"> additional features into the MT model which compares favorably to the best participating system operate on the existing rules of the grammar, with- in the task (Carpuat et al., 2004). out introducing competing rules. These features are 3 Hiero treated, both in feature-weight tuning and in decod- Hiero (Chiang, 2005) is a hierarchical phrase-based ing, on the same footing as the rest of the model, model for statistical machine translation, based on allowing it to weigh the WSD model predictions weighted synchronous context-free grammar (CFG) against other pieces of evidence so as to optimize (Lewis and Stearns, 1968). A synchronous CFG translation accuracy (as measured by BLEU). The consists of rewrite rules such as the following: contribution of our work lies in showing for the first X —* ('y, α) (1) time that integrating a WSD system significantly improves the performance of a state-of-the-art statistical MT system on an actual translation task. In the next section, we describe our WSD system. 34 where X is a non-terminal symbol, -y (α) is a string of terminal and non-terminal symbols in the source (target) language, and there is a one-to-one correspondence between the non-terminals in -y and α indicate</context>
+</contexts>
+<marker>Lewis, Stearns, 1968</marker>
+<rawString>P. M. II Lewis and R. E. Stearns. 1968. Syntax-directed transduction. Journal of the ACM, 15(3):465–488.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Marcu</author>
+<author>W Wong</author>
+</authors>
+<title>A phrase-based, joint probability model for statistical machine translation.</title>
+<date>2002</date>
+<booktitle>In Proc. of EMNLP02,</booktitle>
+<pages>133--139</pages>
+<contexts>
+<context citStr="Marcu and Wong, 2002" endWordPosition="310" position="1974" startWordPosition="307">e may have different translations in a target language, depending on the particular meaning of w in context. Hence, the assumption is that in resolving sense ambiguity, a WSD system will be able to help an MT system to determine the correct translation for an ambiguous word. To determine the correct sense of a word, WSD systems typically use a wide array of features that are not limited to the local context of w, and some of these features may not be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the perf</context>
+</contexts>
+<marker>Marcu, Wong, 2002</marker>
+<rawString>D. Marcu and W. Wong. 2002. A phrase-based, joint probability model for statistical machine translation. In Proc. of EMNLP02, pages 133–139.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F J Och</author>
+<author>H Ney</author>
+</authors>
+<title>Improved statistical alignment models.</title>
+<date>2000</date>
+<booktitle>In Proc. ofACL00,</booktitle>
+<pages>440--447</pages>
+<contexts>
+<context citStr="Och and Ney, 2000" endWordPosition="3548" position="21029" startWordPosition="3545">.1611 Table 2: Weights for each feature obtained by MERT training. The first eight features are those used by Hiero in (Chiang, 2005). the English portion of the FBIS corpus and the Xinhua portion of the Gigaword corpus, we trained a trigram language model using the SRI Language Modelling Toolkit (Stolcke, 2002). Following (Chiang, 2005), we used the version 11a NIST BLEU script with its default settings to calculate the BLEU scores (Papineni et al., 2002) based on case-insensitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al. (2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gathered WSD training data by following the procedure described in section 4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these w</context>
+</contexts>
+<marker>Och, Ney, 2000</marker>
+<rawString>F. J. Och and H. Ney. 2000. Improved statistical alignment models. In Proc. ofACL00, pages 440–447.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F J Och</author>
+<author>H Ney</author>
+</authors>
+<title>Discriminative training and maximum entropy models for statistical machine translation.</title>
+<date>2002</date>
+<booktitle>In Proc. ofACL02,</booktitle>
+<pages>295--302</pages>
+<contexts>
+<context citStr="Och and Ney, 2002" endWordPosition="1431" position="8835" startWordPosition="1428">ere is a one-to-one correspondence between the non-terminals in -y and α indicated by co-indexation. Hence, -y and α always have the same number of non-terminal symbols. For instance, we could have the following grammar rule: X -* (4 A Y�j X1, go to X1 every month to) (2) where boxed indices represent the correspondences between non-terminal symbols. Hiero extracts the synchronous CFG rules automatically from a word-aligned parallel corpus. To translate a source sentence, the goal is to find its most probable derivation using the extracted grammar rules. Hiero uses a general log-linear model (Och and Ney, 2002) where the weight of a derivation D for a particular source sentence and its translation is w(D) = � Oi(D)λa (3) i where Oi is a feature function and Ai is the weight for feature Oi. To ensure efficient decoding, the Oi are subject to certain locality restrictions. Essentially, they should be defined as products of functions defined on isolated synchronous CGF rules; however, it is possible to extend the domain of locality of the features somewhat. A n-gram language model adds a dependence on (n−1) neighboring target-side words (Wu, 1996; Chiang, 2007), making decoding much more difficult but </context>
+</contexts>
+<marker>Och, Ney, 2002</marker>
+<rawString>F. J. Och and H. Ney. 2002. Discriminative training and maximum entropy models for statistical machine translation. In Proc. ofACL02, pages 295–302.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F J Och</author>
+<author>H Ney</author>
+</authors>
+<title>The alignment template approach to statistical machine translation.</title>
+<date>2004</date>
+<journal>Computational Linguistics,</journal>
+<volume>30</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Och and Ney, 2004" endWordPosition="318" position="2014" startWordPosition="315">get language, depending on the particular meaning of w in context. Hence, the assumption is that in resolving sense ambiguity, a WSD system will be able to help an MT system to determine the correct translation for an ambiguous word. To determine the correct sense of a word, WSD systems typically use a wide array of features that are not limited to the local context of w, and some of these features may not be used by state-of-the-art statistical MT systems. 33 To perform translation, state-of-the-art MT systems use a statistical phrase-based approach (Marcu and Wong, 2002; Koehn et al., 2003; Och and Ney, 2004) by treating phrases as the basic units of translation. In this approach, a phrase can be any sequence of consecutive words and is not necessarily linguistically meaningful. Capitalizing on the strength of the phrase-based approach, Chiang (2005) introduced a hierarchical phrase-based statistical MT system, Hiero, which achieves significantly better translation performance than Pharaoh (Koehn, 2004a), which is a state-of-the-art phrasebased statistical MT system. Recently, some researchers investigated whether performing WSD will help to improve the performance of an MT system. Carpuat and Wu </context>
+</contexts>
+<marker>Och, Ney, 2004</marker>
+<rawString>F. J. Och and H. Ney. 2004. The alignment template approach to statistical machine translation. Computational Linguistics, 30(4):417–449.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F J Och</author>
+</authors>
+<title>Minimum error rate training in statistical machine translation.</title>
+<date>2003</date>
+<booktitle>In Proc. ofACL03,</booktitle>
+<pages>160--167</pages>
+<contexts>
+<context citStr="Och, 2003" endWordPosition="3629" position="21500" startWordPosition="3628">nsitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al. (2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gathered WSD training data by following the procedure described in section 4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rate training (MERT) (Och, 2003) with the decoder to tune the weights for each feature. The weights obtained are shown in the row Hiero of Table 2. Using these weights, we run Hiero’s decoder to perform the actual translation of the MT 2003 test sentences and obtained a BLEU score of 29.73, as shown in the row Hiero of Table 1. This is higher than the score of 28.77 reported in (Chiang, 2005), perhaps due to differences in word segmentation, etc. Note that comparing with the MT systems used in (Carpuat and Wu, 2005) and (Cabezas and Resnik, 2005), the Hiero system we are using represents a much stronger baseline MT system up</context>
+</contexts>
+<marker>Och, 2003</marker>
+<rawString>F. J. Och. 2003. Minimum error rate training in statistical machine translation. In Proc. ofACL03, pages 160–167.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Papineni</author>
+<author>S Roukos</author>
+<author>T Ward</author>
+<author>W J Zhu</author>
+</authors>
+<title>BLEU: A method for automatic evaluation of machine translation.</title>
+<date>2002</date>
+<booktitle>In Proc. ofACL02,</booktitle>
+<pages>311--318</pages>
+<contexts>
+<context citStr="Papineni et al., 2002" endWordPosition="3520" position="20871" startWordPosition="3517">sd(t|s) Pty,,,sd Hiero 0.2337 0.0882 0.1666 0.0393 0.1357 0.0665 −0.0582 −0.4806 - - Hiero+WSD 0.1937 0.0770 0.1124 0.0487 0.0380 0.0988 −0.0305 −0.1747 0.1051 −0.1611 Table 2: Weights for each feature obtained by MERT training. The first eight features are those used by Hiero in (Chiang, 2005). the English portion of the FBIS corpus and the Xinhua portion of the Gigaword corpus, we trained a trigram language model using the SRI Language Modelling Toolkit (Stolcke, 2002). Following (Chiang, 2005), we used the version 11a NIST BLEU script with its default settings to calculate the BLEU scores (Papineni et al., 2002) based on case-insensitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al. (2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gathered WSD training data by following the procedure described in section 4. 6.1 Hiero Results Using the MT 2002 test set, we ran the minimumerror rat</context>
+</contexts>
+<marker>Papineni, Roukos, Ward, Zhu, 2002</marker>
+<rawString>K. Papineni, S. Roukos, T. Ward, and W. J. Zhu. 2002. BLEU: A method for automatic evaluation of machine translation. In Proc. ofACL02, pages 311–318.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Stolcke</author>
+</authors>
+<title>SRILM - an extensible language modeling toolkit.</title>
+<date>2002</date>
+<booktitle>In Proc. ofICSLP02,</booktitle>
+<pages>901--904</pages>
+<contexts>
+<context citStr="Stolcke, 2002" endWordPosition="3496" position="20724" startWordPosition="3495">ro+WSD 30.30 74.82 40.40 22.45 12.42 Table 1: BLEU scores System Features P�.(e) P(-y|α) P(α|y) P.(-y|α) P.(α|y) Ptyph,. Glue Pty,,,o,.d P.sd(t|s) Pty,,,sd Hiero 0.2337 0.0882 0.1666 0.0393 0.1357 0.0665 −0.0582 −0.4806 - - Hiero+WSD 0.1937 0.0770 0.1124 0.0487 0.0380 0.0988 −0.0305 −0.1747 0.1051 −0.1611 Table 2: Weights for each feature obtained by MERT training. The first eight features are those used by Hiero in (Chiang, 2005). the English portion of the FBIS corpus and the Xinhua portion of the Gigaword corpus, we trained a trigram language model using the SRI Language Modelling Toolkit (Stolcke, 2002). Following (Chiang, 2005), we used the version 11a NIST BLEU script with its default settings to calculate the BLEU scores (Papineni et al., 2002) based on case-insensitive ngram matching, where n is up to 4. First, we performed word alignment on the FBIS parallel corpus using GIZA++ (Och and Ney, 2000) in both directions. The word alignments of both directions are then combined into a single set of alignments using the “diag-and” method of Koehn et al. (2003). Based on these alignments, synchronous CFG rules are then extracted from the corpus. While Hiero is extracting grammar rules, we gath</context>
+</contexts>
+<marker>Stolcke, 2002</marker>
+<rawString>A. Stolcke. 2002. SRILM - an extensible language modeling toolkit. In Proc. ofICSLP02, pages 901–904.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Vickrey</author>
+<author>L Biewald</author>
+<author>M Teyssier</author>
+<author>D Koller</author>
+</authors>
+<title>Word-sense disambiguation for machine translation.</title>
+<date>2005</date>
+<booktitle>In Proc. ofEMNLP05,</booktitle>
+<pages>771--778</pages>
+<contexts>
+<context citStr="Vickrey et al., 2005" endWordPosition="539" position="3425" startWordPosition="536">2003). Though they acknowledged that directly using English translations as word senses would be ideal, they instead predicted the HowNet sense of a word and then used the English gloss of the HowNet sense as the WSD model’s predicted translation. They did not incorporate their WSD model or its predictions into their translation model; rather, they used the WSD predictions either to constrain the options available to their decoder, or to postedit the output of their decoder. They reported the negative result that WSD decreased the performance of MT based on their experiments. In another work (Vickrey et al., 2005), the WSD problem was recast as a word translation task. The Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 33–40, Prague, Czech Republic, June 2007. c�2007 Association for Computational Linguistics translation choices for a word w were defined as the Then, in Section 3, we describe the Hiero MT sysset of words or phrases aligned to w, as gathered tem and introduce the two new features used to intefrom a word-aligned parallel corpus. The authors grate the WSD system into Hiero. In Section 4, we showed that they were able to improve their model’s d</context>
+<context citStr="Vickrey et al., 2005" endWordPosition="913" position="5732" startWordPosition="910">classification probabilthe same way as the others. They obtained a rela- ity for each class. tively small improvement, and no statistical signifi- Our implemented WSD classifier uses the knowlcance test was reported to determine if the improve- edge sources of local collocations, parts-of-speech ment was statistically significant. (POS), and surrounding words, following the sucNote that the experiments in (Carpuat and Wu, cessful approach of (Lee and Ng, 2002). For local 2005) did not use a state-of-the-art MT system, collocations, we use 3 features, w_1w+1, w_1, and while the experiments in (Vickrey et al., 2005) were w+1, where w_1 (w+1) is the token immediately to not done using a full-fledged MT system and the the left (right) of the current ambiguous word ocevaluation was not on how well each source sentence currence w. For parts-of-speech, we use 3 features, was translated as a whole. The relatively small im- P_1, P0, and P+1, where P0 is the POS of w, and provement reported by Cabezas and Resnik (2005) P_1 (P+1) is the POS of w_1 (w+1). For surroundwithout a statistical significance test appears to be ing words, we consider all unigrams (single words) inconclusive. Considering the conflicting re</context>
+</contexts>
+<marker>Vickrey, Biewald, Teyssier, Koller, 2005</marker>
+<rawString>D. Vickrey, L. Biewald, M. Teyssier, and D. Koller. 2005. Word-sense disambiguation for machine translation. In Proc. ofEMNLP05, pages 771–778.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Wu</author>
+</authors>
+<title>A polynomial-time algorithm for statistical machine translation.</title>
+<date>1996</date>
+<booktitle>In Proc. ofACL96,</booktitle>
+<pages>152--158</pages>
+<contexts>
+<context citStr="Wu, 1996" endWordPosition="1525" position="9378" startWordPosition="1524"> rules. Hiero uses a general log-linear model (Och and Ney, 2002) where the weight of a derivation D for a particular source sentence and its translation is w(D) = � Oi(D)λa (3) i where Oi is a feature function and Ai is the weight for feature Oi. To ensure efficient decoding, the Oi are subject to certain locality restrictions. Essentially, they should be defined as products of functions defined on isolated synchronous CGF rules; however, it is possible to extend the domain of locality of the features somewhat. A n-gram language model adds a dependence on (n−1) neighboring target-side words (Wu, 1996; Chiang, 2007), making decoding much more difficult but still polynomial; in this paper, we add features that depend on the neighboring source-side words, which does not affect decoding complexity at all because the source string is fixed. In principle we could add features that depend on arbitrary source-side context. 3.1 New Features in Hiero for WSD To incorporate WSD into Hiero, we use the translations proposed by the WSD system to help Hiero obtain a better or more probable derivation during the translation of each source sentence. To achieve this, when a grammar rule R is considered dur</context>
+</contexts>
+<marker>Wu, 1996</marker>
+<rawString>D. Wu. 1996. A polynomial-time algorithm for statistical machine translation. In Proc. ofACL96, pages 152–158.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

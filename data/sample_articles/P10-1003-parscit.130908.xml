@@ -1,0 +1,819 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000001" no="0">
+<title confidence="0.975424">
+Bitext Dependency Parsing with Bilingual Subtree Constraints
+</title>
+<author confidence="0.987032">
+Wenliang Chen, Jun’ichi Kazama and Kentaro Torisawa
+</author>
+<affiliation confidence="0.986314">
+Language Infrastructure Group, MASTAR Project
+National Institute of Information and Communications Technology
+</affiliation>
+<address confidence="0.947669">
+3-5 Hikari-dai, Seika-cho, Soraku-gun, Kyoto, Japan, 619-0289
+</address>
+<email confidence="0.994336">
+{chenwl, kazama, torisawa}@nict.go.jp
+</email>
+<sectionHeader confidence="0.994706" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999972708333334">This paper proposes a dependency parsing method that uses bilingual constraints to improve the accuracy of parsing bilingual texts (bitexts). In our method, a targetside tree fragment that corresponds to a source-side tree fragment is identified via word alignment and mapping rules that are automatically learned. Then it is verified by checking the subtree list that is collected from large scale automatically parsed data on the target side. Our method, thus, requires gold standard trees only on the source side of a bilingual corpus in the training phase, unlike the joint parsing model, which requires gold standard trees on the both sides. Compared to the reordering constraint model, which requires the same training data as ours, our method achieved higher accuracy because of richer bilingual constraints. Experiments on the translated portion of the Chinese Treebank show that our system outperforms monolingual parsers by 2.93 points for Chinese and 1.64 points for English.</bodyText>
+<sectionHeader confidence="0.99888" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999887346938775">Parsing bilingual texts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the constraints estimated from large unlabeled monolingual corpora. Basically, a (candidate) dependency subtree in a source-language sentence is mapped to a subtree in the corresponding target-language sentence by using word alignment and mapping rules that are automatically learned. The target subtree is verified by checking the subtree list that is collected from unlabeled sentences in the target language parsed by a usual monolingual parser. The result is used as additional features for the source side dependency parser. In this paper, our task is to improve the source side parser with the help of the translations on the target side. Many researchers have investigated the use of bilingual constraints for parsing (Burkett and Klein, 2008; Zhao et al., 2009; Huang et al., 2009). For example, Burkett and Klein (2008) show that parsing with joint models on bitexts improves performance on either or both sides. However, their methods require that the training data have tree structures on both sides, which are hard to obtain. Our method only requires dependency annotation on the source side and is much simpler and faster. Huang et al. (2009) proposes a method, bilingual-constrained monolingual parsing, in which a source-language parser is extended to use the re-ordering of words between two sides’ sentences as additional information. The input of their method is the source trees with their translation on the target side as ours, which is much easier to obtain than trees on both sides. However, their method does not use any tree structures on the target side that might be useful for ambiguity resolution.</bodyText>
+<page confidence="0.992292">
+21
+</page>
+<note confidence="0.9432355">
+Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 21–29,
+Uppsala, Sweden, 11-16 July 2010. c�2010 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.995516638888889">Our method achieves much greater improvement because it uses the richer subtree constraints. Our approach takes the same input as Huang et al.(2009) and exploits the subtree structure on the target side to provide the bilingual constraints. The subtrees are extracted from large-scale autoparsed monolingual data on the target side. The main problem to be addressed is mapping words on the source side to the target subtree because there are many to many mappings and reordering problems that often occur in translation (Koehn et al., 2003). We use an automatic way for generating mapping rules to solve the problems. Based on the mapping rules, we design a set of features for parsing models. The basic idea is as follows: if the words form a subtree on one side, their corresponding words on the another side will also probably form a subtree. Experiments on the translated portion of the Chinese Treebank (Xue et al., 2002; Bies et al., 2007) show that our system outperforms state-ofthe-art monolingual parsers by 2.93 points for Chinese and 1.64 points for English. The results also show that our system provides higher accuracies than the parser of Huang et al.(2009). The rest of the paper is organized as follows: Section 2 introduces the motivation of our idea. Section 3 introduces the background of dependency parsing. Section 4 proposes an approach of constructing bilingual subtree constraints. Section 5 explains the experimental results. Finally, in Section 6 we draw conclusions and discuss future work. He ate the meat with a fork .</bodyText>
+<figureCaption confidence="0.852406">
+t(He) fuse) RT(fork) VZ(eat) AJ(meat) o(.)
+Figure 1: Example for disambiguation
+tion.</figureCaption>
+<bodyText confidence="0.99850925">There are two candidates “ate” and “meat” to be the head of “with” as the dashed directed links in Figure 1 show. By adding “fork”, we have two possible dependency relations, “meat-with-fork” and “ate-with-fork”, to be verified. First, we check the possible relation of “meat”, “with”, and “fork”. We obtain their corresponding words “MJ(meat)”, “m(use)”, and “X`f(fork)” in Chinese via the word alignment links. We verify that the corresponding words form a subtree by looking up a subtree list in Chinese (described in Section 4.1). But we can not find a subtree for them. Next, we check the possible relation of “ate”, “with”, and “fork”. We obtain their corresponding words “ (ate)”, “m(use)”, and “X`f(fork)”. Then we verify that the words form a subtree by looking up the subtree list. This time we can find the subtree as shown in Figure 2.</bodyText>
+<equation confidence="0.613164">
+f(use) ৹ᆀ(fork) ਲ਼(eat)
+</equation>
+<figureCaption confidence="0.973532">
+Figure 2: Example for a searched subtree
+</figureCaption>
+<sectionHeader confidence="0.962018" genericHeader="method">
+2 Motivation
+</sectionHeader>
+<bodyText confidence="0.999962388888889">In this section, we use an example to show the idea of using the bilingual subtree constraints to improve parsing performance. Suppose that we have an input sentence pair as shown in Figure 1, where the source sentence is in English, the target is in Chinese, the dashed undirected links are word alignment links, and the directed links between words indicate that they have a (candidate) dependency relation. In the English side, it is difficult for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side.</bodyText>
+<sectionHeader confidence="0.961172" genericHeader="method">
+3 Dependency parsing
+</sectionHeader>
+<bodyText confidence="0.998887">For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira</bodyText>
+<page confidence="0.993708">
+22
+</page>
+<bodyText confidence="0.9999322">(2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm.</bodyText>
+<subsectionHeader confidence="0.999957">
+3.1 Parsing with monolingual features
+</subsectionHeader>
+<bodyText confidence="0.999900666666667">Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented for all the possible relations on single edges (two words) or adjacent edges (three words). The parsing algorithm chooses the tree with the highest score in a bottom-up fashion.</bodyText>
+<sectionHeader confidence="0.80503" genericHeader="method">
+4 Bilingual subtree constraints
+</sectionHeader>
+<bodyText confidence="0.998234">In this section, we propose an approach that uses the bilingual subtree constraints to help parse source sentences that have translations on the target side. We use large-scale auto-parsed data to obtain subtrees on the target side. Then we generate the mapping rules to map the source subtrees onto the extracted target subtrees. Finally, we design the bilingual subtree features based on the mapping rules for the parsing model. These features indicate the information of the constraints between bilingual subtrees, that are called bilingual subtree constraints.</bodyText>
+<figure confidence="0.459025">
+ROOT He ate the meat with a fork .
+</figure>
+<figureCaption confidence="0.999693">
+Figure 3: Example of dependency tree
+</figureCaption>
+<bodyText confidence="0.999915571428572">In our systems, the monolingual features include the firstand secondorder features presented in (McDonald et al., 2005; McDonald and Pereira, 2006) and the parent-child-grandchild features used in (Carreras, 2007). We call the parser with the monolingual features monolingual parser.</bodyText>
+<subsectionHeader confidence="0.99997">
+3.2 Parsing with bilingual features
+</subsectionHeader>
+<bodyText confidence="0.999975666666667">In this paper, we parse source sentences with the help of their translations. A set of bilingual features are designed for the parsing model.</bodyText>
+<subsectionHeader confidence="0.914985">
+3.2.1 Bilingual subtree features
+</subsectionHeader>
+<bodyText confidence="0.999927833333333">We design bilingual subtree features, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are from the possible dependency relations.</bodyText>
+<subsectionHeader confidence="0.851852">
+3.2.2 Bilingual reordering feature
+</subsectionHeader>
+<bodyText confidence="0.999900142857143">Huang et al. (2009) propose features based on reordering between languages for a shift-reduce parser. They define the features based on wordalignment information to verify that the corresponding words form a contiguous span for resolving shift-reduce conflicts. We also implement similar features in our system.</bodyText>
+<subsectionHeader confidence="0.995555">
+4.1 Subtree extraction
+</subsectionHeader>
+<bodyText confidence="0.9999498125">Chen et al. (2009) propose a simple method to extract subtrees from large-scale monolingual data and use them as features to improve monolingual parsing. Following their method, we parse large unannotated data with a monolingual parser and obtain a set of subtrees (5Tt) in the target language. We encode the subtrees into string format that is expressed as st = w : hid(−w : hid)+1, where w refers to a word in the subtree and hid refers to the word ID of the word’s head (hid=0 means that this word is the root of a subtree). Here, word ID refers to the ID (starting from 1) of a word in the subtree (words are ordered based on the positions of the original sentence). For example, “He” and “ate” have a left dependency arc in the sentence shown in Figure 3. The subtree is encoded as “He:2ate:0”. There is also a parent-child-grandchild relation among “ate”, “with”, and “fork”. So the subtree is encoded as “ate:0-with:1-fork:2”. If a subtree contains two nodes, we call it a bigramsubtree. If a subtree contains three nodes, we call it a trigram-subtree. From the dependency tree of Figure 3, we obtain the subtrees, as shown in Figure 4 and Figure 5. Figure 4 shows the extracted bigram-subtrees and Figure 5 shows the extracted trigram-subtrees. After extraction, we obtain a set of subtrees. We remove the subtrees occurring only once in the data. Following Chen et al. (2009), we also group the subtrees into different sets based on their frequencies.</bodyText>
+<footnote confidence="0.5174265">
+1+ refers to matching the preceding element one or more
+times and is the same as a regular expression in Perl.
+</footnote>
+<page confidence="0.992786">
+23
+</page>
+<figure confidence="0.811079333333333">
+ate meat the:1:2-meat:2:0
+the
+He He:1:2-ate:2:0
+ate ate:1:0-meat:2:1 with with:1:0-fork:2:1
+fork
+meat
+ate fork a:1:2-fork:2:0
+a
+with ate:1:0-with:2:1
+</figure>
+<figureCaption confidence="0.999738">
+Figure 4: Examples of bigram-subtrees
+ate ate:1:0-meat:2:1-with:3:1 ate ate:1:0-with:2:1-.:3:1
+meat with with .</figureCaption>
+<figure confidence="0.871891733333333">ate ate
+He:1:3-NULL:2:3-ate:3:0 ate:1:0-NULL:2:1-meat:3:1
+He NULL NULL meat
+the:1:3-NULL:2:3-meat:3:0 with:1:0-NULL:2:1-fork:3:1
+a:1:3-NULL:2:3-fork:3:0
+(a)
+ate:1:0-the:2:3-meat:3:1 ate:1:0-with:2:1-fork:3:2
+with:1:0-a:2:3-fork:3:1 NULL:1:2-He:2:3-ate:3:0
+He:1:3-NULL:2:1-ate:3:0 ate:1:0-meat:2:1-NULL:3:2
+ate:1:0-NULL:2:3-with:3:1 with:1:0-fork:2:1-NULL:3:2
+NULL:1:2-a:2:3-fork:3:0 a:1:3-NULL:2:1-fork:3:0
+ate:1:0-NULL:2:3-.:3:1 ate:1:0-.:2:1-NULL:3:2
+NULL:1:2-the:2:3-meat:3:0 the:1:3-NULL:2:1-meat:3:0</figure>
+<bodyText confidence="0.905633846153846">4.2.1 Reordering and MtoN mapping in translation Both Chinese and English are classified as SVO languages because verbs precede objects in simple sentences. However, Chinese has many characteristics of such SOV languages as Japanese. The typical cases are listed below: 1) Prepositional phrases modifying a verb precede the verb. Figure 6 shows an example. In English the prepositional phrase “at the ceremony” follows the verb “said”, while its corresponding prepositional phrase “;t(NULL) IZA(ceremony) _L(at)” precedes the verb “iA(say)” in Chinese.</bodyText>
+<figure confidence="0.977796666666667">
+൘ RA к 䈤
+Said at the ceremony
+(b)
+</figure>
+<figureCaption confidence="0.999869">
+Figure 5: Examples of trigram-subtrees
+</figureCaption>
+<subsectionHeader confidence="0.999299">
+4.2 Mapping rules
+</subsectionHeader>
+<bodyText confidence="0.980662451612903">To provide bilingual subtree constraints, we need to find the characteristics of subtree mapping for the two given languages. However, subtree mapping is not easy. There are two main problems: MtoN (words) mapping and reordering, which often occur in translation. MtoN (words) mapping means that a source subtree with M words is mapped onto a target subtree with N words. For example, 2to3 means that a source bigram-subtree is mapped onto a target trigram-subtree. Due to the limitations of the parsing algorithm (McDonald and Pereira, 2006; Carreras, 2007), we only use bigramand trigram-subtrees in our approach. We generate the mapping rules for the 2to2, 2to3, 3to3, and 3to2 cases. For trigram-subtrees, we only consider the parentchild-grandchild type. As for the use of other types of trigram-subtrees, we leave it for future work. We first show the MtoN and reordering problems by using an example in Chinese-English translation. Then we propose a method to automatically generate mapping rules. Figure 6: Example for prepositional phrases modifying a verb 2) Relative clauses precede head noun. Figure 7 shows an example. In Chinese the relative clause “,�� (today) -�(signed)” precedes the head noun “AQ(project)”, while its corresponding clause “signed today” follows the head noun “projects” in English.</bodyText>
+<figure confidence="0.5800135">
+Ӻཙ ㆮᆇ Ⲵ й њ 亩ⴞ
+The 3 projects signed today
+</figure>
+<figureCaption confidence="0.9170125">
+Figure 7: Example for relative clauses preceding
+the head noun
+</figureCaption>
+<listItem confidence="0.990465666666667">3) Genitive constructions precede head noun. For example, “A (car) X `f(wheel)” can be translated as “the wheel of the car”. 4) Postposition in many constructions rather than prepositions. For example, “A `f(table) _L(on)” can be translated as “on the table”.</listItem>
+<page confidence="0.996357">
+24
+</page>
+<bodyText confidence="0.99996">We can find the MtoN mapping problem occurring in the above cases. For example, in Figure 6, trigram-subtree “在(NULL):3-上(at):1-说(say):0” is mapped onto bigram-subtree “said:0-at:1”. Since asking linguists to define the mapping rules is very expensive, we propose a simple method to easily obtain the mapping rules.</bodyText>
+<subsubsectionHeader confidence="0.571216">
+4.2.2 Bilingual subtree mapping
+</subsubsectionHeader>
+<bodyText confidence="0.985349555555556">To solve the mapping problems, we use a bilingual corpus, which includes sentence pairs, to automatically generate the mapping rules. First, the sentence pairs are parsed by monolingual parsers on both sides. Then we perform word alignment using a word-level aligner (Liang et al., 2006; DeNero and Klein, 2007). Figure 8 shows an example of a processed sentence pair that has tree structures on both sides and word alignment links.</bodyText>
+<figureCaption confidence="0.9022505">
+Figure 8: Example of auto-parsed bilingual sen-
+tence pair
+</figureCaption>
+<bodyText confidence="0.999718448275862">From these sentence pairs, we obtain subtree pairs. First, we extract a subtree (sts) from a source sentence. Then through word alignment links, we obtain the corresponding words of the words of sts. Because of the MtoN problem, some words lack of corresponding words in the target sentence. Here, our approach requires that at least two words of sts have corresponding words and nouns and verbs need corresponding words. If not, it fails to find a subtree pair for sts. If the corresponding words form a subtree (stt) in the target sentence, sts and stt are a subtree pair. We also keep the word alignment information in the target subtree. For example, we extract subtree “社 会(society):2-边缘(fringe):0” on the Chinese side and get its corresponding subtree “fringes(W 2):0of:1-society(W 1):2” on the English side, where W 1 means that the target word is aligned to the first word of the source subtree, and W 2 means that the target word is aligned to the second word of the source subtree. That is, we have a subtree pair: “社 会(society):2-边 缘(fringe):0” and “fringe(W 2):0-of:1-society(W 1):2”. The extracted subtree pairs indicate the translation characteristics between Chinese and English. For example, the pair “社 会(society):2边 缘(fringe):0” and “fringes:0-of:1-society:2” is a case where “Genitive constructions precede/follow the head noun”.</bodyText>
+<subsubsectionHeader confidence="0.612742">
+4.2.3 Generalized mapping rules
+</subsubsectionHeader>
+<bodyText confidence="0.999975675675676">To increase the mapping coverage, we generalize the mapping rules from the extracted subtree pairs by using the following procedure. The rules are divided by “=&gt;” into two parts: source (left) and target (right). The source part is from the source subtree and the target part is from the target subtree. For the source part, we replace nouns and verbs using their POS tags (coarse grained tags). For the target part, we use the word alignment information to represent the target words that have corresponding source words. For example, we have the subtree pair: “社 会(society):2-边 缘(fringe):0” and “fringes(W 2):0-of:1-society(W 1):2”, where “of” does not have a corresponding word, the POS tag of “社会(society)” is N, and the POS tag of “边缘(fringe)” is N. The source part of the rule becomes “N:2-N:0” and the target part becomes “W 2:0-of:1-W 1:2”. Table 1 shows the top five mapping rules of all four types ordered by their frequencies, where W 1 means that the target word is aligned to the first word of the source subtree, W 2 means that the target word is aligned to the second word, and W 3 means that the target word is aligned to the third word. We remove the rules that occur less than three times. Finally, we obtain 9,134 rules for 2to2, 5,335 for 2to3, 7,450 for 3to3, and 1,244 for 3to2 from our data. After experiments with different threshold settings on the development data sets, we use the top 20 rules for each type in our experiments. The generalized mapping rules might generate incorrect target subtrees. However, as described in Section 4.3.1, the generated subtrees are verified by looking up list 5Tt before they are used in the parsing models.</bodyText>
+<subsectionHeader confidence="0.995292">
+4.3 Bilingual subtree features
+</subsectionHeader>
+<bodyText confidence="0.999911666666667">Informally, if the words form a subtree on the source side, then the corresponding words on the target side will also probably form a subtree. For</bodyText>
+<note confidence="0.36977">
+ROOT They are on the fringes of society .
+ROOT 4140 k-T itis �
+</note>
+<page confidence="0.985578">
+25
+</page>
+<table confidence="0.99942012">
+# rules freq
+2to2 mapping
+1 N:2 N:0 =&gt; W 1:2 W 2:0 92776
+2 V:0 N:1 =&gt; W 1:0 W 2:1 62437
+3 V:0 V:1 =&gt; W 1:0 W 2:1 49633
+4 N:2 V:0 =&gt; W 1:2 W 2:0 43999
+5 的:2 N:0 =&gt; W 2:0 W 1:2 25301
+2to3 mapping
+1 N:2-N:0 =&gt; W 2:0-of:1-W 1:2 10361
+2 V:0-N:1 =&gt; W 1:0-of:1-W 2:2 4521
+3 V:0-N:1 =&gt; W 1:0-to:1-W 2:2 2917
+4 N:2-V:0 =&gt; W 2:0-of:1-W 1:2 2578
+5 N:2-N:0 =&gt; W 1:2-’:3-W 2:0 2316
+3to2 mapping
+1 V:2-的/DEC:3-N:0 =&gt; W 1:0-W 3:1 873
+2 V:2-的/DEC:3-N:0 =&gt; W 3:2-W 1:0 634
+3 N:2-的/DEG:3-N:0 =&gt; W 1:0-W 3:1 319
+4 N:2-的/DEG:3-N:0 =&gt; W 3:2-W 1:0 301
+5 V:0-的/DEG:3-N:1 =&gt; W 3:0-W 1:1 247
+3to3 mapping
+1 V:0-V:1-N:2 =&gt; W 1:0-W 2:1-W 3:2 9580
+2 N:2-的/DEG:3-N:0 =&gt; W 3:0-W 2:1-W 1:2 7010
+3 V:0-N:3-N:1 =&gt; W 1:0-W 2:3-W 3:1 5642
+4 V:0-V:1-V:2 =&gt; W 1:0-W 2:1-W 3:2 4563
+5 N:2-N:3-N:0 =&gt; W 1:2-W 2:3-W 3:0 3570
+</table>
+<tableCaption confidence="0.999945">
+Table 1: Top five mapping rules of 2to3 and 3to2
+example, in Figure 8, words “�J f7(they)” and “A-T(be on)” form a subtree , which is mapped onto the words “they” and “are” on the target side.</tableCaption>
+<bodyText confidence="0.999903888888889">These two target words form a subtree. We now develop this idea as bilingual subtree features. In the parsing process, we build relations for two or three words on the source side. The conditions of generating bilingual subtree features are that at least two of these source words must have corresponding words on the target side and nouns and verbs must have corresponding words. At first, we have a possible dependency relation (represented as a source subtree) of words to be verified. Then we obtain the corresponding target subtree based on the mapping rules. Finally, we verify that the target subtree is included in 5Tt. If yes, we activate a positive feature to encourage the dependency relation.</bodyText>
+<subsectionHeader confidence="0.238869">
+3A A 7)� I&amp;I, -r M —= ^ 9H
+</subsectionHeader>
+<bodyText confidence="0.358905">Those are the 3 projects signed today</bodyText>
+<figureCaption confidence="0.979651">
+Figure 9: Example of features for parsing
+</figureCaption>
+<bodyText confidence="0.999727166666667">We consider four types of features based on 2to2, 3to3, 3to2, and 2to3 mappings. In the 2to2, 3to3, and 3to2 cases, the target subtrees do not add new words. We represent features in a direct way. For the 2to3 case, we represent features using a different strategy.</bodyText>
+<subsubsectionHeader confidence="0.407005">
+4.3.1 Features for 2to2, 3to3, and 3to2
+</subsubsectionHeader>
+<bodyText confidence="0.99345325">We design the features based on the mapping rules of 2to2, 3to3, and 3to2. For example, we design features for a 3to2 case from Figure 9. The possible relation to be verified forms source subtree “1 -:�(signed)/VV:2-M(NULL)/DEC:3-
+s Q(project)/NN:0” in which “A Q(project)”
+is aligned to “projects” and “1 (signed)” is
+aligned to “signed” as shown in Figure 9.</bodyText>
+<figureCaption confidence="0.695811428571429">The
+procedure of generating the features is shown in
+Figure 10. We explain Steps (1), (2), (3), and (4)
+as follows:</figureCaption>
+<figure confidence="0.96356275">
+&amp;quot;/VV:2-M/DEC:3-7AH/NN:0
+projects(W_3) signed(W_1)
+(1)
+V:2-M/DEC:3-N:0
+</figure>
+<figureCaption confidence="0.8895375">
+Figure 10: Example of feature generation for 3to2
+case
+</figureCaption>
+<listItem confidence="0.93972175">(1) Generate source part from the source subtree. We obtain “V:2-M/DEC:3-N:0” from “1 :�(signed)/VV:2-M(NULL)/DEC:3-A Q(project)/NN:0”. (2) Obtain target parts based on the matched mapping rules, whose source parts equal “V:2-M/DEC:3-N:0”. The matched rules are “V:2-M/DEC:3-N:0 =&gt;W 3:0-W 1:1” and “V:2-M/DEC:3-N:0 =&gt; W 3:2-W 1:0”. Thus, we have two target parts “W 3:0-W 1:1” and “W 3:2-W 1:0”. (3) Generate possible subtrees by considering the dependency relation indicated in the target parts.</listItem>
+<figure confidence="0.990247">
+W_3:0-W_1:1
+W_3:2-W_1:0
+projects:0-signed:1 STt
+projects:2-signed:0
+3to2:YES
+</figure>
+<page confidence="0.991614">
+26
+</page>
+<bodyText confidence="0.9973512">We generate a possible subtree “projects:0-signed:1” from the target part “W 3:0W 1:1”, where “projects” is aligned to “项 目(project)(W 3)” and “signed” is aligned to “签 字(signed)(W 1)”. We also generate another possible subtree “projects:2-signed:0” from “W 3:2W 1:0”.(4) Verify that at least one of the generated possible subtrees is a target subtree, which is included in 5Tt. If yes, we activate this feature. In the figure, “projects:0-signed:1” is a target subtree in 5Tt. So we activate the feature “3to2:YES” to encourage dependency relations among “签 字(signed)”, “的(NULL)”, and “项目(project)”.</bodyText>
+<subsubsectionHeader confidence="0.846399">
+4.3.2 Features for 2to3
+</subsubsectionHeader>
+<bodyText confidence="0.999767095238096">In the 2to3 case, a new word is added on the target side. The first two steps are identical as those in the previous section. For example, a source part “N:2-N:0” is generated from “汽车(car)/NN:2-轮 子(wheel)/NN:0”. Then we obtain target parts such as “W 2:0-of/IN:1-W 1:2”, “W 2:0-in/IN:1W 1:2”, and so on, according to the matched mapping rules. The third step is different. In the target parts, there is an added word. We first check if the added word is in the span of the corresponding words, which can be obtained through word alignment links. We can find that “of” is in the span “wheel of the car”, which is the span of the corresponding words of “汽 车(car)/NN:2-轮 子(wheel)/NN:0”. Then we choose the target part “W 2:0-of/IN:1W 1:2” to generate a possible subtree. Finally, we verify that the subtree is a target subtree included in 5Tt. If yes, we say feature “2to3:YES” to encourage a dependency relation between “汽 车(car)” and “轮子(wheel)”.</bodyText>
+<subsectionHeader confidence="0.999674">
+4.4 Source subtree features
+</subsectionHeader>
+<bodyText confidence="0.999984866666667">Chen et al. (2009) shows that the source subtree features (Fsr,−st) significantly improve performance. The subtrees are obtained from the auto-parsed data on the source side. Then they are used to verify the possible dependency relations among source words. In our approach, we also use the same source subtree features described in Chen et al. (2009). So the possible dependency relations are verified by the source and target subtrees. Combining two types of features together provides strong discrimination power. If both types of features are active, building relations is very likely among source words. If both are inactive, this is a strong negative signal for their relations.</bodyText>
+<sectionHeader confidence="0.996844" genericHeader="evaluation and result">
+5 Experiments
+</sectionHeader>
+<bodyText confidence="0.999851658536586">All the bilingual data were taken from the translated portion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data. We discarded the annotations because there are differences in annotation policy between CTB and this corpus. We used the MMA system (Kruengkrai et al., 2009) trained on the training data to perform word segmentation and POS tagging and used the Baseline Parser to parse all the sentences in the data. For English unannotated data, we used the BLLIP corpus that contains about 43 million words of WSJ text. The POS tags were assigned by the MXPOST tagger trained on training data. Then we used the Baseline Parser to parse all the sentences in the data. We reported the parser quality by the unlabeled attachment score (UAS), i.e., the percentage of tokens (excluding all punctuation tokens) with correct HEADs.</bodyText>
+<subsectionHeader confidence="0.994577">
+5.1 Main results
+</subsectionHeader>
+<bodyText confidence="0.998227">The results on the Chinese-source side are shown in Table 2, where “Baseline” refers to the systems with monolingual features, “Baseline2” refers to adding the reordering features to the Baseline, “FBI” refers to adding all the bilingual subtree features to “Baseline2”, “Fsrc−st” refers to the monolingual parsing systems with source subtree features, “Order-1” refers to the first-order models, and “Order-2” refers to the second-order models.</bodyText>
+<footnote confidence="0.953941">
+2http://w3.msi.vxu.se/˜nivre/research/Penn2Malt.html
+</footnote>
+<page confidence="0.998336">
+27
+</page>
+<bodyText confidence="0.999652071428571">The results showed that the reordering features yielded an improvement of 0.53 and 0.58 points (UAS) for the firstand second-order models respectively. Then we added four types of bilingual constraint features one by one to “Baseline2”. Note that the features based on 3to2 and 3to3 can not be applied to the first-order models, because they only consider single dependencies (bigram). That is, in the first model, FBI only includes the features based on 2to2 and 2to3. The results showed that the systems performed better and better. In total, we obtained an absolute improvement of 0.88 points (UAS) for the first-order model and 1.36 points for the second-order model by adding all the bilingual subtree features. Finally, the system with all the features (OURS) outperformed the Baseline by an absolute improvement of 3.12 points for the first-order model and 2.93 points for the second-order model. The improvements of the final systems (OURS) were significant in McNemar’s Test (p &lt; 10−4).</bodyText>
+<table confidence="0.9993712">
+Order-1 Order-2
+Baseline 84.35 87.20
+Baseline2 84.88 87.78
++2to2 85.08 88.07
++2to3 85.23 88.14
++3to3 – 88.29
++3to2 – 88.56
+FBI 85.23(+0.88) 88.56(+1.36)
+Fsrc−st 86.54(+2.19) 89.49(+2.29)
+OURS 87.47(+3.12) 90.13(+2.93)
+</table>
+<tableCaption confidence="0.9207155">
+Table 2: Dependency parsing results of Chinese-
+source case
+</tableCaption>
+<bodyText confidence="0.972365">We also conducted experiments on the Englishsource side. Table 3 shows the results, where abbreviations are the same as in Table 2. As in the Chinese experiments, the parsers with bilingual subtree features outperformed the Baselines. Finally, the systems (OURS) with all the features outperformed the Baselines by 1.30 points for the first-order model and 1.64 for the second-order model. The improvements of the final systems (OURS) were significant in McNemar’s Test (p &lt; 10−3).</bodyText>
+<table confidence="0.9995977">
+Order-1 Order-2
+Baseline 86.41 87.37
+Baseline2 86.86 87.66
++2to2 87.23 87.87
++2to3 87.35 87.96
++3to3 – 88.25
++3to2 – 88.37
+FBI 87.35(+0.94) 88.37(+1.00)
+Fsrc−st 87.25(+0.84) 88.57(+1.20)
+OURS 87.71(+1.30) 89.01(+1.64)
+</table>
+<tableCaption confidence="0.979294">
+Table 3: Dependency parsing results of English-
+source case
+</tableCaption>
+<subsectionHeader confidence="0.991293">
+5.2 Comparative results
+</subsectionHeader>
+<bodyText confidence="0.9998217">Table 4 shows the performance of the system we compared, where Huang2009 refers to the result of Huang et al. (2009). The results showed that our system performed better than Huang2009. Compared with the approach of Huang et al. (2009), our approach used additional large-scale autoparsed data. We did not compare our system with the joint model of Burkett and Klein (2008) because they reported the results on phrase structures.</bodyText>
+<table confidence="0.99296125">
+Chinese English
+Huang2009 86.3 87.5
+Baseline 87.20 87.37
+OURS 90.13 89.01
+</table>
+<tableCaption confidence="0.998368">
+Table 4: Comparative results
+</tableCaption>
+<sectionHeader confidence="0.9959" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999972571428571">We presented an approach using large automatically parsed monolingual data to provide bilingual subtree constraints to improve bitexts parsing. Our approach remains the efficiency of monolingual parsing and exploits the subtree structure on the target side. The experimental results show that the proposed approach is simple yet still provides significant improvements over the baselines in parsing accuracy. The results also show that our systems outperform the system of previous work on the same data. There are many ways in which this research could be continued. First, we may attempt to apply the bilingual subtree constraints to transitionbased parsing models (Nivre, 2003; Yamada and Matsumoto, 2003).</bodyText>
+<page confidence="0.993722">
+28
+</page>
+<bodyText confidence="0.999848571428571">Here, we may design new features for the models. Second, we may apply the proposed method for other language pairs such as Japanese-English and Chinese-Japanese. Third, larger unannotated data can be used to improve the performance further.</bodyText>
+<sectionHeader confidence="0.998894" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999940623655914">
+Ann Bies, Martha Palmer, Justin Mott, and Colin
+Warner. 2007. English Chinese translation treebank
+v 1.0. In LDC2007T02.
+David Burkett and Dan Klein. 2008. Two languages
+are better than one (for syntactic parsing). In Pro-
+ceedings of the 2008 Conference on Empirical Meth-
+ods in Natural Language Processing, pages 877–
+886, Honolulu, Hawaii, October. Association for
+Computational Linguistics.
+X. Carreras. 2007. Experiments with a higher-order
+projective dependency parser. In Proceedings of
+the CoNLL Shared Task Session of EMNLP-CoNLL
+2007, pages 957–961.
+WL. Chen, J. Kazama, K. Uchimoto, and K. Torisawa.
+2009. Improving dependency parsing with subtrees
+from auto-parsed data. In Proceedings of the 2009
+Conference on Empirical Methods in Natural Lan-
+guage Processing, pages 570–579, Singapore, Au-
+gust. Association for Computational Linguistics.
+John DeNero and Dan Klein. 2007. Tailoring word
+alignments to syntactic machine translation. In Pro-
+ceedings of the 45th Annual Meeting of the Asso-
+ciation of Computational Linguistics, pages 17–24,
+Prague, Czech Republic, June. Association for Com-
+putational Linguistics.
+Yuan Ding and Martha Palmer. 2005. Machine trans-
+lation using probabilistic synchronous dependency
+insertion grammars. In ACL ’05: Proceedings of the
+43rd Annual Meeting on Association for Computa-
+tional Linguistics, pages 541–548, Morristown, NJ,
+USA. Association for Computational Linguistics.
+J. Eisner. 1996. Three new probabilistic models for
+dependency parsing: An exploration. In Proc. of
+the 16th Intern. Conf. on Computational Linguistics
+(COLING), pages 340–345.
+Liang Huang, Wenbin Jiang, and Qun Liu. 2009.
+Bilingually-constrained (monolingual) shift-reduce
+parsing. In Proceedings of the 2009 Conference on
+Empirical Methods in Natural Language Process-
+ing, pages 1222–1231, Singapore, August. Associ-
+ation for Computational Linguistics.
+Chu-Ren Huang. 2009. Tagged Chinese Gigaword
+Version 2.0, LDC2009T14. Linguistic Data Con-
+sortium.
+P. Koehn, F.J. Och, and D. Marcu. 2003. Statistical
+phrase-based translation. In Proceedings of NAACL,
+page 54. Association for Computational Linguistics.
+Canasai Kruengkrai, Kiyotaka Uchimoto, Jun’ichi
+Kazama, Yiou Wang, Kentaro Torisawa, and Hitoshi
+Isahara. 2009. An error-driven word-character hy-
+brid model for joint Chinese word segmentation and
+POS tagging. In Proceedings of ACL-IJCNLP2009,
+pages 513–521, Suntec, Singapore, August. Associ-
+ation for Computational Linguistics.
+Percy Liang, Ben Taskar, and Dan Klein. 2006. Align-
+ment by agreement. In Proceedings of the Human
+Language Technology Conference of the NAACL,
+Main Conference, pages 104–111, New York City,
+USA, June. Association for Computational Linguis-
+tics.
+R. McDonald and F. Pereira. 2006. Online learning
+of approximate dependency parsing algorithms. In
+Proc. of EACL2006.
+R. McDonald, K. Crammer, and F. Pereira. 2005. On-
+line large-margin training of dependency parsers. In
+Proc. of ACL 2005.
+T. Nakazawa, K. Yu, D. Kawahara, and S. Kurohashi.
+2006. Example-based machine translation based on
+deeper nlp. In Proceedings of IWSLT 2006, pages
+64–70, Kyoto, Japan.
+J. Nivre and S. Kubler. 2006. Dependency parsing:
+Tutorial at Coling-ACL 2006. In CoLING-ACL.
+J. Nivre and R. McDonald. 2008. Integrating graph-
+based and transition-based dependency parsers. In
+Proceedings of ACL-08: HLT, Columbus, Ohio,
+June.
+J. Nivre. 2003. An efficient algorithm for projective
+dependency parsing. In Proceedings of IWPT2003,
+pages 149–160.
+David A. Smith and Noah A. Smith. 2004. Bilingual
+parsing with factored estimation: Using English to
+parse Korean. In Proceedings of EMNLP.
+Nianwen Xue, Fu-Dong Chiou, and Martha Palmer.
+2002. Building a large-scale annotated Chinese cor-
+pus. In Coling.
+H. Yamada and Y. Matsumoto. 2003. Statistical de-
+pendency analysis with support vector machines. In
+Proceedings of IWPT2003, pages 195–206.
+Hai Zhao, Yan Song, Chunyu Kit, and Guodong Zhou.
+2009. Cross language dependency parsing us-
+ing a bilingual lexicon. In Proceedings of ACL-
+IJCNLP2009, pages 55–63, Suntec, Singapore, Au-
+gust. Association for Computational Linguistics.
+</reference>
+<page confidence="0.999117">
+29
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.783113" no="0">
+<title confidence="0.998868">Bitext Dependency Parsing with Bilingual Subtree Constraints</title>
+<author confidence="0.988455">Wenliang Chen</author>
+<author confidence="0.988455">Jun’ichi Kazama</author>
+<author confidence="0.988455">Kentaro Torisawa</author>
+<affiliation confidence="0.9883405">Language Infrastructure Group, MASTAR Project National Institute of Information and Communications Technology</affiliation>
+<address confidence="0.989891">3-5 Hikari-dai, Seika-cho, Soraku-gun, Kyoto, Japan, 619-0289</address>
+<email confidence="0.992211">kazama,</email>
+<abstract confidence="0.99154796">This paper proposes a dependency parsing method that uses bilingual constraints to improve the accuracy of parsing bilingual texts (bitexts). In our method, a targetside tree fragment that corresponds to a source-side tree fragment is identified via word alignment and mapping rules that are automatically learned. Then it is verified by checking the subtree list that is collected from large scale automatically parsed data on the target side. Our method, thus, requires gold standard trees only on the source side of a bilingual corpus in the training phase, unlike the joint parsing model, which requires gold standard trees on the both sides. Compared to the reordering constraint model, which requires the same training data as ours, our method achieved higher accuracy because of richer bilingual constraints. Experiments on the translated portion of the Chinese Treebank show that our system outperforms monolingual parsers by 2.93 points for Chinese and 1.64 points for English.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Ann Bies</author>
+<author>Martha Palmer</author>
+<author>Justin Mott</author>
+<author>Colin Warner</author>
+</authors>
+<title>English Chinese translation treebank v 1.0.</title>
+<date>2007</date>
+<booktitle>In LDC2007T02.</booktitle>
+<contexts>
+<context citStr="Bies et al., 2007" endWordPosition="778" position="4892" startWordPosition="775">side. The main problem to be addressed is mapping words on the source side to the target subtree because there are many to many mappings and reordering problems that often occur in translation (Koehn et al., 2003). We use an automatic way for generating mapping rules to solve the problems. Based on the mapping rules, we design a set of features for parsing models. The basic idea is as follows: if the words form a subtree on one side, their corresponding words on the another side will also probably form a subtree. Experiments on the translated portion of the Chinese Treebank (Xue et al., 2002; Bies et al., 2007) show that our system outperforms state-ofthe-art monolingual parsers by 2.93 points for Chinese and 1.64 points for English. The results also show that our system provides higher accuracies than the parser of Huang et al. (2009). The rest of the paper is organized as follows: Section 2 introduces the motivation of our idea. Section 3 introduces the background of dependency parsing. Section 4 proposes an approach of constructing bilingual subtree constraints. Section 5 explains the experimental results. Finally, in Section 6 we draw conclusions and discuss future work. He ate the meat with a f</context>
+<context citStr="Bies et al., 2007" endWordPosition="4012" position="24615" startWordPosition="4009">ssible dependency relations among source words. In our approach, we also use the same source subtree features described in Chen et al. (2009). So the possible dependency relations are verified by the source and target subtrees. Combining two types of features together provides strong discrimination power. If both types of features are active, building relations is very likely among source words. If both are inactive, this is a strong negative signal for their relations. 5 Experiments All the bilingual data were taken from the translated portion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus </context>
+</contexts>
+<marker>Bies, Palmer, Mott, Warner, 2007</marker>
+<rawString>Ann Bies, Martha Palmer, Justin Mott, and Colin Warner. 2007. English Chinese translation treebank v 1.0. In LDC2007T02.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Burkett</author>
+<author>Dan Klein</author>
+</authors>
+<title>Two languages are better than one (for syntactic parsing).</title>
+<date>2008</date>
+<booktitle>In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>877--886</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Honolulu, Hawaii,</location>
+<contexts>
+<context citStr="Burkett and Klein, 2008" endWordPosition="296" position="1953" startWordPosition="293">ion Parsing bilingual texts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the constraints estimated from large unlabeled monolingual corpora. Basically, a (candidate) dependency subtree in a source-language sentence is mapped to a subtree in the corresponding target-language sentence by using word alignment and mapping rules that are automatically learned. The target subtree is verified by checking the subtree list that is collected from unlabeled sentences in the target language parsed by a</context>
+<context citStr="Burkett and Klein, 2008" endWordPosition="4084" position="25060" startWordPosition="4081">gative signal for their relations. 5 Experiments All the bilingual data were taken from the translated portion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data.</context>
+<context citStr="Burkett and Klein (2008)" endWordPosition="4770" position="29320" startWordPosition="4767">.86 87.66 +2to2 87.23 87.87 +2to3 87.35 87.96 +3to3 – 88.25 +3to2 – 88.37 FBI 87.35(+0.94) 88.37(+1.00) Fsrc−st 87.25(+0.84) 88.57(+1.20) OURS 87.71(+1.30) 89.01(+1.64) Table 3: Dependency parsing results of Englishsource case 5.2 Comparative results Table 4 shows the performance of the system we compared, where Huang2009 refers to the result of Huang et al. (2009). The results showed that our system performed better than Huang2009. Compared with the approach of Huang et al. (2009), our approach used additional large-scale autoparsed data. We did not compare our system with the joint model of Burkett and Klein (2008) because they reported the results on phrase structures. Chinese English Huang2009 86.3 87.5 Baseline 87.20 87.37 OURS 90.13 89.01 Table 4: Comparative results 6 Conclusion We presented an approach using large automatically parsed monolingual data to provide bilingual subtree constraints to improve bitexts parsing. Our approach remains the efficiency of monolingual parsing and exploits the subtree structure on the target side. The experimental results show that the proposed approach is simple yet still provides significant improvements over the baselines in parsing accuracy. The results also s</context>
+</contexts>
+<marker>Burkett, Klein, 2008</marker>
+<rawString>David Burkett and Dan Klein. 2008. Two languages are better than one (for syntactic parsing). In Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing, pages 877– 886, Honolulu, Hawaii, October. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>X Carreras</author>
+</authors>
+<title>Experiments with a higher-order projective dependency parser.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL</booktitle>
+<pages>957--961</pages>
+<contexts>
+<context citStr="Carreras, 2007" endWordPosition="1228" position="7594" startWordPosition="1227">ne the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented for all the possible relations on single edges (two words) or adjacent edges (three</context>
+<context citStr="Carreras, 2007" endWordPosition="1477" position="9175" startWordPosition="1476">e generate the mapping rules to map the source subtrees onto the extracted target subtrees. Finally, we design the bilingual subtree features based on the mapping rules for the parsing model. These features indicate the information of the constraints between bilingual subtrees, that are called bilingual subtree constraints. ROOT He ate the meat with a fork . Figure 3: Example of dependency tree In our systems, the monolingual features include the first- and second- order features presented in (McDonald et al., 2005; McDonald and Pereira, 2006) and the parent-child-grandchild features used in (Carreras, 2007). We call the parser with the monolingual features monolingual parser. 3.2 Parsing with bilingual features In this paper, we parse source sentences with the help of their translations. A set of bilingual features are designed for the parsing model. 3.2.1 Bilingual subtree features We design bilingual subtree features, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are from the possible dependency relations. 3.2.2 Bilingual reordering feature Huang et al. (2009)</context>
+<context citStr="Carreras, 2007" endWordPosition="2151" position="13637" startWordPosition="2150">Figure 5: Examples of trigram-subtrees 4.2 Mapping rules To provide bilingual subtree constraints, we need to find the characteristics of subtree mapping for the two given languages. However, subtree mapping is not easy. There are two main problems: MtoN (words) mapping and reordering, which often occur in translation. MtoN (words) mapping means that a source subtree with M words is mapped onto a target subtree with N words. For example, 2to3 means that a source bigram-subtree is mapped onto a target trigram-subtree. Due to the limitations of the parsing algorithm (McDonald and Pereira, 2006; Carreras, 2007), we only use bigram- and trigram-subtrees in our approach. We generate the mapping rules for the 2to2, 2to3, 3to3, and 3to2 cases. For trigram-subtrees, we only consider the parentchild-grandchild type. As for the use of other types of trigram-subtrees, we leave it for future work. We first show the MtoN and reordering problems by using an example in Chinese-English translation. Then we propose a method to automatically generate mapping rules. Figure 6: Example for prepositional phrases modifying a verb 2) Relative clauses precede head noun. Figure 7 shows an example. In Chinese the relative </context>
+</contexts>
+<marker>Carreras, 2007</marker>
+<rawString>X. Carreras. 2007. Experiments with a higher-order projective dependency parser. In Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007, pages 957–961.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Kazama Chen</author>
+<author>K Uchimoto</author>
+<author>K Torisawa</author>
+</authors>
+<title>Improving dependency parsing with subtrees from auto-parsed data.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>570--579</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Chen et al. (2009)" endWordPosition="1624" position="10109" startWordPosition="1621">es, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are from the possible dependency relations. 3.2.2 Bilingual reordering feature Huang et al. (2009) propose features based on reordering between languages for a shift-reduce parser. They define the features based on wordalignment information to verify that the corresponding words form a contiguous span for resolving shift-reduce conflicts. We also implement similar features in our system. 4.1 Subtree extraction Chen et al. (2009) propose a simple method to extract subtrees from large-scale monolingual data and use them as features to improve monolingual parsing. Following their method, we parse large unannotated data with a monolingual parser and obtain a set of subtrees (5Tt) in the target language. We encode the subtrees into string format that is expressed as st = w : hid(−w : hid)+1, where w refers to a word in the subtree and hid refers to the word ID of the word’s head (hid=0 means that this word is the root of a subtree). Here, word ID refers to the ID (starting from 1) of a word in the subtree (words are order</context>
+<context citStr="Chen et al. (2009)" endWordPosition="1867" position="11477" startWordPosition="1864">tree is encoded as “He:2- ate:0”. There is also a parent-child-grandchild relation among “ate”, “with”, and “fork”. So the subtree is encoded as “ate:0-with:1-fork:2”. If a subtree contains two nodes, we call it a bigramsubtree. If a subtree contains three nodes, we call it a trigram-subtree. From the dependency tree of Figure 3, we obtain the subtrees, as shown in Figure 4 and Figure 5. Figure 4 shows the extracted bigram-subtrees and Figure 5 shows the extracted trigram-subtrees. After extraction, we obtain a set of subtrees. We remove the subtrees occurring only once in the data. Following Chen et al. (2009), we also group the subtrees into different sets based on their frequencies. 1+ refers to matching the preceding element one or more times and is the same as a regular expression in Perl. 23 ate meat the:1:2-meat:2:0 the He He:1:2-ate:2:0 ate ate:1:0-meat:2:1 with with:1:0-fork:2:1 fork meat ate fork a:1:2-fork:2:0 a with ate:1:0-with:2:1 Figure 4: Examples of bigram-subtrees ate ate:1:0-meat:2:1-with:3:1 ate ate:1:0-with:2:1-.:3:1 meat with with . ate ate He:1:3-NULL:2:3-ate:3:0 ate:1:0-NULL:2:1-meat:3:1 He NULL NULL meat the:1:3-NULL:2:3-meat:3:0 with:1:0-NULL:2:1-fork:3:1 a:1:3-NULL:2:3-for</context>
+<context citStr="Chen et al. (2009)" endWordPosition="3879" position="23805" startWordPosition="3876">the target parts, there is an added word. We first check if the added word is in the span of the corresponding words, which can be obtained through word alignment links. We can find that “of” is in the span “wheel of the car”, which is the span of the corresponding words of “汽 车(car)/NN:2-轮 子(wheel)/NN:0”. Then we choose the target part “W 2:0-of/IN:1- W 1:2” to generate a possible subtree. Finally, we verify that the subtree is a target subtree included in 5Tt. If yes, we say feature “2to3:YES” to encourage a dependency relation between “汽 车(car)” and “轮子(wheel)”. 4.4 Source subtree features Chen et al. (2009) shows that the source subtree features (Fsr,−st) significantly improve performance. The subtrees are obtained from the auto-parsed data on the source side. Then they are used to verify the possible dependency relations among source words. In our approach, we also use the same source subtree features described in Chen et al. (2009). So the possible dependency relations are verified by the source and target subtrees. Combining two types of features together provides strong discrimination power. If both types of features are active, building relations is very likely among source words. If both a</context>
+</contexts>
+<marker>Chen, Uchimoto, Torisawa, 2009</marker>
+<rawString>WL. Chen, J. Kazama, K. Uchimoto, and K. Torisawa. 2009. Improving dependency parsing with subtrees from auto-parsed data. In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing, pages 570–579, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>John DeNero</author>
+<author>Dan Klein</author>
+</authors>
+<title>Tailoring word alignments to syntactic machine translation.</title>
+<date>2007</date>
+<booktitle>In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics,</booktitle>
+<pages>17--24</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Prague, Czech Republic,</location>
+<contexts>
+<context citStr="DeNero and Klein, 2007" endWordPosition="2440" position="15426" startWordPosition="2436"> occurring in the above cases. For example, in Figure 6, trigram-subtree “在(NULL):3-上(at):1-说(say):0” is mapped onto bigram-subtree “said:0-at:1”. Since asking linguists to define the mapping rules is very expensive, we propose a simple method to easily obtain the mapping rules. 4.2.2 Bilingual subtree mapping To solve the mapping problems, we use a bilingual corpus, which includes sentence pairs, to automatically generate the mapping rules. First, the sentence pairs are parsed by monolingual parsers on both sides. Then we perform word alignment using a word-level aligner (Liang et al., 2006; DeNero and Klein, 2007). Figure 8 shows an example of a processed sentence pair that has tree structures on both sides and word alignment links. Figure 8: Example of auto-parsed bilingual sentence pair From these sentence pairs, we obtain subtree pairs. First, we extract a subtree (sts) from a source sentence. Then through word alignment links, we obtain the corresponding words of the words of sts. Because of the MtoN problem, some words lack of corresponding words in the target sentence. Here, our approach requires that at least two words of sts have corresponding words and nouns and verbs need corresponding words.</context>
+<context citStr="DeNero and Klein, 2007" endWordPosition="4105" position="25184" startWordPosition="4102">e Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data. We discarded the annotations because there are differences in annotation policy between CTB and this corpus. We used the MM</context>
+</contexts>
+<marker>DeNero, Klein, 2007</marker>
+<rawString>John DeNero and Dan Klein. 2007. Tailoring word alignments to syntactic machine translation. In Proceedings of the 45th Annual Meeting of the Association of Computational Linguistics, pages 17–24, Prague, Czech Republic, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Yuan Ding</author>
+<author>Martha Palmer</author>
+</authors>
+<title>Machine translation using probabilistic synchronous dependency insertion grammars.</title>
+<date>2005</date>
+<booktitle>In ACL ’05: Proceedings of the 43rd Annual Meeting on Association for Computational Linguistics,</booktitle>
+<pages>541--548</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Morristown, NJ, USA.</location>
+<contexts>
+<context citStr="Ding and Palmer, 2005" endWordPosition="228" position="1534" startWordPosition="225">sing model, which requires gold standard trees on the both sides. Compared to the reordering constraint model, which requires the same training data as ours, our method achieved higher accuracy because of richer bilingual constraints. Experiments on the translated portion of the Chinese Treebank show that our system outperforms monolingual parsers by 2.93 points for Chinese and 1.64 points for English. 1 Introduction Parsing bilingual texts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the</context>
+</contexts>
+<marker>Ding, Palmer, 2005</marker>
+<rawString>Yuan Ding and Martha Palmer. 2005. Machine translation using probabilistic synchronous dependency insertion grammars. In ACL ’05: Proceedings of the 43rd Annual Meeting on Association for Computational Linguistics, pages 541–548, Morristown, NJ, USA. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Eisner</author>
+</authors>
+<title>Three new probabilistic models for dependency parsing: An exploration.</title>
+<date>1996</date>
+<booktitle>In Proc. of the 16th Intern. Conf. on Computational Linguistics (COLING),</booktitle>
+<pages>340--345</pages>
+<contexts>
+<context citStr="Eisner (1996)" endWordPosition="1268" position="7825" startWordPosition="1267">ad of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented for all the possible relations on single edges (two words) or adjacent edges (three words). The parsing algorithm chooses the tree with the highest score in a bottom-up fashion. 4 Bilingual subtree constraints In this section, we propose an approach that uses the bilingual subtree constraints to help parse source</context>
+</contexts>
+<marker>Eisner, 1996</marker>
+<rawString>J. Eisner. 1996. Three new probabilistic models for dependency parsing: An exploration. In Proc. of the 16th Intern. Conf. on Computational Linguistics (COLING), pages 340–345.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Liang Huang</author>
+<author>Wenbin Jiang</author>
+<author>Qun Liu</author>
+</authors>
+<title>Bilingually-constrained (monolingual) shift-reduce parsing.</title>
+<date>2009</date>
+<booktitle>In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<pages>1222--1231</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Huang et al., 2009" endWordPosition="300" position="1974" startWordPosition="297">ts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the constraints estimated from large unlabeled monolingual corpora. Basically, a (candidate) dependency subtree in a source-language sentence is mapped to a subtree in the corresponding target-language sentence by using word alignment and mapping rules that are automatically learned. The target subtree is verified by checking the subtree list that is collected from unlabeled sentences in the target language parsed by a usual monolingual pa</context>
+<context citStr="Huang et al. (2009)" endWordPosition="511" position="3286" startWordPosition="508">s paper, our task is to improve the source side parser with the help of the translations on the target side. Many researchers have investigated the use of bilingual constraints for parsing (Burkett and Klein, 2008; Zhao et al., 2009; Huang et al., 2009). For example, Burkett and Klein (2008) show that parsing with joint models on bitexts improves performance on either or both sides. However, their methods require that the training data have tree structures on both sides, which are hard to obtain. Our method only requires dependency annotation on the source side and is much simpler and faster. Huang et al. (2009) proposes a method, bilingual-constrained monolingual parsing, in which a source-language parser is extended to use the re-ordering of words between two sides’ sentences as additional information. The input of their method is the source trees with their translation on the target side as ours, which is much easier to obtain than trees on both sides. However, their method does not use any tree structures on 21 Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics, pages 21–29, Uppsala, Sweden, 11-16 July 2010. c�2010 Association for Computational Linguistics the</context>
+<context citStr="Huang et al. (2009)" endWordPosition="816" position="5121" startWordPosition="813">omatic way for generating mapping rules to solve the problems. Based on the mapping rules, we design a set of features for parsing models. The basic idea is as follows: if the words form a subtree on one side, their corresponding words on the another side will also probably form a subtree. Experiments on the translated portion of the Chinese Treebank (Xue et al., 2002; Bies et al., 2007) show that our system outperforms state-ofthe-art monolingual parsers by 2.93 points for Chinese and 1.64 points for English. The results also show that our system provides higher accuracies than the parser of Huang et al. (2009). The rest of the paper is organized as follows: Section 2 introduces the motivation of our idea. Section 3 introduces the background of dependency parsing. Section 4 proposes an approach of constructing bilingual subtree constraints. Section 5 explains the experimental results. Finally, in Section 6 we draw conclusions and discuss future work. He ate the meat with a fork . t(He) fuse) RT(fork) VZ(eat) AJ(meat) o(.) Figure 1: Example for disambiguation tion. There are two candidates “ate” and “meat” to be the head of “with” as the dashed directed links in Figure 1 show. By adding “fork”, we ha</context>
+<context citStr="Huang et al. (2009)" endWordPosition="1572" position="9775" startWordPosition="1569">in (Carreras, 2007). We call the parser with the monolingual features monolingual parser. 3.2 Parsing with bilingual features In this paper, we parse source sentences with the help of their translations. A set of bilingual features are designed for the parsing model. 3.2.1 Bilingual subtree features We design bilingual subtree features, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are from the possible dependency relations. 3.2.2 Bilingual reordering feature Huang et al. (2009) propose features based on reordering between languages for a shift-reduce parser. They define the features based on wordalignment information to verify that the corresponding words form a contiguous span for resolving shift-reduce conflicts. We also implement similar features in our system. 4.1 Subtree extraction Chen et al. (2009) propose a simple method to extract subtrees from large-scale monolingual data and use them as features to improve monolingual parsing. Following their method, we parse large unannotated data with a monolingual parser and obtain a set of subtrees (5Tt) in the target</context>
+<context citStr="Huang et al. (2009)" endWordPosition="4044" position="24824" startWordPosition="4041">nd target subtrees. Combining two types of features together provides strong discrimination power. If both types of features are active, building relations is very likely among source words. If both are inactive, this is a strong negative signal for their relations. 5 Experiments All the bilingual data were taken from the translated portion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of</context>
+<context citStr="Huang et al. (2009)" endWordPosition="4727" position="29063" startWordPosition="4724">tures outperformed the Baselines by 1.30 points for the first-order model and 1.64 for the second-order model. The improvements of the final systems (OURS) were significant in McNemar’s Test (p &lt; 10−3). Order-1 Order-2 Baseline 86.41 87.37 Baseline2 86.86 87.66 +2to2 87.23 87.87 +2to3 87.35 87.96 +3to3 – 88.25 +3to2 – 88.37 FBI 87.35(+0.94) 88.37(+1.00) Fsrc−st 87.25(+0.84) 88.57(+1.20) OURS 87.71(+1.30) 89.01(+1.64) Table 3: Dependency parsing results of Englishsource case 5.2 Comparative results Table 4 shows the performance of the system we compared, where Huang2009 refers to the result of Huang et al. (2009). The results showed that our system performed better than Huang2009. Compared with the approach of Huang et al. (2009), our approach used additional large-scale autoparsed data. We did not compare our system with the joint model of Burkett and Klein (2008) because they reported the results on phrase structures. Chinese English Huang2009 86.3 87.5 Baseline 87.20 87.37 OURS 90.13 89.01 Table 4: Comparative results 6 Conclusion We presented an approach using large automatically parsed monolingual data to provide bilingual subtree constraints to improve bitexts parsing. Our approach remains the e</context>
+</contexts>
+<marker>Huang, Jiang, Liu, 2009</marker>
+<rawString>Liang Huang, Wenbin Jiang, and Qun Liu. 2009. Bilingually-constrained (monolingual) shift-reduce parsing. In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing, pages 1222–1231, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Chu-Ren Huang</author>
+</authors>
+<title>Tagged Chinese Gigaword Version 2.0, LDC2009T14. Linguistic Data Consortium.</title>
+<date>2009</date>
+<contexts>
+<context citStr="Huang, 2009" endWordPosition="4152" position="25480" startWordPosition="4151"> for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data. We discarded the annotations because there are differences in annotation policy between CTB and this corpus. We used the MMA system (Kruengkrai et al., 2009) trained on the training data to perform word segmentation and POS tagging and used the Baseline Parser to parse all the sentences in the data. For English unannotated data, we used the BLLIP corpus that contains about 43 million words of WSJ text. The POS tags </context>
+</contexts>
+<marker>Huang, 2009</marker>
+<rawString>Chu-Ren Huang. 2009. Tagged Chinese Gigaword Version 2.0, LDC2009T14. Linguistic Data Consortium.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+<author>F J Och</author>
+<author>D Marcu</author>
+</authors>
+<title>Statistical phrase-based translation.</title>
+<date>2003</date>
+<booktitle>In Proceedings of NAACL,</booktitle>
+<pages>54</pages>
+<institution>Association for Computational Linguistics.</institution>
+<contexts>
+<context citStr="Koehn et al., 2003" endWordPosition="703" position="4487" startWordPosition="700">al Linguistics the target side that might be useful for ambiguity resolution. Our method achieves much greater improvement because it uses the richer subtree constraints. Our approach takes the same input as Huang et al. (2009) and exploits the subtree structure on the target side to provide the bilingual constraints. The subtrees are extracted from large-scale autoparsed monolingual data on the target side. The main problem to be addressed is mapping words on the source side to the target subtree because there are many to many mappings and reordering problems that often occur in translation (Koehn et al., 2003). We use an automatic way for generating mapping rules to solve the problems. Based on the mapping rules, we design a set of features for parsing models. The basic idea is as follows: if the words form a subtree on one side, their corresponding words on the another side will also probably form a subtree. Experiments on the translated portion of the Chinese Treebank (Xue et al., 2002; Bies et al., 2007) show that our system outperforms state-ofthe-art monolingual parsers by 2.93 points for Chinese and 1.64 points for English. The results also show that our system provides higher accuracies than</context>
+</contexts>
+<marker>Koehn, Och, Marcu, 2003</marker>
+<rawString>P. Koehn, F.J. Och, and D. Marcu. 2003. Statistical phrase-based translation. In Proceedings of NAACL, page 54. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Canasai Kruengkrai</author>
+<author>Kiyotaka Uchimoto</author>
+<author>Jun’ichi Kazama</author>
+<author>Yiou Wang</author>
+<author>Kentaro Torisawa</author>
+<author>Hitoshi Isahara</author>
+</authors>
+<title>An error-driven word-character hybrid model for joint Chinese word segmentation and POS tagging.</title>
+<date>2009</date>
+<booktitle>In Proceedings of ACL-IJCNLP2009,</booktitle>
+<pages>513--521</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Suntec, Singapore,</location>
+<contexts>
+<context citStr="Kruengkrai et al., 2009" endWordPosition="4211" position="25818" startWordPosition="4208">n a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data. We discarded the annotations because there are differences in annotation policy between CTB and this corpus. We used the MMA system (Kruengkrai et al., 2009) trained on the training data to perform word segmentation and POS tagging and used the Baseline Parser to parse all the sentences in the data. For English unannotated data, we used the BLLIP corpus that contains about 43 million words of WSJ text. The POS tags were assigned by the MXPOST tagger trained on training data. Then we used the Baseline Parser to parse all the sentences in the data. We reported the parser quality by the unlabeled attachment score (UAS), i.e., the percentage of tokens (excluding all punctuation tokens) with correct HEADs. 5.1 Main results The results on the Chinese-so</context>
+</contexts>
+<marker>Kruengkrai, Uchimoto, Kazama, Wang, Torisawa, Isahara, 2009</marker>
+<rawString>Canasai Kruengkrai, Kiyotaka Uchimoto, Jun’ichi Kazama, Yiou Wang, Kentaro Torisawa, and Hitoshi Isahara. 2009. An error-driven word-character hybrid model for joint Chinese word segmentation and POS tagging. In Proceedings of ACL-IJCNLP2009, pages 513–521, Suntec, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Percy Liang</author>
+<author>Ben Taskar</author>
+<author>Dan Klein</author>
+</authors>
+<title>Alignment by agreement.</title>
+<date>2006</date>
+<booktitle>In Proceedings of the Human Language Technology Conference of the NAACL, Main Conference,</booktitle>
+<pages>104--111</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>New York City, USA,</location>
+<contexts>
+<context citStr="Liang et al., 2006" endWordPosition="2435" position="15401" startWordPosition="2432">MtoN mapping problem occurring in the above cases. For example, in Figure 6, trigram-subtree “在(NULL):3-上(at):1-说(say):0” is mapped onto bigram-subtree “said:0-at:1”. Since asking linguists to define the mapping rules is very expensive, we propose a simple method to easily obtain the mapping rules. 4.2.2 Bilingual subtree mapping To solve the mapping problems, we use a bilingual corpus, which includes sentence pairs, to automatically generate the mapping rules. First, the sentence pairs are parsed by monolingual parsers on both sides. Then we perform word alignment using a word-level aligner (Liang et al., 2006; DeNero and Klein, 2007). Figure 8 shows an example of a processed sentence pair that has tree structures on both sides and word alignment links. Figure 8: Example of auto-parsed bilingual sentence pair From these sentence pairs, we obtain subtree pairs. First, we extract a subtree (sts) from a source sentence. Then through word alignment links, we obtain the corresponding words of the words of sts. Because of the MtoN problem, some words lack of corresponding words in the target sentence. Here, our approach requires that at least two words of sts have corresponding words and nouns and verbs </context>
+<context citStr="Liang et al., 2006" endWordPosition="4101" position="25159" startWordPosition="4098">ortion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on a bilingual corpus having approximately 0.8M sentence pairs. We removed notoriously bad links in {a, an, the}x{的(DE), 了(LE)} following the work of Huang et al. (2009). For Chinese unannotated data, we used the XIN CMN portion of Chinese Gigaword Version 2.0 (LDC2009T14) (Huang, 2009), which has approximately 311 million words whose segmentation and POS tags are given. To avoid unfair comparison, we excluded the sentences of the CTB data from the Gigaword data. We discarded the annotations because there are differences in annotation policy between CTB and th</context>
+</contexts>
+<marker>Liang, Taskar, Klein, 2006</marker>
+<rawString>Percy Liang, Ben Taskar, and Dan Klein. 2006. Alignment by agreement. In Proceedings of the Human Language Technology Conference of the NAACL, Main Conference, pages 104–111, New York City, USA, June. Association for Computational Linguistics.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R McDonald</author>
+<author>F Pereira</author>
+</authors>
+<title>Online learning of approximate dependency parsing algorithms.</title>
+<date>2006</date>
+<booktitle>In Proc. of EACL2006.</booktitle>
+<contexts>
+<context citStr="McDonald and Pereira, 2006" endWordPosition="1469" position="9109" startWordPosition="1466">use large-scale auto-parsed data to obtain subtrees on the target side. Then we generate the mapping rules to map the source subtrees onto the extracted target subtrees. Finally, we design the bilingual subtree features based on the mapping rules for the parsing model. These features indicate the information of the constraints between bilingual subtrees, that are called bilingual subtree constraints. ROOT He ate the meat with a fork . Figure 3: Example of dependency tree In our systems, the monolingual features include the first- and second- order features presented in (McDonald et al., 2005; McDonald and Pereira, 2006) and the parent-child-grandchild features used in (Carreras, 2007). We call the parser with the monolingual features monolingual parser. 3.2 Parsing with bilingual features In this paper, we parse source sentences with the help of their translations. A set of bilingual features are designed for the parsing model. 3.2.1 Bilingual subtree features We design bilingual subtree features, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are from the possible dependency</context>
+<context citStr="McDonald and Pereira, 2006" endWordPosition="2149" position="13620" startWordPosition="2146"> 䈤 Said at the ceremony (b) Figure 5: Examples of trigram-subtrees 4.2 Mapping rules To provide bilingual subtree constraints, we need to find the characteristics of subtree mapping for the two given languages. However, subtree mapping is not easy. There are two main problems: MtoN (words) mapping and reordering, which often occur in translation. MtoN (words) mapping means that a source subtree with M words is mapped onto a target subtree with N words. For example, 2to3 means that a source bigram-subtree is mapped onto a target trigram-subtree. Due to the limitations of the parsing algorithm (McDonald and Pereira, 2006; Carreras, 2007), we only use bigram- and trigram-subtrees in our approach. We generate the mapping rules for the 2to2, 2to3, 3to3, and 3to2 cases. For trigram-subtrees, we only consider the parentchild-grandchild type. As for the use of other types of trigram-subtrees, we leave it for future work. We first show the MtoN and reordering problems by using an example in Chinese-English translation. Then we propose a method to automatically generate mapping rules. Figure 6: Example for prepositional phrases modifying a verb 2) Relative clauses precede head noun. Figure 7 shows an example. In Chin</context>
+</contexts>
+<marker>McDonald, Pereira, 2006</marker>
+<rawString>R. McDonald and F. Pereira. 2006. Online learning of approximate dependency parsing algorithms. In Proc. of EACL2006.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R McDonald</author>
+<author>K Crammer</author>
+<author>F Pereira</author>
+</authors>
+<title>Online large-margin training of dependency parsers.</title>
+<date>2005</date>
+<booktitle>In Proc. of ACL</booktitle>
+<contexts>
+<context citStr="McDonald et al., 2005" endWordPosition="1226" position="7577" startWordPosition="1223">for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented for all the possible relations on single edges (two words) or adja</context>
+<context citStr="McDonald et al., 2005" endWordPosition="1465" position="9080" startWordPosition="1462">on the target side. We use large-scale auto-parsed data to obtain subtrees on the target side. Then we generate the mapping rules to map the source subtrees onto the extracted target subtrees. Finally, we design the bilingual subtree features based on the mapping rules for the parsing model. These features indicate the information of the constraints between bilingual subtrees, that are called bilingual subtree constraints. ROOT He ate the meat with a fork . Figure 3: Example of dependency tree In our systems, the monolingual features include the first- and second- order features presented in (McDonald et al., 2005; McDonald and Pereira, 2006) and the parent-child-grandchild features used in (Carreras, 2007). We call the parser with the monolingual features monolingual parser. 3.2 Parsing with bilingual features In this paper, we parse source sentences with the help of their translations. A set of bilingual features are designed for the parsing model. 3.2.1 Bilingual subtree features We design bilingual subtree features, as described in Section 4, based on the constraints between the source subtrees and the target subtrees that are verified by the subtree list on the target side. The source subtrees are</context>
+</contexts>
+<marker>McDonald, Crammer, Pereira, 2005</marker>
+<rawString>R. McDonald, K. Crammer, and F. Pereira. 2005. Online large-margin training of dependency parsers. In Proc. of ACL 2005.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>T Nakazawa</author>
+<author>K Yu</author>
+<author>D Kawahara</author>
+<author>S Kurohashi</author>
+</authors>
+<title>Example-based machine translation based on deeper nlp.</title>
+<date>2006</date>
+<booktitle>In Proceedings of IWSLT</booktitle>
+<pages>64--70</pages>
+<location>Kyoto, Japan.</location>
+<contexts>
+<context citStr="Nakazawa et al., 2006" endWordPosition="232" position="1558" startWordPosition="229">res gold standard trees on the both sides. Compared to the reordering constraint model, which requires the same training data as ours, our method achieved higher accuracy because of richer bilingual constraints. Experiments on the translated portion of the Chinese Treebank show that our system outperforms monolingual parsers by 2.93 points for Chinese and 1.64 points for English. 1 Introduction Parsing bilingual texts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the constraints estimated f</context>
+</contexts>
+<marker>Nakazawa, Yu, Kawahara, Kurohashi, 2006</marker>
+<rawString>T. Nakazawa, K. Yu, D. Kawahara, and S. Kurohashi. 2006. Example-based machine translation based on deeper nlp. In Proceedings of IWSLT 2006, pages 64–70, Kyoto, Japan.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Nivre</author>
+<author>S Kubler</author>
+</authors>
+<title>Dependency parsing: Tutorial at Coling-ACL</title>
+<date>2006</date>
+<booktitle>In CoLING-ACL.</booktitle>
+<contexts>
+<context citStr="Nivre and Kubler, 2006" endWordPosition="1212" position="7479" startWordPosition="1209">rds indicate that they have a (candidate) dependency relation. In the English side, it is difficult for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing </context>
+</contexts>
+<marker>Nivre, Kubler, 2006</marker>
+<rawString>J. Nivre and S. Kubler. 2006. Dependency parsing: Tutorial at Coling-ACL 2006. In CoLING-ACL.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Nivre</author>
+<author>R McDonald</author>
+</authors>
+<title>Integrating graphbased and transition-based dependency parsers.</title>
+<date>2008</date>
+<booktitle>In Proceedings of ACL-08: HLT,</booktitle>
+<location>Columbus, Ohio,</location>
+<contexts>
+<context citStr="Nivre and McDonald, 2008" endWordPosition="1208" position="7454" startWordPosition="1205"> directed links between words indicate that they have a (candidate) dependency relation. In the English side, it is difficult for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In</context>
+</contexts>
+<marker>Nivre, McDonald, 2008</marker>
+<rawString>J. Nivre and R. McDonald. 2008. Integrating graphbased and transition-based dependency parsers. In Proceedings of ACL-08: HLT, Columbus, Ohio, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Nivre</author>
+</authors>
+<title>An efficient algorithm for projective dependency parsing.</title>
+<date>2003</date>
+<booktitle>In Proceedings of IWPT2003,</booktitle>
+<pages>149--160</pages>
+<contexts>
+<context citStr="Nivre, 2003" endWordPosition="1215" position="7510" startWordPosition="1214">ependency relation. In the English side, it is difficult for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented</context>
+</contexts>
+<marker>Nivre, 2003</marker>
+<rawString>J. Nivre. 2003. An efficient algorithm for projective dependency parsing. In Proceedings of IWPT2003, pages 149–160.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David A Smith</author>
+<author>Noah A Smith</author>
+</authors>
+<title>Bilingual parsing with factored estimation: Using English to parse Korean.</title>
+<date>2004</date>
+<booktitle>In Proceedings of EMNLP.</booktitle>
+<contexts>
+<context citStr="Smith and Smith, 2004" endWordPosition="292" position="1928" startWordPosition="289">or English. 1 Introduction Parsing bilingual texts (bitexts) is crucial for training machine translation systems that rely on syntactic structures on either the source side or the target side, or the both (Ding and Palmer, 2005; Nakazawa et al., 2006). Bitexts could provide more information, which is useful in parsing, than a usual monolingual texts that can be called “bilingual constraints”, and we expect to obtain more accurate parsing results that can be effectively used in the training of MT systems. With this motivation, there are several studies aiming at highly accurate bitext parsing (Smith and Smith, 2004; Burkett and Klein, 2008; Huang et al., 2009). This paper proposes a dependency parsing method, which uses the bilingual constraints that we call bilingual subtree constraints and statistics concerning the constraints estimated from large unlabeled monolingual corpora. Basically, a (candidate) dependency subtree in a source-language sentence is mapped to a subtree in the corresponding target-language sentence by using word alignment and mapping rules that are automatically learned. The target subtree is verified by checking the subtree list that is collected from unlabeled sentences in the ta</context>
+</contexts>
+<marker>Smith, Smith, 2004</marker>
+<rawString>David A. Smith and Noah A. Smith. 2004. Bilingual parsing with factored estimation: Using English to parse Korean. In Proceedings of EMNLP.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Nianwen Xue</author>
+<author>Fu-Dong Chiou</author>
+<author>Martha Palmer</author>
+</authors>
+<title>Building a large-scale annotated Chinese corpus.</title>
+<date>2002</date>
+<booktitle>In Coling.</booktitle>
+<contexts>
+<context citStr="Xue et al., 2002" endWordPosition="774" position="4872" startWordPosition="771">ata on the target side. The main problem to be addressed is mapping words on the source side to the target subtree because there are many to many mappings and reordering problems that often occur in translation (Koehn et al., 2003). We use an automatic way for generating mapping rules to solve the problems. Based on the mapping rules, we design a set of features for parsing models. The basic idea is as follows: if the words form a subtree on one side, their corresponding words on the another side will also probably form a subtree. Experiments on the translated portion of the Chinese Treebank (Xue et al., 2002; Bies et al., 2007) show that our system outperforms state-ofthe-art monolingual parsers by 2.93 points for Chinese and 1.64 points for English. The results also show that our system provides higher accuracies than the parser of Huang et al. (2009). The rest of the paper is organized as follows: Section 2 introduces the motivation of our idea. Section 3 introduces the background of dependency parsing. Section 4 proposes an approach of constructing bilingual subtree constraints. Section 5 explains the experimental results. Finally, in Section 6 we draw conclusions and discuss future work. He a</context>
+<context citStr="Xue et al., 2002" endWordPosition="4008" position="24595" startWordPosition="4005">d to verify the possible dependency relations among source words. In our approach, we also use the same source subtree features described in Chen et al. (2009). So the possible dependency relations are verified by the source and target subtrees. Combining two types of features together provides strong discrimination power. If both types of features are active, building relations is very likely among source words. If both are inactive, this is a strong negative signal for their relations. 5 Experiments All the bilingual data were taken from the translated portion of the Chinese Treebank (CTB) (Xue et al., 2002; Bies et al., 2007), articles 1-325 of CTB, which have English translations with gold-standard parse trees. We used the tool “Penn2Malt”2 to convert the data into dependency structures. Following the study of Huang et al. (2009), we used the same split of this data: 1-270 for training, 301-325 for development, and 271- 300 for test. Note that some sentence pairs were removed because they are not one-to-one aligned at the sentence level (Burkett and Klein, 2008; Huang et al., 2009). Word alignments were generated from the Berkeley Aligner (Liang et al., 2006; DeNero and Klein, 2007) trained on</context>
+</contexts>
+<marker>Xue, Chiou, Palmer, 2002</marker>
+<rawString>Nianwen Xue, Fu-Dong Chiou, and Martha Palmer. 2002. Building a large-scale annotated Chinese corpus. In Coling.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Yamada</author>
+<author>Y Matsumoto</author>
+</authors>
+<title>Statistical dependency analysis with support vector machines.</title>
+<date>2003</date>
+<booktitle>In Proceedings of IWPT2003,</booktitle>
+<pages>195--206</pages>
+<contexts>
+<context citStr="Yamada and Matsumoto, 2003" endWordPosition="1219" position="7539" startWordPosition="1216">ation. In the English side, it is difficult for a parser to determine the head of word “with” because there is a PP-attachment problem. However, in Chinese it is unambiguous. Therefore, we can use the information on the Chinese side to help disambiguaFinally, the parser may assign “ate” to be the head of “with” based on the verification results. This simple example shows how to use the subtree information on the target side. 3 Dependency parsing For dependency parsing, there are two main types of parsing models (Nivre and McDonald, 2008; Nivre and Kubler, 2006): transition-based (Nivre, 2003; Yamada and Matsumoto, 2003) and graphbased (McDonald et al., 2005; Carreras, 2007). Our approach can be applied to both parsing models. In this paper, we employ the graph-based MST parsing model proposed by McDonald and Pereira 22 (2006), which is an extension of the projective parsing algorithm of Eisner (1996). To use richer second-order information, we also implement parent-child-grandchild features (Carreras, 2007) in the MST parsing algorithm. 3.1 Parsing with monolingual features Figure 3 shows an example of dependency parsing. In the graph-based parsing model, features are represented for all the possible relatio</context>
+</contexts>
+<marker>Yamada, Matsumoto, 2003</marker>
+<rawString>H. Yamada and Y. Matsumoto. 2003. Statistical dependency analysis with support vector machines. In Proceedings of IWPT2003, pages 195–206.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Hai Zhao</author>
+<author>Yan Song</author>
+<author>Chunyu Kit</author>
+<author>Guodong Zhou</author>
+</authors>
+<title>Cross language dependency parsing using a bilingual lexicon.</title>
+<date>2009</date>
+<booktitle>In Proceedings of ACLIJCNLP2009,</booktitle>
+<pages>55--63</pages>
+<publisher>Association</publisher>
+<institution>for Computational Linguistics.</institution>
+<location>Suntec, Singapore,</location>
+<contexts>
+<context citStr="Zhao et al., 2009" endWordPosition="444" position="2899" startWordPosition="441"> to a subtree in the corresponding target-language sentence by using word alignment and mapping rules that are automatically learned. The target subtree is verified by checking the subtree list that is collected from unlabeled sentences in the target language parsed by a usual monolingual parser. The result is used as additional features for the source side dependency parser. In this paper, our task is to improve the source side parser with the help of the translations on the target side. Many researchers have investigated the use of bilingual constraints for parsing (Burkett and Klein, 2008; Zhao et al., 2009; Huang et al., 2009). For example, Burkett and Klein (2008) show that parsing with joint models on bitexts improves performance on either or both sides. However, their methods require that the training data have tree structures on both sides, which are hard to obtain. Our method only requires dependency annotation on the source side and is much simpler and faster. Huang et al. (2009) proposes a method, bilingual-constrained monolingual parsing, in which a source-language parser is extended to use the re-ordering of words between two sides’ sentences as additional information. The input of the</context>
+</contexts>
+<marker>Zhao, Song, Kit, Zhou, 2009</marker>
+<rawString>Hai Zhao, Yan Song, Chunyu Kit, and Guodong Zhou. 2009. Cross language dependency parsing using a bilingual lexicon. In Proceedings of ACLIJCNLP2009, pages 55–63, Suntec, Singapore, August. Association for Computational Linguistics.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,681 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000118" no="0">
+<title confidence="0.997789">
+Low-cost, High-performance Translation Retrieval:
+Dumber is Better
+</title>
+<author confidence="0.998409">
+Timothy Baldwin
+</author>
+<affiliation confidence="0.9997815">
+Department of Computer Science
+Tokyo Institute of Technology
+</affiliation>
+<address confidence="0.953904">
+2-12-1 O-okayama, Meguro-ku, Tokyo 152-8552 JAPAN
+</address>
+<email confidence="0.999436">
+tim@cl.cs.titech.ac.jp
+</email>
+<sectionHeader confidence="0.993911" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999884818181818">In this paper, we compare the relative effects of segment order, segmentation and segment contiguity on the retrieval performance of a translation memory system. We take a selection of both bag-of-words and segment order-sensitive string comparison methods, and run each over both characterand word-segmented data, in combination with a range of local segment contiguity models (in the form of N-grams). Over two distinct datasets, we find that indexing according to simple character bigrams produces a retrieval accuracy superior to any of the tested word Ngram models. Further, in their optimum configuration, bag-of-words methods are shown to be equivalent to segment ordersensitive methods in terms of retrieval accuracy, but much faster. We also provide evidence that our findings are scalable.</bodyText>
+<sectionHeader confidence="0.998993" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999977615384616">Translation memories (TMs) are a list of translation records (source language strings paired with a unique target language translation), which the TM system accesses in suggesting a list of target language (L2) translation candidates for a given source language (L1) input (Trujillo, 1999; Planas, 1998). Translation retrieval (TR) is a description of this process of selecting from the TM a set of translation records (TRecs) of maximum L1 similarity to a given input. Typically in example-based machine translation, either a single TRec is retrieved from the TM based on a match with the overall L1 input, or the input is partitioned into coherent segments, and individual translations retrieved for each (Sato and Nagao, 1990; Nirenburg et al., 1993); this is the first step toward generating a customised translation for the input. With stand-alone TM systems, on the other hand, the system selects an arbitrary number of translation candidates falling within a certain empirical corridor of similarity with the overall input string, and simply outputs these for manual manipulation by the user in fashioning the final translation. A key assumption surrounding the bulk of past TR research has been that the greater the match stringency/linguistic awareness of the retrieval mechanism, the greater the final retrieval accuracy will become. Naturally, any appreciation in retrieval complexity comes at a price in terms of computational overhead. We thus follow the lead of Baldwin and Tanaka (2000) in asking the question: what is the empirical effect on retrieval performance of different match approaches? Here, retrieval performance is defined as the combination of retrieval speed and accuracy, with the ideal method offering fast response times at high accuracy. In this paper, we choose to focus on retrieval performance within a Japanese–English TR context. One key area of interest with Japanese is the effect that segmentation has on retrieval performance. As Japanese is a non-segmenting language (does not explicitly delimit words orthographically), we can take the brute-force approach in treating each string as a sequence of characters (character-based indexing), or alternatively call upon segmentation technology in partitioning each string into words (word-based indexing). Orthogonal to this is the question of sensitivity to segment order. That is, should our match mechanism treat each string as an unorganised multiset of terms (the bag-of-words approach), or attempt to find the match that best preserves the original segment order in the input (the segment order-sensitive approach)? We tackle this issue by implementing a sample of representative bag-of-words and segment ordersensitive methods and testing the retrieval performance of each. As a third orthogonal parameter, we consider the effects of segment contiguity. That is, do matches over contiguous segments provide closer overall translation correspondence than matches over displaced segments? Segment contiguity is either explicitly modelled within the string match mechanism, or provided as an add-in in the form of segment N-grams. To preempt the major findings of this paper, over a series of experiments we find that character-based indexing is consistently superior to word-based indexing. Furthermore, the bagof-words methods we test are equivalent in retrieval accuracy to the more expensive segment order-sensitive methods, but superior in retrieval speed. Finally, segment contiguity models provide benefits in terms of both retrieval accuracy and retrieval speed, particularly when coupled with character-based indexing. We thus provide clear evidence that high-performance TR is achievable with naive methods, and moreso that such methods outperform more intricate, expensive methods. That is, the dumber the retrieval mechanism, the better. Below, we review the orthogonal parameters of segmentation, segment order and segment contiguity (§ 2). We then present a range of both bagof-words and segment order-sensitive string comparison methods (§ 3) and detail the evaluation methodology (§ 4). Finally, we evaluate the different methods in a Japanese–English TR context (§ 5), before concluding the paper (§ 6).</bodyText>
+<sectionHeader confidence="0.953573" genericHeader="method">
+2 Basic Parameters
+</sectionHeader>
+<bodyText confidence="0.99958175">In this section, we review three parameter types that we suggest impinge on TR performance, namely segmentation, segment order, and segment contiguity.</bodyText>
+<subsectionHeader confidence="0.951389">
+2.1 Segmentation
+</subsectionHeader>
+<bodyText confidence="0.999819947368421">Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other arguments for character-based indexing over word-based indexing are that we: (a) avoid the need to commit ourselves to a particular analysis type in the case of ambiguity or unknown words; (b) avoid the need for stemming/lemmatisation; and (c) to a large extent get around problems related to the normalisation of lexical alternation. Note that all methods described below are applicable to both wordand character-based indexing. To avoid confusion between the two lexeme types, we will collectively refer to the elements of indexing as segments.</bodyText>
+<subsectionHeader confidence="0.999771">
+2.2 Segment Order
+</subsectionHeader>
+<bodyText confidence="0.999883571428572">Our expectation is that TRecs that preserve the segment order observed in the input string will provide closer-matching translations than TRecs containing those same segments in a different order. As far as we are aware, there is no TM system operating from Japanese that does not rely on word/segment/character order to some degree. Tanaka (1997) uses pivotal content words identified by the user to search through the TM and locate TRecs which contain those same content words in the same order and preferably the same segment distance apart. Nakamura (1989) similarly gives preference to TRecs in which the content words contained in the original input occur in the same linear order, although there is the scope to back off to TRecs which do not preserve the original word order. Sumita and Tsutsumi (1991) take the opposite tack in iteratively filtering out NPs and adverbs to leave only functional words and matrix-level predicates, and find TRecs which contain those same key words in the same ordering, preferably with the same segment types between them in the same numbers. Sato and Kawase (1994) employ a more local model of character order in modelling similarity according to N-grams fashioned from the original string.</bodyText>
+<subsectionHeader confidence="0.999576">
+2.3 Segment contiguity
+</subsectionHeader>
+<bodyText confidence="0.999893818181818">Given the input α1 α2α3α4, we would expect that of α1 01α202α303α4 and α1α2α3α4010203, the latter would provide a translation more reflective of the translation for the input. This intuition is captured either by embedding some contiguity weighting facility within the string match mechanism (in the case of weighted sequential correspondence — see below), or providing an independent model of segment contiguity in the form of segment N-grams. The particular N-gram orders we test are simple unigrams (1-grams), pure bigrams (2-grams), and mixed unigrams/bigrams. These N-gram models are implemented as a pre-processing stage, following segmentation (where applicable). All this involves is mutating the original strings into Ngrams of the desired order, while preserving the original segment order and segmentation schema. From the Japanese string 夏 · の · 雨 [natu·no·ame] “summer rain”,' for example, we would generate the following variants (common to both characterand word-based indexing):</bodyText>
+<equation confidence="0.997923333333333">
+1-gram: 夏 · の · 雨
+2-gram: 夏の · の雨
+Mixed 1/2-gram: 夏 · 夏の · の · の雨 · 雨
+</equation>
+<sectionHeader confidence="0.962802" genericHeader="method">
+3 String Comparison Methods
+</sectionHeader>
+<bodyText confidence="0.999731095238095">As the starting point for evaluation of the three parameter types targeted in this research, we take two bag-of-words (segment orderoblivious) and three segment order-sensitive methods, thereby modelling the effects of segment order (un)awareness. We then run each method over both segmented and unsegmented data in combination with the various N-gram models proposed above, to capture the full range of parameter settings. The particular bag-of-word approaches we target are the vector space model (Manning and Sch¨utze, 1999, p300) and “token intersection”. For segment order-sensitive approaches, we test 3-operation edit distance and similarity, and also “weighted sequential correspondence”. All methods are formulated to operate over an arbitrary wt schemata, although in L1 string comparison throughout this paper, we assume that any segment made up entirely of punctuation is given a wt of 0, and any other segment a wt of 1.</bodyText>
+<footnote confidence="0.886795">
+1 Character boundaries (which double as word
+boundaries in this case) indicated by “·”.
+</footnote>
+<bodyText confidence="0.98122675">vice versa). The three edit operations are segment equality (segments si and tj are identical), segment deletion (delete segment si) and segment insertion (insert segment a into a given position in string S). The cost associated with each operation is determined by the wt values of the operand segments, with the exception of segment equality which is defined to have a fixed cost of 0. Dynamic programming (DP) techniques are used to determine the minimum edit distance between a given string pair, following the classic 4-operation edit distance formulation of Wagner and Fisher (1974).2 For 3-operation edit distance, the edit distance between strings S = s1s2...sm and T = t1t2...tn is defined as D3op(S, T):</bodyText>
+<equation confidence="0.9791891">
+D3op(S, T) = d3(m, n)
+d3(i, j) =  0 ifi=0hj=0
+ d3(0, j − 1) + wt(tj) if i = 0 h j =� 0
+ d3(i − 1, 0) + wt(si) �if i # 0 h j = 0
+d3 (i − 1, j) + wt (si)
+�
+min d3(i, j − 1) + wt(tj), otherwise
+m3(i, j)
+� d3(i − 1, j − 1) if si = sj
+m3(i, j) = cc otherwise
+</equation>
+<bodyText confidence="0.978916666666667">It is possible to normalise operation edit distance D3op into 3-operation edit similarity S3op by way of:</bodyText>
+<equation confidence="0.9757005">
+S3op(S, T) = 1 − D3op(S, T)
+len(S) + len(T)
+</equation>
+<bodyText confidence="0.907962757575758">Weighted Sequential Correspondence Weighted sequential correspondence (originally proposed in Baldwin and Tanaka (2000)) goes one step further than edit distance in analysing not only segment sequentiality, but also the contiguity of matching segments. Weighted sequential correspondence associates an incremental weight (orthogonal to our wt weights) with each matching segment assessing the contiguity of left-neighbouring segments, in the manner described by Sato (1992) for characterbased matching. Namely, the kth segment of a matched substring is given the multiplicative weight min(k, Max), where Max is a positive integer. This weighting up of contiguous matches is facilitated through the DP algorithm given below: s(i, j) = Sw(S, T) = s(m, n) 1 0 if i = 0 v j = 0 s(i − 1, j), ll � max s(i, j − 1),otherwise s(i − 1, j − 1) + mw(i, j) mw (i, j) = ( Om(i, j) x wt (i) if si = sj ll otherwise ~ 0 if i = 0 v j = 0 v si =�tj cm(i, j) = min(Max, cm(i − 1, j − 1) + 1) otherwise 2 The fourth operator in 4-operation edit distance is segment substitution. All methods are subject to a threshold on translation utility, and in the case that the threshold is not achieved, the null string is returned. The various thresholds are as follows:</bodyText>
+<figure confidence="0.9426011875">
+�
+T, respectively, calculated
+cos(9, T') =
+|9||T~|
+Comparison method
+Threshold
+Vector space model
+Token intersection
+3-operation edit distance
+3-operation edit similarity
+Weighted seq. correspondence
+0.5
+0.4
+len(IN)
+0.4
+0.2
+</figure>
+<bodyText confidence="0.9978101">where IN is the input string, and len is the conventional segment length operator. Various optimisations were made to each string comparison method to reduce retrieval time, of the type described by Baldwin and Tanaka (2000). While the details are beyond the scope of this paper, suffice to say that the segment order-sensitive methods benefited from the greatest optimisation, and that little was done to accelerate the already quick bag-of-words methods.</bodyText>
+<subsectionHeader confidence="0.918819">
+3.1 Bag-of-Words Methods
+Vector Space Model
+</subsectionHeader>
+<bodyText confidence="0.9972149">Within our implementation of the vector space model (VSM), the segment content of each string is described as a vector, made up of a single dimension for each segment type occurring within S or T. The value of each vector component is given as the weighted frequency of that type according to its wt value. The string similarity of S and T is then defined as the cosine of the angle between vectors S� and as:</bodyText>
+<equation confidence="0.7777425">
+�� ��
+j s2 j t2
+j j
+Token Intersection
+</equation>
+<bodyText confidence="0.999974666666667">The token intersection of S and T is defined as the cumulative intersecting frequency of segment types appearing in each of the strings, normalised according to the combined segment lengths of S and T using Dice’s coefficient. Formally, this equates to:</bodyText>
+<equation confidence="0.991169">
+tint(S, T) = � �
+2 x �e∈S,T min freqS(e), freqT (e)
+len(S) + len(T)
+</equation>
+<bodyText confidence="0.999976333333333">where each e is a segment occurring in either S or T, freqS(e) is defined as the wt-based frequency of segment type e occurring in string S, and len(S) is the segment length of string S, that is the wtbased count of segments contained in S (similarly for T).</bodyText>
+<subsectionHeader confidence="0.7799335">
+3.2 Segment Order-sensitive Methods
+3-op Edit Distance and Similarity
+</subsectionHeader>
+<bodyText confidence="0.999939">Essentially, the segment-based 3-operation edit distance between strings S and T is the minimum number of primitive edit operations on single segments required to transform S into T (and where lenWSC(S) is the weighted length of S, defined as:</bodyText>
+<equation confidence="0.934376833333333">
+S�· T~
+E
+j sjtj
+The final similarity is determined as:
+2 × S.(S, T)
+WSC(S, T) = lenWSC (S) + lenWSC (T)
+</equation>
+<equation confidence="0.970082">
+lenWSC (S) = Em;=1 wt(s;) × min(Max, i)
+</equation>
+<sectionHeader confidence="0.978835" genericHeader="evaluation">
+4 Evaluation Specifications
+</sectionHeader>
+<subsectionHeader confidence="0.998886">
+4.1 Details of the Dataset
+</subsectionHeader>
+<bodyText confidence="0.990212935483871">As our main dataset, we used 3033 unique Japanese–English TRecs extracted from construction machinery field reports for the purposes of this research. Most TRecs comprise a single sentence, with an average Japanese character length of 27.7 and English word length of 13.3. Importantly, our dataset constitutes a controlled language, that is, a given word will tend to be translated identically across all usages, and only a limited range of syntactic constructions are employed. In secondary evaluation of retrieval performance over differing data sizes, we extracted 61,236 Japanese–English TRecs from the JEIDA parallel corpus (Isahara, 1998), which is made up of government white papers. The alignment granularity of this second corpus is much coarser than for the first corpus, with a single TRec often extending over multiple sentences. The average Japanese character length of each TRec is 76.3, and the average English word length is 35.7. The language used in the JEIDA corpus is highly constrained, although not as controlled as that in the first corpus. The construction of TRecs from both corpora was based on existing alignment data, and no further effort was made to subdivide partitions. For Japanese word-based indexing, segmentation was carried out primarily with ChaSen v2.0 (Matsumoto et al., 1999), and where specifically mentioned, JUMAN v3.5 (Kurohashi and Nagao, 1998) and ALTJAWS3 were also used.</bodyText>
+<subsectionHeader confidence="0.973658">
+4.2 Semi-stratified Cross Validation
+</subsectionHeader>
+<bodyText confidence="0.999918578947369">Retrieval accuracy was determined by way of 10-fold semi-stratified cross validation over the dataset. As part of this, all Japanese strings of length 5 characters or less were extracted from the dataset, and cross validation was performed over the residue, including the shorter strings in the training data (i.e. TM) on each iteration. In N-fold stratified cross validation, the dataset is divided into N equally-sized partitions of uniform class distribution. Evaluation is then carried out N times, taking each partition as the heldout test data, and the remaining partitions as the training data on each iteration; the overall accuracy is averaged over the N data configurations. As our dataset is not pre-classified according to a discrete class description, we are not able to perform true data stratification over the class distribution. Instead, we carry out “semi-stratification” over the L1 segment lengths of the TRecs.</bodyText>
+<subsectionHeader confidence="0.984419">
+4.3 Evaluation of the Output
+</subsectionHeader>
+<bodyText confidence="0.9999562">Evaluation of retrieval accuracy is carried out according to a modified version of the method proposed by Baldwin and Tanaka (2000). The first step in this process is to determine the set of “optimal” translations by way of the same basic TR procedure as described above, except that we use the held-out translation for each input to search through the L2 component of the TM. As for L1 TR, a threshold on translation utility is then applied to ascertain whether the optimal translations are similar enough to the model translation to be of use, and in the case that this threshold is not achieved, the empty string is returned as the sole optimal translation. Next, we proceed to ascertain whether the actual system output coincides with one of the optimal translations, and rate the accuracy of each method according to the proportion of optimal outputs. If multiple outputs are produced, we select from among them randomly. This guarantees a unique translation output and differs from the methodology of Baldwin and Tanaka (2000), who judged the system output to be “correct” if the potentially multiple set of top-ranking outputs contained an optimal translation, placing methods with greater fan-out of outputs at an advantage. So as to filter out any bias towards a given string comparison method in TR, we determine translation optimality based on both 3-operation edit distance (operating over English word bigrams) and also weighted sequential correspondence (operating over English word unigrams). We then derive the final translation accuracy as the average of the accuracies from the respective evaluation sets. Here again, our approach differs from that of Baldwin and Tanaka (2000), who based determination of translation optimality exclusively on 3-operation edit distance (operating over word unigrams), a method which we found to produce a strong bias toward 3-operation edit distance in L1 TR. In determining translation optimality, all punctuation and stop words were first filtered out of each L2 (English) string, and all remaining segments scored at a wt of 1. Stop words are defined as those contained within the SMART (Salton, 1971) stop word list.4 Perhaps the main drawback of our approach to evaluation is that we assume a unique model translation for each input, where in fact, multiple translations of equivalent quality could reasonably be expected to exist. In our case, however, both corpora represent relatively controlled languages and language use is hence highly predictable. The proposed evaluation methodology is thus justified.</bodyText>
+<sectionHeader confidence="0.999581" genericHeader="result">
+5 Results and Supporting Evidence
+</sectionHeader>
+<subsectionHeader confidence="0.984939">
+5.1 Basic evaluation
+</subsectionHeader>
+<bodyText confidence="0.999876428571429">In this section, we test our five string comparison methods over the construction machinery corpus, under both characterand word-based indexing, and with each of unigrams, bigrams and mixed unigrams/bigrams. The retrieval accuracies and times for the different string comparison methods are presented in Figs. 1 and 2, respectively.</bodyText>
+<figure confidence="0.7318415">
+3 http://www.kecl.ntt.co.jp/icl/mtg/resources/altjaws.html 4 ftp://ftp.cornell.cs.edu/pub/smart/english.stop
+String comparison method
+</figure>
+<figureCaption confidence="0.999494">
+Figure 1: Basic retrieval accuracies
+</figureCaption>
+<bodyText confidence="0.996841409090909">Here and in subsequent graphs, “VSM” refers to the vector space model, “TINT” to token intersection, “3opD” to 3-op edit distance, “3opS” to 3-op edit similarity, and “WSC” to weighted sequential correspondence; the bag-of-words methods are labelled in italics and the segment ordersensitive methods in bold. In Figs. 1 and 2, results for the three N-gram models are presented separately, within each of which, the data is sectioned off into the different string comparison methods. Weighted sequential correspondence was tested with a unigram model only, due to its inbuilt modelling of segment contiguity. Bars marked with an asterisk indicate a statistically significants gain over the corresponding indexing paradigm (i.e. character-based indexing vs. word-based indexing for a given string comparison method and N-gram order). Times in Fig. 2 are calibrated relative to 3-operation edit distance with word unigrams, and plotted against a logarithmic time axis. Results to come from these figures can be summarised as follows:</bodyText>
+<listItem confidence="0.997411941176471">• Character-based indexing is consistently superior to word-based indexing, particularly when combined with bigrams or mixed unigrams/bigrams. • In terms of raw translation accuracy, there is very little to separate the best of the bag-ofwords methods from the best of the segment order-sensitive methods. • With character-based indexing, bigrams offer tangible gains in translation accuracy at the same time as greatly accelerating the retrieval process. With word-based indexing, mixed unigrams/bigrams offer the best balance of translation accuracy and computational cost. • Weighted sequential correspondence is moderately successful in terms of accuracy, but grossly expensive.</listItem>
+<bodyText confidence="0.8365476">Based on the above results, we judge bigrams to be the best segment contiguity model for character-based indexing, and mixed unigrams/bigrams to be the best segment contiguity 5 As determined by the paired t test (p &lt; 0.05).</bodyText>
+<subsectionHeader confidence="0.379991">
+String comparison method
+</subsectionHeader>
+<figureCaption confidence="0.984241">
+Figure 2: Basic unit retrieval times
+model for word-based indexing, and for the remainder of this paper, present only these two sets of results.</figureCaption>
+<bodyText confidence="0.999931">While we have been able to confirm the finding of Baldwin and Tanaka (2000) that characterbased indexing is superior to word-based indexing, we are no closer to determining why this should be the case. In the following sections we look to shed some light on this issue by considering each of: (i) the retrieval accuracy for other segmentation systems, (ii) the effects of lexical normalisation, and (iii) the scalability and reproducibility of the given results over different datasets. Finally, we present a brief qualitative explanation for the overall results.</bodyText>
+<subsectionHeader confidence="0.860391">
+5.2 The effects of segmentation and
+lexical normalisation
+</subsectionHeader>
+<bodyText confidence="0.9937947">Above, we observed that segmentation consistently brought about a degradation in translation retrieval for the given dataset. Automated segmentation inevitably leads to errors, which could possibly impinge on the accuracy of word-based indexing. Alternatively, the performance drop could simply be caused somehow by our particular choice of segmentation module, that is ChaSen. First, we used JUMAN to segment the construction machinery corpus, and evaluated the resultant dataset in the exact same manner as for the ChaSen output. Similarly, we ran a development version of ALTJAWS over the same corpus to produce two datasets, the first simply segmented and the second both segmented and lexically normalised. By lexical normalisation, we mean that each word is converted to its canonical form. The main segment types that normalisation has an effect on are verbs and adjectives (conjugating words), and also loan-word nouns with an optional long final vowel (e.g. monit¯a “monitor” ⇒ monita) and words with multiple inter-replaceable kanji realisations (e.g. 充分 [zy¯ubuN] “sufficient” ⇒ 十分). The retrieval accuracies for JUMAN, and ALTJAWS with and without lexical normalisation are presented in Fig. 3, juxtaposed against the retrieval accuracies for character-based indexing (bigrams) and also ChaSen (mixed unigrams/bigrams) from Section 5.1. Asterisked bars</bodyText>
+<figure confidence="0.997582837209302">
+Retrieval accuracy (%)
+62
+60
+58
+56
+54
+52
+50
+VSM
+TINT
+1-gram
+*
+3opD
+Char-based indexing Word-based indexing
+3opS
+WSC
+*
+VSM
+2-gram
+*
+TINT
+*
+3opD
+*
+3opS
+VSM
+1/2-gram
+TINT
+3opD
+*
+3opS
+VSM TINT 3opD 3opS WSC VSM TINT 3opD 3opS VSM TINT 3opD 3opS
+1-gram
+2-gram
+Char-based indexing
+Word-based indexing
+1/2-gram
+100
+10
+1
+Relative retrieval time
+VSM TINT 3opD 3opS WSC
+String comparison method
+</figure>
+<figureCaption confidence="0.9912765">
+Figure 3: Results using different segmentation
+modules
+indicate a statistically significant gain in accuracy over ChaSen.</figureCaption>
+<bodyText confidence="0.984831340425532">Looking first to the results for JUMAN, there is a gain in accuracy over ChaSen for all string comparison methods. With ALTJAWS, also, a consistent gain in performance is evident with simple segmentation, the degree of which is significantly higher than for JUMAN. The addition of lexical normalisation enhances this effect marginally. Notice that character-based indexing (based on character bigrams) holds a clear advantage over the best of the word-based indexing results for all string comparison methods. Based on the above, we can state that the choice of segmentation system does have a modest impact on retrieval accuracy, but that the effects of lexical normalisation are highly localised. In the following, we look to quantify the relationship between retrieval and segmentation accuracy. In the next step of evaluation, we took a random sample of 200 TRecs from the original dataset, and ran each of ChaSen, JUMAN and ALTJAWS over the Japanese component of each. We then manually evaluated the output in terms of segment precision and recall, defined respectively as: # correct segs in output Segment precision —_ Total # segs in output # correct segs in output Segment recall —_ Total # segs in model data One slight complication in evaluating the output of the three systems is that they adopt incongruent models of conjugation. We thus made allowance for variation in the analysis of verb and adjective complexes, and focused on the segmentation of noun complexes. A performance breakdown for ChaSen (CS), JUMAN (JM) and ALTJAWS (AJ) is presented in Tab.1. ALTJAWS was found to outperform the remaining two systems in terms of segment precision, while ChaSen and JUMAN performed at the exact same level of segment precision. Looking next to segment recall, ChaSen significantly outperformed both ALTJAWS and JUMAN. The source of almost all errors in recall, and roughly half of errors in precision for both ChaSen and</bodyText>
+<table confidence="0.9988255">
+CS JM AJ
+Ave. segs/TRec 13.0 12.0 11.7
+Segment precision 98.3% 98.3% 98.6%
+Segment recall 98.1% 96.2% 97.7%
+Sentence accuracy 70.5% 59.0% 72.0%
+Total segment types 650 656 634
+</table>
+<tableCaption confidence="0.999945">
+Table 1: Segmentation performance
+</tableCaption>
+<bodyText confidence="0.999842105263158">JUMAN was katakana sequences such as g¯etorokku-barubu “gate-lock valve”, transcribed from English. ALTJAWS, on the other hand, was remarkably successful at segmenting katakana word sequences, achieving a segment precision of 100% and segment recall approaching 99%. This is thought to have been the main cause for the disparity in retrieval accuracy for the three systems, aggravated by the fact that most katakana sequences were key technical terms. To gain an insight into consistency in the case of error, we further calculated the total number of segment types in the output, expecting to find a core set of correctly-analysed segments, of relatively constant size across the different systems, plus an unpredictable component of segment errors, of variable size. The system generating the fewest segment types can thus be said to be the most consistent. Based on the segment type counts in Tab. 1, ALTJAWS errs more consistently than the remaining two systems, and there is very little to separate ChaSen and JUMAN. This is thought to have had some impact on the inflated retrieval accuracy for ALTJAWS. To summarise, there would seem to be a direct correlation between segmentation accuracy and retrieval performance, with segmentation accuracy on key terms (katakana sequences) having a particularly keen effect on translation retrieval. In this respect, ALTJAWS is superior to both ChaSen and JUMAN for the target domain. Additionally, complementing segmentation with lexical normalisation would seem to produce meager performance gains. Lastly, despite the slight gains to word-based indexing with the different segmentation systems, it is still significantly inferior to character-based indexing.</bodyText>
+<subsectionHeader confidence="0.999691">
+5.3 Scalability of performance
+</subsectionHeader>
+<bodyText confidence="0.999982736842105">All results to date have arisen from evaluation over a single dataset of fixed size. In order to validate the basic findings from above and observe how increases in the data size affect retrieval performance, we next ran the string comparison methods over differing-sized subsets of the JEIDA corpus. We simulate TMs of differing size by randomly splitting the JEIDA corpus into ten partitions, and running the various methods first over partition 1, then over the combined partitions 1 and 2, and so on until all ten partitions are combined together into the full corpus. We tested all string comparison methods other than weighted sequential correspondence over the ten subsets of the JEIDA corpus. Weighted sequential correspondence was excluded from evaluation due to its overall sub-standard retrieval performance. The translation accuracies for the different methods the translation utility threshold is generally not achieved).</bodyText>
+<figure confidence="0.99709676">
+*
+Char-based
+ChaSen ALTJAWS (−norm)
+*
+*
+*
+*
+JUMAN
+*
+*
+ALTJAWS (+norm)
+*
+*
+*
+*
+62
+60
+58
+56
+54
+Retrieval accuracy (%)
+52
+50
+5976 11952 17937 23922 29898 35874 41859 47835 53820 61236
+Dataset size (# translation records)
+</figure>
+<figureCaption confidence="0.964741">
+Figure 4: Retrieval accuracies over datasets of in-
+creasing size
+over the ten datasets of varying size, are indicated in Fig. 4, with each string comparison method tested under character bigrams (“2-gram −seg”) and mixed word unigrams/bigrams (“1/2-gram +seg”) as above. The results for token intersection have been omitted from the graph due to their being almost identical to those for VSM. A striking feature of the graph is that it is rightdecreasing, which is essentially an artifact of the inflated length of each TRec (see Section 4.1) and resultant data sparseness. That is, for smaller datasets, in the bulk of cases, no TRec in the TM is similar enough to the input to warrant consideration as a translation candidate (i.e.</figureCaption>
+<bodyText confidence="0.999943653061224">For larger datasets, on the other hand, we are having to make more subtle choices as to the final translation candidate. One key trend in Fig.4 is the superiority of characterover word-based indexing for each of the three string comparison methods, at a relatively constant level as the TM size grows. Also of interest is the finding that there is very little to distinguish bag-of-words from segment ordersensitive methods in terms of retrieval accuracy in their respective best configurations. As with the original dataset from above, 3operation edit similarity was the strongest performer just nosing out (character bigram-based) VSM for line honours, with 3-operation edit distance lagging well behind. Next, we turn to consider the mean unit retrieval times for each method, under the two indexing paradigms. Times are presented in Fig.5, plotted once again on a logarithmic scale in order to fit the full fan-out of retrieval times onto a single graph. VSM and 3-operation edit distance were the most consistent performers, both maintaining retrieval speeds in line with those for the original dataset at around or under 1.0 (i.e.the same retrieval time per input as 3-operation edit distance run over word unigrams for the construction machinery dataset). Most importantly, only minor increases in retrieval speed were evident as the TM size increased, which were then reversed for the larger datasets. All three string comparison methods displayed this convex shape, although the final running time for 3-operation edit similarity under characterand word-based indexing</bodyText>
+<figure confidence="0.832228">
+5976 11952 17937 23922 29898 35874 41859 47835 53820 61236
+Dataset size (# translation records)
+</figure>
+<figureCaption confidence="0.9763435">
+Figure 5: Relative unit retrieval times over
+datasets of increasing size
+was, respectively, around 10 and 100 times slower than that for VSM or 3-operation edit distance over the same dataset.</figureCaption>
+<bodyText confidence="0.989638555555555">To combine the findings for accuracy and speed, VSM under character-based indexing suggests itself as the pick of the different system configurations, combining both speed and consistent accuracy. That is, it offers the best overall retrieval performance.</bodyText>
+<subsectionHeader confidence="0.980022">
+5.4 Qualitative evaluation
+</subsectionHeader>
+<bodyText confidence="0.999992368421053">Above, we established that character-based indexing is superior to word-based indexing for distinct datasets and a range of segmentation modules, even when segmentation is coupled with lexical normalisation. Additionally, we provided evidence to the effect that bag-of-words methods offer superior translation retrieval performance to segment order-sensitive methods. We are still no closer, however, to determining why this should be the case. Here, we seek to provide an explanation for these intriguing results. First comparing characterand word-based indexing, we found that the disparity in retrieval accuracy was largely related to the scoring of katakana words, which are significantly longer in character length than native Japanese words. For the construction machinery dataset as analysed with ChaSen, for example, the average character length of katakana words is 3.62, as compared to 2.05 overall. Under word-based indexing, all words are treated equally and character length does not enter into calculations. Thus a katakana word is treated identically to any other word type. Under character-based indexing, on the other hand, the longer the word, the more segments it generates, and a single matching katakana sequence thus tends to contribute more heavily to the final score than other words. Effectively, therefore, katakana sequences receive a higher score than kanji and other sequences, producing a preference for TRecs which incorporate the same katakana sequences as the input. As noted above, katakana sequences generally represent key technical terms, and such weighting thus tends to be beneficial to retrieval accuracy. We next examine the reason for the high correlation in retrieval accuracy between bag-of-words and segment order-sensitive methods in their optimum configurations (i.e.when coupled with character bigrams).</bodyText>
+<figure confidence="0.973975521739131">
+Accuracy (%)
+90
+70
+60
+50
+40
+80
+1/2-gram 3opD +seg
+1/2-gram 3opS +seg
+1/2-gram VSM +seg
+2-gram 3opD −seg
+2-gram 3opS −seg
+2-gram VSM −seg
+Relative retrieval time
+100
+10
+1
+2-gram VSM −seg
+1/2-gram VSM +seg
+2-gram 3opD −seg
+1/2-gram 3opD +seg
+1/2-gram 3opD +seg
+2-gram 3opD −seg
+</figure>
+<bodyText confidence="0.998942444444444">Essentially, the probability of a given segment set permuting in different string contexts diminishes as the number of co-occurring segments decreases. That is, for a given string pair, the greater the segment overlap between them (relative to the overall string lengths), the lower the probability that those segments are going to occur in different orderings. This is particularly the case when local segment contiguity is modelled within the segment description, as occurs for the character bigram and mixed word uni/bigram models. For high-scoring matches, therefore, segment order sensitivity becomes largely superfluous, and the slight edge in retrieval accuracy for segment order-sensitive methods tends to come for mid-scoring matches, in the vicinity of the translation utility threshold.</bodyText>
+<sectionHeader confidence="0.999706" genericHeader="conclusion">
+6 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999976516129032">This research has been concerned with the relative import of segmentation, segment order and segment contiguity on translation retrieval performance. We simulated the effects of word order sensitivity vs. bag-of-words word order insensitivity by implementing a total of five comparison methods: two bag-of-words approaches and three word order-sensitive approaches. Each of these methods was then tested under characterbased and word-based indexing and in combination with a range of N-gram models, and the relative performance of each such system configuration evaluated. Character-based indexing was found to be superior to word-based indexing, particularly when supplemented with a character bigram model. We went on to discover a strong correlation between retrieval accuracy and segmentation accuracy/consistency, and that lexical normalisation produces marginal gains in retrieval performance. We further tested the effects of incremental increases in data on retrieval performance, and confirmed our earlier finding that character-based indexing is superior to word-based indexing. At the same time, we discovered that in their best configurations, the retrieval accuracies of our bag-ofwords and segment order sensitive string comparison methods are roughly equivalent, but that the computational overhead for bag-of-words methods to achieve that accuracy is considerably lower than that for segment order sensitive methods.</bodyText>
+<sectionHeader confidence="0.999478" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999893249999999">
+T. Baldwin and H. Tanaka. 2000. The effects of
+word order and segmentation on translation re-
+trieval performance. In Proc. of the 18th Inter-
+national Conference on Computational Linguistics
+(COLING 2000), pages 35–41.
+H. Fujii and W.B. Croft. 1993. A comparison of index-
+ing techniques for Japanese text retrieval. In Proc.
+of 16th International ACM-SIGIR Conference on
+Research and Development in Information Retrieval
+(SIGIR’93), pages 237–46.
+H. Isahara. 1998. JEIDA’s English–Japanese bilin-
+gual corpus project. In Proc. of the 1st Interna-
+tional Conference on Language Resources and Eval-
+uation (LREC’98), pages 471–81.
+E. Kitamura and H. Yamamoto. 1996. Translation
+retrieval system using alignment data from parallel
+texts. In Proc. of the 53rd Annual Meeting of the
+IPSJ, volume 2, pages 385–6. (In Japanese).
+S. Kurohashi and M. Nagao. 1998. Nihongo keitai-
+kaiseki sisutemu JUMAN [Japanese morphological
+analysis system JUMAN] version 3.5. Technical re-
+port, Kyoto University. (In Japanese).
+C. Manning and H. Sch¨utze. 1999. Foundations
+of Statistical Natural Language Processing. MIT
+Press.
+Y. Matsumoto, A. Kitauchi, T. Yamashita, and Y. Hi-
+rano. 1999. Japanese Morphological Analysis Sys-
+tem ChaSen Version 2.0 Manual. Technical Report
+NAIST-IS-TR99009, NAIST.
+N. Nakamura. 1989. Translation support by retrieving
+bilingual texts. In Proc. of the 38th Annual Meeting
+of the IPSJ, volume 1, pages 357–8. (In Japanese).
+S. Nirenburg, C. Domashnev, and D.J. Grannes. 1993.
+Two approaches to matching in example-based ma-
+chine translation. In Proc. of the 5th International
+Conference on Theoretical and Methodological Is-
+sues in Machine Translation (TMI-93), pages 47–
+57.
+E. Planas. 1998. A Case Study on Memory Based
+Machine Translation Tools. PhD Fellow Working
+Paper, United Nations University.
+G. Salton. 1971. The SMART Retrieval System:
+Experiments in Automatic Document Processing.
+Prentice-Hall.
+S. Sato and T. Kawase. 1994. A High-Speed Best
+Match Retrieval Method for Japanese Text. Techni-
+cal Report IS-RR-94-9I, JAIST.
+S. Sato and M. Nagao. 1990. Toward memory-
+based translation. In Proc. of the 13th International
+Conference on Computational Linguistics (COL-
+ING ’90), pages 247–52.
+S. Sato. 1992. CTM: An example-based transla-
+tion aid system. In Proc. of the 14th International
+Conference on Computational Linguistics (COL-
+ING ’92), pages 1259–63.
+E. Sumita and Y. Tsutsumi. 1991. A practical method
+of retrieving similar examples for translation aid.
+Transactions of the IEICE, J74-D-II(10):1437–47.
+(In Japanese).
+H. Tanaka. 1997. An efficient way of gauging similar-
+ity between long Japanese expressions. In Informa-
+tion Processing Society of Japan SIG Notes, volume
+97, no. 85, pages 69–74. (In Japanese).
+A. Trujillo. 1999. Translation Engines: Techniques
+for Machine Translation. Springer Verlag.
+A. Wagner and M. Fisher. 1974. The string-to-
+string correction problem. Journal of the ACM,
+21(1):168–73.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.857281" no="0">
+<title confidence="0.984312">Low-cost, High-performance Translation Retrieval: Dumber is Better</title>
+<author confidence="0.999471">Timothy Baldwin</author>
+<affiliation confidence="0.999949">Department of Computer Science Tokyo Institute of Technology</affiliation>
+<address confidence="0.988516">2-12-1 O-okayama, Meguro-ku, Tokyo 152-8552 JAPAN</address>
+<email confidence="0.984023">tim@cl.cs.titech.ac.jp</email>
+<abstract confidence="0.995950391304348">In this paper, we compare the relative effects of segment order, segmentation and segment contiguity on the retrieval performance of a translation memory system. We take a selection of both bag-of-words and segment order-sensitive string comparison methods, and run each over both characterand word-segmented data, in combination with a range of local segment contiguity models (in the form of N-grams). Over two distinct datasets, we find that indexing according to simple character bigrams produces a retrieval accuracy superior to any of the tested word Ngram models. Further, in their optimum configuration, bag-of-words methods are shown to be equivalent to segment ordersensitive methods in terms of retrieval accuracy, but much faster. We also provide evidence that our findings are scalable.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>T Baldwin</author>
+<author>H Tanaka</author>
+</authors>
+<title>The effects of word order and segmentation on translation retrieval performance.</title>
+<date>2000</date>
+<booktitle>In Proc. of the 18th International Conference on Computational Linguistics (COLING</booktitle>
+<pages>35--41</pages>
+<contexts>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="394" position="2542" startWordPosition="391">r hand, the system selects an arbitrary number of translation candidates falling within a certain empirical corridor of similarity with the overall input string, and simply outputs these for manual manipulation by the user in fashioning the final translation. A key assumption surrounding the bulk of past TR research has been that the greater the match stringency/linguistic awareness of the retrieval mechanism, the greater the final retrieval accuracy will become. Naturally, any appreciation in retrieval complexity comes at a price in terms of computational overhead. We thus follow the lead of Baldwin and Tanaka (2000) in asking the question: what is the empirical effect on retrieval performance of different match approaches? Here, retrieval performance is defined as the combination of retrieval speed and accuracy, with the ideal method offering fast response times at high accuracy. In this paper, we choose to focus on retrieval performance within a Japanese–English TR context. One key area of interest with Japanese is the effect that segmentation has on retrieval performance. As Japanese is a non-segmenting language (does not explicitly delimit words orthographically), we can take the brute-force approach </context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="966" position="6298" startWordPosition="963">y term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other arguments for character-based indexing over word-based indexing are that we: (a) avoid the need to commit ourselves to a particular analysis type in the case of ambiguity or unknown words; (b) avoid the need for stemming/lemmatisation; and (c) to a large extent get around problems related to the normalisation of l</context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="1885" position="11765" startWordPosition="1882">e, the edit distance between strings S = s1s2...sm and T = t1t2...tn is defined as D3op(S, T): D3op(S, T) = d3(m, n) d3(i, j) =  0 ifi=0hj=0  d3(0, j − 1) + wt(tj) if i = 0 h j =� 0  d3(i − 1, 0) + wt(si) �if i # 0 h j = 0 d3 (i − 1, j) + wt (si) � min d3(i, j − 1) + wt(tj), otherwise m3(i, j) � d3(i − 1, j − 1) if si = sj m3(i, j) = cc otherwise It is possible to normalise operation edit distance D3op into 3-operation edit similarity S3op by way of: S3op(S, T) = 1 − D3op(S, T) len(S) + len(T) Weighted Sequential Correspondence Weighted sequential correspondence (originally proposed in Baldwin and Tanaka (2000)) goes one step further than edit distance in analysing not only segment sequentiality, but also the contiguity of matching segments. Weighted sequential correspondence associates an incremental weight (orthogonal to our wt weights) with each matching segment assessing the contiguity of left-neighbouring segments, in the manner described by Sato (1992) for characterbased matching. Namely, the kth segment of a matched substring is given the multiplicative weight min(k, Max), where Max is a positive integer. This weighting up of contiguous matches is facilitated through the DP algorithm given be</context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="2165" position="13337" startWordPosition="2162">thods are subject to a threshold on translation utility, and in the case that the threshold is not achieved, the null string is returned. The various thresholds are as follows: � T, respectively, calculated cos(9, T') = |9||T~| Comparison method Threshold Vector space model Token intersection 3-operation edit distance 3-operation edit similarity Weighted seq. correspondence 0.5 0.4 len(IN) 0.4 0.2 where IN is the input string, and len is the conventional segment length operator. Various optimisations were made to each string comparison method to reduce retrieval time, of the type described by Baldwin and Tanaka (2000). While the details are beyond the scope of this paper, suffice to say that the segment order-sensitive methods benefited from the greatest optimisation, and that little was done to accelerate the already quick bag-of-words methods. 3.1 Bag-of-Words Methods Vector Space Model Within our implementation of the vector space model (VSM), the segment content of each string is described as a vector, made up of a single dimension for each segment type occurring within S or T. The value of each vector component is given as the weighted frequency of that type according to its wt value. The string simil</context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="2904" position="17706" startWordPosition="2901">uation is then carried out N times, taking each partition as the heldout test data, and the remaining partitions as the training data on each iteration; the overall accuracy is averaged over the N data configurations. As our dataset is not pre-classified according to a discrete class description, we are not able to perform true data stratification over the class distribution. Instead, we carry out “semi-stratification” over the L1 segment lengths of the TRecs. 4.3 Evaluation of the Output Evaluation of retrieval accuracy is carried out according to a modified version of the method proposed by Baldwin and Tanaka (2000). The first step in this process is to determine the set of “optimal” translations by way of the same basic TR procedure as described above, except that we use the held-out translation for each input to search through the L2 component of the TM. As for L1 TR, a threshold on translation utility is then applied to ascertain whether the optimal translations are similar enough to the model translation to be of use, and in the case that this threshold is not achieved, the empty string is returned as the sole optimal translation. Next, we proceed to ascertain whether the actual system output coincid</context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="3165" position="19270" startWordPosition="3162">correct” if the potentially multiple set of top-ranking outputs contained an optimal translation, placing methods with greater fan-out of outputs at an advantage. So as to filter out any bias towards a given string comparison method in TR, we determine translation optimality based on both 3-operation edit distance (operating over English word bigrams) and also weighted sequential correspondence (operating over English word unigrams). We then derive the final translation accuracy as the average of the accuracies from the respective evaluation sets. Here again, our approach differs from that of Baldwin and Tanaka (2000), who based determination of translation optimality exclusively on 3-operation edit distance (operating over word unigrams), a method which we found to produce a strong bias toward 3-operation edit distance in L1 TR. In determining translation optimality, all punctuation and stop words were first filtered out of each L2 (English) string, and all remaining segments scored at a wt of 1. Stop words are defined as those contained within the SMART (Salton, 1971) stop word list.4 Perhaps the main drawback of our approach to evaluation is that we assume a unique model translation for each input, wher</context>
+<context citStr="Baldwin and Tanaka (2000)" endWordPosition="3715" position="22887" startWordPosition="3712">of translation accuracy and computational cost. • Weighted sequential correspondence is moderately successful in terms of accuracy, but grossly expensive. Based on the above results, we judge bigrams to be the best segment contiguity model for character-based indexing, and mixed unigrams/bigrams to be the best segment contiguity 5 As determined by the paired t test (p &lt; 0.05). String comparison method Figure 2: Basic unit retrieval times model for word-based indexing, and for the remainder of this paper, present only these two sets of results. While we have been able to confirm the finding of Baldwin and Tanaka (2000) that characterbased indexing is superior to word-based indexing, we are no closer to determining why this should be the case. In the following sections we look to shed some light on this issue by considering each of: (i) the retrieval accuracy for other segmentation systems, (ii) the effects of lexical normalisation, and (iii) the scalability and reproducibility of the given results over different datasets. Finally, we present a brief qualitative explanation for the overall results. 5.2 The effects of segmentation and lexical normalisation Above, we observed that segmentation consistently bro</context>
+</contexts>
+<marker>Baldwin, Tanaka, 2000</marker>
+<rawString>T. Baldwin and H. Tanaka. 2000. The effects of word order and segmentation on translation retrieval performance. In Proc. of the 18th International Conference on Computational Linguistics (COLING 2000), pages 35–41.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Fujii</author>
+<author>W B Croft</author>
+</authors>
+<title>A comparison of indexing techniques for Japanese text retrieval.</title>
+<date>1993</date>
+<booktitle>In Proc. of 16th International ACM-SIGIR Conference on Research and Development in Information Retrieval (SIGIR’93),</booktitle>
+<pages>237--46</pages>
+<contexts>
+<context citStr="Fujii and Croft (1993)" endWordPosition="944" position="6120" startWordPosition="941">king use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other arguments for character-based indexing over word-based indexing are that we: (a) avoid the need to commit ourselves to a particular analy</context>
+</contexts>
+<marker>Fujii, Croft, 1993</marker>
+<rawString>H. Fujii and W.B. Croft. 1993. A comparison of indexing techniques for Japanese text retrieval. In Proc. of 16th International ACM-SIGIR Conference on Research and Development in Information Retrieval (SIGIR’93), pages 237–46.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Isahara</author>
+</authors>
+<title>JEIDA’s English–Japanese bilingual corpus project.</title>
+<date>1998</date>
+<booktitle>In Proc. of the 1st International Conference on Language Resources and Evaluation (LREC’98),</booktitle>
+<pages>471--81</pages>
+<contexts>
+<context citStr="Isahara, 1998" endWordPosition="2593" position="15801" startWordPosition="2592">033 unique Japanese–English TRecs extracted from construction machinery field reports for the purposes of this research. Most TRecs comprise a single sentence, with an average Japanese character length of 27.7 and English word length of 13.3. Importantly, our dataset constitutes a controlled language, that is, a given word will tend to be translated identically across all usages, and only a limited range of syntactic constructions are employed. In secondary evaluation of retrieval performance over differing data sizes, we extracted 61,236 Japanese–English TRecs from the JEIDA parallel corpus (Isahara, 1998), which is made up of government white papers. The alignment granularity of this second corpus is much coarser than for the first corpus, with a single TRec often extending over multiple sentences. The average Japanese character length of each TRec is 76.3, and the average English word length is 35.7. The language used in the JEIDA corpus is highly constrained, although not as controlled as that in the first corpus. The construction of TRecs from both corpora was based on existing alignment data, and no further effort was made to subdivide partitions. For Japanese word-based indexing, segmenta</context>
+</contexts>
+<marker>Isahara, 1998</marker>
+<rawString>H. Isahara. 1998. JEIDA’s English–Japanese bilingual corpus project. In Proc. of the 1st International Conference on Language Resources and Evaluation (LREC’98), pages 471–81.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Kitamura</author>
+<author>H Yamamoto</author>
+</authors>
+<title>Translation retrieval system using alignment data from parallel texts.</title>
+<date>1996</date>
+<booktitle>In Proc. of the 53rd Annual Meeting of the IPSJ,</booktitle>
+<volume>2</volume>
+<pages>385--6</pages>
+<note>(In Japanese).</note>
+<contexts>
+<context citStr="Kitamura and Yamamoto, 1996" endWordPosition="920" position="5968" startWordPosition="916">inge on TR performance, namely segmentation, segment order, and segment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing o</context>
+</contexts>
+<marker>Kitamura, Yamamoto, 1996</marker>
+<rawString>E. Kitamura and H. Yamamoto. 1996. Translation retrieval system using alignment data from parallel texts. In Proc. of the 53rd Annual Meeting of the IPSJ, volume 2, pages 385–6. (In Japanese).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Kurohashi</author>
+<author>M Nagao</author>
+</authors>
+<title>Nihongo keitaikaiseki sisutemu JUMAN [Japanese morphological analysis system JUMAN] version 3.5.</title>
+<date>1998</date>
+<tech>Technical report,</tech>
+<institution>Kyoto University. (In Japanese).</institution>
+<contexts>
+<context citStr="Kurohashi and Nagao, 1998" endWordPosition="2718" position="16547" startWordPosition="2715">the first corpus, with a single TRec often extending over multiple sentences. The average Japanese character length of each TRec is 76.3, and the average English word length is 35.7. The language used in the JEIDA corpus is highly constrained, although not as controlled as that in the first corpus. The construction of TRecs from both corpora was based on existing alignment data, and no further effort was made to subdivide partitions. For Japanese word-based indexing, segmentation was carried out primarily with ChaSen v2.0 (Matsumoto et al., 1999), and where specifically mentioned, JUMAN v3.5 (Kurohashi and Nagao, 1998) and ALTJAWS3 were also used. 4.2 Semi-stratified Cross Validation Retrieval accuracy was determined by way of 10-fold semi-stratified cross validation over the dataset. As part of this, all Japanese strings of length 5 characters or less were extracted from the dataset, and cross validation was performed over the residue, including the shorter strings in the training data (i.e. TM) on each iteration. In N-fold stratified cross validation, the dataset is divided into N equally-sized partitions of uniform class distribution. Evaluation is then carried out N times, taking each partition as the h</context>
+</contexts>
+<marker>Kurohashi, Nagao, 1998</marker>
+<rawString>S. Kurohashi and M. Nagao. 1998. Nihongo keitaikaiseki sisutemu JUMAN [Japanese morphological analysis system JUMAN] version 3.5. Technical report, Kyoto University. (In Japanese).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Manning</author>
+<author>H Sch¨utze</author>
+</authors>
+<title>Foundations of Statistical Natural Language Processing.</title>
+<date>1999</date>
+<publisher>MIT Press.</publisher>
+<marker>Manning, Sch¨utze, 1999</marker>
+<rawString>C. Manning and H. Sch¨utze. 1999. Foundations of Statistical Natural Language Processing. MIT Press.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Matsumoto</author>
+<author>A Kitauchi</author>
+<author>T Yamashita</author>
+<author>Y Hirano</author>
+</authors>
+<date>1999</date>
+<journal>Japanese Morphological Analysis System ChaSen Version</journal>
+<tech>Technical Report NAIST-IS-TR99009, NAIST.</tech>
+<volume>2</volume>
+<contexts>
+<context citStr="Matsumoto et al., 1999" endWordPosition="2708" position="16473" startWordPosition="2705">e alignment granularity of this second corpus is much coarser than for the first corpus, with a single TRec often extending over multiple sentences. The average Japanese character length of each TRec is 76.3, and the average English word length is 35.7. The language used in the JEIDA corpus is highly constrained, although not as controlled as that in the first corpus. The construction of TRecs from both corpora was based on existing alignment data, and no further effort was made to subdivide partitions. For Japanese word-based indexing, segmentation was carried out primarily with ChaSen v2.0 (Matsumoto et al., 1999), and where specifically mentioned, JUMAN v3.5 (Kurohashi and Nagao, 1998) and ALTJAWS3 were also used. 4.2 Semi-stratified Cross Validation Retrieval accuracy was determined by way of 10-fold semi-stratified cross validation over the dataset. As part of this, all Japanese strings of length 5 characters or less were extracted from the dataset, and cross validation was performed over the residue, including the shorter strings in the training data (i.e. TM) on each iteration. In N-fold stratified cross validation, the dataset is divided into N equally-sized partitions of uniform class distributi</context>
+</contexts>
+<marker>Matsumoto, Kitauchi, Yamashita, Hirano, 1999</marker>
+<rawString>Y. Matsumoto, A. Kitauchi, T. Yamashita, and Y. Hirano. 1999. Japanese Morphological Analysis System ChaSen Version 2.0 Manual. Technical Report NAIST-IS-TR99009, NAIST.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Nakamura</author>
+</authors>
+<title>Translation support by retrieving bilingual texts.</title>
+<date>1989</date>
+<booktitle>In Proc. of the 38th Annual Meeting of the IPSJ,</booktitle>
+<volume>1</volume>
+<pages>357--8</pages>
+<note>(In Japanese).</note>
+<contexts>
+<context citStr="Nakamura, 1989" endWordPosition="911" position="5912" startWordPosition="910">w three parameter types that we suggest impinge on TR performance, namely segmentation, segment order, and segment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over </context>
+<context citStr="Nakamura (1989)" endWordPosition="1191" position="7710" startWordPosition="1190">he elements of indexing as segments. 2.2 Segment Order Our expectation is that TRecs that preserve the segment order observed in the input string will provide closer-matching translations than TRecs containing those same segments in a different order. As far as we are aware, there is no TM system operating from Japanese that does not rely on word/segment/character order to some degree. Tanaka (1997) uses pivotal content words identified by the user to search through the TM and locate TRecs which contain those same content words in the same order and preferably the same segment distance apart. Nakamura (1989) similarly gives preference to TRecs in which the content words contained in the original input occur in the same linear order, although there is the scope to back off to TRecs which do not preserve the original word order. Sumita and Tsutsumi (1991) take the opposite tack in iteratively filtering out NPs and adverbs to leave only functional words and matrix-level predicates, and find TRecs which contain those same key words in the same ordering, preferably with the same segment types between them in the same numbers. Sato and Kawase (1994) employ a more local model of character order in model</context>
+</contexts>
+<marker>Nakamura, 1989</marker>
+<rawString>N. Nakamura. 1989. Translation support by retrieving bilingual texts. In Proc. of the 38th Annual Meeting of the IPSJ, volume 1, pages 357–8. (In Japanese).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Nirenburg</author>
+<author>C Domashnev</author>
+<author>D J Grannes</author>
+</authors>
+<title>Two approaches to matching in example-based machine translation.</title>
+<date>1993</date>
+<booktitle>In Proc. of the 5th International Conference on Theoretical and Methodological Issues in Machine Translation (TMI-93),</booktitle>
+<pages>47--57</pages>
+<contexts>
+<context citStr="Nirenburg et al., 1993" endWordPosition="278" position="1794" startWordPosition="275">tion), which the TM system accesses in suggesting a list of target language (L2) translation candidates for a given source language (L1) input (Trujillo, 1999; Planas, 1998). Translation retrieval (TR) is a description of this process of selecting from the TM a set of translation records (TRecs) of maximum L1 similarity to a given input. Typically in example-based machine translation, either a single TRec is retrieved from the TM based on a match with the overall L1 input, or the input is partitioned into coherent segments, and individual translations retrieved for each (Sato and Nagao, 1990; Nirenburg et al., 1993); this is the first step toward generating a customised translation for the input. With stand-alone TM systems, on the other hand, the system selects an arbitrary number of translation candidates falling within a certain empirical corridor of similarity with the overall input string, and simply outputs these for manual manipulation by the user in fashioning the final translation. A key assumption surrounding the bulk of past TR research has been that the greater the match stringency/linguistic awareness of the retrieval mechanism, the greater the final retrieval accuracy will become. Naturally</context>
+</contexts>
+<marker>Nirenburg, Domashnev, Grannes, 1993</marker>
+<rawString>S. Nirenburg, C. Domashnev, and D.J. Grannes. 1993. Two approaches to matching in example-based machine translation. In Proc. of the 5th International Conference on Theoretical and Methodological Issues in Machine Translation (TMI-93), pages 47– 57.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Planas</author>
+</authors>
+<title>A Case Study on Memory Based Machine Translation Tools.</title>
+<date>1998</date>
+<tech>PhD Fellow Working Paper,</tech>
+<institution>United Nations University.</institution>
+<contexts>
+<context citStr="Planas, 1998" endWordPosition="203" position="1344" startWordPosition="202">trieval accuracy superior to any of the tested word Ngram models. Further, in their optimum configuration, bag-of-words methods are shown to be equivalent to segment ordersensitive methods in terms of retrieval accuracy, but much faster. We also provide evidence that our findings are scalable. 1 Introduction Translation memories (TMs) are a list of translation records (source language strings paired with a unique target language translation), which the TM system accesses in suggesting a list of target language (L2) translation candidates for a given source language (L1) input (Trujillo, 1999; Planas, 1998). Translation retrieval (TR) is a description of this process of selecting from the TM a set of translation records (TRecs) of maximum L1 similarity to a given input. Typically in example-based machine translation, either a single TRec is retrieved from the TM based on a match with the overall L1 input, or the input is partitioned into coherent segments, and individual translations retrieved for each (Sato and Nagao, 1990; Nirenburg et al., 1993); this is the first step toward generating a customised translation for the input. With stand-alone TM systems, on the other hand, the system selects </context>
+</contexts>
+<marker>Planas, 1998</marker>
+<rawString>E. Planas. 1998. A Case Study on Memory Based Machine Translation Tools. PhD Fellow Working Paper, United Nations University.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Salton</author>
+</authors>
+<date>1971</date>
+<booktitle>The SMART Retrieval System: Experiments in Automatic Document Processing.</booktitle>
+<publisher>Prentice-Hall.</publisher>
+<contexts>
+<context citStr="Salton, 1971" endWordPosition="3241" position="19731" startWordPosition="3240">n accuracy as the average of the accuracies from the respective evaluation sets. Here again, our approach differs from that of Baldwin and Tanaka (2000), who based determination of translation optimality exclusively on 3-operation edit distance (operating over word unigrams), a method which we found to produce a strong bias toward 3-operation edit distance in L1 TR. In determining translation optimality, all punctuation and stop words were first filtered out of each L2 (English) string, and all remaining segments scored at a wt of 1. Stop words are defined as those contained within the SMART (Salton, 1971) stop word list.4 Perhaps the main drawback of our approach to evaluation is that we assume a unique model translation for each input, where in fact, multiple translations of equivalent quality could reasonably be expected to exist. In our case, however, both corpora represent relatively controlled languages and language use is hence highly predictable. The proposed evaluation methodology is thus justified. 5 Results and Supporting Evidence 5.1 Basic evaluation In this section, we test our five string comparison methods over the construction machinery corpus, under both character- and word-bas</context>
+</contexts>
+<marker>Salton, 1971</marker>
+<rawString>G. Salton. 1971. The SMART Retrieval System: Experiments in Automatic Document Processing. Prentice-Hall.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Sato</author>
+<author>T Kawase</author>
+</authors>
+<title>A High-Speed Best Match Retrieval Method for Japanese Text.</title>
+<date>1994</date>
+<tech>Technical Report IS-RR-94-9I, JAIST.</tech>
+<contexts>
+<context citStr="Sato and Kawase (1994)" endWordPosition="930" position="6028" startWordPosition="927">egment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other arguments for character-based indexing over w</context>
+<context citStr="Sato and Kawase (1994)" endWordPosition="1286" position="8256" startWordPosition="1283">e same order and preferably the same segment distance apart. Nakamura (1989) similarly gives preference to TRecs in which the content words contained in the original input occur in the same linear order, although there is the scope to back off to TRecs which do not preserve the original word order. Sumita and Tsutsumi (1991) take the opposite tack in iteratively filtering out NPs and adverbs to leave only functional words and matrix-level predicates, and find TRecs which contain those same key words in the same ordering, preferably with the same segment types between them in the same numbers. Sato and Kawase (1994) employ a more local model of character order in modelling similarity according to N-grams fashioned from the original string. 2.3 Segment contiguity Given the input α1 α2α3α4, we would expect that of α1 01α202α303α4 and α1α2α3α4010203, the latter would provide a translation more reflective of the translation for the input. This intuition is captured either by embedding some contiguity weighting facility within the string match mechanism (in the case of weighted sequential correspondence — see below), or providing an independent model of segment contiguity in the form of segment N-grams. The p</context>
+</contexts>
+<marker>Sato, Kawase, 1994</marker>
+<rawString>S. Sato and T. Kawase. 1994. A High-Speed Best Match Retrieval Method for Japanese Text. Technical Report IS-RR-94-9I, JAIST.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Sato</author>
+<author>M Nagao</author>
+</authors>
+<title>Toward memorybased translation.</title>
+<date>1990</date>
+<booktitle>In Proc. of the 13th International Conference on Computational Linguistics (COLING ’90),</booktitle>
+<pages>247--52</pages>
+<contexts>
+<context citStr="Sato and Nagao, 1990" endWordPosition="274" position="1769" startWordPosition="271">arget language translation), which the TM system accesses in suggesting a list of target language (L2) translation candidates for a given source language (L1) input (Trujillo, 1999; Planas, 1998). Translation retrieval (TR) is a description of this process of selecting from the TM a set of translation records (TRecs) of maximum L1 similarity to a given input. Typically in example-based machine translation, either a single TRec is retrieved from the TM based on a match with the overall L1 input, or the input is partitioned into coherent segments, and individual translations retrieved for each (Sato and Nagao, 1990; Nirenburg et al., 1993); this is the first step toward generating a customised translation for the input. With stand-alone TM systems, on the other hand, the system selects an arbitrary number of translation candidates falling within a certain empirical corridor of similarity with the overall input string, and simply outputs these for manual manipulation by the user in fashioning the final translation. A key assumption surrounding the bulk of past TR research has been that the greater the match stringency/linguistic awareness of the retrieval mechanism, the greater the final retrieval accura</context>
+</contexts>
+<marker>Sato, Nagao, 1990</marker>
+<rawString>S. Sato and M. Nagao. 1990. Toward memorybased translation. In Proc. of the 13th International Conference on Computational Linguistics (COLING ’90), pages 247–52.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Sato</author>
+</authors>
+<title>CTM: An example-based translation aid system.</title>
+<date>1992</date>
+<booktitle>In Proc. of the 14th International Conference on Computational Linguistics (COLING ’92),</booktitle>
+<pages>1259--63</pages>
+<contexts>
+<context citStr="Sato (1992)" endWordPosition="925" position="6001" startWordPosition="924">ent order, and segment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other arguments for char</context>
+<context citStr="Sato (1992)" endWordPosition="1934" position="12119" startWordPosition="1933">le to normalise operation edit distance D3op into 3-operation edit similarity S3op by way of: S3op(S, T) = 1 − D3op(S, T) len(S) + len(T) Weighted Sequential Correspondence Weighted sequential correspondence (originally proposed in Baldwin and Tanaka (2000)) goes one step further than edit distance in analysing not only segment sequentiality, but also the contiguity of matching segments. Weighted sequential correspondence associates an incremental weight (orthogonal to our wt weights) with each matching segment assessing the contiguity of left-neighbouring segments, in the manner described by Sato (1992) for characterbased matching. Namely, the kth segment of a matched substring is given the multiplicative weight min(k, Max), where Max is a positive integer. This weighting up of contiguous matches is facilitated through the DP algorithm given below: s(i, j) = Sw(S, T) = s(m, n) 1 0 if i = 0 v j = 0 s(i − 1, j), ll � max s(i, j − 1),otherwise s(i − 1, j − 1) + mw(i, j) mw (i, j) = ( Om(i, j) x wt (i) if si = sj ll otherwise ~ 0 if i = 0 v j = 0 v si =�tj cm(i, j) = min(Max, cm(i − 1, j − 1) + 1) otherwise 2 The fourth operator in 4-operation edit distance is segment substitution. All methods a</context>
+</contexts>
+<marker>Sato, 1992</marker>
+<rawString>S. Sato. 1992. CTM: An example-based translation aid system. In Proc. of the 14th International Conference on Computational Linguistics (COLING ’92), pages 1259–63.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Sumita</author>
+<author>Y Tsutsumi</author>
+</authors>
+<title>A practical method of retrieving similar examples for translation aid.</title>
+<date>1991</date>
+<journal>Transactions of the IEICE, J74-D-II(10):1437–47. (In Japanese).</journal>
+<contexts>
+<context citStr="Sumita and Tsutsumi, 1991" endWordPosition="915" position="5939" startWordPosition="912">r types that we suggest impinge on TR performance, namely segmentation, segment order, and segment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that</context>
+<context citStr="Sumita and Tsutsumi (1991)" endWordPosition="1236" position="7960" startWordPosition="1233">erent order. As far as we are aware, there is no TM system operating from Japanese that does not rely on word/segment/character order to some degree. Tanaka (1997) uses pivotal content words identified by the user to search through the TM and locate TRecs which contain those same content words in the same order and preferably the same segment distance apart. Nakamura (1989) similarly gives preference to TRecs in which the content words contained in the original input occur in the same linear order, although there is the scope to back off to TRecs which do not preserve the original word order. Sumita and Tsutsumi (1991) take the opposite tack in iteratively filtering out NPs and adverbs to leave only functional words and matrix-level predicates, and find TRecs which contain those same key words in the same ordering, preferably with the same segment types between them in the same numbers. Sato and Kawase (1994) employ a more local model of character order in modelling similarity according to N-grams fashioned from the original string. 2.3 Segment contiguity Given the input α1 α2α3α4, we would expect that of α1 01α202α303α4 and α1α2α3α4010203, the latter would provide a translation more reflective of the trans</context>
+</contexts>
+<marker>Sumita, Tsutsumi, 1991</marker>
+<rawString>E. Sumita and Y. Tsutsumi. 1991. A practical method of retrieving similar examples for translation aid. Transactions of the IEICE, J74-D-II(10):1437–47. (In Japanese).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H Tanaka</author>
+</authors>
+<title>An efficient way of gauging similarity between long Japanese expressions.</title>
+<date>1997</date>
+<booktitle>In Information Processing Society of Japan SIG Notes,</booktitle>
+<volume>97</volume>
+<pages>69--74</pages>
+<note>(In Japanese).</note>
+<contexts>
+<context citStr="Tanaka, 1997" endWordPosition="922" position="5983" startWordPosition="921">y segmentation, segment order, and segment contiguity. 2.1 Segmentation Despite non-segmenting languages such as Japanese not making use of segment delimiters, it is possible to artificially partition off a given string into constituent morphemes through the process of segmentation. We will collectively term the resultant segments as words for the remainder of this paper. Looking to past research on string comparison methods for TM systems, almost all systems involving Japanese as the source language rely on segmentation (Nakamura, 1989; Sumita and Tsutsumi, 1991; Kitamura and Yamamoto, 1996; Tanaka, 1997), with Sato (1992) and Sato and Kawase (1994) providing rare instances of character-based systems. This is despite Fujii and Croft (1993) providing evidence from Japanese information retrieval that character-based indexing performs comparably to word-based indexing. In analogous research, Baldwin and Tanaka (2000) compared characterand word-based indexing within a Japanese– English TR context and found character-based indexing to hold a slight empirical advantage. The most obvious advantage of character-based indexing over word-based indexing is that there is no pre-processing overhead. Other </context>
+<context citStr="Tanaka (1997)" endWordPosition="1155" position="7497" startWordPosition="1154">alisation of lexical alternation. Note that all methods described below are applicable to both word- and character-based indexing. To avoid confusion between the two lexeme types, we will collectively refer to the elements of indexing as segments. 2.2 Segment Order Our expectation is that TRecs that preserve the segment order observed in the input string will provide closer-matching translations than TRecs containing those same segments in a different order. As far as we are aware, there is no TM system operating from Japanese that does not rely on word/segment/character order to some degree. Tanaka (1997) uses pivotal content words identified by the user to search through the TM and locate TRecs which contain those same content words in the same order and preferably the same segment distance apart. Nakamura (1989) similarly gives preference to TRecs in which the content words contained in the original input occur in the same linear order, although there is the scope to back off to TRecs which do not preserve the original word order. Sumita and Tsutsumi (1991) take the opposite tack in iteratively filtering out NPs and adverbs to leave only functional words and matrix-level predicates, and find</context>
+</contexts>
+<marker>Tanaka, 1997</marker>
+<rawString>H. Tanaka. 1997. An efficient way of gauging similarity between long Japanese expressions. In Information Processing Society of Japan SIG Notes, volume 97, no. 85, pages 69–74. (In Japanese).</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Trujillo</author>
+</authors>
+<title>Translation Engines: Techniques for Machine Translation.</title>
+<date>1999</date>
+<publisher>Springer Verlag.</publisher>
+<contexts>
+<context citStr="Trujillo, 1999" endWordPosition="201" position="1329" startWordPosition="199">ms produces a retrieval accuracy superior to any of the tested word Ngram models. Further, in their optimum configuration, bag-of-words methods are shown to be equivalent to segment ordersensitive methods in terms of retrieval accuracy, but much faster. We also provide evidence that our findings are scalable. 1 Introduction Translation memories (TMs) are a list of translation records (source language strings paired with a unique target language translation), which the TM system accesses in suggesting a list of target language (L2) translation candidates for a given source language (L1) input (Trujillo, 1999; Planas, 1998). Translation retrieval (TR) is a description of this process of selecting from the TM a set of translation records (TRecs) of maximum L1 similarity to a given input. Typically in example-based machine translation, either a single TRec is retrieved from the TM based on a match with the overall L1 input, or the input is partitioned into coherent segments, and individual translations retrieved for each (Sato and Nagao, 1990; Nirenburg et al., 1993); this is the first step toward generating a customised translation for the input. With stand-alone TM systems, on the other hand, the </context>
+</contexts>
+<marker>Trujillo, 1999</marker>
+<rawString>A. Trujillo. 1999. Translation Engines: Techniques for Machine Translation. Springer Verlag.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Wagner</author>
+<author>M Fisher</author>
+</authors>
+<title>The string-tostring correction problem.</title>
+<date>1974</date>
+<journal>Journal of the ACM,</journal>
+<volume>21</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Wagner and Fisher (1974)" endWordPosition="1747" position="11109" startWordPosition="1744">ies in this case) indicated by “·”. vice versa). The three edit operations are segment equality (segments si and tj are identical), segment deletion (delete segment si) and segment insertion (insert segment a into a given position in string S). The cost associated with each operation is determined by the wt values of the operand segments, with the exception of segment equality which is defined to have a fixed cost of 0. Dynamic programming (DP) techniques are used to determine the minimum edit distance between a given string pair, following the classic 4-operation edit distance formulation of Wagner and Fisher (1974).2 For 3-operation edit distance, the edit distance between strings S = s1s2...sm and T = t1t2...tn is defined as D3op(S, T): D3op(S, T) = d3(m, n) d3(i, j) =  0 ifi=0hj=0  d3(0, j − 1) + wt(tj) if i = 0 h j =� 0  d3(i − 1, 0) + wt(si) �if i # 0 h j = 0 d3 (i − 1, j) + wt (si) � min d3(i, j − 1) + wt(tj), otherwise m3(i, j) � d3(i − 1, j − 1) if si = sj m3(i, j) = cc otherwise It is possible to normalise operation edit distance D3op into 3-operation edit similarity S3op by way of: S3op(S, T) = 1 − D3op(S, T) len(S) + len(T) Weighted Sequential Correspondence Weighted sequential correspo</context>
+</contexts>
+<marker>Wagner, Fisher, 1974</marker>
+<rawString>A. Wagner and M. Fisher. 1974. The string-tostring correction problem. Journal of the ACM, 21(1):168–73.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.002726" no="0">
+<title confidence="0.902385">
+Discriminative Word Alignment with Conditional Random Fields
+</title>
+<author confidence="0.986517">
+Phil Blunsom and Trevor Cohn
+</author>
+<affiliation confidence="0.99717">
+Department of Software Engineering and Computer Science
+University of Melbourne
+</affiliation>
+<email confidence="0.998688">
+{pcbl,tacohn}@csse.unimelb.edu.au
+</email>
+<sectionHeader confidence="0.997397" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999738363636364">In this paper we present a novel approach for inducing word alignments from sentence aligned data. We use a Conditional Random Field (CRF), a discriminative model, which is estimated on a small supervised training set. The CRF is conditioned on both the source and target texts, and thus allows for the use of arbitrary and overlapping features over these data. Moreover, the CRF has efficient training and decoding processes which both find globally optimal solutions. We apply this alignment model to both French-English and Romanian-English language pairs. We show how a large number of highly predictive features can be easily incorporated into the CRF, and demonstrate that even with only a few hundred word-aligned training sentences, our model improves over the current state-ofthe-art with alignment error rates of 5.29 and 25.8 for the two tasks respectively.</bodyText>
+<sectionHeader confidence="0.999472" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999585382978723">Modern phrase based statistical machine translation (SMT) systems usually break the translation task into two phases. The first phase induces word alignments over a sentence-aligned bilingual corpus, and the second phase uses statistics over these predicted word alignments to decode (translate) novel sentences. This paper deals with the first of these tasks: word alignment. Most current SMT systems (Och and Ney, 2004; Koehn et al., 2003) use a generative model for word alignment such as the freely available GIZA++ (Och and Ney, 2003), an implementation of the IBM alignment models (Brown et al., 1993). These models treat word alignment as a hidden process, and maximise the probability of the observed (e, f) sentence pairs1 using the expectation maximisation (EM) algorithm. After the maximisation process is complete, the word alignments are set to maximum posterior predictions of the model. While GIZA++ gives good results when trained on large sentence aligned corpora, its generative models have a number of limitations. Firstly, they impose strong independence assumptions between features, making it very difficult to incorporate non-independent features over the sentence pairs. For instance, as well as detecting that a source word is aligned to a given target word, we would also like to encode syntactic and lexical features of the word pair, such as their partsof-speech, affixes, lemmas, etc. Features such as these would allow for more effective use of sparse data and result in a model which is more robust in the presence of unseen words. Adding these non-independent features to a generative model requires that the features’ inter-dependence be modelled explicitly, which often complicates the model (eg. Toutanova et al. (2002)). Secondly, the later IBM models, such as Model 4, have to resort to heuristic search techniques to approximate forward-backward and Viterbi inference, which sacrifice optimality for tractability. This paper presents an alternative discriminative method for word alignment. We use a conditional random field (CRF) sequence model, which allows for globally optimal training and decoding (Lafferty et al., 2001). The inference algorithms are tractable and efficient, thereby avoiding the need for heuristics.</bodyText>
+<footnote confidence="0.986703">
+1We adopt the standard notation of a and f to denote the
+target (English) and source (foreign) sentences, respectively.
+</footnote>
+<page confidence="0.993028">
+65
+</page>
+<note confidence="0.535786">
+Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 65–72,
+Sydney, July 2006. c�2006 Association for Computational Linguistics
+</note>
+<bodyText confidence="0.999836666666666">The CRF is conditioned on both the source and target sentences, and therefore supports large sets of diverse and overlapping features. Furthermore, the model allows regularisation using a prior over the parameters, a very effective and simple method for limiting over-fitting. We use a similar graphical structure to the directed hidden Markov model (HMM) from GIZA++ (Och and Ney, 2003). This models one-to-many alignments, where each target word is aligned with zero or more source words. Many-to-many alignments are recoverable using the standard techniques for superimposing predicted alignments in both translation directions. The paper is structured as follows. Section 2 presents CRFs for word alignment, describing their form and their inference techniques. The features of our model are presented in Section 3, and experimental results for word aligning both French-English and Romanian-English sentences are given in Section 4. Section 5 presents related work, and we describe future work in Section 6. Finally, we conclude in Section 7.</bodyText>
+<sectionHeader confidence="0.935686" genericHeader="method">
+2 Conditional random fields
+</sectionHeader>
+<bodyText confidence="0.999901428571428">CRFs are undirected graphical models which define a conditional distribution over a label sequence given an observation sequence. We use a CRF to model many-to-one word alignments, where each source word is aligned with zero or one target words, and therefore each target word can be aligned with many source words. Each source word is labelled with the index of its aligned target, or the special value null, denoting no alignment. An example word alignment is shown in Figure 1, where the hollow squares and circles indicate the correct alignments. In this example the French words une and autre would both be assigned the index 24 – for the English word another – when French is the source language. When the source language is English, another could be assigned either index 25 or 26; in these ambiguous situations we take the first index. The joint probability density of the alignment, a (a vector of target indices), conditioned on the source and target sentences, e and f, is given by:</bodyText>
+<equation confidence="0.998373333333333">
+pΛ(a|e,f) = exp EtEk Akhk(t,at−1, at, e,f)
+ZΛ(e, f)
+(1)
+</equation>
+<bodyText confidence="0.998442">where we make a first order Markov assumption over the alignment sequence.</bodyText>
+<construct confidence="0.57473388">
+they
+are
+constrained
+by
+limits
+which
+are
+imposed
+in
+order
+to
+ensure
+that
+the
+freedom
+of
+one
+person
+does
+not
+violate
+that
+of
+another
+.
+</construct>
+<figureCaption confidence="0.997508">
+Figure 1. A word-aligned example from the Canadian
+Hansards test set. Hollow squares represent gold stan-
+dard sure alignments, circles are gold possible align-
+ments, and filled squares are predicted alignments.
+</figureCaption>
+<bodyText confidence="0.9995825">Here t ranges over the indices of the source sentence (f), k ranges over the model’s features, and A = {Ak} are the model parameters (weights for their corresponding features). The feature functions hk are predefined real-valued functions over the source and target sentences coupled with the alignment labels over adjacent times (source sentence locations), t. These feature functions are unconstrained, and may represent overlapping and non-independent features of the data. The distribution is globally normalised by the partition function, ZΛ(e, f), which sums out the numerator in (1) for every possible alignment:</bodyText>
+<equation confidence="0.961736">
+ZΛ(e,f) = � �exp � Akhk(t, at−1, at, e, f)
+a t k
+</equation>
+<bodyText confidence="0.9993528">We use a linear chain CRF, which is encoded in the feature functions of (1). The parameters of the CRF are usually estimated from a fully observed training sample (word aligned), by maximising the likelihood of these data. I.e. AML = arg maxΛ pΛ(D), where D = {(a, e, f)} are the training data. Because maximum likelihood estimators for log-linear models have a tendency to overfit the training sample (Chen and Rosenfeld, 1999), we define a prior distribution over the model parameters and derive a maximum a posteriori (MAP) estimate, AMAP = arg maxΛ pΛ(D)p(A). We use a zeromean Gaussian prior, with the probability density function p0 (Ak) a exp (− Q2,� ) . This yields a ils sont par certaines limites qui ont été fixées garantir que la liberté de une ne pas sur de une .restreints pour personne empiète celle autre</bodyText>
+<equation confidence="0.869616666666667">
+log-likelihood objective function of:
+G = � log pΛ(a|e, f) + � log p0(Ak)
+(a^f)ED k
+</equation>
+<page confidence="0.880793">
+66
+</page>
+<bodyText confidence="0.5058215">f 1, if eat = ‘of’ n ft = ‘de’ l 0, otherwise</bodyText>
+<equation confidence="0.988065666666667">
+�
+−log ZA(e, f) −
+k
+</equation>
+<bodyText confidence="0.999909045454546">In order to train the model, we maximize (2). While the log-likelihood cannot be maximised for the parameters, A, in closed form, it is a convex function, and thus we resort to numerical optimisation to find the globally optimal parameters. We use L-BFGS, an iterative quasi-Newton optimisation method, which performs well for training log-linear models (Malouf, 2002; Sha and Pereira, 2003). Each L-BFGS iteration requires the objective value and its gradient with respect to the model parameters. These are calculated using forward-backward inference, which yields the partition function, ZA(e, f), required for the log-likelihood, and the pair-wise marginals, pA(at−1, at|e, f), required for its derivatives. The Viterbi algorithm is used to find the maximum posterior probability alignment for test sentences, a∗ = arg maxa pA(a|e,f). Both the forward-backward and Viterbi algorithm are dynamic programs which make use of the Markov assumption to calculate efficiently the exact marginal distributions.</bodyText>
+<sectionHeader confidence="0.994839" genericHeader="method">
+3 The alignment model
+</sectionHeader>
+<bodyText confidence="0.99452428">Before we can apply our CRF alignment model, we must first specify the feature set – the functions hk in (1). Typically CRFs use binary indicator functions as features; these functions are only active when the observations meet some criteria and the label at (or label pair, (at−1, at)) matches a pre-specified label (pair). However, in our model the labellings are word indices in the target sentence and cannot be compared readily to labellings at other sites in the same sentence, or in other sentences with a different length. Such naive features would only be active for one labelling, therefore this model would suffer from serious sparse data problems. We instead define features which are functions of the source-target word match implied by a labelling, rather than the labelling itself. For example, from the sentence in Figure 1 for the labelling of f24 = de with a24 = 16 (for e16 = of) we might detect the following feature: h(t, at−1, at, f, e) = Note that it is the target word indexed by at, rather than the index itself, which determines whether the feature is active, and thus the sparsity of the index label set is not an issue.</bodyText>
+<subsectionHeader confidence="0.976598">
+3.1 Features
+</subsectionHeader>
+<bodyText confidence="0.998942384615385">One of the main advantages of using a conditional model is the ability to explore a diverse range of features engineered for a specific task. In our CRF model we employ two main types of features: those defined on a candidate aligned pair of words; and Markov features defined on the alignment sequence predicted by the model. Dice and Model 1 As we have access to only a small amount of word aligned data we wish to be able to incorporate information about word association from any sentence aligned data available. A common measure of word association is the Dice coefficient (Dice, 1945):</bodyText>
+<equation confidence="0.999345">
+2 X CEF(e,f)
+=
+CE(e) + CF (e)
+</equation>
+<bodyText confidence="0.99996335">where CE and CF are counts of the occurrences of the words e and f in the corpus, while CEF is their co-occurrence count. We treat these Dice values as translation scores: a high (low) value incidates that the word pair is a good (poor) candidate translation. However, the Dice score often over-estimates the association between common words. For instance, the words the and of both score highly when combined with either le or de, simply because these common words frequently co-occur. The GIZA++ models can be used to provide better translation scores, as they enforce competition for alignment beween the words. For this reason, we used the translation probability distribution from Model 1 in addition to the DICE scores. Model 1 is a simple position independent model which can be trained quickly and is often used to bootstrap parameters for more complex models. It models the conditional probability distribution:</bodyText>
+<equation confidence="0.94095275">
+f
+p(f,a|e) = ||e|
+(|e(I + 1) f |X rlp(ft|eat)
+t�1
+</equation>
+<bodyText confidence="0.9999382">where p(f|e) are the word translation probabilities. We use both the Dice value and the Model 1 translation probability as real-valued features for each candidate pair, as well as a normalised score over all possible candidate alignments for each target word.</bodyText>
+<equation confidence="0.951382375">
+�= � � Akhk(t, at−1, at, e, f)
+(a,e,f)∈D t k
++ const. (2)
+2σ2
+k
+A2
+k
+Dice(e, f)
+</equation>
+<page confidence="0.975479">
+67
+</page>
+<bodyText confidence="0.996309837209302">We derive a feature from both the Dice and Model 1 translation scores to allow competition between sources words for a particular target alignment. This feature indicates whether a given alignment has the highest translation score of all the candidate alignments for a given target word. For the example in Figure 1, the words la, de and une all receive a high translation score when paired with the. To discourage all of these French words from aligning with the, the best of these (la) is flagged as the best candidate. This allows for competition between source words which would otherwise not occur. Orthographic features Features based on string overlap allow our model to recognise cognates and orthographically similar translation pairs, which are particularly common between European languages. Here we employ a number of string matching features inspired by similar features in Taskar et al.(2005). We use an indicator feature for every possible source-target word pair in the training data. In addition, we include indicator features for an exact string match, both with and without vowels, and the edit-distance between the source and target words as a realvalued feature. We also used indicator features to test for matching prefixes and suffixes of length three. As stated earlier, the Dice translation score often erroneously rewards alignments with common words. In order to address this problem, we include the absolute difference in word length as a real-valued feature and an indicator feature testing whether both words are shorter than 4 characters. Together these features allow the model to disprefer alignments between words with very different lengths – i.e.aligning rare (long) words with frequent (short) determiners, verbs etc. POS tags Part-of-speech tags are an effective method for addressing the sparsity of the lexical features. Observe in Figure 2 that the nounadjective pair Canadian experts aligns with the adjective-noun pair sp´ecialistes canadiens: the alignment exactly matches the parts-of-speech. Access to the words’ POS tags will allow simple modelling of such effects. POS can also be useful for less closely related language pairs, such as English and Japanese where English determiners are never aligned; nor are Japanese case markers. For our French-English language pair we POS tagged the source and target sentences with TreeTagger.2 We created indicator features over the POS tags of each candidate source and target word pair, as well as over the source word and target POS (and vice-versa). As we didn’t have access to a Romanian POS tagger, these features were not used for the Romanian-English language pair. Bilingual dictionary Dictionaries are another source of information for word alignment. We use a single indicator feature which detects when the source and target words appear in an entry of the dictionary. For the English-French dictionary we used FreeDict,3 which contains 8,799 English words. For Romanian-English we used a dictionary compiled by Rada Mihalcea,4 which contains approximately 38,000 entries. Markov features Features defined over adjacent aligment labels allow our model to reflect the tendency for monotonic alignments between European languages. We define a real-valued alignment index jump width feature: jump width(t − 1, t) = abs(at − at−1 − 1) this feature has a value of 0 if the alignment labels follow the downward sloping diagonal, and is positive otherwise. This differs from the GIZA++ hidden Markov model which has individual parameters for each different jump width (Och and Ney, 2003; Vogel et al., 1996): we found a single feature (and thus parameter) to be more effective. We also defined three indicator features over null transitions to allow the modelling of the probability of transition between, to and from null labels. Relative sentence postion A feature for the absolute difference in relative sentence position</bodyText>
+<equation confidence="0.853433">
+(abs( ��
+|� |− t
+</equation>
+<bodyText confidence="0.999790888888889">|�|)) allows the model to learn a preference for aligning words close to the alignment matrix diagonal. We also included two conjunction features for the relative sentence position multiplied by the Dice and Model 1 translation scores. Null We use a number of variants on the above features for alignments between a source word and the null target. The maximum translation score between the source and one of the target words model precision recall f-score AER
+Model 4 refined 87.4 95.1 91.1 9.81
+Model 4 intersection 97.9 86.0 91.6 7.42
+French English 96.7 85.0 90.5 9.21
+English French 97.3 83.0 89.6 10.01
+intersection 98.7 78.6 87.5 12.02
+refined 95.7 89.2 92.3 7.37</bodyText>
+<footnote confidence="0.999872">
+2http://www.ims.uni-stuttgart.de/projekte/corplex/TreeTagger
+3http://www.freedict.de
+4http://lit.csci.unt.edu/˜rada/downloads/RoNLP/R.E.tralex
+</footnote>
+<page confidence="0.993923">
+68
+</page>
+<tableCaption confidence="0.999712">
+Table 1. Results on the Hansard data using all features
+model precision recall f-score AER
+Model 4 refined 80.49 64.10 71,37 28.63
+Model 4 intersected 95.94 53.56 68.74 31.26
+Romanian --+ English 82.9 61.3 70.5 29.53
+English --+ Romanian 82.8 60.6 70.0 29.98
+intersection 94.4 52.5 67.5 32.45
+refined 77.1 68.5 72.6 27.41</tableCaption>
+<tableCaption confidence="0.9868675">
+Table 2. Results on the Romanian data using all fea-
+tures
+engineering and for fitting a Gaussian prior.</tableCaption>
+<bodyText confidence="0.996482428571429">The word aligned data are annotated with both sure (S) and possible (P) alignments (S C P; Och and Ney (2003)), where the possible alignments indicate ambiguous or idiomatic alignments. We measure the performance of our model using alignment error rate (AER), which is defined as:</bodyText>
+<equation confidence="0.9750005">
+AER(A,S,P) = 1 _ |A n S |+ |A n P|
+|A |+ |S|
+</equation>
+<bodyText confidence="0.747209538461538">where A is the set of predicted alignments. The second data set is the Romanian-English parallel corpus from the 2005 ACL shared task (Martin et al., 2005). This consists of approximately 50,000 aligned sentences and 448 wordaligned sentences, which are split into a 248 sentence trial set and a 200 sentence test set. We is used as a feature to represent whether there is a strong alignment candidate. The sum of these scores is also used as a feature. Each source word and POS tag pair are used as indicator features which allow the model to learn particular words of tags which tend to commonly (or rarely) align.</bodyText>
+<subsectionHeader confidence="0.999102">
+3.2 Symmetrisation
+</subsectionHeader>
+<bodyText confidence="0.99998325">In order to produce many-to-many alignments we combine the outputs of two models, one for each translation direction. We use the refined method from Och and Ney (2003) which starts from the intersection of the two models’ predictions and ‘grows’ the predicted alignments to neighbouring alignments which only appear in the output of one of the models.</bodyText>
+<sectionHeader confidence="0.999788" genericHeader="evaluation and result">
+4 Experiments
+</sectionHeader>
+<bodyText confidence="0.9999733">We have applied our model to two publicly available word aligned corpora. The first is the English-French Hansards corpus, which consists of 1.1 million aligned sentences and 484 wordaligned sentences. This data set was used for the 2003 NAACL shared task (Mihalcea and Pedersen, 2003), where the word-aligned sentences were split into a 37 sentence trial set and a 447 sentence testing set. Unlike the unsupervised entrants in the 2003 task, we require word-aligned training data, and therefore must cannibalise the test set for this purpose. We follow Taskar et al. (2005) by using the first 100 test sentences for training and the remaining 347 for testing. This means that our results should not be directly compared to those entrants, other than in an approximate manner. We used the original 37 sentence trial set for feature used these as our training and test sets, respectively. For parameter tuning, we used the 17 sentence trial set from the Romanian-English corpus in the 2003 NAACL task (Mihalcea and Pedersen, 2003). For this task we have used the same test data as the competition entrants, and therefore can directly compare our results. The word alignments in this corpus were only annotated with sure (S) alignments, and therefore the AER is equivalent to the Fi score. In the shared task it was found that models which were trained on only the first four letters of each word obtained superior results to those using the full words (Martin et al., 2005). We observed the same result with our model on the trial set and thus have only used the first four letters when training the Dice and Model 1 translation probabilities. Tables 1 and 2 show the results when all feature types are employed on both language pairs. We report the results for both translation directions and when combined using the refined and intersection methods. The Model 4 results are from GIZA++ with the default parameters and the training data lowercased. For Romanian, Model 4 was trained using the first four letters of each word. The Romanian results are close to the best reported result of 26.10 from the ACL shared task (Martin et al., 2005). This result was from a system based on Model 4 plus additional parameters such as a dictionary. The standard Model 4 implementation in the shared task achieved a result of 31.65, while when only the first 4 letters of each word were used it achieved 28.80.5 (a) With Markov features (b) Without Markov features</bodyText>
+<footnote confidence="0.95056">
+5These results differ slightly our Model 4 results reported
+in Table 2.
+</footnote>
+<page confidence="0.997948">
+69
+</page>
+<table confidence="0.9882672">
+( (
+ii ii
+) )
+( (
+a a
+) )
+Three Three
+vehicles vehicles
+will will
+be be
+Used used
+by by
+six six
+Canadian Canadian
+experts experts
+related related
+to to
+the the
+provision provision
+of of
+technical technical
+assistance assistance
+. .
+( ii ) a ) 3 véhicules seront par 6 spécialistes canadiens dans le cadre de la prestation de aide . ( ii ) a ) 3 véhicules seront par 6 spécialistes canadiens dans le cadre de la prestation de aide .
+utilisés technique utilisés technique
+</table>
+<figureCaption confidence="0.999717">
+Figure 2. An example from the Hansard test set, showing the effect of the Markov features.
+</figureCaption>
+<bodyText confidence="0.999977972222222">Table 3 shows the effect of removing each of the feature types in turn from the full model. The most useful features are the Dice and Model 1 values which allow the model to incorporate translation probabilities from the large sentence aligned corpora. This is to be expected as the amount of word aligned data are extremely small, and therefore the model can only estimate translation probabilities for only a fraction of the lexicon. We would expect the dependence on sentence aligned data to decrease as more word aligned data becomes available. The effect of removing the Markov features can be seen from comparing Figures 2 (a) and (b). The model has learnt to prefer alignments that follow the diagonal, thus alignments such as 3 H three and prestation H provision are found, and missalignments such as de H of, which lie well off the diagonal, are avoided. The differing utility of the alignment word pair feature between the two tasks is probably a result of the different proportions of wordto sentencealigned data. For the French data, where a very large lexicon can be estimated from the million sentence alignments, the sparse word pairs learnt on the word aligned sentences appear to lead to overfitting. In contrast, for Romanian, where more word alignments are used to learn the translation pair features and much less sentence aligned data are available, these features have a significant impact on the model. Suprisingly the orthographic features actually worsen the performance in the tasks (incidentally, these features help the trial set). Our explanation is that the other features (eg. Model 1) already adequately model these correspondences, and therefore the orthographic features do not add much additional modelling power.</bodyText>
+<table confidence="0.997604636363636">
+feature group Rom +-+ Eng Fre +-+ Eng
+ALL 27.41 7.37
+–orthographic 27.30 7.25
+–Dice 27.68 7.73
+–dictionary 27.72 7.21
+–sentence position 28.30 8.01
+–POS – 8.19
+–Model 1 28.62 8.45
+–alignment word pair 32.41 7.20
+–Markov 32.75 12.44
+–Dice &amp; –Model 1 35.43 14.10
+</table>
+<tableCaption confidence="0.9428695">
+Table 3. The resulting AERs after removing individual
+groups of features from the full model.
+</tableCaption>
+<bodyText confidence="0.997605681818182">We expect that with further careful feature engineering, and a larger trial set, these orthographic features could be much improved. The Romanian-English language pair appears to offer a more difficult modelling problem than the French-English pair. With both the translation score features (Dice and Model 1) removed – the sentence aligned data are not used – the AER of the Romanian is more than twice that of the French, despite employing more word aligned data. This could be caused by the lack of possible (P) alignment markup in the Romanian data, which provide a boost in AER on the French data set, rewarding what would otherwise be considered errors. Interestingly, without any features derived from the sentence aligned corpus, our model achieves performance equivalent to Model 3 trained on the full corpus (Och and Ney, 2003). This is a particularly strong result, indicating that this method is ideal for data-impoverished alignment tasks.</bodyText>
+<page confidence="0.994071">
+70
+</page>
+<subsectionHeader confidence="0.999559">
+4.1 Training with possible alignments
+</subsectionHeader>
+<bodyText confidence="0.999991222222222">Up to this point our Hansards model has been trained using only the sure (S) alignments. As the data set contains many possible (P) alignments, we would like to use these to improve our model. Most of the possible alignments flag blocks of ambiguous or idiomatic (or just difficult) phrase level alignments. These many-to-many alignments cannot be modelled with our many-to-one setup. However, a number of possibles flag oneto-one or many-to-one aligments: for this experiment we used these possibles in training to investigate their effect on recall. Using these additional alignments our refined precision decreased from 95.7 to 93.5, while recall increased from 89.2 to 92.4. This resulted in an overall decrease in AER to 6.99. We found no benefit from using many-tomany possible alignments as they added a significant amount of noise to the data.</bodyText>
+<subsectionHeader confidence="0.994054">
+4.2 Model 4 as a feature
+</subsectionHeader>
+<bodyText confidence="0.999947642857143">Previous work (Taskar et al., 2005) has demonstrated that by including the output of Model 4 as a feature, it is possible to achieve a significant decrease in AER. We trained Model 4 in both directions on the two language pairs. We added two indicator features (one for each direction) to our CRF which were active if a given word pair were aligned in the Model 4 output. Table 4 displays the results on both language pairs when these additional features are used with the refined model. This produces a large increase in performance, and when including the possibles, produces AERs of 5.29 and 25.8, both well below that of Model 4 alone (shown in Tables 1 and 2).</bodyText>
+<subsectionHeader confidence="0.999749">
+4.3 Cross-validation
+</subsectionHeader>
+<bodyText confidence="0.999773357142857">Using 10-fold cross-validation we are able to generate results on the whole of the Hansards test data which are comparable to previously published results. As the sentences in the test set were randomly chosen from the training corpus we can expect cross-validation to give an unbiased estimate of generalisation performance. These results are displayed in Table 5, using the possible (P) alignments for training. As the training set for each fold is roughly four times as big previous training set, we see a small improvement in AER. The final results of 6.47 and 5.19 with and without Model 4 features both exceed the performance of Model 4 alone. However the unsupervised Model 4 did not have access to the wordalignments in our training set.</bodyText>
+<table confidence="0.9885665">
+model precision recall f-score AER
+Rom +-+ Eng 79.0 70.0 74.2 25.8
+Fre +-+ Eng 97.9 90.8 94.2 5.49
+Fre +-+ Eng (P) 95.5 93.7 94.6 5.29
+</table>
+<tableCaption confidence="0.958522333333333">
+Table 4. Results using features from Model 4 bi-
+directional alignments, training with and without the
+possible (P) alignments.
+</tableCaption>
+<table confidence="0.995383333333333">
+model precision recall f-score AER
+Fre +-+ Eng 94.6 92.2 93.4 6.47
+Fre +-+ Eng (Model 4) 96.1 93.3 94.7 5.19
+</table>
+<tableCaption confidence="0.992493">
+Table 5. 10-fold cross-validation results, with and with-
+out Model 4 features.
+</tableCaption>
+<bodyText confidence="0.999532857142857">Callison-Burch et al.(2004) demonstrated that the GIZA++ models could be trained in a semi-supervised manner, leading to a slight decrease in error. To our knowledge, our AER of 5.19 is the best reported result, generative or discriminative, on this data set.</bodyText>
+<sectionHeader confidence="0.999984" genericHeader="related work">
+5 Related work
+</sectionHeader>
+<bodyText confidence="0.999473793103448">Recently, a number of discriminative word alignment models have been proposed, however these early models are typically very complicated with many proposing intractable problems which require heuristics for approximate inference (Liu et al., 2005; Moore, 2005). An exception is Taskar et al. (2005) who presented a word matching model for discriminative alignment which they they were able to solve optimally. However, their model is limited to only providing one-to-one alignments. Also, no features were defined on label sequences, which reduced the model’s ability to capture the strong monotonic relationships present between European language pairs. On the French-English Hansards task, using the same training/testing setup as our work, they achieve an AER of 5.4 with Model 4 features, and 10.7 without (compared to 5.29 and 6.99 for our CRF). One of the strengths of the CRF MAP estimation is the powerful smoothing offered by the prior, which allows us to avoid heuristics such as early stopping and hand weighted loss-functions that were needed for the maximum-margin model. Liu et al. (2005) used a conditional log-linear model with similar features to those we have employed. They formulated a global model, without making a Markovian assumption, leading to the need for a sub-optimal heuristic search strategies. Ittycheriah and Roukos (2005) trained a discriminative model on a corpus of ten thousand word aligned Arabic-English sentence pairs that outperformed a GIZA++ baseline.</bodyText>
+<page confidence="0.99535">
+71
+</page>
+<bodyText confidence="0.999840727272727">As with other approaches, they proposed a model which didn’t allow a tractably optimal solution and thus had to resort to a heuristic beam search. They employed a log-linear model to learn the observation probabilities, while using a fixed transition distribution. Our CRF model allows both the observation and transition components of the model to be jointly optimised from the corpus.</bodyText>
+<sectionHeader confidence="0.99993" genericHeader="conclusion">
+6 Further work
+</sectionHeader>
+<bodyText confidence="0.999993">The results presented in this paper were evaluated in terms of AER. While a low AER can be expected to improve end-to-end translation quality, this is may not necessarily be the case. Therefore, we plan to assess how the recall and precision characteristics of our model affect translation quality. The tradeoff between recall and precision may affect the quality and number of phrases extracted for a phrase translation table.</bodyText>
+<sectionHeader confidence="0.999412" genericHeader="conclusion">
+7 Conclusion
+</sectionHeader>
+<bodyText confidence="0.999984954545455">We have presented a novel approach for inducing word alignments from sentence aligned data. We showed how conditional random fields could be used for word alignment. These models allow for the use of arbitrary and overlapping features over the source and target sentences, making the most of small supervised training sets. Moreover, we showed how the CRF’s inference and estimation methods allowed for efficient processing without sacrificing optimality, improving on previous heuristic based approaches. On both French-English and Romanian-English we showed that many highly predictive features can be easily incorporated into the CRF, and demonstrated that with only a few hundred wordaligned training sentences, our model outperforms the generative Model 4 baseline. When no features are extracted from the sentence aligned corpus our model still achieves a low error rate. Furthermore, when we employ features derived from Model 4 alignments our CRF model achieves the highest reported results on both data sets.</bodyText>
+<sectionHeader confidence="0.998713" genericHeader="acknowledgments">
+Acknowledgements
+</sectionHeader>
+<bodyText confidence="0.999246666666667">Special thanks to Miles Osborne, Steven Bird, Timothy Baldwin and the anonymous reviewers for their feedback and insightful comments.</bodyText>
+<sectionHeader confidence="0.998446" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999960935483871">
+P. F. Brown, S. A. Della Pietra, V. J. Della Pietra, and R. L.
+Mercer. 1993. The mathematics of statistical machine
+translation: Parameter estimation. Computational Lin-
+guistics, 19(2):263–311.
+C. Callison-Burch, D. Talbot, and M. Osborne. 2004. Statis-
+tical machine translation with word- and sentence-aligned
+parallel corpora. In Proceedings of ACL, pages 175–182,
+Barcelona, Spain, July.
+S. Chen and R. Rosenfeld. 1999. A survey of smoothing
+techniques for maximum entropy models. IEEE Transac-
+tions on Speech and Audio Processing, 8(1):37–50.
+L. R. Dice. 1945. Measures of the amount of ecologic asso-
+ciation between species. Journal of Ecology, 26:297–302.
+A. Ittycheriah and S. Roukos. 2005. A maximum entropy
+word aligner for Arabic-English machine translation. In
+Proceedings of HLT-EMNLP, pages 89–96, Vancouver,
+British Columbia, Canada, October.
+P. Koehn, F. J. Och, and D. Marcu. 2003. Statistical phrase-
+based translation. In Proceedings of HLT-NAACL, pages
+81–88, Edmonton, Alberta.
+J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional
+random fields: Probabilistic models for segmenting and
+labelling sequence data. In Proceedings of ICML, pages
+282–289.
+Y. Liu, Q. Liu, and S. Lin. 2005. Log-linear models for word
+alignment. In Proceedings of ACL, pages 459–466, Ann
+Arbor.
+R. Malouf. 2002. A comparison of algorithms for maximum
+entropy parameter estimation. In Proceedings of CoNLL,
+pages 49–55.
+J. Martin, R. Mihalcea, and T. Pedersen. 2005. Word align-
+ment for languages with scarce resources. In Proceed-
+ings of the ACL Workshop on Building and Using Parallel
+Texts, pages 65–74, Ann Arbor, Michigan, June.
+R. Mihalcea and T. Pedersen. 2003. An evaluation exer-
+cise for word alignment. In Proceedings of HLT-NAACL
+2003 Workshop, Building and Using Parrallel Texts: Data
+Driven Machine Translation and Beyond, pages 1–6, Ed-
+monton, Alberta.
+R. C. Moore. 2005. A discriminative framework for bilin-
+gual word alignment. In Proceedings of HLT-EMNLP,
+pages 81–88, Vancouver, Canada.
+F. Och and H. Ney. 2003. A systematic comparison of vari-
+ous statistical alignment models. Computational Linguis-
+tics, 29(1):19–52.
+F. Och and H. Ney. 2004. The alignment template approach
+to statistical machine translation. Computational Linguis-
+tics, 30(4):417–449.
+F. Sha and F. Pereira. 2003. Shallow parsing with con-
+ditional random fields. In Proceedings of HLT-NAACL,
+pages 213–220.
+B. Taskar, S. Lacoste-Julien, and D. Klein. 2005. A discrimi-
+native matching approach to word alignment. In Proceed-
+ings of HLT-EMNLP, pages 73–80, Vancouver, British
+Columbia, Canada, October.
+K. Toutanova, H. Tolga Ilhan, and C Manning. 2002. Ex-
+tentions to HMM-based statistical word alignment mod-
+els. In Proceedings of EMNLP, pages 87–94, Philadel-
+phia, July.
+S. Vogel, H. Ney, and C. Tillmann. 1996. HMM-based word
+alignment in statistical translation. In Proceedings of 16th
+Int. Conf. on Computational Linguistics, pages 836–841.
+</reference>
+<page confidence="0.998726">
+72
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.938992" no="0">
+<title confidence="0.998658">Discriminative Word Alignment with Conditional Random Fields</title>
+<author confidence="0.996533">Blunsom Cohn</author>
+<affiliation confidence="0.9997985">Department of Software Engineering and Computer Science University of Melbourne</affiliation>
+<abstract confidence="0.996962434782609">In this paper we present a novel approach for inducing word alignments from sentence aligned data. We use a Conditional Random Field (CRF), a discriminative model, which is estimated on a small supervised training set. The CRF is conditioned on both the source and target texts, and thus allows for the use of arbitrary and overlapping features over these data. Moreover, the CRF has efficient training and decoding processes which both find globally optimal solutions. We apply this alignment model to both French-English and Romanian-English language pairs. We show how a large number of highly predictive features can be easily incorporated into the CRF, and demonstrate that even with only a few hundred word-aligned training sentences, our model improves over the current state-ofthe-art with alignment error rates of 5.29 and 25.8 for the two tasks respectively.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>P F Brown</author>
+<author>S A Della Pietra</author>
+<author>V J Della Pietra</author>
+<author>R L Mercer</author>
+</authors>
+<title>The mathematics of statistical machine translation: Parameter estimation.</title>
+<date>1993</date>
+<journal>Computational Linguistics,</journal>
+<volume>19</volume>
+<issue>2</issue>
+<contexts>
+<context citStr="Brown et al., 1993" endWordPosition="264" position="1704" startWordPosition="261">ntroduction Modern phrase based statistical machine translation (SMT) systems usually break the translation task into two phases. The first phase induces word alignments over a sentence-aligned bilingual corpus, and the second phase uses statistics over these predicted word alignments to decode (translate) novel sentences. This paper deals with the first of these tasks: word alignment. Most current SMT systems (Och and Ney, 2004; Koehn et al., 2003) use a generative model for word alignment such as the freely available GIZA++ (Och and Ney, 2003), an implementation of the IBM alignment models (Brown et al., 1993). These models treat word alignment as a hidden process, and maximise the probability of the observed (e, f) sentence pairs1 using the expectation maximisation (EM) algorithm. After the maximisation process is complete, the word alignments are set to maximum posterior predictions of the model. While GIZA++ gives good results when trained on large sentence aligned corpora, its generative models have a number of limitations. Firstly, they impose strong independence assumptions between features, making it very difficult to incorporate non-independent features over the sentence pairs. For instance</context>
+</contexts>
+<marker>Brown, Pietra, Pietra, Mercer, 1993</marker>
+<rawString>P. F. Brown, S. A. Della Pietra, V. J. Della Pietra, and R. L. Mercer. 1993. The mathematics of statistical machine translation: Parameter estimation. Computational Linguistics, 19(2):263–311.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Callison-Burch</author>
+<author>D Talbot</author>
+<author>M Osborne</author>
+</authors>
+<title>Statistical machine translation with word- and sentence-aligned parallel corpora.</title>
+<date>2004</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>175--182</pages>
+<location>Barcelona, Spain,</location>
+<contexts>
+<context citStr="Callison-Burch et al. (2004)" endWordPosition="4606" position="27474" startWordPosition="4603"> features both exceed the performance of Model 4 alone. However the unsupermodel precision recall f-score AER Rom +-+ Eng 79.0 70.0 74.2 25.8 Fre +-+ Eng 97.9 90.8 94.2 5.49 Fre +-+ Eng (P) 95.5 93.7 94.6 5.29 Table 4. Results using features from Model 4 bidirectional alignments, training with and without the possible (P) alignments. model precision recall f-score AER Fre +-+ Eng 94.6 92.2 93.4 6.47 Fre +-+ Eng (Model 4) 96.1 93.3 94.7 5.19 Table 5. 10-fold cross-validation results, with and without Model 4 features. vised Model 4 did not have access to the wordalignments in our training set. Callison-Burch et al. (2004) demonstrated that the GIZA++ models could be trained in a semi-supervised manner, leading to a slight decrease in error. To our knowledge, our AER of 5.19 is the best reported result, generative or discriminative, on this data set. 5 Related work Recently, a number of discriminative word alignment models have been proposed, however these early models are typically very complicated with many proposing intractable problems which require heuristics for approximate inference (Liu et al., 2005; Moore, 2005). An exception is Taskar et al. (2005) who presented a word matching model for discriminativ</context>
+</contexts>
+<marker>Callison-Burch, Talbot, Osborne, 2004</marker>
+<rawString>C. Callison-Burch, D. Talbot, and M. Osborne. 2004. Statistical machine translation with word- and sentence-aligned parallel corpora. In Proceedings of ACL, pages 175–182, Barcelona, Spain, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Chen</author>
+<author>R Rosenfeld</author>
+</authors>
+<title>A survey of smoothing techniques for maximum entropy models.</title>
+<date>1999</date>
+<journal>IEEE Transactions on Speech and Audio Processing,</journal>
+<volume>8</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Chen and Rosenfeld, 1999" endWordPosition="1175" position="7318" startWordPosition="1172">ata. The distribution is globally normalised by the partition function, ZΛ(e, f), which sums out the numerator in (1) for every possible alignment: ZΛ(e,f) = � �exp � Akhk(t, at−1, at, e, f) a t k We use a linear chain CRF, which is encoded in the feature functions of (1). The parameters of the CRF are usually estimated from a fully observed training sample (word aligned), by maximising the likelihood of these data. I.e. AML = arg maxΛ pΛ(D), where D = {(a, e, f)} are the training data. Because maximum likelihood estimators for log-linear models have a tendency to overfit the training sample (Chen and Rosenfeld, 1999), we define a prior distribution over the model parameters and derive a maximum a posteriori (MAP) estimate, AMAP = arg maxΛ pΛ(D)p(A). We use a zeromean Gaussian prior, with the probability density function p0 (Ak) a exp (− Q2,� ) . This yields a log-likelihood objective function of: G = � log pΛ(a|e, f) + � log p0(Ak) (a^f)ED k ils sont par certaines limites qui ont été fixées garantir que la liberté de une ne pas sur de une . restreints pour personne empiète celle autre 66 f 1, if eat = ‘of’ n ft = ‘de’ l 0, otherwise � −log ZA(e, f) − k In order to train the model, we maximize (2). While t</context>
+</contexts>
+<marker>Chen, Rosenfeld, 1999</marker>
+<rawString>S. Chen and R. Rosenfeld. 1999. A survey of smoothing techniques for maximum entropy models. IEEE Transactions on Speech and Audio Processing, 8(1):37–50.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>L R Dice</author>
+</authors>
+<title>Measures of the amount of ecologic association between species.</title>
+<date>1945</date>
+<journal>Journal of Ecology,</journal>
+<pages>26--297</pages>
+<contexts>
+<context citStr="Dice, 1945" endWordPosition="1757" position="10645" startWordPosition="1756"> issue. 3.1 Features One of the main advantages of using a conditional model is the ability to explore a diverse range of features engineered for a specific task. In our CRF model we employ two main types of features: those defined on a candidate aligned pair of words; and Markov features defined on the alignment sequence predicted by the model. Dice and Model 1 As we have access to only a small amount of word aligned data we wish to be able to incorporate information about word association from any sentence aligned data available. A common measure of word association is the Dice coefficient (Dice, 1945): 2 X CEF(e,f) = CE(e) + CF (e) where CE and CF are counts of the occurrences of the words e and f in the corpus, while CEF is their co-occurrence count. We treat these Dice values as translation scores: a high (low) value incidates that the word pair is a good (poor) candidate translation. However, the Dice score often over-estimates the association between common words. For instance, the words the and of both score highly when combined with either le or de, simply because these common words frequently co-occur. The GIZA++ models can be used to provide better translation scores, as they enfor</context>
+</contexts>
+<marker>Dice, 1945</marker>
+<rawString>L. R. Dice. 1945. Measures of the amount of ecologic association between species. Journal of Ecology, 26:297–302.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Ittycheriah</author>
+<author>S Roukos</author>
+</authors>
+<title>A maximum entropy word aligner for Arabic-English machine translation.</title>
+<date>2005</date>
+<booktitle>In Proceedings of HLT-EMNLP,</booktitle>
+<pages>89--96</pages>
+<location>Vancouver, British Columbia, Canada,</location>
+<contexts>
+<context citStr="Ittycheriah and Roukos (2005)" endWordPosition="4863" position="29077" startWordPosition="4860">tup as our work, they achieve an AER of 5.4 with Model 4 features, and 10.7 without (compared to 5.29 and 6.99 for our CRF). One of the strengths of the CRF MAP estimation is the powerful smoothing offered by the prior, which allows us to avoid heuristics such as early stopping and hand weighted loss-functions that were needed for the maximum-margin model. Liu et al. (2005) used a conditional log-linear model with similar features to those we have employed. They formulated a global model, without making a Markovian assumption, leading to the need for a sub-optimal heuristic search strategies. Ittycheriah and Roukos (2005) trained a dis71 criminative model on a corpus of ten thousand word aligned Arabic-English sentence pairs that outperformed a GIZA++ baseline. As with other approaches, they proposed a model which didn’t allow a tractably optimal solution and thus had to resort to a heuristic beam search. They employed a log-linear model to learn the observation probabilities, while using a fixed transition distribution. Our CRF model allows both the observation and transition components of the model to be jointly optimised from the corpus. 6 Further work The results presented in this paper were evaluated in t</context>
+</contexts>
+<marker>Ittycheriah, Roukos, 2005</marker>
+<rawString>A. Ittycheriah and S. Roukos. 2005. A maximum entropy word aligner for Arabic-English machine translation. In Proceedings of HLT-EMNLP, pages 89–96, Vancouver, British Columbia, Canada, October.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Koehn</author>
+<author>F J Och</author>
+<author>D Marcu</author>
+</authors>
+<title>Statistical phrasebased translation.</title>
+<date>2003</date>
+<booktitle>In Proceedings of HLT-NAACL,</booktitle>
+<pages>81--88</pages>
+<location>Edmonton, Alberta.</location>
+<contexts>
+<context citStr="Koehn et al., 2003" endWordPosition="235" position="1538" startWordPosition="232">d word-aligned training sentences, our model improves over the current state-ofthe-art with alignment error rates of 5.29 and 25.8 for the two tasks respectively. 1 Introduction Modern phrase based statistical machine translation (SMT) systems usually break the translation task into two phases. The first phase induces word alignments over a sentence-aligned bilingual corpus, and the second phase uses statistics over these predicted word alignments to decode (translate) novel sentences. This paper deals with the first of these tasks: word alignment. Most current SMT systems (Och and Ney, 2004; Koehn et al., 2003) use a generative model for word alignment such as the freely available GIZA++ (Och and Ney, 2003), an implementation of the IBM alignment models (Brown et al., 1993). These models treat word alignment as a hidden process, and maximise the probability of the observed (e, f) sentence pairs1 using the expectation maximisation (EM) algorithm. After the maximisation process is complete, the word alignments are set to maximum posterior predictions of the model. While GIZA++ gives good results when trained on large sentence aligned corpora, its generative models have a number of limitations. Firstly</context>
+</contexts>
+<marker>Koehn, Och, Marcu, 2003</marker>
+<rawString>P. Koehn, F. J. Och, and D. Marcu. 2003. Statistical phrasebased translation. In Proceedings of HLT-NAACL, pages 81–88, Edmonton, Alberta.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Lafferty</author>
+<author>A McCallum</author>
+<author>F Pereira</author>
+</authors>
+<title>Conditional random fields: Probabilistic models for segmenting and labelling sequence data.</title>
+<date>2001</date>
+<booktitle>In Proceedings of ICML,</booktitle>
+<pages>282--289</pages>
+<contexts>
+<context citStr="Lafferty et al., 2001" endWordPosition="508" position="3261" startWordPosition="505">nce of unseen words. Adding these non-independent features to a generative model requires that the features’ inter-dependence be modelled explicitly, which often complicates the model (eg. Toutanova et al. (2002)). Secondly, the later IBM models, such as Model 4, have to resort to heuristic search techniques to approximate forward-backward and Viterbi inference, which sacrifice optimality for tractability. This paper presents an alternative discriminative method for word alignment. We use a conditional random field (CRF) sequence model, which allows for globally optimal training and decoding (Lafferty et al., 2001). The inference algo1We adopt the standard notation of a and f to denote the target (English) and source (foreign) sentences, respectively. 65 Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL, pages 65–72, Sydney, July 2006. c�2006 Association for Computational Linguistics rithms are tractable and efficient, thereby avoiding the need for heuristics. The CRF is conditioned on both the source and target sentences, and therefore supports large sets of diverse and overlapping features. Furthermore, the model allows regularisation usin</context>
+</contexts>
+<marker>Lafferty, McCallum, Pereira, 2001</marker>
+<rawString>J. Lafferty, A. McCallum, and F. Pereira. 2001. Conditional random fields: Probabilistic models for segmenting and labelling sequence data. In Proceedings of ICML, pages 282–289.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Y Liu</author>
+<author>Q Liu</author>
+<author>S Lin</author>
+</authors>
+<title>Log-linear models for word alignment.</title>
+<date>2005</date>
+<booktitle>In Proceedings of ACL,</booktitle>
+<pages>459--466</pages>
+<location>Ann Arbor.</location>
+<contexts>
+<context citStr="Liu et al., 2005" endWordPosition="4685" position="27968" startWordPosition="4682">odel 4 features. vised Model 4 did not have access to the wordalignments in our training set. Callison-Burch et al. (2004) demonstrated that the GIZA++ models could be trained in a semi-supervised manner, leading to a slight decrease in error. To our knowledge, our AER of 5.19 is the best reported result, generative or discriminative, on this data set. 5 Related work Recently, a number of discriminative word alignment models have been proposed, however these early models are typically very complicated with many proposing intractable problems which require heuristics for approximate inference (Liu et al., 2005; Moore, 2005). An exception is Taskar et al. (2005) who presented a word matching model for discriminative alignment which they they were able to solve optimally. However, their model is limited to only providing one-to-one alignments. Also, no features were defined on label sequences, which reduced the model’s ability to capture the strong monotonic relationships present between European language pairs. On the French-English Hansards task, using the same training/testing setup as our work, they achieve an AER of 5.4 with Model 4 features, and 10.7 without (compared to 5.29 and 6.99 for our C</context>
+</contexts>
+<marker>Liu, Liu, Lin, 2005</marker>
+<rawString>Y. Liu, Q. Liu, and S. Lin. 2005. Log-linear models for word alignment. In Proceedings of ACL, pages 459–466, Ann Arbor.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Malouf</author>
+</authors>
+<title>A comparison of algorithms for maximum entropy parameter estimation.</title>
+<date>2002</date>
+<booktitle>In Proceedings of CoNLL,</booktitle>
+<pages>49--55</pages>
+<contexts>
+<context citStr="Malouf, 2002" endWordPosition="1344" position="8232" startWordPosition="1343">, f) + � log p0(Ak) (a^f)ED k ils sont par certaines limites qui ont été fixées garantir que la liberté de une ne pas sur de une . restreints pour personne empiète celle autre 66 f 1, if eat = ‘of’ n ft = ‘de’ l 0, otherwise � −log ZA(e, f) − k In order to train the model, we maximize (2). While the log-likelihood cannot be maximised for the parameters, A, in closed form, it is a convex function, and thus we resort to numerical optimisation to find the globally optimal parameters. We use L-BFGS, an iterative quasi-Newton optimisation method, which performs well for training log-linear models (Malouf, 2002; Sha and Pereira, 2003). Each L-BFGS iteration requires the objective value and its gradient with respect to the model parameters. These are calculated using forward-backward inference, which yields the partition function, ZA(e, f), required for the log-likelihood, and the pair-wise marginals, pA(at−1, at|e, f), required for its derivatives. The Viterbi algorithm is used to find the maximum posterior probability alignment for test sentences, a∗ = arg maxa pA(a|e,f). Both the forward-backward and Viterbi algorithm are dynamic programs which make use of the Markov assumption to calculate effici</context>
+</contexts>
+<marker>Malouf, 2002</marker>
+<rawString>R. Malouf. 2002. A comparison of algorithms for maximum entropy parameter estimation. In Proceedings of CoNLL, pages 49–55.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Martin</author>
+<author>R Mihalcea</author>
+<author>T Pedersen</author>
+</authors>
+<title>Word alignment for languages with scarce resources.</title>
+<date>2005</date>
+<booktitle>In Proceedings of the ACL Workshop on Building and Using Parallel Texts,</booktitle>
+<pages>65--74</pages>
+<location>Ann Arbor, Michigan,</location>
+<contexts>
+<context citStr="Martin et al., 2005" endWordPosition="2908" position="17652" startWordPosition="2905"> 32.45 refined 77.1 68.5 72.6 27.41 Table 2. Results on the Romanian data using all features engineering and for fitting a Gaussian prior. The word aligned data are annotated with both sure (S) and possible (P) alignments (S C P; Och and Ney (2003)), where the possible alignments indicate ambiguous or idiomatic alignments. We measure the performance of our model using alignment error rate (AER), which is defined as: AER(A,S,P) = 1 _ |A n S |+ |A n P| |A |+ |S| where A is the set of predicted alignments. The second data set is the Romanian-English parallel corpus from the 2005 ACL shared task (Martin et al., 2005). This consists of approximately 50,000 aligned sentences and 448 wordaligned sentences, which are split into a 248 sentence trial set and a 200 sentence test set. We is used as a feature to represent whether there is a strong alignment candidate. The sum of these scores is also used as a feature. Each source word and POS tag pair are used as indicator features which allow the model to learn particular words of tags which tend to commonly (or rarely) align. 3.2 Symmetrisation In order to produce many-to-many alignments we combine the outputs of two models, one for each translation direction. W</context>
+<context citStr="Martin et al., 2005" endWordPosition="3308" position="19971" startWordPosition="3305">aining and test sets, respectively. For parameter tuning, we used the 17 sentence trial set from the Romanian-English corpus in the 2003 NAACL task (Mihalcea and Pedersen, 2003). For this task we have used the same test data as the competition entrants, and therefore can directly compare our results. The word alignments in this corpus were only annotated with sure (S) alignments, and therefore the AER is equivalent to the Fi score. In the shared task it was found that models which were trained on only the first four letters of each word obtained superior results to those using the full words (Martin et al., 2005). We observed the same result with our model on the trial set and thus have only used the first four letters when training the Dice and Model 1 translation probabilities. Tables 1 and 2 show the results when all feature types are employed on both language pairs. We report the results for both translation directions and when combined using the refined and intersection methods. The Model 4 results are from GIZA++ with the default parameters and the training data lowercased. For Romanian, Model 4 was trained using the first four letters of each word. The Romanian results are close to the best rep</context>
+</contexts>
+<marker>Martin, Mihalcea, Pedersen, 2005</marker>
+<rawString>J. Martin, R. Mihalcea, and T. Pedersen. 2005. Word alignment for languages with scarce resources. In Proceedings of the ACL Workshop on Building and Using Parallel Texts, pages 65–74, Ann Arbor, Michigan, June.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Mihalcea</author>
+<author>T Pedersen</author>
+</authors>
+<title>An evaluation exercise for word alignment.</title>
+<date>2003</date>
+<booktitle>In Proceedings of HLT-NAACL 2003 Workshop, Building and Using Parrallel Texts: Data Driven Machine Translation and Beyond,</booktitle>
+<pages>1--6</pages>
+<location>Edmonton, Alberta.</location>
+<contexts>
+<context citStr="Mihalcea and Pedersen, 2003" endWordPosition="3101" position="18784" startWordPosition="3097">y-to-many alignments we combine the outputs of two models, one for each translation direction. We use the refined method from Och and Ney (2003) which starts from the intersection of the two models’ predictions and ‘grows’ the predicted alignments to neighbouring alignments which only appear in the output of one of the models. 4 Experiments We have applied our model to two publicly available word aligned corpora. The first is the English-French Hansards corpus, which consists of 1.1 million aligned sentences and 484 wordaligned sentences. This data set was used for the 2003 NAACL shared task (Mihalcea and Pedersen, 2003), where the word-aligned sentences were split into a 37 sentence trial set and a 447 sentence testing set. Unlike the unsupervised entrants in the 2003 task, we require word-aligned training data, and therefore must cannibalise the test set for this purpose. We follow Taskar et al. (2005) by using the first 100 test sentences for training and the remaining 347 for testing. This means that our results should not be directly compared to those entrants, other than in an approximate manner. We used the original 37 sentence trial set for feature used these as our training and test sets, respectivel</context>
+</contexts>
+<marker>Mihalcea, Pedersen, 2003</marker>
+<rawString>R. Mihalcea and T. Pedersen. 2003. An evaluation exercise for word alignment. In Proceedings of HLT-NAACL 2003 Workshop, Building and Using Parrallel Texts: Data Driven Machine Translation and Beyond, pages 1–6, Edmonton, Alberta.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R C Moore</author>
+</authors>
+<title>A discriminative framework for bilingual word alignment.</title>
+<date>2005</date>
+<booktitle>In Proceedings of HLT-EMNLP,</booktitle>
+<pages>81--88</pages>
+<location>Vancouver, Canada.</location>
+<contexts>
+<context citStr="Moore, 2005" endWordPosition="4687" position="27982" startWordPosition="4686">ised Model 4 did not have access to the wordalignments in our training set. Callison-Burch et al. (2004) demonstrated that the GIZA++ models could be trained in a semi-supervised manner, leading to a slight decrease in error. To our knowledge, our AER of 5.19 is the best reported result, generative or discriminative, on this data set. 5 Related work Recently, a number of discriminative word alignment models have been proposed, however these early models are typically very complicated with many proposing intractable problems which require heuristics for approximate inference (Liu et al., 2005; Moore, 2005). An exception is Taskar et al. (2005) who presented a word matching model for discriminative alignment which they they were able to solve optimally. However, their model is limited to only providing one-to-one alignments. Also, no features were defined on label sequences, which reduced the model’s ability to capture the strong monotonic relationships present between European language pairs. On the French-English Hansards task, using the same training/testing setup as our work, they achieve an AER of 5.4 with Model 4 features, and 10.7 without (compared to 5.29 and 6.99 for our CRF). One of th</context>
+</contexts>
+<marker>Moore, 2005</marker>
+<rawString>R. C. Moore. 2005. A discriminative framework for bilingual word alignment. In Proceedings of HLT-EMNLP, pages 81–88, Vancouver, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Och</author>
+<author>H Ney</author>
+</authors>
+<title>A systematic comparison of various statistical alignment models.</title>
+<date>2003</date>
+<journal>Computational Linguistics,</journal>
+<volume>29</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Och and Ney, 2003" endWordPosition="252" position="1636" startWordPosition="249">nt error rates of 5.29 and 25.8 for the two tasks respectively. 1 Introduction Modern phrase based statistical machine translation (SMT) systems usually break the translation task into two phases. The first phase induces word alignments over a sentence-aligned bilingual corpus, and the second phase uses statistics over these predicted word alignments to decode (translate) novel sentences. This paper deals with the first of these tasks: word alignment. Most current SMT systems (Och and Ney, 2004; Koehn et al., 2003) use a generative model for word alignment such as the freely available GIZA++ (Och and Ney, 2003), an implementation of the IBM alignment models (Brown et al., 1993). These models treat word alignment as a hidden process, and maximise the probability of the observed (e, f) sentence pairs1 using the expectation maximisation (EM) algorithm. After the maximisation process is complete, the word alignments are set to maximum posterior predictions of the model. While GIZA++ gives good results when trained on large sentence aligned corpora, its generative models have a number of limitations. Firstly, they impose strong independence assumptions between features, making it very difficult to incorp</context>
+<context citStr="Och and Ney, 2003" endWordPosition="634" position="4064" startWordPosition="631">erence on Computational Linguistics and 44th Annual Meeting of the ACL, pages 65–72, Sydney, July 2006. c�2006 Association for Computational Linguistics rithms are tractable and efficient, thereby avoiding the need for heuristics. The CRF is conditioned on both the source and target sentences, and therefore supports large sets of diverse and overlapping features. Furthermore, the model allows regularisation using a prior over the parameters, a very effective and simple method for limiting over-fitting. We use a similar graphical structure to the directed hidden Markov model (HMM) from GIZA++ (Och and Ney, 2003). This models one-to-many alignments, where each target word is aligned with zero or more source words. Many-to-many alignments are recoverable using the standard techniques for superimposing predicted alignments in both translation directions. The paper is structured as follows. Section 2 presents CRFs for word alignment, describing their form and their inference techniques. The features of our model are presented in Section 3, and experimental results for word aligning both French-English and Romanian-English sentences are given in Section 4. Section 5 presents related work, and we describe </context>
+<context citStr="Och and Ney, 2003" endWordPosition="2570" position="15573" startWordPosition="2567">Romanian-English we used a dictionary compiled by Rada Mihalcea,4 which contains approximately 38,000 entries. Markov features Features defined over adjacent aligment labels allow our model to reflect the tendency for monotonic alignments between European languages. We define a real-valued alignment index jump width feature: jump width(t − 1, t) = abs(at − at−1 − 1) this feature has a value of 0 if the alignment labels follow the downward sloping diagonal, and is positive otherwise. This differs from the GIZA++ hidden Markov model which has individual parameters for each different jump width (Och and Ney, 2003; Vogel et al., 1996): we found a single feature (and thus parameter) to be more effective. We also defined three indicator features over null transitions to allow the modelling of the probability of transition between, to and from null labels. Relative sentence postion A feature for the absolute difference in relative sentence position (abs( �� |� |− t |�|)) allows the model to learn a preference for aligning words close to the alignment matrix diagonal. We also included two conjunction features for the relative sentence position multiplied by the Dice and Model 1 translation scores. Null We </context>
+<context citStr="Och and Ney (2003)" endWordPosition="2842" position="17280" startWordPosition="2839"> 97.3 83.0 89.6 10.01 intersection 98.7 78.6 87.5 12.02 refined 95.7 89.2 92.3 7.37 Table 1. Results on the Hansard data using all features model precision recall f-score AER Model 4 refined 80.49 64.10 71,37 28.63 Model 4 intersected 95.94 53.56 68.74 31.26 Romanian --+ English 82.9 61.3 70.5 29.53 English --+ Romanian 82.8 60.6 70.0 29.98 intersection 94.4 52.5 67.5 32.45 refined 77.1 68.5 72.6 27.41 Table 2. Results on the Romanian data using all features engineering and for fitting a Gaussian prior. The word aligned data are annotated with both sure (S) and possible (P) alignments (S C P; Och and Ney (2003)), where the possible alignments indicate ambiguous or idiomatic alignments. We measure the performance of our model using alignment error rate (AER), which is defined as: AER(A,S,P) = 1 _ |A n S |+ |A n P| |A |+ |S| where A is the set of predicted alignments. The second data set is the Romanian-English parallel corpus from the 2005 ACL shared task (Martin et al., 2005). This consists of approximately 50,000 aligned sentences and 448 wordaligned sentences, which are split into a 248 sentence trial set and a 200 sentence test set. We is used as a feature to represent whether there is a strong a</context>
+<context citStr="Och and Ney, 2003" endWordPosition="4095" position="24531" startWordPosition="4092"> than the French-English pair. With both the translation score features (Dice and Model 1) removed – the sentence aligned data are not used – the AER of the Romanian is more than twice that of the French, despite employing more word aligned data. This could be caused by the lack of possible (P) alignment markup in the Romanian data, which provide a boost in AER on the French data set, rewarding what would otherwise be considered errors. Interestingly, without any features derived from the sentence aligned corpus, our model achieves performance equivalent to Model 3 trained on the full corpus (Och and Ney, 2003). This is a particularly strong result, indicating that this method is ideal for data-impoverished alignment tasks. 70 4.1 Training with possible alignments Up to this point our Hansards model has been trained using only the sure (S) alignments. As the data set contains many possible (P) alignments, we would like to use these to improve our model. Most of the possible alignments flag blocks of ambiguous or idiomatic (or just difficult) phrase level alignments. These many-to-many alignments cannot be modelled with our many-to-one setup. However, a number of possibles flag oneto-one or many-to-o</context>
+</contexts>
+<marker>Och, Ney, 2003</marker>
+<rawString>F. Och and H. Ney. 2003. A systematic comparison of various statistical alignment models. Computational Linguistics, 29(1):19–52.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Och</author>
+<author>H Ney</author>
+</authors>
+<title>The alignment template approach to statistical machine translation.</title>
+<date>2004</date>
+<journal>Computational Linguistics,</journal>
+<volume>30</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Och and Ney, 2004" endWordPosition="231" position="1517" startWordPosition="228">h only a few hundred word-aligned training sentences, our model improves over the current state-ofthe-art with alignment error rates of 5.29 and 25.8 for the two tasks respectively. 1 Introduction Modern phrase based statistical machine translation (SMT) systems usually break the translation task into two phases. The first phase induces word alignments over a sentence-aligned bilingual corpus, and the second phase uses statistics over these predicted word alignments to decode (translate) novel sentences. This paper deals with the first of these tasks: word alignment. Most current SMT systems (Och and Ney, 2004; Koehn et al., 2003) use a generative model for word alignment such as the freely available GIZA++ (Och and Ney, 2003), an implementation of the IBM alignment models (Brown et al., 1993). These models treat word alignment as a hidden process, and maximise the probability of the observed (e, f) sentence pairs1 using the expectation maximisation (EM) algorithm. After the maximisation process is complete, the word alignments are set to maximum posterior predictions of the model. While GIZA++ gives good results when trained on large sentence aligned corpora, its generative models have a number of</context>
+</contexts>
+<marker>Och, Ney, 2004</marker>
+<rawString>F. Och and H. Ney. 2004. The alignment template approach to statistical machine translation. Computational Linguistics, 30(4):417–449.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>F Sha</author>
+<author>F Pereira</author>
+</authors>
+<title>Shallow parsing with conditional random fields.</title>
+<date>2003</date>
+<booktitle>In Proceedings of HLT-NAACL,</booktitle>
+<pages>213--220</pages>
+<contexts>
+<context citStr="Sha and Pereira, 2003" endWordPosition="1348" position="8256" startWordPosition="1345">0(Ak) (a^f)ED k ils sont par certaines limites qui ont été fixées garantir que la liberté de une ne pas sur de une . restreints pour personne empiète celle autre 66 f 1, if eat = ‘of’ n ft = ‘de’ l 0, otherwise � −log ZA(e, f) − k In order to train the model, we maximize (2). While the log-likelihood cannot be maximised for the parameters, A, in closed form, it is a convex function, and thus we resort to numerical optimisation to find the globally optimal parameters. We use L-BFGS, an iterative quasi-Newton optimisation method, which performs well for training log-linear models (Malouf, 2002; Sha and Pereira, 2003). Each L-BFGS iteration requires the objective value and its gradient with respect to the model parameters. These are calculated using forward-backward inference, which yields the partition function, ZA(e, f), required for the log-likelihood, and the pair-wise marginals, pA(at−1, at|e, f), required for its derivatives. The Viterbi algorithm is used to find the maximum posterior probability alignment for test sentences, a∗ = arg maxa pA(a|e,f). Both the forward-backward and Viterbi algorithm are dynamic programs which make use of the Markov assumption to calculate efficiently the exact marginal</context>
+</contexts>
+<marker>Sha, Pereira, 2003</marker>
+<rawString>F. Sha and F. Pereira. 2003. Shallow parsing with conditional random fields. In Proceedings of HLT-NAACL, pages 213–220.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Taskar</author>
+<author>S Lacoste-Julien</author>
+<author>D Klein</author>
+</authors>
+<title>A discriminative matching approach to word alignment.</title>
+<date>2005</date>
+<booktitle>In Proceedings of HLT-EMNLP,</booktitle>
+<pages>73--80</pages>
+<location>Vancouver, British Columbia, Canada,</location>
+<contexts>
+<context citStr="Taskar et al. (2005)" endWordPosition="2143" position="12898" startWordPosition="2140"> For the example in Figure 1, the words la, de and une all receive a high translation score when paired with the. To discourage all of these French words from aligning with the, the best of these (la) is flagged as the best candidate. This allows for competition between source words which would otherwise not occur. Orthographic features Features based on string overlap allow our model to recognise cognates and orthographically similar translation pairs, which are particularly common between European languages. Here we employ a number of string matching features inspired by similar features in Taskar et al. (2005). We use an indicator feature for every possible source-target word pair in the training data. In addition, we include indicator features for an exact string match, both with and without vowels, and the edit-distance between the source and target words as a realvalued feature. We also used indicator features to test for matching prefixes and suffixes of length three. As stated earlier, the Dice translation score often erroneously rewards alignments with common words. In order to address this problem, we include the absolute difference in word length as a real-valued feature and an indicator fe</context>
+<context citStr="Taskar et al. (2005)" endWordPosition="3149" position="19073" startWordPosition="3146">he output of one of the models. 4 Experiments We have applied our model to two publicly available word aligned corpora. The first is the English-French Hansards corpus, which consists of 1.1 million aligned sentences and 484 wordaligned sentences. This data set was used for the 2003 NAACL shared task (Mihalcea and Pedersen, 2003), where the word-aligned sentences were split into a 37 sentence trial set and a 447 sentence testing set. Unlike the unsupervised entrants in the 2003 task, we require word-aligned training data, and therefore must cannibalise the test set for this purpose. We follow Taskar et al. (2005) by using the first 100 test sentences for training and the remaining 347 for testing. This means that our results should not be directly compared to those entrants, other than in an approximate manner. We used the original 37 sentence trial set for feature used these as our training and test sets, respectively. For parameter tuning, we used the 17 sentence trial set from the Romanian-English corpus in the 2003 NAACL task (Mihalcea and Pedersen, 2003). For this task we have used the same test data as the competition entrants, and therefore can directly compare our results. The word alignments </context>
+<context citStr="Taskar et al., 2005" endWordPosition="4272" position="25600" startWordPosition="4269">vel alignments. These many-to-many alignments cannot be modelled with our many-to-one setup. However, a number of possibles flag oneto-one or many-to-one aligments: for this experiment we used these possibles in training to investigate their effect on recall. Using these additional alignments our refined precision decreased from 95.7 to 93.5, while recall increased from 89.2 to 92.4. This resulted in an overall decrease in AER to 6.99. We found no benefit from using many-tomany possible alignments as they added a significant amount of noise to the data. 4.2 Model 4 as a feature Previous work (Taskar et al., 2005) has demonstrated that by including the output of Model 4 as a feature, it is possible to achieve a significant decrease in AER. We trained Model 4 in both directions on the two language pairs. We added two indicator features (one for each direction) to our CRF which were active if a given word pair were aligned in the Model 4 output. Table 4 displays the results on both language pairs when these additional features are used with the refined model. This produces a large increase in performance, and when including the possibles, produces AERs of 5.29 and 25.8, both well below that of Model 4 al</context>
+<context citStr="Taskar et al. (2005)" endWordPosition="4694" position="28020" startWordPosition="4691">ss to the wordalignments in our training set. Callison-Burch et al. (2004) demonstrated that the GIZA++ models could be trained in a semi-supervised manner, leading to a slight decrease in error. To our knowledge, our AER of 5.19 is the best reported result, generative or discriminative, on this data set. 5 Related work Recently, a number of discriminative word alignment models have been proposed, however these early models are typically very complicated with many proposing intractable problems which require heuristics for approximate inference (Liu et al., 2005; Moore, 2005). An exception is Taskar et al. (2005) who presented a word matching model for discriminative alignment which they they were able to solve optimally. However, their model is limited to only providing one-to-one alignments. Also, no features were defined on label sequences, which reduced the model’s ability to capture the strong monotonic relationships present between European language pairs. On the French-English Hansards task, using the same training/testing setup as our work, they achieve an AER of 5.4 with Model 4 features, and 10.7 without (compared to 5.29 and 6.99 for our CRF). One of the strengths of the CRF MAP estimation </context>
+</contexts>
+<marker>Taskar, Lacoste-Julien, Klein, 2005</marker>
+<rawString>B. Taskar, S. Lacoste-Julien, and D. Klein. 2005. A discriminative matching approach to word alignment. In Proceedings of HLT-EMNLP, pages 73–80, Vancouver, British Columbia, Canada, October.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>K Toutanova</author>
+<author>H Tolga Ilhan</author>
+<author>C Manning</author>
+</authors>
+<title>Extentions to HMM-based statistical word alignment models.</title>
+<date>2002</date>
+<booktitle>In Proceedings of EMNLP,</booktitle>
+<pages>87--94</pages>
+<location>Philadelphia,</location>
+<contexts>
+<context citStr="Toutanova et al. (2002)" endWordPosition="446" position="2851" startWordPosition="443">o incorporate non-independent features over the sentence pairs. For instance, as well as detecting that a source word is aligned to a given target word, we would also like to encode syntactic and lexical features of the word pair, such as their partsof-speech, affixes, lemmas, etc. Features such as these would allow for more effective use of sparse data and result in a model which is more robust in the presence of unseen words. Adding these non-independent features to a generative model requires that the features’ inter-dependence be modelled explicitly, which often complicates the model (eg. Toutanova et al. (2002)). Secondly, the later IBM models, such as Model 4, have to resort to heuristic search techniques to approximate forward-backward and Viterbi inference, which sacrifice optimality for tractability. This paper presents an alternative discriminative method for word alignment. We use a conditional random field (CRF) sequence model, which allows for globally optimal training and decoding (Lafferty et al., 2001). The inference algo1We adopt the standard notation of a and f to denote the target (English) and source (foreign) sentences, respectively. 65 Proceedings of the 21st International Conferenc</context>
+</contexts>
+<marker>Toutanova, Ilhan, Manning, 2002</marker>
+<rawString>K. Toutanova, H. Tolga Ilhan, and C Manning. 2002. Extentions to HMM-based statistical word alignment models. In Proceedings of EMNLP, pages 87–94, Philadelphia, July.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Vogel</author>
+<author>H Ney</author>
+<author>C Tillmann</author>
+</authors>
+<title>HMM-based word alignment in statistical translation.</title>
+<date>1996</date>
+<booktitle>In Proceedings of 16th Int. Conf. on Computational Linguistics,</booktitle>
+<pages>836--841</pages>
+<contexts>
+<context citStr="Vogel et al., 1996" endWordPosition="2574" position="15594" startWordPosition="2571"> used a dictionary compiled by Rada Mihalcea,4 which contains approximately 38,000 entries. Markov features Features defined over adjacent aligment labels allow our model to reflect the tendency for monotonic alignments between European languages. We define a real-valued alignment index jump width feature: jump width(t − 1, t) = abs(at − at−1 − 1) this feature has a value of 0 if the alignment labels follow the downward sloping diagonal, and is positive otherwise. This differs from the GIZA++ hidden Markov model which has individual parameters for each different jump width (Och and Ney, 2003; Vogel et al., 1996): we found a single feature (and thus parameter) to be more effective. We also defined three indicator features over null transitions to allow the modelling of the probability of transition between, to and from null labels. Relative sentence postion A feature for the absolute difference in relative sentence position (abs( �� |� |− t |�|)) allows the model to learn a preference for aligning words close to the alignment matrix diagonal. We also included two conjunction features for the relative sentence position multiplied by the Dice and Model 1 translation scores. Null We use a number of varia</context>
+</contexts>
+<marker>Vogel, Ney, Tillmann, 1996</marker>
+<rawString>S. Vogel, H. Ney, and C. Tillmann. 1996. HMM-based word alignment in statistical translation. In Proceedings of 16th Int. Conf. on Computational Linguistics, pages 836–841.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

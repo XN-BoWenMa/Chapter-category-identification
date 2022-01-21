@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000027" no="0">
+<title confidence="0.996406">
+Probabilistic CFG with latent annotations
+</title>
+<author confidence="0.996548">
+Takuya Matsuzaki Yusuke Miyao Jun’ichi Tsujii
+</author>
+<affiliation confidence="0.987225">
+Graduate School of Information Science and Technology, University of Tokyo
+</affiliation>
+<address confidence="0.931111333333333">
+Hongo 7-3-1, Bunkyo-ku, Tokyo 113-0033
+CREST, JST(Japan Science and Technology Agency)
+Honcho 4-1-8, Kawaguchi-shi, Saitama 332-0012
+</address>
+<email confidence="0.996651">
+matuzaki, yusuke, tsujii@is.s.u-tokyo.ac.jp
+</email>
+<sectionHeader confidence="0.995629" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.999401588235294">This paper defines a generative probabilistic model of parse trees, which we call PCFG-LA. This model is an extension of PCFG in which non-terminal symbols are augmented with latent variables. Finegrained CFG rules are automatically induced from a parsed corpus by training a PCFG-LA model using an EM-algorithm. Because exact parsing with a PCFG-LA is NP-hard, several approximations are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection.</bodyText>
+<sectionHeader confidence="0.999133" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.999970170731707">Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an extension of PCFG models in which non-terminal symbols are annotated with latent variables. The latent variables work just like the features attached to non-terminal symbols. A fine-grained PCFG is automatically induced from parsed corpora by training a PCFG-LA model using an EM-algorithm, which replaces the manual feature selection used in previous research. The main focus of this paper is to examine the effectiveness of the automatically trained models in parsing. Because exact inference with a PCFG-LA, i.e., selection of the most probable parse, is NP-hard, we are forced to use some approximation of it. We empirically compared three different approximation methods. One of the three methods gives a performance of 86.6% (F, sentences 40 words) on the standard test set of the Penn WSJ corpus. Utsuro et al. (1996) proposed a method that automatically selects a proper level of generalization of non-terminal symbols of a PCFG, but they did not report the results of parsing with the obtained PCFG. Henderson’s parsing model (Henderson, 2003) has a similar motivation as ours in that a derivation history of a parse tree is compactly represented by induced hidden variables (hidden layer activation of a neural network), although the details of his approach is quite different from ours.</bodyText>
+<sectionHeader confidence="0.981076" genericHeader="method">
+2 Probabilistic model
+</sectionHeader>
+<bodyText confidence="0.944828333333333">PCFG-LA is a generative probabilistic model of parse trees. In this model, an observed parse tree is considered as an incomplete data, and the corresponding complete data is a tree with latent annotations.</bodyText>
+<page confidence="0.98742">
+75
+</page>
+<note confidence="0.994402">
+Proceedings of the 43rd Annual Meeting of the ACL, pages 75–82,
+Ann Arbor, June 2005. c�2005 Association for Computational Linguistics
+</note>
+<figure confidence="0.888636333333333">
+: :
+the cat grinned
+the cat grinned
+</figure>
+<figureCaption confidence="0.999909">
+Figure 1: Tree with latent annotations (com-
+plete data) and observed tree (incomplete data).</figureCaption>
+<bodyText confidence="0.9947034">Each non-terminal node in the complete data is labeled with a complete symbol of the form , where is the non-terminal symbol of the corresponding node in the observed tree and is a latent annotation symbol, which is an element of a fixed set . A complete/incomplete tree pair of the sentence, “the cat grinned,” is shown in Figure 2. The complete parse tree, (left), is generated through a process just like the one in ordinary PCFGs, but the non-terminal symbols in the CFG rules are annotated with latent symbols, the probability of the complete tree ( ) is where denotes the probability of an occurrence of the symbol at a root node and denotes the probability of a CFG rule. The probability of the observed tree is obtained by summing for all the assignments to latent an-</bodyText>
+<equation confidence="0.926511">
+notation symbols, :
+(1)
+</equation>
+<bodyText confidence="0.999820923076923">Using dynamic programming, the theoretical bound of the time complexity of the summation in Eq. 1 is reduced to be proportional to the number of non-terminal nodes in a parse tree. However, the calculation at node still has a cost that exponentially grows with the number of ’s daughters because we must sum up the probabilities of combinations of latent annotation symbols for a node with daughters. We thus took a kind of transformation/detransformation approach, in which a tree is binarized before parameter estimation and restored to its original form after parsing. The details of the binarization are explained in Section 4. Using syntactically annotated corpora as training data, we can estimate the parameters of a PCFGLA model using an EM algorithm. The algorithm is a special variant of the inside-outside algorithm of Pereira and Schabes (1992). Several recent work also use similar estimation algorithm as ours, i.e, inside-outside re-estimation on parse trees (Chiang and Bikel, 2002; Shen, 2004). The rest of this section precisely defines PCFGLA models and briefly explains the estimation algorithm. The derivation of the estimation algorithm is largely omitted; see Pereira and Schabes (1992) for details.</bodyText>
+<subsectionHeader confidence="0.993963">
+2.1 Model definition
+</subsectionHeader>
+<bodyText confidence="0.8987697">We define a PCFG-LA as a tuple , where a set of observable non-terminal symbols a set of terminal symbols a set of latent annotation symbols a set of observable CFG rules the probability of the occurrence of a complete symbol at a root node the probability of a rule We use for non-terminal symbols in ; for terminal symbols in ; .Thus,</bodyText>
+<bodyText confidence="0.949662416666667">and for latent annotation symbols in . denotes the set of complete non-terminal symbols, i.e., . Note that latent annotation symbols are not attached to terminal symbols. In the above definition, is a set of CFG rules of observable (i.e., not annotated) symbols. For simplicity of discussion, we assume that is a CNF grammar, but extending to the general case is straightforward. is the set of CFG rules of complete symbols, such as grinned or . More precisely,</bodyText>
+<page confidence="0.82933">
+76
+</page>
+<bodyText confidence="0.987941636363636">We assume that non-terminal nodes in a parse tree are indexed by integers , starting from the root node. A complete tree is denoted by , where is a vector of latent annotation symbols and is the latent annotation symbol attached to the-th non-terminal node. We do not assume any structured parametrizations in and ; that is, each and is itself a parameter to be tuned. Therefore, an annotation symbol, say, , generally does not express any commonalities among the complete non-terminals annotated by , such as . The probability of a complete parse tree is defined as (2) where is the label of the root node of and denotes the multiset of annotated CFG rules used in the generation of . We have the probability of an observable tree by marginalizing out the latent annotation symbols in :</bodyText>
+<equation confidence="0.370187">
+(3)
+</equation>
+<bodyText confidence="0.998796">where is the number of non-terminal nodes in .</bodyText>
+<subsectionHeader confidence="0.99673">
+2.2 Forward-backward probability
+</subsectionHeader>
+<bodyText confidence="0.9972645">The sum in Eq. 3 can be calculated using a dynamic programming algorithm analogous to the forward algorithm for HMMs. For a sentence and its parse tree , backward probabilities are recursively computed for the-th non-terminal node and for each . In the definition below, denotes the non-terminal label of the-th node. If node is a pre-terminal node above a terminal symbol , then . Otherwise, let and be the two daughter nodes of. Then Using backward probabilities, is calculated as . We define forward probabilities , which are used in the estimation described below, as follows: If node is the root node (i.e., = 1), then . If node has a right sibling , let be the mother node of. Then If node has a left sibling, is defined analogously.</bodyText>
+<subsectionHeader confidence="0.98977">
+2.3 Estimation
+</subsectionHeader>
+<bodyText confidence="0.99929175">We now derive the EM algorithm for PCFG-LA, which estimates the parameters . Let be the training set of parse trees and be the labels of non-terminal nodes in . Like the derivations of the EM algorithms for other latent variable models, the update formulas for the parameters, which update the parameters from to , are obtained by constrained optimization of , which is defined as where and denote probabilities under and , and is the conditional probability of latent annotation symbols given an observed tree , i.e., . Using the Lagrange multiplier method and re-arranging the results using the backward and forward probabilities, we obtain the update formulas in Figure 2.</bodyText>
+<sectionHeader confidence="0.592595" genericHeader="method">
+3 Parsing with PCFG-LA
+</sectionHeader>
+<bodyText confidence="0.998291">In theory, we can use PCFG-LAs to parse a given sentence by selecting the most probable parse:</bodyText>
+<equation confidence="0.391891">
+(4)
+</equation>
+<bodyText confidence="0.993235666666667">where denotes the set of possible parses for under the observable grammar . While the optimization problem in Eq. 4 can be efficiently solved for PCFGs using dynamic programming algorithms, the sum-of-products form of in PCFG-LA models (see Eq.2 and Eq.3) makes it difficult to apply such techniques to solve Eq.4.</bodyText>
+<page confidence="0.997429">
+77
+</page>
+<figureCaption confidence="0.999267">
+Figure 2: Parameter update formulas.
+</figureCaption>
+<bodyText confidence="0.998381565217391">Actually, the optimization problem in Eq.4 is NPhard for general PCFG-LA models. Although we omit the details, we can prove the NP-hardness by observing that a stochastic tree substitution grammar (STSG) can be represented by a PCFG-LA model in a similar way to one described by Goodman (1996a), and then using the NP-hardness of STSG parsing (Sima´an, 2002). The difficulty of the exact optimization in Eq.4 forces us to use some approximations of it. The rest of this section describes three different approximations, which are empirically compared in the next section. The first method simply limits the number of candidate parse trees compared in Eq.4; we first create N-best parses using a PCFG and then, within the N-best parses, select the one with the highest probability in terms of the PCFG-LA. The other two methods are a little more complicated, and we explain them in separate subsections.</bodyText>
+<subsectionHeader confidence="0.996941">
+3.1 Approximation by Viterbi complete trees
+</subsectionHeader>
+<bodyText confidence="0.93203775">The second approximation method selects the best complete tree , that is, (5) We call a Viterbi complete tree. Such a tree can be obtained in time by regarding the PCFG-LA as a PCFG with annotated symbols.1 The observable part of the Viterbi complete tree (i.e., ) does not necessarily coincide with the best observable tree in Eq. 4. However, if has some ‘dominant’ assignment to its latent annotation symbols such that ,then because and , and thus and are almost equally ‘good’ in terms of their marginal probabilities.</bodyText>
+<subsectionHeader confidence="0.999733">
+3.2 Viterbi parse in approximate distribution
+</subsectionHeader>
+<bodyText confidence="0.99915">In the third method, we approximate the true distribution by a cruder distribution , and then find the tree with the highest in polynomial time. We first create a packed representation of for a given sentence .2 Then, the approximate distribution is created using the packed forest, and the parameters in are adjusted so that approximates as closely as possible. The form of is that of a product of the parameters, just like the form of a PCFG model, and it enables us to use a Viterbi algorithm to select the tree with the highest . A packed forest is defined as a tuple of , which can be obtained by parsing with beam thresholding, for instance.</bodyText>
+<footnote confidence="0.821430666666667">
+1For efficiency, we did not actually parse sentences with
+but selected a Viterbi complete tree from a packed rep-
+resentation of candidate parses in the experiments in Section 4.
+2In practice, fully constructing a packed representation of
+has an unrealistically high cost for most input sentences.
+Alternatively, we can use a packed representation of a subset
+</footnote>
+<bodyText confidence="0.825360666666667">An approximate distribution on such subsets can be derived in almost the same way as one for from the-th to-th word in .</bodyText>
+<footnote confidence="0.6088775">
+the full , but the conditional distribution, , is re-
+normalized so that the total mass for the subset sums to 1.
+</footnote>
+<figure confidence="0.978029307692307">
+Covered
+Covered
+Root
+Labeled
+Covered
+Covered
+Labeled
+Root the root of is labeled with
+. The
+first component, , is a multiset of chart items of the
+form . A chart item indicates
+that there exists a parse tree in that contains a
+constituent with the non-terminal label that spans
+</figure>
+<page confidence="0.742938">
+78
+</page>
+<figureCaption confidence="0.9959535">
+Figure 3: Two parse trees and packed representation
+of them.
+</figureCaption>
+<bodyText confidence="0.99566486">The second component, , is a function on that represents dominance relations among the chart items in ; is a set of possible daughters of if is not a pre-terminal node, and if is a pre-terminal node above . Two parse trees for a sentence and a packed representation of them are shown in Figure 3. We require that each tree has a unique representation as a set of connected chart items in . A packed representation satisfying the uniqueness condition is created using the CKY algorithm with the observable grammar , for instance. The approximate distribution, , is defined as a PCFG, whose CFG rules is defined as . We use to denote the rule probability of rule and to denote the probability with which is generated as a root node. We define as where the set of connected items is the unique representation of . To measure the closeness of approximation by , we use the ‘inclusive’ KL-divergence, (Frey et al., 2000): Minimizing under the normalization constraints on and yields closed form solutions for ❂ and , as shown in Figure 4. in and❂out in Figure 4 are similar to ordinary inside/outside probabilities. We define❂in as follows: If is a pre-terminal node , then❂in above where and denote non-terminal symbols of chart items and . The outside probability,❂out, is calculated using❂in and PCFG-LA parameters along the packed structure, like the outside probabilities for PCFGs. Once we have computed and , the parse tree that maximizes is found using a Viterbi algorithm, as in PCFG parsing. Several parsing algorithms that also use insideoutside calculation on packed chart have been proposed (Goodman, 1996b; Sima´an, 2003; Clark and Curran, 2004). Those algorithms optimize some evaluation metric of parse trees other than the posterior probability , e.g., (expected) labeled constituent recall or (expected) recall rate of dependency relations contained in a parse. It is in contrast with our approach where (approximated) posterior probability is optimized.</bodyText>
+<sectionHeader confidence="0.99965" genericHeader="evaluation and result">
+4 Experiments
+</sectionHeader>
+<bodyText confidence="0.999943333333334">We conducted four sets of experiments. In the first set of experiments, the degree of dependency of trained models on initialization was examined because EM-style algorithms yield different results with different initial values of parameters. In the second set of experiments, we examined the relationship between model types and their parsing performances. In the third set of experiments, we compared the three parsing methods described in the previous section. Finally, we show the result of a parsing experiment using the standard test set. We used sections 2 through 20 of the Penn WSJ corpus as training data and section 21 as heldout data. The heldout data was used for early stopping; i.e., the estimation was stopped when the rate of increase in the likelihood of the heldout data became lower than a certain threshold.</bodyText>
+<figure confidence="0.959584533333333">
+Otherwise,
+in
+❂in
+in
+.
+79
+If is not a pre-terminal node, for each , let , and be non-terminal symbols of , and.
+Then,
+✓ in ✓ in
+out
+If is a pre-terminal node above word , then .
+If is a root node, let be the non-terminal symbol of. Then
+out
+✓ in
+in .
+</figure>
+<figureCaption confidence="0.9996765">
+Figure 4: Optimal parameters of approximate distribution .
+Figure 5: Original subtree.
+</figureCaption>
+<table confidence="0.9997768">
+1 2 3 4 average
+training LL -115 -114 -115 -114 -114 0.41
+heldout LL -114 -115 -115 -114 -114 0.29
+LR 86.7 86.3 86.3 87.0 86.6 0.27
+LP 86.2 85.6 85.5 86.6 86.0 0.48
+</table>
+<tableCaption confidence="0.999899">
+Table 1: Dependency on initial values.
+</tableCaption>
+<bodyText confidence="0.999898">Section 22 was used as test data in all parsing experiments except in the final one, in which section 23 was used. We stripped off all function tags and eliminated empty nodes in the training and heldout data, but any other pre-processing, such as comma raising or base-NP marking (Collins, 1999), was not done except for binarizations.</bodyText>
+<subsectionHeader confidence="0.998079">
+4.1 Dependency on initial values
+</subsectionHeader>
+<bodyText confidence="0.999920416666667">To see the degree of dependency of trained models on initializations, four instances of the same model were trained with different initial values of parameters.3 The model used in this experiment was created by CENTER-PARENT binarization and was set to 16. Table 1 lists training/heldout data loglikelihood per sentence (LL) for the four instances and their parsing performances on the test set (section 22). The parsing performances were obtained using the approximate distribution method in Section 3.2. Different initial values were shown to affect the results of training to some extent (Table 1).</bodyText>
+<footnote confidence="0.841125">
+3The initial value for an annotated rule probability,
+, was created by randomly multiplying
+the maximum likelihood estimation of the corresponding PCFG
+rule probability, , as follows:
+where is a random number that is uniformly distributed in
+and is a normalization constant.
+</footnote>
+<figure confidence="0.706704">
+CENTER-PARENT CENTER-HEAD
+LEFT RIGHT
+</figure>
+<figureCaption confidence="0.9726165">
+Figure 6: Four types of binarization (H: head daugh-
+ter).
+</figureCaption>
+<subsectionHeader confidence="0.999717">
+4.2 Model types and parsing performance
+</subsectionHeader>
+<bodyText confidence="0.9995777">We compared four types of binarization. The original form is depicted in Figure 5 and the results are shown in Figure 6. In the first two methods, called CENTER-PARENT and CENTER-HEAD, the headfinding rules of Collins (1999) were used. We obtained an observable grammar for each model by reading off grammar rules from the binarized training trees. For each binarization method, PCFG-LA models with different numbers of latent annotation symbols, , and , were trained.</bodyText>
+<page confidence="0.976825">
+80
+</page>
+<figure confidence="0.995232388888889">
+86
+84
+82
+80
+F1
+78
+76
+74
+72
+86.5
+86
+85.5
+F1
+85
+84.5
+84
+10000 100000 1e+06 1e+07 1e+08
+# of parameters
+</figure>
+<figureCaption confidence="0.999997">
+Figure 7: Model size vs. parsing performance.
+</figureCaption>
+<bodyText confidence="0.9995928125">The relationships between the number of parameters in the models and their parsing performances are shown in Figure 7. Note that models created using different binarization methods have different numbers of parameters for the same . The parsing performances were measured using F scores of the parse trees that were obtained by re-ranking of 1000-best parses by a PCFG. We can see that the parsing performance gets better as the model size increases. We can also see that models of roughly the same size yield similar performances regardless of the binarization scheme used for them, except the models created using LEFT binarization with small numbers of parameters ( and ). Taking into account the dependency on initial values at the level shown in the previous experiment, we cannot say that any single model is superior to the other models when the sizes of the models are large enough. The results shown in Figure 7 suggest that we could further improve parsing performance by increasing the model size. However, both the memory size and the training time are more than linear in , and the training time for the largest ( ) models was about 15 hours for the models created using CENTER-PARENT, CENTER-HEAD, and LEFT and about 20 hours for the model created using RIGHT. To deal with larger (e.g., = 32 or 64) models, we therefore need to use a model search that reduces the number of parameters while maintaining the model’s performance, and an approximation during training to reduce the training time.</bodyText>
+<figure confidence="0.915739">
+0 1 2 3 4 5 6 7 8 9 10
+parsing time (sec)
+</figure>
+<figureCaption confidence="0.999881">
+Figure 8: Comparison of parsing methods.
+</figureCaption>
+<subsectionHeader confidence="0.972608">
+4.3 Comparison of parsing methods
+</subsectionHeader>
+<bodyText confidence="0.998074384615385">The relationships between the average parse time and parsing performance using the three parsing methods described in Section 3 are shown in Figure 8. A model created using CENTER-PARENT with was used throughout this experiment. The data points were made by varying configurable parameters of each method, which control the number of candidate parses. To create the candidate parses, we first parsed input sentences using a PCFG4, using beam thresholding with beam width . The data points on a line in the figure were created by varying with other parameters fixed. The first method re-ranked the -best parses enumerated from the chart after the PCFG parsing. The two lines for the first method in the figure correspond to = 100 and = 300. In the second and the third methods, we removed all the dominance relations among chart items that did not contribute to any parses whose PCFG-scores were higher than max, where max is the PCFG-score of the best parse in the chart. The parses remaining in the chart were the candidate parses for the second and the third methods. The different lines for the second and the third methods correspond to different values of . The third method outperforms the other two methods unless the parse time is very limited (i.e., 1 sec is required), as shown in the figure.</bodyText>
+<footnote confidence="0.899035">
+4The PCFG used in creating the candidate parses is roughly
+the same as the one that Klein and Manning (2003) call a
+‘markovised PCFG with vertical order = 2 and horizontal or-
+der = 1’ and was extracted from Section 02-20. The PCFG itself
+gave a performance of 79.6/78.5 LP/LR on the development set.
+This PCFG was also used in the experiment in Section 4.4.
+</footnote>
+<figure confidence="0.991062285714286">
+CENTER-PARENT
+CENTER-HEAD
+RIGHT
+LEFT
+N-best re-ranking
+Viterbi complete tree
+approximate distribution
+</figure>
+<page confidence="0.985028">
+81
+</page>
+<table confidence="0.9987421">
+40 words LR LP CB 0 CB
+This paper 86.7 86.6 1.19 61.1
+Klein and Manning (2003) 85.7 86.9 1.10 60.3
+Collins (1999) 88.5 88.7 0.92 66.7
+Charniak (1999) 90.1 90.1 0.74 70.1
+100 words LR LP CB 0 CB
+This paper 86.0 86.1 1.39 58.3
+Klein and Manning (2003) 85.1 86.3 1.31 57.2
+Collins (1999) 88.1 88.3 1.06 64.0
+Charniak (1999) 89.6 89.5 0.88 67.6
+</table>
+<tableCaption confidence="0.999973">
+Table 2: Comparison with other parsers.
+</tableCaption>
+<bodyText confidence="0.99939075">The superiority of the third method over the first method seems to stem from the difference in the number of candidate parses from which the outputs are selected.5 The superiority of the third method over the second method is a natural consequence of the consistent use of both in the estimation (as the objective function) and in the parsing (as the score of a parse).</bodyText>
+<subsectionHeader confidence="0.998166">
+4.4 Comparison with related work
+</subsectionHeader>
+<bodyText confidence="0.999678148148148">Parsing performance on section 23 of the WSJ corpus using a PCFG-LA model is shown in Table 2. We used the instance of the four compared in the second experiment that gave the best results on the development set. Several previously reported results on the same test set are also listed in Table 2. Our result is lower than the state-of-the-art lexicalized PCFG parsers (Collins, 1999; Charniak, 1999), but comparable to the unlexicalized PCFG parser of Klein and Manning (2003). Klein and Manning’s PCFG is annotated by many linguistically motivated features that they found using extensive manual feature selection. In contrast, our method induces all parameters automatically, except that manually written head-rules are used in binarization. Thus, our method can extract a considerable amount of hidden regularity from parsed corpora. However, our result is worse than the lexicalized parsers despite the fact that our model has access to words in the sentences. It suggests that certain types of information used in those lexicalized 5Actually, the number of parses contained in the packed forest is more than 1 million for over half of the test sentences when = and , while the number of parses for which the first method can compute the exact probability in a comparable time (around 4 sec) is only about 300. parsers are hard to be learned by our approach.</bodyText>
+<sectionHeader confidence="0.996568" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999896558139535">
+Eugene Charniak. 1999. A maximum-entropy-inspired
+parser. Technical Report CS-99-12.
+David Chiang and Daniel M. Bikel. 2002. Recovering
+latent information in treebanks. In Proc. COLING,
+pages 183–189.
+Stephen Clark and James R. Curran. 2004. Parsing the
+wsj using ccg and log-linear models. In Proc. ACL,
+pages 104–111.
+Michael Collins. 1999. Head-Driven Statistical Models
+for Natural Language Parsing. Ph.D. thesis, Univer-
+sity of Pennsylvania.
+Brendan J. Frey, Relu Patrascu, Tommi Jaakkola, and
+Jodi Moran. 2000. Sequentially fitting “inclusive”
+trees for inference in noisy-OR networks. In Proc.
+NIPS, pages 493–499.
+Joshua Goodman. 1996a. Efficient algorithms for pars-
+ing the DOP model. In Proc. EMNLP, pages 143–152.
+Joshua Goodman. 1996b. Parsing algorithms and metric.
+In Proc. ACL, pages 177–183.
+Joshua Goodman. 1997. Probabilistic feature grammars.
+In Proc. IWPT.
+James Henderson. 2003. Inducing history representa-
+tions for broad coverage statistical parsing. In Proc.
+HLT-NAACL, pages 103–110.
+Mark Johnson. 1998. PCFG models of linguis-
+tic tree representations. Computational Linguistics,
+24(4):613–632.
+Dan Klein and Christopher D. Manning. 2003. Accurate
+unlexicalized parsing. In Proc. ACL, pages 423–430.
+Fernando Pereira and Yves Schabes. 1992. Inside-
+outside reestimation from partially bracketed corpora.
+In Proc. ACL, pages 128–135.
+Libin Shen. 2004. Nondeterministic LTAG derivation
+tree extraction. In Proc. TAG+7, pages 199–203.
+Khalil Sima´an. 2002. Computational complexity of
+probabilistic disambiguation. Grammars, 5(2):125–
+151.
+Khalil Sima´an. 2003. On maximizing metrics for syn-
+tactic disambiguation. In Proc. IWPT.
+Takehito Utsuro, Syuuji Kodama, and Yuji Matsumoto.
+1996. Generalization/specialization of context free
+grammars based-on entropy of non-terminals. In Proc.
+JSAI (in Japanese), pages 327–330.
+</reference>
+<page confidence="0.999127">
+82
+</page>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.623444" no="0">
+<title confidence="0.99977">Probabilistic CFG with latent annotations</title>
+<author confidence="0.999578">Takuya Matsuzaki Yusuke Miyao Jun’ichi Tsujii</author>
+<affiliation confidence="0.999672">Graduate School of Information Science and Technology, University of Tokyo</affiliation>
+<address confidence="0.963764">Hongo 7-3-1, Bunkyo-ku, Tokyo 113-0033</address>
+<affiliation confidence="0.771158">CREST, JST(Japan Science and Technology Agency)</affiliation>
+<address confidence="0.75177">Honcho 4-1-8, Kawaguchi-shi, Saitama 332-0012</address>
+<email confidence="0.981843">matuzaki,yusuke,tsujii@is.s.u-tokyo.ac.jp</email>
+<abstract confidence="0.999563944444444">This paper defines a generative probabilistic model of parse trees, which we call PCFG-LA. This model is an extension of PCFG in which non-terminal symbols are augmented with latent variables. Finegrained CFG rules are automatically induced from a parsed corpus by training a PCFG-LA model using an EM-algorithm. Because exact parsing with a PCFG-LA is NP-hard, several approximations are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection.</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>Eugene Charniak</author>
+</authors>
+<title>A maximum-entropy-inspired parser.</title>
+<date>1999</date>
+<tech>Technical Report CS-99-12.</tech>
+<contexts>
+<context citStr="Charniak, 1999" endWordPosition="164" position="1141" startWordPosition="163">ent variables. Finegrained CFG rules are automatically induced from a parsed corpus by training a PCFG-LA model using an EM-algorithm. Because exact parsing with a PCFG-LA is NP-hard, several approximations are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection. 1 Introduction Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an extension of PCFG </context>
+<context citStr="Charniak (1999)" endWordPosition="3594" position="21094" startWordPosition="3593">, 1 4The PCFG used in creating the candidate parses is roughly the same as the one that Klein and Manning (2003) call a ‘markovised PCFG with vertical order = 2 and horizontal order = 1’ and was extracted from Section 02-20. The PCFG itself gave a performance of 79.6/78.5 LP/LR on the development set. This PCFG was also used in the experiment in Section 4.4. CENTER-PARENT CENTER-HEAD RIGHT LEFT N-best re-ranking Viterbi complete tree approximate distribution 81 40 words LR LP CB 0 CB This paper 86.7 86.6 1.19 61.1 Klein and Manning (2003) 85.7 86.9 1.10 60.3 Collins (1999) 88.5 88.7 0.92 66.7 Charniak (1999) 90.1 90.1 0.74 70.1 100 words LR LP CB 0 CB This paper 86.0 86.1 1.39 58.3 Klein and Manning (2003) 85.1 86.3 1.31 57.2 Collins (1999) 88.1 88.3 1.06 64.0 Charniak (1999) 89.6 89.5 0.88 67.6 Table 2: Comparison with other parsers. sec is required), as shown in the figure. The superiority of the third method over the first method seems to stem from the difference in the number of candidate parses from which the outputs are selected.5 The superiority of the third method over the second method is a natural consequence of the consistent use of both in the estimation (as the objective function) an</context>
+</contexts>
+<marker>Charniak, 1999</marker>
+<rawString>Eugene Charniak. 1999. A maximum-entropy-inspired parser. Technical Report CS-99-12.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>David Chiang</author>
+<author>Daniel M Bikel</author>
+</authors>
+<title>Recovering latent information in treebanks.</title>
+<date>2002</date>
+<booktitle>In Proc. COLING,</booktitle>
+<pages>183--189</pages>
+<contexts>
+<context citStr="Chiang and Bikel, 2002" endWordPosition="850" position="5311" startWordPosition="847">or a node with daughters. We thus took a kind of transformation/detransformation approach, in which a tree is binarized before parameter estimation and restored to its original form after parsing. The details of the binarization are explained in Section 4. Using syntactically annotated corpora as training data, we can estimate the parameters of a PCFGLA model using an EM algorithm. The algorithm is a special variant of the inside-outside algorithm of Pereira and Schabes (1992). Several recent work also use similar estimation algorithm as ours, i.e, inside-outside re-estimation on parse trees (Chiang and Bikel, 2002; Shen, 2004). The rest of this section precisely defines PCFGLA models and briefly explains the estimation algorithm. The derivation of the estimation algorithm is largely omitted; see Pereira and Schabes (1992) for details. 2.1 Model definition We define a PCFG-LA as a tuple , where a set of observable non-terminal symbols a set of terminal symbols a set of latent annotation symbols a set of observable CFG rules the probability of the occurrence of a complete symbol at a root node the probability of a rule We use for non-terminal symbols in ; for terminal symbols in ; . Thus, and for latent </context>
+</contexts>
+<marker>Chiang, Bikel, 2002</marker>
+<rawString>David Chiang and Daniel M. Bikel. 2002. Recovering latent information in treebanks. In Proc. COLING, pages 183–189.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Stephen Clark</author>
+<author>James R Curran</author>
+</authors>
+<title>Parsing the wsj using ccg and log-linear models.</title>
+<date>2004</date>
+<booktitle>In Proc. ACL,</booktitle>
+<pages>104--111</pages>
+<contexts>
+<context citStr="Clark and Curran, 2004" endWordPosition="2345" position="13897" startWordPosition="2342">4. in and❂out in Figure 4 are similar to ordinary inside/outside probabilities. We define❂in as follows: If is a pre-terminal node , then❂in above where and denote non-terminal symbols of chart items and . The outside probability,❂out, is calculated using❂in and PCFG-LA parameters along the packed structure, like the outside probabilities for PCFGs. Once we have computed and , the parse tree that maximizes is found using a Viterbi algorithm, as in PCFG parsing. Several parsing algorithms that also use insideoutside calculation on packed chart have been proposed (Goodman, 1996b; Sima´an, 2003; Clark and Curran, 2004). Those algorithms optimize some evaluation metric of parse trees other than the posterior probability , e.g., (expected) labeled constituent recall or (expected) recall rate of dependency relations contained in a parse. It is in contrast with our approach where (approximated) posterior probability is optimized. 4 Experiments We conducted four sets of experiments. In the first set of experiments, the degree of dependency of trained models on initialization was examined because EM-style algorithms yield different results with different initial values of parameters. In the second set of experime</context>
+</contexts>
+<marker>Clark, Curran, 2004</marker>
+<rawString>Stephen Clark and James R. Curran. 2004. Parsing the wsj using ccg and log-linear models. In Proc. ACL, pages 104–111.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Michael Collins</author>
+</authors>
+<title>Head-Driven Statistical Models for Natural Language Parsing.</title>
+<date>1999</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Pennsylvania.</institution>
+<contexts>
+<context citStr="Collins, 1999" endWordPosition="162" position="1125" startWordPosition="161">mented with latent variables. Finegrained CFG rules are automatically induced from a parsed corpus by training a PCFG-LA model using an EM-algorithm. Because exact parsing with a PCFG-LA is NP-hard, several approximations are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection. 1 Introduction Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an ex</context>
+<context citStr="Collins, 1999" endWordPosition="2696" position="15892" startWordPosition="2695">ure 5: Original subtree. 1 2 3 4 average training LL -115 -114 -115 -114 -114 0.41 heldout LL -114 -115 -115 -114 -114 0.29 LR 86.7 86.3 86.3 87.0 86.6 0.27 LP 86.2 85.6 85.5 86.6 86.0 0.48 Table 1: Dependency on initial values. of increase in the likelihood of the heldout data became lower than a certain threshold. Section 22 was used as test data in all parsing experiments except in the final one, in which section 23 was used. We stripped off all function tags and eliminated empty nodes in the training and heldout data, but any other pre-processing, such as comma raising or base-NP marking (Collins, 1999), was not done except for binarizations. 4.1 Dependency on initial values To see the degree of dependency of trained models on initializations, four instances of the same model were trained with different initial values of parameters.3 The model used in this experiment was created by CENTER-PARENT binarization and was set to 16. Table 1 lists training/heldout data loglikelihood per sentence (LL) for the four instances and their parsing performances on the test set (section 22). The parsing performances were obtained using the approximate distribution method in Section 3.2. Different initial va</context>
+<context citStr="Collins (1999)" endWordPosition="2905" position="17201" startWordPosition="2904">for an annotated rule probability, , was created by randomly multiplying the maximum likelihood estimation of the corresponding PCFG rule probability, , as follows: where is a random number that is uniformly distributed in and is a normalization constant. CENTER-PARENT CENTER-HEAD LEFT RIGHT Figure 6: Four types of binarization (H: head daughter). 4.2 Model types and parsing performance We compared four types of binarization. The original form is depicted in Figure 5 and the results are shown in Figure 6. In the first two methods, called CENTER-PARENT and CENTER-HEAD, the headfinding rules of Collins (1999) were used. We obtained an observable grammar for each model by reading off grammar rules from the binarized training trees. For each binarization method, PCFG-LA models with different numbers of latent annotation symbols, , and , were trained. 80 86 84 82 80 F1 78 76 74 72 86.5 86 85.5 F1 85 84.5 84 10000 100000 1e+06 1e+07 1e+08 # of parameters Figure 7: Model size vs. parsing performance. The relationships between the number of parameters in the models and their parsing performances are shown in Figure 7. Note that models created using different binarization methods have different numbers o</context>
+<context citStr="Collins (1999)" endWordPosition="3588" position="21058" startWordPosition="3587">he parse time is very limited (i.e., 1 4The PCFG used in creating the candidate parses is roughly the same as the one that Klein and Manning (2003) call a ‘markovised PCFG with vertical order = 2 and horizontal order = 1’ and was extracted from Section 02-20. The PCFG itself gave a performance of 79.6/78.5 LP/LR on the development set. This PCFG was also used in the experiment in Section 4.4. CENTER-PARENT CENTER-HEAD RIGHT LEFT N-best re-ranking Viterbi complete tree approximate distribution 81 40 words LR LP CB 0 CB This paper 86.7 86.6 1.19 61.1 Klein and Manning (2003) 85.7 86.9 1.10 60.3 Collins (1999) 88.5 88.7 0.92 66.7 Charniak (1999) 90.1 90.1 0.74 70.1 100 words LR LP CB 0 CB This paper 86.0 86.1 1.39 58.3 Klein and Manning (2003) 85.1 86.3 1.31 57.2 Collins (1999) 88.1 88.3 1.06 64.0 Charniak (1999) 89.6 89.5 0.88 67.6 Table 2: Comparison with other parsers. sec is required), as shown in the figure. The superiority of the third method over the first method seems to stem from the difference in the number of candidate parses from which the outputs are selected.5 The superiority of the third method over the second method is a natural consequence of the consistent use of both in the estim</context>
+</contexts>
+<marker>Collins, 1999</marker>
+<rawString>Michael Collins. 1999. Head-Driven Statistical Models for Natural Language Parsing. Ph.D. thesis, University of Pennsylvania.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Brendan J Frey</author>
+<author>Relu Patrascu</author>
+<author>Tommi Jaakkola</author>
+<author>Jodi Moran</author>
+</authors>
+<title>Sequentially fitting “inclusive” trees for inference in noisy-OR networks.</title>
+<date>2000</date>
+<booktitle>In Proc. NIPS,</booktitle>
+<pages>493--499</pages>
+<contexts>
+<context citStr="Frey et al., 2000" endWordPosition="2226" position="13158" startWordPosition="2223">We require that each tree has a unique representation as a set of connected chart items in . A packed representation satisfying the uniqueness condition is created using the CKY algorithm with the observable grammar , for instance. The approximate distribution, , is defined as a PCFG, whose CFG rules is defined as . We use to denote the rule probability of rule and to denote the probability with which is generated as a root node. We define as where the set of connected items is the unique representation of . To measure the closeness of approximation by , we use the ‘inclusive’ KL-divergence, (Frey et al., 2000): Minimizing under the normalization constraints on and yields closed form solutions for ❂ and , as shown in Figure 4. in and❂out in Figure 4 are similar to ordinary inside/outside probabilities. We define❂in as follows: If is a pre-terminal node , then❂in above where and denote non-terminal symbols of chart items and . The outside probability,❂out, is calculated using❂in and PCFG-LA parameters along the packed structure, like the outside probabilities for PCFGs. Once we have computed and , the parse tree that maximizes is found using a Viterbi algorithm, as in PCFG parsing. Several parsing al</context>
+</contexts>
+<marker>Frey, Patrascu, Jaakkola, Moran, 2000</marker>
+<rawString>Brendan J. Frey, Relu Patrascu, Tommi Jaakkola, and Jodi Moran. 2000. Sequentially fitting “inclusive” trees for inference in noisy-OR networks. In Proc. NIPS, pages 493–499.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joshua Goodman</author>
+</authors>
+<title>Efficient algorithms for parsing the DOP model.</title>
+<date>1996</date>
+<booktitle>In Proc. EMNLP,</booktitle>
+<pages>143--152</pages>
+<contexts>
+<context citStr="Goodman (1996" endWordPosition="1569" position="9437" startWordPosition="1568">es for under the observable grammar . While the optimization problem in Eq. 4 can be efficiently solved 77 Figure 2: Parameter update formulas. for PCFGs using dynamic programming algorithms, the sum-of-products form of in PCFG-LA models (see Eq. 2 and Eq. 3) makes it difficult to apply such techniques to solve Eq. 4. Actually, the optimization problem in Eq. 4 is NPhard for general PCFG-LA models. Although we omit the details, we can prove the NP-hardness by observing that a stochastic tree substitution grammar (STSG) can be represented by a PCFG-LA model in a similar way to one described by Goodman (1996a), and then using the NP-hardness of STSG parsing (Sima´an, 2002). The difficulty of the exact optimization in Eq. 4 forces us to use some approximations of it. The rest of this section describes three different approximations, which are empirically compared in the next section. The first method simply limits the number of candidate parse trees compared in Eq. 4; we first create N-best parses using a PCFG and then, within the N-best parses, select the one with the highest probability in terms of the PCFG-LA. The other two methods are a little more complicated, and we explain them in separate </context>
+<context citStr="Goodman, 1996" endWordPosition="2339" position="13856" startWordPosition="2338">for ❂ and , as shown in Figure 4. in and❂out in Figure 4 are similar to ordinary inside/outside probabilities. We define❂in as follows: If is a pre-terminal node , then❂in above where and denote non-terminal symbols of chart items and . The outside probability,❂out, is calculated using❂in and PCFG-LA parameters along the packed structure, like the outside probabilities for PCFGs. Once we have computed and , the parse tree that maximizes is found using a Viterbi algorithm, as in PCFG parsing. Several parsing algorithms that also use insideoutside calculation on packed chart have been proposed (Goodman, 1996b; Sima´an, 2003; Clark and Curran, 2004). Those algorithms optimize some evaluation metric of parse trees other than the posterior probability , e.g., (expected) labeled constituent recall or (expected) recall rate of dependency relations contained in a parse. It is in contrast with our approach where (approximated) posterior probability is optimized. 4 Experiments We conducted four sets of experiments. In the first set of experiments, the degree of dependency of trained models on initialization was examined because EM-style algorithms yield different results with different initial values of </context>
+</contexts>
+<marker>Goodman, 1996</marker>
+<rawString>Joshua Goodman. 1996a. Efficient algorithms for parsing the DOP model. In Proc. EMNLP, pages 143–152.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joshua Goodman</author>
+</authors>
+<title>Parsing algorithms and metric.</title>
+<date>1996</date>
+<booktitle>In Proc. ACL,</booktitle>
+<pages>177--183</pages>
+<contexts>
+<context citStr="Goodman (1996" endWordPosition="1569" position="9437" startWordPosition="1568">es for under the observable grammar . While the optimization problem in Eq. 4 can be efficiently solved 77 Figure 2: Parameter update formulas. for PCFGs using dynamic programming algorithms, the sum-of-products form of in PCFG-LA models (see Eq. 2 and Eq. 3) makes it difficult to apply such techniques to solve Eq. 4. Actually, the optimization problem in Eq. 4 is NPhard for general PCFG-LA models. Although we omit the details, we can prove the NP-hardness by observing that a stochastic tree substitution grammar (STSG) can be represented by a PCFG-LA model in a similar way to one described by Goodman (1996a), and then using the NP-hardness of STSG parsing (Sima´an, 2002). The difficulty of the exact optimization in Eq. 4 forces us to use some approximations of it. The rest of this section describes three different approximations, which are empirically compared in the next section. The first method simply limits the number of candidate parse trees compared in Eq. 4; we first create N-best parses using a PCFG and then, within the N-best parses, select the one with the highest probability in terms of the PCFG-LA. The other two methods are a little more complicated, and we explain them in separate </context>
+<context citStr="Goodman, 1996" endWordPosition="2339" position="13856" startWordPosition="2338">for ❂ and , as shown in Figure 4. in and❂out in Figure 4 are similar to ordinary inside/outside probabilities. We define❂in as follows: If is a pre-terminal node , then❂in above where and denote non-terminal symbols of chart items and . The outside probability,❂out, is calculated using❂in and PCFG-LA parameters along the packed structure, like the outside probabilities for PCFGs. Once we have computed and , the parse tree that maximizes is found using a Viterbi algorithm, as in PCFG parsing. Several parsing algorithms that also use insideoutside calculation on packed chart have been proposed (Goodman, 1996b; Sima´an, 2003; Clark and Curran, 2004). Those algorithms optimize some evaluation metric of parse trees other than the posterior probability , e.g., (expected) labeled constituent recall or (expected) recall rate of dependency relations contained in a parse. It is in contrast with our approach where (approximated) posterior probability is optimized. 4 Experiments We conducted four sets of experiments. In the first set of experiments, the degree of dependency of trained models on initialization was examined because EM-style algorithms yield different results with different initial values of </context>
+</contexts>
+<marker>Goodman, 1996</marker>
+<rawString>Joshua Goodman. 1996b. Parsing algorithms and metric. In Proc. ACL, pages 177–183.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Joshua Goodman</author>
+</authors>
+<title>Probabilistic feature grammars.</title>
+<date>1997</date>
+<booktitle>In Proc. IWPT.</booktitle>
+<contexts>
+<context citStr="Goodman, 1997" endWordPosition="194" position="1347" startWordPosition="193">are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection. 1 Introduction Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an extension of PCFG models in which non-terminal symbols are annotated with latent variables. The latent variables work just like the features attached to non-terminal symbols. A fine-grained PCFG is automatically induced from</context>
+</contexts>
+<marker>Goodman, 1997</marker>
+<rawString>Joshua Goodman. 1997. Probabilistic feature grammars. In Proc. IWPT.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>James Henderson</author>
+</authors>
+<title>Inducing history representations for broad coverage statistical parsing.</title>
+<date>2003</date>
+<booktitle>In Proc. HLT-NAACL,</booktitle>
+<pages>103--110</pages>
+<contexts>
+<context citStr="Henderson, 2003" endWordPosition="419" position="2775" startWordPosition="418">tically trained models in parsing. Because exact inference with a PCFG-LA, i.e., selection of the most probable parse, is NP-hard, we are forced to use some approximation of it. We empirically compared three different approximation methods. One of the three methods gives a performance of 86.6% (F, sentences 40 words) on the standard test set of the Penn WSJ corpus. Utsuro et al. (1996) proposed a method that automatically selects a proper level of generalization of non-terminal symbols of a PCFG, but they did not report the results of parsing with the obtained PCFG. Henderson’s parsing model (Henderson, 2003) has a similar motivation as ours in that a derivation history of a parse tree is compactly represented by induced hidden variables (hidden layer activation of a neural network), although the details of his approach is quite different from ours. 2 Probabilistic model PCFG-LA is a generative probabilistic model of parse trees. In this model, an observed parse tree is considered as an incomplete data, and the corre75 Proceedings of the 43rd Annual Meeting of the ACL, pages 75–82, Ann Arbor, June 2005. c�2005 Association for Computational Linguistics : : the cat grinned the cat grinned Figure 1: </context>
+</contexts>
+<marker>Henderson, 2003</marker>
+<rawString>James Henderson. 2003. Inducing history representations for broad coverage statistical parsing. In Proc. HLT-NAACL, pages 103–110.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Mark Johnson</author>
+</authors>
+<title>PCFG models of linguistic tree representations.</title>
+<date>1998</date>
+<journal>Computational Linguistics,</journal>
+<volume>24</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Johnson, 1998" endWordPosition="196" position="1363" startWordPosition="195">nd empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection. 1 Introduction Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an extension of PCFG models in which non-terminal symbols are annotated with latent variables. The latent variables work just like the features attached to non-terminal symbols. A fine-grained PCFG is automatically induced from parsed corpora </context>
+</contexts>
+<marker>Johnson, 1998</marker>
+<rawString>Mark Johnson. 1998. PCFG models of linguistic tree representations. Computational Linguistics, 24(4):613–632.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Dan Klein</author>
+<author>Christopher D Manning</author>
+</authors>
+<title>Accurate unlexicalized parsing.</title>
+<date>2003</date>
+<booktitle>In Proc. ACL,</booktitle>
+<pages>423--430</pages>
+<contexts>
+<context citStr="Klein and Manning, 2003" endWordPosition="168" position="1167" startWordPosition="165">inegrained CFG rules are automatically induced from a parsed corpus by training a PCFG-LA model using an EM-algorithm. Because exact parsing with a PCFG-LA is NP-hard, several approximations are described and empirically compared. In experiments using the Penn WSJ corpus, our automatically trained model gave a performance of 86.6% (F, sentences 40 words), which is comparable to that of an unlexicalized PCFG parser created using extensive manual feature selection. 1 Introduction Variants of PCFGs form the basis of several broadcoverage and high-precision parsers (Collins, 1999; Charniak, 1999; Klein and Manning, 2003). In those parsers, the strong conditional independence assumption made in vanilla treebank PCFGs is weakened by annotating non-terminal symbols with many ‘features’ (Goodman, 1997; Johnson, 1998). Examples of such features are head words of constituents, labels of ancestor and sibling nodes, and subcategorization frames of lexical heads. Effective features and their good combinations are normally explored using trial-and-error. This paper defines a generative model of parse trees that we call PCFG with latent annotations (PCFG-LA). This model is an extension of PCFG models in which non-termin</context>
+<context citStr="Klein and Manning (2003)" endWordPosition="3508" position="20591" startWordPosition="3505">e second and the third methods, we removed all the dominance relations among chart items that did not contribute to any parses whose PCFG-scores were higher than max, where max is the PCFG-score of the best parse in the chart. The parses remaining in the chart were the candidate parses for the second and the third methods. The different lines for the second and the third methods correspond to different values of . The third method outperforms the other two methods unless the parse time is very limited (i.e., 1 4The PCFG used in creating the candidate parses is roughly the same as the one that Klein and Manning (2003) call a ‘markovised PCFG with vertical order = 2 and horizontal order = 1’ and was extracted from Section 02-20. The PCFG itself gave a performance of 79.6/78.5 LP/LR on the development set. This PCFG was also used in the experiment in Section 4.4. CENTER-PARENT CENTER-HEAD RIGHT LEFT N-best re-ranking Viterbi complete tree approximate distribution 81 40 words LR LP CB 0 CB This paper 86.7 86.6 1.19 61.1 Klein and Manning (2003) 85.7 86.9 1.10 60.3 Collins (1999) 88.5 88.7 0.92 66.7 Charniak (1999) 90.1 90.1 0.74 70.1 100 words LR LP CB 0 CB This paper 86.0 86.1 1.39 58.3 Klein and Manning (20</context>
+<context citStr="Klein and Manning (2003)" endWordPosition="3799" position="22248" startWordPosition="3796">onsistent use of both in the estimation (as the objective function) and in the parsing (as the score of a parse). 4.4 Comparison with related work Parsing performance on section 23 of the WSJ corpus using a PCFG-LA model is shown in Table 2. We used the instance of the four compared in the second experiment that gave the best results on the development set. Several previously reported results on the same test set are also listed in Table 2. Our result is lower than the state-of-the-art lexicalized PCFG parsers (Collins, 1999; Charniak, 1999), but comparable to the unlexicalized PCFG parser of Klein and Manning (2003). Klein and Manning’s PCFG is annotated by many linguistically motivated features that they found using extensive manual feature selection. In contrast, our method induces all parameters automatically, except that manually written head-rules are used in binarization. Thus, our method can extract a considerable amount of hidden regularity from parsed corpora. However, our result is worse than the lexicalized parsers despite the fact that our model has access to words in the sentences. It suggests that certain types of information used in those lexicalized 5Actually, the number of parses contain</context>
+</contexts>
+<marker>Klein, Manning, 2003</marker>
+<rawString>Dan Klein and Christopher D. Manning. 2003. Accurate unlexicalized parsing. In Proc. ACL, pages 423–430.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Fernando Pereira</author>
+<author>Yves Schabes</author>
+</authors>
+<title>Insideoutside reestimation from partially bracketed corpora.</title>
+<date>1992</date>
+<booktitle>In Proc. ACL,</booktitle>
+<pages>128--135</pages>
+<contexts>
+<context citStr="Pereira and Schabes (1992)" endWordPosition="830" position="5170" startWordPosition="827"> that exponentially grows with the number of ’s daughters because we must sum up the probabilities of combinations of latent annotation symbols for a node with daughters. We thus took a kind of transformation/detransformation approach, in which a tree is binarized before parameter estimation and restored to its original form after parsing. The details of the binarization are explained in Section 4. Using syntactically annotated corpora as training data, we can estimate the parameters of a PCFGLA model using an EM algorithm. The algorithm is a special variant of the inside-outside algorithm of Pereira and Schabes (1992). Several recent work also use similar estimation algorithm as ours, i.e, inside-outside re-estimation on parse trees (Chiang and Bikel, 2002; Shen, 2004). The rest of this section precisely defines PCFGLA models and briefly explains the estimation algorithm. The derivation of the estimation algorithm is largely omitted; see Pereira and Schabes (1992) for details. 2.1 Model definition We define a PCFG-LA as a tuple , where a set of observable non-terminal symbols a set of terminal symbols a set of latent annotation symbols a set of observable CFG rules the probability of the occurrence of a co</context>
+</contexts>
+<marker>Pereira, Schabes, 1992</marker>
+<rawString>Fernando Pereira and Yves Schabes. 1992. Insideoutside reestimation from partially bracketed corpora. In Proc. ACL, pages 128–135.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Libin Shen</author>
+</authors>
+<title>Nondeterministic LTAG derivation tree extraction.</title>
+<date>2004</date>
+<booktitle>In Proc. TAG+7,</booktitle>
+<pages>199--203</pages>
+<contexts>
+<context citStr="Shen, 2004" endWordPosition="852" position="5324" startWordPosition="851">. We thus took a kind of transformation/detransformation approach, in which a tree is binarized before parameter estimation and restored to its original form after parsing. The details of the binarization are explained in Section 4. Using syntactically annotated corpora as training data, we can estimate the parameters of a PCFGLA model using an EM algorithm. The algorithm is a special variant of the inside-outside algorithm of Pereira and Schabes (1992). Several recent work also use similar estimation algorithm as ours, i.e, inside-outside re-estimation on parse trees (Chiang and Bikel, 2002; Shen, 2004). The rest of this section precisely defines PCFGLA models and briefly explains the estimation algorithm. The derivation of the estimation algorithm is largely omitted; see Pereira and Schabes (1992) for details. 2.1 Model definition We define a PCFG-LA as a tuple , where a set of observable non-terminal symbols a set of terminal symbols a set of latent annotation symbols a set of observable CFG rules the probability of the occurrence of a complete symbol at a root node the probability of a rule We use for non-terminal symbols in ; for terminal symbols in ; . Thus, and for latent annotation sy</context>
+</contexts>
+<marker>Shen, 2004</marker>
+<rawString>Libin Shen. 2004. Nondeterministic LTAG derivation tree extraction. In Proc. TAG+7, pages 199–203.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Khalil Sima´an</author>
+</authors>
+<title>Computational complexity of probabilistic disambiguation.</title>
+<date>2002</date>
+<journal>Grammars,</journal>
+<volume>5</volume>
+<issue>2</issue>
+<pages>151</pages>
+<marker>Sima´an, 2002</marker>
+<rawString>Khalil Sima´an. 2002. Computational complexity of probabilistic disambiguation. Grammars, 5(2):125– 151.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Khalil Sima´an</author>
+</authors>
+<title>On maximizing metrics for syntactic disambiguation.</title>
+<date>2003</date>
+<booktitle>In Proc. IWPT.</booktitle>
+<marker>Sima´an, 2003</marker>
+<rawString>Khalil Sima´an. 2003. On maximizing metrics for syntactic disambiguation. In Proc. IWPT.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>Takehito Utsuro</author>
+<author>Syuuji Kodama</author>
+<author>Yuji Matsumoto</author>
+</authors>
+<title>Generalization/specialization of context free grammars based-on entropy of non-terminals.</title>
+<date>1996</date>
+<booktitle>In Proc. JSAI (in Japanese),</booktitle>
+<pages>327--330</pages>
+<contexts>
+<context citStr="Utsuro et al. (1996)" endWordPosition="383" position="2547" startWordPosition="380">tically induced from parsed corpora by training a PCFG-LA model using an EM-algorithm, which replaces the manual feature selection used in previous research. The main focus of this paper is to examine the effectiveness of the automatically trained models in parsing. Because exact inference with a PCFG-LA, i.e., selection of the most probable parse, is NP-hard, we are forced to use some approximation of it. We empirically compared three different approximation methods. One of the three methods gives a performance of 86.6% (F, sentences 40 words) on the standard test set of the Penn WSJ corpus. Utsuro et al. (1996) proposed a method that automatically selects a proper level of generalization of non-terminal symbols of a PCFG, but they did not report the results of parsing with the obtained PCFG. Henderson’s parsing model (Henderson, 2003) has a similar motivation as ours in that a derivation history of a parse tree is compactly represented by induced hidden variables (hidden layer activation of a neural network), although the details of his approach is quite different from ours. 2 Probabilistic model PCFG-LA is a generative probabilistic model of parse trees. In this model, an observed parse tree is con</context>
+</contexts>
+<marker>Utsuro, Kodama, Matsumoto, 1996</marker>
+<rawString>Takehito Utsuro, Syuuji Kodama, and Yuji Matsumoto. 1996. Generalization/specialization of context free grammars based-on entropy of non-terminals. In Proc. JSAI (in Japanese), pages 327–330.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>

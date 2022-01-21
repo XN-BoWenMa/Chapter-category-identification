@@ -1,0 +1,803 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithms version="110505">
+<algorithm name="SectLabel" version="110505">
+<variant confidence="0.000002" no="0">
+<title confidence="0.558852">
+Clustering Polysemic Subcategorization Frame Distributions Semantically
+</title>
+<author confidence="0.659731">
+Anna Korhonen∗
+</author>
+<affiliation confidence="0.9772525">
+Computer Laboratory
+University of Cambridge
+</affiliation>
+<address confidence="0.9909375">
+15 JJ Thomson Avenue
+Cambridge CB3 0FD, UK
+</address>
+<email confidence="0.995206">
+alk23@cl.cam.ac.uk
+</email>
+<author confidence="0.985649">
+Yuval Krymolowski
+</author>
+<affiliation confidence="0.998477">
+Division of Informatics
+University of Edinburgh
+</affiliation>
+<address confidence="0.886940666666667">
+2 Buccleuch Place
+Edinburgh EH8 9LW
+Scotland, UK
+</address>
+<email confidence="0.998076">
+ykrymolo@inf.ed.ac.uk
+</email>
+<author confidence="0.976753">
+Zvika Marx
+</author>
+<affiliation confidence="0.982887">
+Interdisciplinary Center
+for Neural Computation,
+The Hebrew University
+</affiliation>
+<address confidence="0.514631">
+Jerusalem, Israel
+</address>
+<email confidence="0.994629">
+zvim@cs.huji.ac.il
+</email>
+<sectionHeader confidence="0.996602" genericHeader="abstract">
+Abstract
+</sectionHeader>
+<bodyText confidence="0.9996134">Previous research has demonstrated the utility of clustering in inducing semantic verb classes from undisambiguated corpus data. We describe a new approach which involves clustering subcategorization frame (SCF) distributions using the Information Bottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data.</bodyText>
+<sectionHeader confidence="0.998883" genericHeader="introduction">
+1 Introduction
+</sectionHeader>
+<bodyText confidence="0.985764253521127">Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensive system of Briscoe and Carroll (1997) and (ii) applying a clustering mechanism to this information. We use clustering methods that process raw distributional data directly, avoiding complex preprocessing steps required by many advanced methods (e.g. Brew and Schulte im Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single gold standard class for each verb (whether polysemic or not). The relatively good clustering results obtained suggest that many polysemic verbs do have some predominating sense in corpus data. However, this sense can vary across corpora (Roland et al., 2000), and assuming a single sense is inadequate for an important group of medium and high frequency verbs whose distribution of senses in balanced corpus data is flat rather than zipfian (Preiss and Korhonen, 2002). To allow for sense variation, we introduce a new evaluation scheme against a polysemic gold standard. This helps to explain the results and offers a better insight into the potential and limitations of clustering undisambiguated SCF data semantically. We discuss our gold standards and the choice of test verbs in section 2. Section 3 describes the method for subcategorization acquisition and section 4 presents the approach to clustering. Details of the experimental evaluation are supplied in section 5. Section 6 concludes with directions for future work.</bodyText>
+<sectionHeader confidence="0.859492" genericHeader="method">
+2 Semantic Verb Classes and Test Verbs
+</sectionHeader>
+<bodyText confidence="0.99746225">Levin’s taxonomy of verbs and their classes (Levin, 1993) is the largest syntactic-semantic verb classification in English, employed widely in evaluation of automatic classifications. It provides a classification of 3,024 verbs (4,186 senses) into 48 broad / 192 fine grained classes. Although it is quite extensive, it is not exhaustive. As it primarily concentrates on verbs taking NP and PP complements and does not provide a comprehensive set of senses for verbs, it is not suitable for evaluation of polysemic classifications. We employed as a gold standard a substantially extended version of Levin’s classification constructed by Korhonen (2003). This incorporates Levin’s classes, 26 additional classes by Dorr (1997)1, and 57 new classes for verb types not covered comprehensively by Levin or Dorr. 110 test verbs were chosen from this gold standard, 78 polysemic and 32 monosemous ones. Some low frequency verbs were included to investigate the effect of sparse data on clustering performance.</bodyText>
+<footnote confidence="0.91337">
+1These classes are incorporated in the ’LCS database’
+(http://www.umiacs.umd.edu/∼bonnie/verbs-English.lcs).
+</footnote>
+<bodyText confidence="0.9996495">To ensure that our gold standard covers all (or most) senses of these verbs, we looked into WordNet (Miller, 1990) and assigned all the WordNet senses of the verbs to gold standard classes.2 Two versions of the gold standard were created: monosemous and polysemic. The monosemous one lists only a single sense for each test verb, that corresponding to its predominant (most frequent) sense in WordNet. The polysemic one provides a comprehensive list of senses for each verb. The test verbs and their classes are shown in table 1. The classes are indicated by number codes from the classifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is indicated by bold font.</bodyText>
+<sectionHeader confidence="0.987026" genericHeader="method">
+3 Subcategorization Information
+</sectionHeader>
+<bodyText confidence="0.994078375">We obtain our SCF data using the subcategorization acquisition system of Briscoe and Carroll (1997). We expect the use of this system to be beneficial: it employs a robust statistical parser (Briscoe and Carroll, 2002) which yields complete though shallow parses, and a comprehensive SCF classifier, which incorporates 163 SCF distinctions, a superset of those found in the ANLT (Boguraev et al., 1987) and COMLEX (Grishman et al., 1994) dictionaries. The SCFs abstract over specific lexicallygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of these ‘coarse-grained’ SCFs appeared in our data. In addition, a set of 160 fine grained frames were employed. These were obtained by parameterizing two high frequency SCFs for prepositions: the simple PP and NP + PP frames. The scope was restricted to these two frames to prevent sparse data problems in clustering. A SCF lexicon was acquired using this system from the British National Corpus (Leech, 1992, BNC) so that the maximum of 7000 citations were</bodyText>
+<footnote confidence="0.998253571428571">
+2As WordNet incorporates particularly fine grained sense
+distinctions, some senses were found which did not appear in
+our gold standard. As many of them appeared marginal and/or
+low in frequency, we did not consider these additional senses in
+our experiment.
+3The gold standard assumes Levin’s broad classes (e.g. class
+10) instead of possible fine-grained ones (e.g. class 10.1).
+</footnote>
+<figureCaption confidence="0.692702">
+TEST GOLD STANDARD TEST GOLD STANDARD TEST GOLD STANDARD TEST GOLD STANDARD
+VERB CLASSES VERB CLASSES VERB CLASSES VERB CLASSES
+place 9 dye 24, 21, 41 focus 31, 45 stare 30
+lay 9 build 26, 45 force 002, 11 glow 43
+drop 9, 45, 004, 47, bake 26, 45 persuade 002 sparkle 43
+51, A54, A30
+pour 9, 43, 26, 57, 13, 31 invent 26, 27 urge 002, 37 dry 45
+load 9 publish 26, 25 want 002, 005, 29, 32 shut 45
+settle 9, 46, A16, 36, 55 cause 27, 002 need 002, 005, 29, 32 hang 47, 9, 42, 40
+fill 9, 45, 47 generate 27, 13, 26 grasp 30, 15 sit 47, 9
+</figureCaption>
+<construct confidence="0.861307571428571">
+remove 10, 11, 42 induce 27, 002, 26 understand 30 disappear 48
+withdraw 10, A30 acknowledge 29, A25, A35 conceive 30, 29, A56 vanish 48
+wipe 10, 9 proclaim 29, 37, A25 consider 30, 29 march 51
+brush 10, 9, 41, 18 remember 29, 30 perceive 30 walk 51
+filter 10 imagine 29, 30 analyse 34, 35 travel 51
+send 11, A55 specify 29 evaluate 34, 35 hurry 53, 51
+ship 11, A58 establish 29, A56 explore 35, 34 rush 53, 51
+transport 11, 31 suppose 29, 37 investigate 35, 34 begin 55
+carry 11, 54 assume 29, A35, A57 agree 36, 22, A42 continue 55, 47, 51
+drag 11, 35, 51, 002 think 29, 005 communicate 36, 11 snow 57, 002
+push 11, 12, 23, 9, 002 confirm 29 shout 37 rain 57
+pull 11, 12, 13, 23, 40, 016 believe 29, 31, 33 whisper 37 sin 003
+give 13 admit 29, 024, 045, 37 talk 37 rebel 003
+lend 13 allow 29, 024, 13, 002 speak 37 risk 008, A7
+study 14, 30, 34, 35 act 29 say 37, 002 gamble 008, 009
+hit 18, 17, 47, A56, 31, 42 behave 29 mention 37 beg 015, 32
+bang 18, 43, 9, 47, 36 feel 30, 31, 35, 29 eat 39 pray 015, 32
+carve 21, 25, 26 see 30, 29 drink 39 seem 020
+add 22, 37, A56 hear 30, A32 laugh 40, 37 appear 020, 48, 29
+mix 22, 26, 36 notice 30, A32 smile 40, 37
+colour 24, 31, 45 concentrate 31, 45 look 30, 35
+</construct>
+<tableCaption confidence="0.99628">
+Table 1: Test verbs and their monosemous/polysemic gold standard senses
+used per test verb.</tableCaption>
+<bodyText confidence="0.999342375">The lexicon was evaluated against manually analysed corpus data after an empirically defined threshold of 0.025 was set on relative frequencies of SCFs to remove noisy SCFs. The method yielded 71.8% precision and 34.5% recall. When we removed the filtering threshold, and evaluated the noisy distribution, F-measure4 dropped from 44.9 to 38.51.5</bodyText>
+<sectionHeader confidence="0.966468" genericHeader="method">
+4 Clustering Method
+</sectionHeader>
+<bodyText confidence="0.999596">Data clustering is a process which aims to partition a given set into subsets (clusters) of elements that are similar to one another, while ensuring that elements that are not similar are assigned to different clusters. We use clustering for partitioning a set of verbs. Our hypothesis is that information about SCFs and their associated frequencies is relevant for identifying semantically related verbs. Hence, we use SCFs as relevance features to guide the clustering process.6 comparing the probability of a randomly chosen pair of verbs verbi and verbj to share the same predominant sense (4.5%) with the probability obtained when verbj is the JS-divergence We chose two clustering methods which do not involve task-oriented tuning (such as pre-fixed thresholds or restricted cluster sizes) and which approach data straightforwardly, in its distributional form: (i) a simple hard method that collects the nearest neighbours (NN) of each verb (figure 1), and (ii) the Information Bottleneck (IB), an iterative soft method (Tishby et al., 1999) based on information-theoretic grounds.</bodyText>
+<equation confidence="0.6426655">
+4F = 2-precision-recall
+precision+recall
+</equation>
+<footnote confidence="0.936297666666667">
+5These figures are not particularly impressive because our
+evaluation is exceptionally hard. We use 1) highly polysemic
+test verbs, 2) a high number of SCFs and 3) evaluate against
+manually analysed data rather than dictionaries (the latter have
+high precision but low recall).
+6The relevance of the features to the task is evident when
+</footnote>
+<bodyText confidence="0.9485757">The NN method is very simple, but it has some disadvantages. It outputs only one clustering configuration, and therefore does not allow examination of different cluster granularities. It is also highly sensitive to noise. Few exceptional neighbourhood relations contradicting the typical trends in the data are enough to cause the formation of a single cluster which encompasses all elements. Therefore we employed the more sophisticated IB method as well. The IB quantifies the relevance information of a SCF distribution with respect to output clusters, through their mutual information I(Clusters; SCFs). The relevance information is maximized, while the compression information I(Clusters; Verbs) is minimized. This ensures optimal compression of data through clusters. The tradeoff between the two constraints is realized nearest neighbour of verbi (36%).</bodyText>
+<listItem confidence="0.9646416">NN Clustering: 1. For each verb v: 2. Calculate the JS divergence between the SCF distributions of~D~p v and all other verbs: l</listItem>
+<equation confidence="0.696581">
+JS(p,q) = 2 q~ + D~q�p+q~J 2 2
+</equation>
+<listItem confidence="0.9966275">3. Connect v with the most similar verb; 4. Find all the connected components through minimizing the cost term:</listItem>
+<figureCaption confidence="0.9971725">
+Figure 1: Connected components nearest neighbour (NN)
+clustering. D is the Kullback-Leibler distance.
+</figureCaption>
+<equation confidence="0.996411">
+L = I(Clusters; Verbs) − QI(Clusters; SCFs) ,
+</equation>
+<bodyText confidence="0.999056928571429">where Q is a parameter that balances the constraints. The IB iterative algorithm finds a local minimum of the above cost term. It takes three inputs: (i) SCFverb distributions, (ii) the desired number of clusters K, and (iii) the value of Q. Starting from a random configuration, the algorithm repeatedly calculates, for each cluster K, verb V and SCF S, the following probabilities: (i) the marginal proportion of the cluster p(K); (ii) the probability p(S|K) for a SCF to occur with members of the cluster; and (iii) the probability p(K|V ) for a verb to be assigned to the cluster. These probabilities are used, each in its turn, for calculating the other probabilities (figure 2). The collection of all p(S|K)’s for a fixed cluster K can be regarded as a probabilistic center (centroid) of that cluster in the SCF space. The IB method gives an indication of the most informative values of K.7 Intensifying the weight Q attached to the relevance information I(Clusters; SCFs) allows us to increase the number K of distinct clusters being produced (while too small Q would cause some of the output clusters to be identical to one another). Hence, the relevance information grows with K. Accordingly, we consider as the most informative output configurations those for which the relevance information increases more sharply between K − 1 and K clusters than between K and K + 1.</bodyText>
+<footnote confidence="0.9691545">
+7Most works on clustering ignore this issue and refer to an
+arbitrarily chosen number of clusters, or to the number of gold
+standard classes, which cannot be assumed in realistic applica-
+tions.
+</footnote>
+<table confidence="0.7127665">
+IB Clustering (fixed Q):
+Perform till convergence, for each time step
+</table>
+<equation confidence="0.952317666666667">
+t = 1,2,...:
+1. zt(K,V) = pt−1(K) e−βD[p(S|V )IIpt−1(S|K)]
+(When t = 1, initialize zt(K, V ) arbitrarily)
+</equation>
+<listItem confidence="0.86849375">2. pt(K|V ) — zt(K,V ) — SKI zt(K ,V ) 3. pt(K) = EV p(V )pt(K|V ) 4. pt(S|K) = EV p(S|V )pt(V |K)</listItem>
+<figureCaption confidence="0.9986655">
+Figure 2: Information Bottleneck (IB) iterative clustering. D
+is the Kullback-Leibler distance.
+</figureCaption>
+<bodyText confidence="0.997736">When the weight of relevance grows, the assignment to clusters is more constrained and p(K|V ) becomes more similar to hard clustering. Let denote the most probable cluster of a verb V .</bodyText>
+<equation confidence="0.983976">
+K(V ) = argmax p(K|V )
+K
+</equation>
+<bodyText confidence="0.998194833333333">For K ≥ 30, more than 85% of the verbs have p(K(V )|V ) &gt; 90% which makes the output clustering approximately hard. For this reason, we decided to use only K(V ) as output and defer a further exploration of the soft output to future work.</bodyText>
+<sectionHeader confidence="0.997511" genericHeader="other">
+5 Experimental Evaluation
+</sectionHeader>
+<subsectionHeader confidence="0.854767">
+5.1 Data
+</subsectionHeader>
+<bodyText confidence="0.9996141875">The input data to clustering was obtained from the automatically acquired SCF lexicon for our 110 test verbs (section 2). The counts were extracted from unfiltered (noisy) SCF distributions in this lexicon.8 The NN algorithm produced 24 clusters on this input. From the IB algorithm, we requested K = 2 to 60 clusters. The upper limit was chosen so as to slightly exceed the case when the average cluster size 110/K = 2. We chose for evaluation the IB results for K = 25, 35 and 42. For these values, the SCF relevance satisfies our criterion for a notable improvement in cluster quality (section 4). The value K =35 is very close to the actual number (34) of predominant senses in the gold standard. In this way, the IB yields structural information beyond clustering.</bodyText>
+<footnote confidence="0.821752">
+8This yielded better results, which might indicate that the
+unfiltered “noisy” SCFs contain information which is valuable
+for the task.
+</footnote>
+<subsectionHeader confidence="0.996277">
+5.2 Method
+</subsectionHeader>
+<bodyText confidence="0.990449666666667">A number of different strategies have been proposed for evaluation of clustering. We concentrate here on those which deliver a numerical value which is easy to interpret, and do not introduce biases towards specific numbers of classes or class sizes. As we currently assign a single sense to each polysemic verb (sec. 5.4) the measures we use are also applicable for evaluation against a polysemous gold standard. Our first measure, the adjusted pairwise precision (APP), evaluates clusters in terms of verb pairs (Schulte im Walde and Brew, 2002) 9: num. of correct pairs in ki |ki|−1 · num. of pairs in ki |ki|+1 . APP is the average proportion of all within-cluster pairs that are correctly co-assigned. It is multiplied by a factor that increases with cluster size. This factor compensates for a bias towards small clusters. Our second measure is derived from purity, a global measure which evaluates the mean precision of the clusters, weighted according to the cluster size (Stevenson and Joanis, 2003). We associate with each cluster its most prevalent semantic class, and denote the number of verbs in a cluster K that take its prevalent class by nprevalent(K). Verbs that do not take this class are considered as errors. Given our task, we are only interested in classes which contain two or more verbs. We therefore disregard those clusters where nprevalent(K) = 1. This leads us to define modified purity:</bodyText>
+<equation confidence="0.957604">
+nprevalent(ki)
+nprevalent(ki)≥2
+</equation>
+<bodyText confidence="0.990188">number of verbs . The modification we introduce to purity removes the bias towards the trivial configuration comprised of only singletons.</bodyText>
+<subsectionHeader confidence="0.954144">
+5.3 Evaluation Against the Predominant Sense
+</subsectionHeader>
+<bodyText confidence="0.9943745">We first evaluated the clusters against the predominant sense, i.e. using the monosemous gold standard. The results, shown in Table 2, demonstrate that both clustering methods perform significantly better on the task than our random clustering baseline.</bodyText>
+<footnote confidence="0.67878">
+9Our definition differs by a factor of 2 from that of
+Schulte im Walde and Brew (2002).
+</footnote>
+<table confidence="0.999364">
+Alg. K +PP –PP +PP –PP
+APP: mPUR:
+NN (24) 21% 19% 48% 45%
+25 12% 9% 39% 32%
+IB 35 14% 9% 48% 38%
+42 15% 9% 50% 39%
+RAND 25 3% 15%
+</table>
+<tableCaption confidence="0.862746">
+Table 2: Clustering performance on the predominant senses,
+with and without prepositions. The last entry presents the per-
+formance of random clustering with K = 25, which yielded the
+best results among the three values K=25, 35 and 42.
+</tableCaption>
+<bodyText confidence="0.987829857142857">Both methods show clearly better performance with fine-grained SCFs (with prepositions, +PP) than with coarse-grained ones (-PP). Surprisingly, the simple NN method performs very similarly to the more sophisticated IB. Being based on pairwise similarities, it shows better performance than IB on the pairwise measure. The IB is, however, slightly better according to the global measure (2% with K = 42). The fact that the NN method performs better than the IB with similar K values (NN K = 24 vs. IB K = 25) seems to suggest that the JS divergence provides a better model for the predominant class than the compression model of the IB. However, it is likely that the IB performance suffered due to our choice of test data. As the method is global, it performs better when the target classes are represented by a high number of verbs. In our experiment, many semantic classes were represented by two verbs only (section 2). Nevertheless, the IB method has the clear advantage that it allows for more clusters to be produced. At best it classified half of the verbs correctly according to their predominant sense (mPUR = 50%). Although this leaves room for improvement, the result compares favourably to previously published results10. We argue, however, that evaluation against a monosemous gold standard reveals only part of the picture.10Due to differences in task definition and experimental setup, a direct comparison with earlier results is impossible. For example, Stevenson and Joanis (2003) report an accuracy of 29% (which implies mPUR ≤ 29%), but their task involves classifying 841 verbs to 14 classes based on differences in the predicate-argument structure.</bodyText>
+<equation confidence="0.999588">
+K
+i=1
+APP = 1
+K
+mPUR =
+</equation>
+<table confidence="0.995468666666667">
+K Pred. Multiple Pred. Multiple
+sense senses sense senses
+APP: MPUR:
+NN:
+(24) 21% 29%(23%+5v) 48% 60%(46%+ 2v)
+IB:
+25 12% 18%(14%+5v) 39% 48%(43%+ 3v)
+35 14% 20%(16%+6v) 47% 59%(50%+ 4v)
+42 15% 19%(16%+3v) 50% 59%(54%+ 2v)
+</table>
+<tableCaption confidence="0.9976412">
+Table 3: Evaluation against the monosemous (Pred.) and pol-
+ysemous (Multiple) gold standards. The figures in parentheses
+are results of evaluation on randomly polysemous data + sig-
+nificance of the actual figure. Results were obtained with fine-
+grained SCFs (including prepositions).
+</tableCaption>
+<subsectionHeader confidence="0.978564">
+5.4 Evaluation Against Multiple Senses
+</subsectionHeader>
+<bodyText confidence="0.999978655172414">In evaluation against the polysemic gold standard, we assume that a verb which is polysemous in our corpus data may appear in a cluster with verbs that share any of its senses. In order to evaluate the clusters against polysemous data, we assigned each polysemic verb V a single sense: the one it shares with the highest number of verbs in the cluster K(V ). Table 3 shows the results against polysemic and monosemous gold standards. The former are noticeably better than the latter (e.g. IB with K = 42 is 9% better). Clearly, allowing for multiple gold standard classes makes it easier to obtain better results with evaluation. In order to show that polysemy makes a nontrivial contribution in shaping the clusters, we measured the improvement that can be due to pure chance by creating randomly polysemous gold standards. We constructed 100 sets of random gold standards. In each iteration, the verbs kept their original predominant senses, but the set of additional senses was taken entirely from another verb chosen at random. By doing so, we preserved the dominant sense of each verb, the total frequency of all senses and the correlations between the additional senses. The results included in table 3 indicate, with 99.5% confidence (3Q and above), that the improvement obtained with the polysemous gold standard is not artificial (except in two cases with 95% confidence).</bodyText>
+<subsectionHeader confidence="0.991736">
+5.5 Qualitative Analysis of Polysemy
+</subsectionHeader>
+<bodyText confidence="0.998801">We performed qualitative analysis to further investigate the effect of polysemy on clustering performance.</bodyText>
+<table confidence="0.999268571428572">
+Different Pairs Fraction
+Senses in cluster
+0 39 51%
+1 85 10%
+2 625 7%
+3 1284 3%
+4 1437 3%
+</table>
+<tableCaption confidence="0.998501333333333">
+Table 4: The fraction of verb pairs clustered together, as a
+function of the number of different senses between pair mem-
+bers (results of the NN algorithm)
+</tableCaption>
+<table confidence="0.999121833333333">
+Common one irregular no irregular
+Senses
+Pairs in cluster Pairs in cluster
+0 2180 3% 3018 3%
+1 388 9% 331 12%
+2 44 20% 31 35%
+</table>
+<tableCaption confidence="0.917712">
+Table 5: The fraction of verb pairs clustered together, as a
+function of the number of shared senses (results of the NN algo-
+rithm)
+</tableCaption>
+<bodyText confidence="0.96197752631579">The results in table 4 demonstrate that the more two verbs differ in their senses, the lower their chance of ending up in the same cluster. From the figures in table 5 we see that the probability of two verbs to appear in the same cluster increases with the number of senses they share. Interestingly, it is not only the degree of polysemy which influences the results, but also the type. For verb pairs where at least one of the members displays ‘irregular’ polysemy (i.e.it does not share its full set of senses with any other verb), the probability of co-occurrence in the same cluster is far lower than for verbs which are polysemic in a ‘regular’ manner (Table 5). Manual cluster analysis against the polysemic gold standard revealed a yet more comprehensive picture. Consider the following clusters (the IB output with K = 42): A1: talk (37), speak (37) A2: look (30, 35), stare (30) A3: focus (31, 45), concentrate (31, 45) A4: add (22, 37, A56) We identified a close relation between the clustering performance and the following patterns of semantic behaviour: 1) Monosemy: We had 32 monosemous test verbs.10 gold standard classes included 2 or more or these.7 classes were correctly acquired using clustering (e.g. A1), indicating that clustering monosemous verbs is fairly ‘easy’.2) Predominant sense: 10 clusters were examined by hand whose members got correctly classified together, despite one of them being polysemous (e.g.A2). In 8 cases there was a clear indication in the data (when examining SCFs and the selectional preferences on argument heads) that the polysemous verb indeed had its predominant sense in the relevant class and that the co-occurrence was not due to noise.</bodyText>
+<listItem confidence="0.909129">3) Regular Polysemy: Several clusters were produced which represent linguistically plausible intersective classes (e.g. A3) (Dang et al., 1998) rather than single classes. 4) Irregular Polysemy: Verbs with irregular polysemy11 were frequently assigned to singleton clusters.</listItem>
+<bodyText confidence="0.7975066">For example, add (A4) has a ‘combining and attaching’ sense in class 22 which involves NP and PP SCFs and another ‘communication’ sense in 37 which takes sentential SCFs. Irregular polysemy was not a marginal phenomenon: it explains 5 of the 10 singletons in our data. These observations confirm that evaluation against a polysemic gold standard is necessary in order to fully explain the results from clustering.</bodyText>
+<subsectionHeader confidence="0.981769">
+5.6 Qualitative Analysis of Errors
+</subsectionHeader>
+<bodyText confidence="0.993928916666667">Finally, to provide feedback for further development of our verb classification approach, we performed a qualitative analysis of errors not resulting from polysemy. Consider the following clusters (the IB output for K = 42): B1: place (9), build (26, 45), publish (26, 25), carve (21, 25, 26) B2: sin (003), rain (57), snow (57, 002) B3: agree (36, 22, A42), appear (020, 48, 29), begin (55), continue (55, 47, 51) B4: beg (015, 32) Three main error types were identified:</bodyText>
+<listItem confidence="0.889608285714286">1) Syntactic idiosyncracy: This was the most frequent error type, exemplified in B1, where place is incorrectly clustered with build, publish and carve merely because it takes similar prepositions to these verbs (e.g. in, on, into). 2) Sparse data: Many of the low frequency verbs (we had 12 with frequency less than 300) performed</listItem>
+<bodyText confidence="0.8916874">11Recall our definition of irregular polysemy, section 5.4. poorly. In B2, sin (which had 53 occurrences) is classified with rain and snow because it does not occur in our data with the preposition against the ‘hallmark’ of its gold standard class (’Conspire Verbs’). 3) Problems in SCF acquisition: These were not numerous but occurred e.g. when the system could not distinguish between different control (e.g. subject/object equi/raising) constructions (B3).</bodyText>
+<sectionHeader confidence="0.996233" genericHeader="other">
+6 Discussion and Conclusions
+</sectionHeader>
+<bodyText confidence="0.999979564102564">This paper has presented a novel approach to automatic semantic classification of verbs. This involved applying the NN and IB methods to cluster polysemic SCF distributions extracted from corpus data using Briscoe and Carroll’s (1997) system. A principled evaluation scheme was introduced which enabled us to investigate the effect of polysemy on the resulting classification. Our investigation revealed that polysemy has a considerable impact on the clusters formed: polysemic verbs with a clear predominant sense and those with similar regular polysemy are frequently classified together. Homonymic verbs or verbs with strong irregular polysemy tend to resist any classification. While it is clear that evaluation should account for these cases rather than ignore them, the issue of polysemy is related to another, bigger issue: the potential and limitations of clustering in inducing semantic information from polysemic SCF data. Our results show that it is unrealistic to expect that the ‘important’ (high frequency) verbs in language fall into classes corresponding to single senses. However, they also suggest that clustering can be used for novel, previously unexplored purposes: to detect from corpus data general patterns of semantic behaviour (monosemy, predominant sense, regular/irregular polysemy). In the future, we plan to investigate the use of soft clustering (without hardening the output) and develop methods for evaluating the soft output against polysemous gold standards. We also plan to work on improving the accuracy of subcategorization acquisition, investigating the role of noise (irregular / regular) in clustering, examining whether different syntactic/semantic verb types require different approaches in clustering, developing our gold standard classification further, and extending our experiments to a larger number of verbs and verb classes.</bodyText>
+<sectionHeader confidence="0.994286" genericHeader="references">
+References
+</sectionHeader>
+<reference confidence="0.999958837209302">
+B. Boguraev, E. J. Briscoe, J. Carroll, D. Carter, and
+C. Grover. 1987. The derivation of a grammatically-
+indexed lexicon from the longman dictionary of con-
+temporary english. In Proc. of the 25th ACL, pages
+193–200, Stanford, CA.
+C. Brew and S. Schulte im Walde. 2002. Spectral clus-
+tering for german verbs. In Conference on Empirical
+Methods in Natural Language Processing, Philadel-
+phia, USA.
+E. J. Briscoe and J. Carroll. 1997. Automatic extraction
+of subcategorization from corpora. In 5th ACL Confer-
+ence on Applied Natural Language Processing, pages
+356–363, Washington DC.
+E. J. Briscoe and J. Carroll. 2002. Robust accurate sta-
+tistical annotation of general text. In 3rd International
+Conference on Language Resources and Evaluation,
+pages 1499–1504, Las Palmas, Gran Canaria.
+H. T. Dang, K. Kipper, M. Palmer, and J. Rosenzweig.
+1998. Investigating regular sense extensions based on
+intersective Levin classes. In Proc. of COLING/ACL,
+pages 293–299, Montreal, Canada.
+B. Dorr and D. Jones. 1996. Role of word sense disam-
+biguation in lexical acquisition: predicting semantics
+from syntactic cues. In 16th International Conference
+on Computational Linguistics, pages 322–333, Copen-
+hagen, Denmark.
+B. Dorr. 1997. Large-scale dictionary construction
+for foreign language tutoring and interlingual machine
+translation. Machine Translation, 12(4):271–325.
+R. Grishman, C. Macleod, and A. Meyers. 1994. Com-
+lex syntax: building a computational lexicon. In In-
+ternational Conference on Computational Linguistics,
+pages 268–272, Kyoto, Japan.
+R. Jackendoff. 1990. Semantic Structures. MIT Press,
+Cambridge, Massachusetts.
+E. Joanis. 2002. Automatic verb classification using a
+general feature space. Master’s thesis, University of
+Toronto.
+J. L. Klavans and M. Kan. 1998. Role of verbs in docu-
+ment analysis. In Proc. of COLING/ACL, pages 680–
+686, Montreal, Canada.
+A. Korhonen. 2002. Subcategorization Acquisition.
+Ph.D. thesis, University of Cambridge, UK.
+A. Korhonen. 2003. Extending Levin’s Classification
+with New Verb Classes. Unpublished manuscript, Uni-
+versity of Cambridge Computer Laboratory.
+G. Leech. 1992. 100 million words of english: the british
+national corpus. Language Research, 28(1):1–13.
+B. Levin. 1993. English Verb Classes and Alternations.
+Chicago University Press, Chicago.
+P. Merlo and S. Stevenson. 2001. Automatic verb clas-
+sification based on statistical distributions of argument
+structure. Computational Linguistics, 27(3):373–408.
+P. Merlo, S. Stevenson, V. Tsang, and G. Allaria. 2002.
+A multilingual paradigm for automatic verb classifica-
+tion. In Proc. of the 40th ACL, Pennsylvania, USA.
+G. A. Miller. 1990. WordNet: An on-line lexi-
+cal database. International Journal of Lexicography,
+3(4):235–312.
+S. Pinker. 1989. Learnability and Cognition: The Acqui-
+sition of Argument Structure. MIT Press, Cambridge,
+Massachusetts.
+J. Preiss and A. Korhonen. 2002. Improving subcate-
+gorization acquisition with WSD. In ACL Workshop
+on Word Sense Disambiguation: Recent Successes and
+Future Directions, Philadelphia, USA.
+D. Roland, D. Jurafsky, L. Menn, S. Gahl, E. Elder, and
+C. Riddoch. 2000. Verb subcatecorization frequency
+differences between business-news and balanced cor-
+pora. In ACL Workshop on Comparing Corpora, pages
+28–34.
+S. Schulte im Walde and C. Brew. 2002. Inducing ger-
+man semantic verb classes from purely syntactic sub-
+categorisation information. In Proc. of the 40th ACL,
+Philadephia, USA.
+S. Schulte im Walde. 2000. Clustering verbs seman-
+tically according to their alternation behaviour. In
+Proc. of COLING-2000, pages 747–753, Saarbr¨ucken,
+Germany.
+S. Stevenson and E. Joanis. 2003. Semi-supervised
+verb-class discovery using noisy features. In Proc. of
+CoNLL-2003, Edmonton, Canada.
+N. Tishby, F. C. Pereira, and W. Bialek. 1999. The infor-
+mation bottleneck method. In Proc. of the 37th Annual
+Allerton Conference on Communication, Control and
+Computing, pages 368–377.
+</reference>
+</variant>
+</algorithm>
+<algorithm name="ParsHed" version="110505">
+<variant confidence="0.471443" no="0">
+<title confidence="0.939992">Clustering Polysemic Subcategorization Frame Distributions Semantically</title>
+<affiliation confidence="0.9997645">Computer Laboratory University of Cambridge</affiliation>
+<address confidence="0.99458">15 JJ Thomson Avenue Cambridge CB3 0FD, UK</address>
+<email confidence="0.987284">alk23@cl.cam.ac.uk</email>
+<author confidence="0.903393">Yuval Krymolowski</author>
+<affiliation confidence="0.941308">Division of Informatics University of Edinburgh 2 Buccleuch Place</affiliation>
+<address confidence="0.950754">Edinburgh EH8 9LW Scotland, UK</address>
+<email confidence="0.994743">ykrymolo@inf.ed.ac.uk</email>
+<author confidence="0.985881">Zvika Marx</author>
+<affiliation confidence="0.996289333333333">Interdisciplinary Center for Neural Computation, The Hebrew University</affiliation>
+<address confidence="0.999938">Jerusalem, Israel</address>
+<email confidence="0.998972">zvim@cs.huji.ac.il</email>
+<abstract confidence="0.985684333333333">Previous research has demonstrated the utility of clustering in inducing semantic verb classes from undisambiguated corpus data. We describe a new approach which involves clustering subcategorizaframe distributions using the Information Bottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying</abstract>
+</variant>
+</algorithm>
+<algorithm name="ParsCit" version="110505">
+<citationList>
+<citation valid="true">
+<authors>
+<author>B Boguraev</author>
+<author>E J Briscoe</author>
+<author>J Carroll</author>
+<author>D Carter</author>
+<author>C Grover</author>
+</authors>
+<title>The derivation of a grammaticallyindexed lexicon from the longman dictionary of contemporary english.</title>
+<date>1987</date>
+<booktitle>In Proc. of the 25th ACL,</booktitle>
+<pages>193--200</pages>
+<location>Stanford, CA.</location>
+<contexts>
+<context citStr="Boguraev et al., 1987" endWordPosition="1039" position="6791" startWordPosition="1036">dicated by number codes from the classifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is indicated by bold font. 3 Subcategorization Information We obtain our SCF data using the subcategorization acquisition system of Briscoe and Carroll (1997). We expect the use of this system to be beneficial: it employs a robust statistical parser (Briscoe and Carroll, 2002) which yields complete though shallow parses, and a comprehensive SCF classifier, which incorporates 163 SCF distinctions, a superset of those found in the ANLT (Boguraev et al., 1987) and COMLEX (Grishman et al., 1994) dictionaries. The SCFs abstract over specific lexicallygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of these ‘coarse-grained’ SCFs appeared in our data. In addition, a set of 160 fine grained frames were employed. These were obtained by parameterizing two high frequency SCFs for prepositions: the simple PP and NP + PP frames. The scope was restricted to these two frames to prevent sparse data problems in c</context>
+</contexts>
+<marker>Boguraev, Briscoe, Carroll, Carter, Grover, 1987</marker>
+<rawString>B. Boguraev, E. J. Briscoe, J. Carroll, D. Carter, and C. Grover. 1987. The derivation of a grammaticallyindexed lexicon from the longman dictionary of contemporary english. In Proc. of the 25th ACL, pages 193–200, Stanford, CA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>C Brew</author>
+<author>S Schulte im Walde</author>
+</authors>
+<title>Spectral clustering for german verbs.</title>
+<date>2002</date>
+<booktitle>In Conference on Empirical Methods in Natural Language Processing,</booktitle>
+<location>Philadelphia, USA.</location>
+<marker>Brew, Walde, 2002</marker>
+<rawString>C. Brew and S. Schulte im Walde. 2002. Spectral clustering for german verbs. In Conference on Empirical Methods in Natural Language Processing, Philadelphia, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E J Briscoe</author>
+<author>J Carroll</author>
+</authors>
+<title>Automatic extraction of subcategorization from corpora.</title>
+<date>1997</date>
+<booktitle>In 5th ACL Conference on Applied Natural Language Processing,</booktitle>
+<pages>356--363</pages>
+<location>Washington DC.</location>
+<contexts>
+<context citStr="Briscoe and Carroll (1997)" endWordPosition="445" position="3059" startWordPosition="442">Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensive system of Briscoe and Carroll (1997) and (ii) applying a clustering mechanism to this information. We use clustering methods that process raw distributional data directly, avoiding complex preprocessing steps required by many advanced methods (e.g. Brew and Schulte im Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single gold standard class for each verb (whether polysemic or not). The relatively good clustering results obtained suggest that many polysemic verbs do have some predominating sense in corpus data. However, this sense can var</context>
+<context citStr="Briscoe and Carroll (1997)" endWordPosition="989" position="6488" startWordPosition="986">nosemous and polysemic. The monosemous one lists only a single sense for each test verb, that corresponding to its predominant (most frequent) sense in WordNet. The polysemic one provides a comprehensive list of senses for each verb. The test verbs and their classes are shown in table 1. The classes are indicated by number codes from the classifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is indicated by bold font. 3 Subcategorization Information We obtain our SCF data using the subcategorization acquisition system of Briscoe and Carroll (1997). We expect the use of this system to be beneficial: it employs a robust statistical parser (Briscoe and Carroll, 2002) which yields complete though shallow parses, and a comprehensive SCF classifier, which incorporates 163 SCF distinctions, a superset of those found in the ANLT (Boguraev et al., 1987) and COMLEX (Grishman et al., 1994) dictionaries. The SCFs abstract over specific lexicallygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of the</context>
+</contexts>
+<marker>Briscoe, Carroll, 1997</marker>
+<rawString>E. J. Briscoe and J. Carroll. 1997. Automatic extraction of subcategorization from corpora. In 5th ACL Conference on Applied Natural Language Processing, pages 356–363, Washington DC.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E J Briscoe</author>
+<author>J Carroll</author>
+</authors>
+<title>Robust accurate statistical annotation of general text.</title>
+<date>2002</date>
+<booktitle>In 3rd International Conference on Language Resources and Evaluation,</booktitle>
+<pages>1499--1504</pages>
+<location>Las Palmas, Gran Canaria.</location>
+<contexts>
+<context citStr="Briscoe and Carroll, 2002" endWordPosition="1010" position="6607" startWordPosition="1007">ominant (most frequent) sense in WordNet. The polysemic one provides a comprehensive list of senses for each verb. The test verbs and their classes are shown in table 1. The classes are indicated by number codes from the classifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is indicated by bold font. 3 Subcategorization Information We obtain our SCF data using the subcategorization acquisition system of Briscoe and Carroll (1997). We expect the use of this system to be beneficial: it employs a robust statistical parser (Briscoe and Carroll, 2002) which yields complete though shallow parses, and a comprehensive SCF classifier, which incorporates 163 SCF distinctions, a superset of those found in the ANLT (Boguraev et al., 1987) and COMLEX (Grishman et al., 1994) dictionaries. The SCFs abstract over specific lexicallygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of these ‘coarse-grained’ SCFs appeared in our data. In addition, a set of 160 fine grained frames were employed. These were </context>
+</contexts>
+<marker>Briscoe, Carroll, 2002</marker>
+<rawString>E. J. Briscoe and J. Carroll. 2002. Robust accurate statistical annotation of general text. In 3rd International Conference on Language Resources and Evaluation, pages 1499–1504, Las Palmas, Gran Canaria.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>H T Dang</author>
+<author>K Kipper</author>
+<author>M Palmer</author>
+<author>J Rosenzweig</author>
+</authors>
+<title>Investigating regular sense extensions based on intersective Levin classes.</title>
+<date>1998</date>
+<booktitle>In Proc. of COLING/ACL,</booktitle>
+<pages>293--299</pages>
+<location>Montreal, Canada.</location>
+<contexts>
+<context citStr="Dang et al., 1998" endWordPosition="181" position="1324" startWordPosition="178">ottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), documen</context>
+<context citStr="Dang et al., 1998" endWordPosition="4126" position="24669" startWordPosition="4123">. A1), indicating that clustering monosemous verbs is fairly ‘easy’. 2) Predominant sense: 10 clusters were examined by hand whose members got correctly classified together, despite one of them being polysemous (e.g. A2). In 8 cases there was a clear indication in the data (when examining SCFs and the selectional preferences on argument heads) that the polysemous verb indeed had its predominant sense in the relevant class and that the co-occurrence was not due to noise. 3) Regular Polysemy: Several clusters were produced which represent linguistically plausible intersective classes (e.g. A3) (Dang et al., 1998) rather than single classes. 4) Irregular Polysemy: Verbs with irregular polysemy11 were frequently assigned to singleton clusters. For example, add (A4) has a ‘combining and attaching’ sense in class 22 which involves NP and PP SCFs and another ‘communication’ sense in 37 which takes sentential SCFs. Irregular polysemy was not a marginal phenomenon: it explains 5 of the 10 singletons in our data. These observations confirm that evaluation against a polysemic gold standard is necessary in order to fully explain the results from clustering. 5.6 Qualitative Analysis of Errors Finally, to provide</context>
+</contexts>
+<marker>Dang, Kipper, Palmer, Rosenzweig, 1998</marker>
+<rawString>H. T. Dang, K. Kipper, M. Palmer, and J. Rosenzweig. 1998. Investigating regular sense extensions based on intersective Levin classes. In Proc. of COLING/ACL, pages 293–299, Montreal, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Dorr</author>
+<author>D Jones</author>
+</authors>
+<title>Role of word sense disambiguation in lexical acquisition: predicting semantics from syntactic cues.</title>
+<date>1996</date>
+<booktitle>In 16th International Conference on Computational Linguistics,</booktitle>
+<pages>322--333</pages>
+<location>Copenhagen, Denmark.</location>
+<contexts>
+<context citStr="Dorr and Jones, 1996" endWordPosition="284" position="2014" startWordPosition="281"> may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous researc</context>
+</contexts>
+<marker>Dorr, Jones, 1996</marker>
+<rawString>B. Dorr and D. Jones. 1996. Role of word sense disambiguation in lexical acquisition: predicting semantics from syntactic cues. In 16th International Conference on Computational Linguistics, pages 322–333, Copenhagen, Denmark.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Dorr</author>
+</authors>
+<title>Large-scale dictionary construction for foreign language tutoring and interlingual machine translation.</title>
+<date>1997</date>
+<journal>Machine Translation,</journal>
+<volume>12</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Dorr, 1997" endWordPosition="183" position="1336" startWordPosition="182">st neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classifica</context>
+<context citStr="Dorr (1997)" endWordPosition="790" position="5233" startWordPosition="789"> English, employed widely in evaluation of automatic classifications. It provides a classification of 3,024 verbs (4,186 senses) into 48 broad / 192 fine grained classes. Although it is quite extensive, it is not exhaustive. As it primarily concentrates on verbs taking NP and PP complements and does not provide a comprehensive set of senses for verbs, it is not suitable for evaluation of polysemic classifications. We employed as a gold standard a substantially extended version of Levin’s classification constructed by Korhonen (2003). This incorporates Levin’s classes, 26 additional classes by Dorr (1997)1, and 57 new classes for verb types not covered comprehensively by Levin or Dorr. 110 test verbs were chosen from this gold standard, 78 polysemic and 32 monosemous ones. Some low frequency verbs were included to investigate the 1These classes are incorporated in the ’LCS database’ (http://www.umiacs.umd.edu/∼bonnie/verbs-English.lcs). effect of sparse data on clustering performance. To ensure that our gold standard covers all (or most) senses of these verbs, we looked into WordNet (Miller, 1990) and assigned all the WordNet senses of the verbs to gold standard classes.2 Two versions of the g</context>
+</contexts>
+<marker>Dorr, 1997</marker>
+<rawString>B. Dorr. 1997. Large-scale dictionary construction for foreign language tutoring and interlingual machine translation. Machine Translation, 12(4):271–325.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Grishman</author>
+<author>C Macleod</author>
+<author>A Meyers</author>
+</authors>
+<title>Comlex syntax: building a computational lexicon.</title>
+<date>1994</date>
+<booktitle>In International Conference on Computational Linguistics,</booktitle>
+<pages>268--272</pages>
+<location>Kyoto, Japan.</location>
+<contexts>
+<context citStr="Grishman et al., 1994" endWordPosition="1045" position="6826" startWordPosition="1042">assifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is indicated by bold font. 3 Subcategorization Information We obtain our SCF data using the subcategorization acquisition system of Briscoe and Carroll (1997). We expect the use of this system to be beneficial: it employs a robust statistical parser (Briscoe and Carroll, 2002) which yields complete though shallow parses, and a comprehensive SCF classifier, which incorporates 163 SCF distinctions, a superset of those found in the ANLT (Boguraev et al., 1987) and COMLEX (Grishman et al., 1994) dictionaries. The SCFs abstract over specific lexicallygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of these ‘coarse-grained’ SCFs appeared in our data. In addition, a set of 160 fine grained frames were employed. These were obtained by parameterizing two high frequency SCFs for prepositions: the simple PP and NP + PP frames. The scope was restricted to these two frames to prevent sparse data problems in clustering. A SCF lexicon was acquir</context>
+</contexts>
+<marker>Grishman, Macleod, Meyers, 1994</marker>
+<rawString>R. Grishman, C. Macleod, and A. Meyers. 1994. Comlex syntax: building a computational lexicon. In International Conference on Computational Linguistics, pages 268–272, Kyoto, Japan.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>R Jackendoff</author>
+</authors>
+<title>Semantic Structures.</title>
+<date>1990</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Massachusetts.</location>
+<contexts>
+<context citStr="Jackendoff, 1990" endWordPosition="173" position="1278" startWordPosition="171">e (SCF) distributions using the Information Bottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generat</context>
+</contexts>
+<marker>Jackendoff, 1990</marker>
+<rawString>R. Jackendoff. 1990. Semantic Structures. MIT Press, Cambridge, Massachusetts.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>E Joanis</author>
+</authors>
+<title>Automatic verb classification using a general feature space. Master’s thesis,</title>
+<date>2002</date>
+<institution>University of Toronto.</institution>
+<contexts>
+<context citStr="Joanis, 2002" endWordPosition="344" position="2400" startWordPosition="343">een used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically u</context>
+</contexts>
+<marker>Joanis, 2002</marker>
+<rawString>E. Joanis. 2002. Automatic verb classification using a general feature space. Master’s thesis, University of Toronto.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J L Klavans</author>
+<author>M Kan</author>
+</authors>
+<title>Role of verbs in document analysis.</title>
+<date>1998</date>
+<booktitle>In Proc. of COLING/ACL,</booktitle>
+<pages>680--686</pages>
+<location>Montreal, Canada.</location>
+<contexts>
+<context citStr="Klavans and Kan, 1998" endWordPosition="277" position="1964" startWordPosition="274">o and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in</context>
+</contexts>
+<marker>Klavans, Kan, 1998</marker>
+<rawString>J. L. Klavans and M. Kan. 1998. Role of verbs in document analysis. In Proc. of COLING/ACL, pages 680– 686, Montreal, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Korhonen</author>
+</authors>
+<title>Subcategorization Acquisition.</title>
+<date>2002</date>
+<tech>Ph.D. thesis,</tech>
+<institution>University of Cambridge, UK.</institution>
+<contexts>
+<context citStr="Korhonen, 2002" endWordPosition="289" position="2065" startWordPosition="288">hey can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in</context>
+<context citStr="Korhonen, 2002" endWordPosition="582" position="3907" startWordPosition="581">Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single gold standard class for each verb (whether polysemic or not). The relatively good clustering results obtained suggest that many polysemic verbs do have some predominating sense in corpus data. However, this sense can vary across corpora (Roland et al., 2000), and assuming a single sense is inadequate for an important group of medium and high frequency verbs whose distribution of senses in balanced corpus data is flat rather than zipfian (Preiss and Korhonen, 2002). To allow for sense variation, we introduce a new evaluation scheme against a polysemic gold standard. This helps to explain the results and offers a better insight into the potential and limitations of clustering undisambiguated SCF data semantically. We discuss our gold standards and the choice of test verbs in section 2. Section 3 describes the method for subcategorization acquisition and section 4 presents the approach to clustering. Details of the experimental evaluation are supplied in section 5. Section 6 concludes with directions for future work. 2 Semantic Verb Classes and Test Verbs</context>
+</contexts>
+<marker>Korhonen, 2002</marker>
+<rawString>A. Korhonen. 2002. Subcategorization Acquisition. Ph.D. thesis, University of Cambridge, UK.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>A Korhonen</author>
+</authors>
+<title>Extending Levin’s Classification with New Verb Classes.</title>
+<date>2003</date>
+<institution>University of Cambridge Computer Laboratory.</institution>
+<note>Unpublished manuscript,</note>
+<contexts>
+<context citStr="Korhonen (2003)" endWordPosition="779" position="5160" startWordPosition="778">lasses (Levin, 1993) is the largest syntactic-semantic verb classification in English, employed widely in evaluation of automatic classifications. It provides a classification of 3,024 verbs (4,186 senses) into 48 broad / 192 fine grained classes. Although it is quite extensive, it is not exhaustive. As it primarily concentrates on verbs taking NP and PP complements and does not provide a comprehensive set of senses for verbs, it is not suitable for evaluation of polysemic classifications. We employed as a gold standard a substantially extended version of Levin’s classification constructed by Korhonen (2003). This incorporates Levin’s classes, 26 additional classes by Dorr (1997)1, and 57 new classes for verb types not covered comprehensively by Levin or Dorr. 110 test verbs were chosen from this gold standard, 78 polysemic and 32 monosemous ones. Some low frequency verbs were included to investigate the 1These classes are incorporated in the ’LCS database’ (http://www.umiacs.umd.edu/∼bonnie/verbs-English.lcs). effect of sparse data on clustering performance. To ensure that our gold standard covers all (or most) senses of these verbs, we looked into WordNet (Miller, 1990) and assigned all the Wor</context>
+</contexts>
+<marker>Korhonen, 2003</marker>
+<rawString>A. Korhonen. 2003. Extending Levin’s Classification with New Verb Classes. Unpublished manuscript, University of Cambridge Computer Laboratory.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G Leech</author>
+</authors>
+<title>100 million words of english: the british national corpus.</title>
+<date>1992</date>
+<journal>Language Research,</journal>
+<volume>28</volume>
+<issue>1</issue>
+<contexts>
+<context citStr="Leech, 1992" endWordPosition="1148" position="7492" startWordPosition="1147">ygoverned particles and prepositions and specific predicate selectional preferences but include some derived semi-predictable bounded dependency constructions, such as particle and dative movement. 78 of these ‘coarse-grained’ SCFs appeared in our data. In addition, a set of 160 fine grained frames were employed. These were obtained by parameterizing two high frequency SCFs for prepositions: the simple PP and NP + PP frames. The scope was restricted to these two frames to prevent sparse data problems in clustering. A SCF lexicon was acquired using this system from the British National Corpus (Leech, 1992, BNC) so that the maximum of 7000 citations were 2As WordNet incorporates particularly fine grained sense distinctions, some senses were found which did not appear in our gold standard. As many of them appeared marginal and/or low in frequency, we did not consider these additional senses in our experiment. 3The gold standard assumes Levin’s broad classes (e.g. class 10) instead of possible fine-grained ones (e.g. class 10.1). TEST GOLD STANDARD TEST GOLD STANDARD TEST GOLD STANDARD TEST GOLD STANDARD VERB CLASSES VERB CLASSES VERB CLASSES VERB CLASSES place 9 dye 24, 21, 41 focus 31, 45 stare</context>
+</contexts>
+<marker>Leech, 1992</marker>
+<rawString>G. Leech. 1992. 100 million words of english: the british national corpus. Language Research, 28(1):1–13.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>B Levin</author>
+</authors>
+<title>English Verb Classes and Alternations.</title>
+<date>1993</date>
+<publisher>Chicago University Press,</publisher>
+<location>Chicago.</location>
+<contexts>
+<context citStr="Levin, 1993" endWordPosition="175" position="1291" startWordPosition="174">ons using the Information Bottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine </context>
+<context citStr="Levin, 1993" endWordPosition="392" position="2718" startWordPosition="391">fications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensive system of Briscoe and Carroll (1997) and (ii) applying a clustering mechanism to this information. We use clustering methods that process raw distributional data directly, avoiding complex preprocessing steps required by many advanced methods (e.g. Brew and Schulte im Walde (2002)). In contrast</context>
+<context citStr="Levin, 1993" endWordPosition="687" position="4565" startWordPosition="686"> new evaluation scheme against a polysemic gold standard. This helps to explain the results and offers a better insight into the potential and limitations of clustering undisambiguated SCF data semantically. We discuss our gold standards and the choice of test verbs in section 2. Section 3 describes the method for subcategorization acquisition and section 4 presents the approach to clustering. Details of the experimental evaluation are supplied in section 5. Section 6 concludes with directions for future work. 2 Semantic Verb Classes and Test Verbs Levin’s taxonomy of verbs and their classes (Levin, 1993) is the largest syntactic-semantic verb classification in English, employed widely in evaluation of automatic classifications. It provides a classification of 3,024 verbs (4,186 senses) into 48 broad / 192 fine grained classes. Although it is quite extensive, it is not exhaustive. As it primarily concentrates on verbs taking NP and PP complements and does not provide a comprehensive set of senses for verbs, it is not suitable for evaluation of polysemic classifications. We employed as a gold standard a substantially extended version of Levin’s classification constructed by Korhonen (2003). Thi</context>
+</contexts>
+<marker>Levin, 1993</marker>
+<rawString>B. Levin. 1993. English Verb Classes and Alternations. Chicago University Press, Chicago.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Merlo</author>
+<author>S Stevenson</author>
+</authors>
+<title>Automatic verb classification based on statistical distributions of argument structure.</title>
+<date>2001</date>
+<journal>Computational Linguistics,</journal>
+<volume>27</volume>
+<issue>3</issue>
+<contexts>
+<context citStr="Merlo and Stevenson, 2001" endWordPosition="187" position="1364" startWordPosition="184"> methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998)</context>
+</contexts>
+<marker>Merlo, Stevenson, 2001</marker>
+<rawString>P. Merlo and S. Stevenson. 2001. Automatic verb classification based on statistical distributions of argument structure. Computational Linguistics, 27(3):373–408.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>P Merlo</author>
+<author>S Stevenson</author>
+<author>V Tsang</author>
+<author>G Allaria</author>
+</authors>
+<title>A multilingual paradigm for automatic verb classification.</title>
+<date>2002</date>
+<booktitle>In Proc. of the 40th ACL,</booktitle>
+<location>Pennsylvania, USA.</location>
+<contexts>
+<context citStr="Merlo et al., 2002" endWordPosition="348" position="2420" startWordPosition="345">pport many natural language processing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensi</context>
+</contexts>
+<marker>Merlo, Stevenson, Tsang, Allaria, 2002</marker>
+<rawString>P. Merlo, S. Stevenson, V. Tsang, and G. Allaria. 2002. A multilingual paradigm for automatic verb classification. In Proc. of the 40th ACL, Pennsylvania, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>G A Miller</author>
+</authors>
+<title>WordNet: An on-line lexical database.</title>
+<date>1990</date>
+<journal>International Journal of Lexicography,</journal>
+<volume>3</volume>
+<issue>4</issue>
+<contexts>
+<context citStr="Miller, 1990" endWordPosition="865" position="5735" startWordPosition="864">ication constructed by Korhonen (2003). This incorporates Levin’s classes, 26 additional classes by Dorr (1997)1, and 57 new classes for verb types not covered comprehensively by Levin or Dorr. 110 test verbs were chosen from this gold standard, 78 polysemic and 32 monosemous ones. Some low frequency verbs were included to investigate the 1These classes are incorporated in the ’LCS database’ (http://www.umiacs.umd.edu/∼bonnie/verbs-English.lcs). effect of sparse data on clustering performance. To ensure that our gold standard covers all (or most) senses of these verbs, we looked into WordNet (Miller, 1990) and assigned all the WordNet senses of the verbs to gold standard classes.2 Two versions of the gold standard were created: monosemous and polysemic. The monosemous one lists only a single sense for each test verb, that corresponding to its predominant (most frequent) sense in WordNet. The polysemic one provides a comprehensive list of senses for each verb. The test verbs and their classes are shown in table 1. The classes are indicated by number codes from the classifications of Levin, Dorr (the classes starting with 0) and Korhonen (the classes starting with A).3 The predominant sense is in</context>
+</contexts>
+<marker>Miller, 1990</marker>
+<rawString>G. A. Miller. 1990. WordNet: An on-line lexical database. International Journal of Lexicography, 3(4):235–312.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Pinker</author>
+</authors>
+<title>Learnability and Cognition: The Acquisition of Argument Structure.</title>
+<date>1989</date>
+<publisher>MIT Press,</publisher>
+<location>Cambridge, Massachusetts.</location>
+<contexts>
+<context citStr="Pinker, 1989" endWordPosition="177" position="1305" startWordPosition="176"> Information Bottleneck and nearest neighbour methods. In contrast to previous work, we particularly focus on clustering polysemic verbs. A novel evaluation scheme is proposed which accounts for the effect of polysemy on the clusters, offering us a good insight into the potential and limitations of semantically classifying undisambiguated SCF data. 1 Introduction Classifications which aim to capture the close relation between the syntax and semantics of verbs have attracted a considerable research interest in both linguistics and computational linguistics (e.g. (Jackendoff, 1990; Levin, 1993; Pinker, 1989; Dang et al., 1998; Dorr, 1997; Merlo and Stevenson, 2001)). While such classifications may not provide a means for full semantic inferencing, they can capture generalizations over a range of linguistic properties, and can therefore be used as a means of reducing redundancy in the lexicon and for filling gaps in lexical knowledge. ∗This work was partly supported by UK EPSRC project GR/N36462/93: ‘Robust Accurate Statistical Parsing (RASP)’. Verb classifications have, in fact, been used to support many natural language processing (NLP) tasks, such as language generation, machine translation (D</context>
+</contexts>
+<marker>Pinker, 1989</marker>
+<rawString>S. Pinker. 1989. Learnability and Cognition: The Acquisition of Argument Structure. MIT Press, Cambridge, Massachusetts.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>J Preiss</author>
+<author>A Korhonen</author>
+</authors>
+<title>Improving subcategorization acquisition with WSD.</title>
+<date>2002</date>
+<booktitle>In ACL Workshop on Word Sense Disambiguation: Recent Successes and Future Directions,</booktitle>
+<location>Philadelphia, USA.</location>
+<contexts>
+<context citStr="Preiss and Korhonen, 2002" endWordPosition="582" position="3907" startWordPosition="579">Schulte im Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single gold standard class for each verb (whether polysemic or not). The relatively good clustering results obtained suggest that many polysemic verbs do have some predominating sense in corpus data. However, this sense can vary across corpora (Roland et al., 2000), and assuming a single sense is inadequate for an important group of medium and high frequency verbs whose distribution of senses in balanced corpus data is flat rather than zipfian (Preiss and Korhonen, 2002). To allow for sense variation, we introduce a new evaluation scheme against a polysemic gold standard. This helps to explain the results and offers a better insight into the potential and limitations of clustering undisambiguated SCF data semantically. We discuss our gold standards and the choice of test verbs in section 2. Section 3 describes the method for subcategorization acquisition and section 4 presents the approach to clustering. Details of the experimental evaluation are supplied in section 5. Section 6 concludes with directions for future work. 2 Semantic Verb Classes and Test Verbs</context>
+</contexts>
+<marker>Preiss, Korhonen, 2002</marker>
+<rawString>J. Preiss and A. Korhonen. 2002. Improving subcategorization acquisition with WSD. In ACL Workshop on Word Sense Disambiguation: Recent Successes and Future Directions, Philadelphia, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>D Roland</author>
+<author>D Jurafsky</author>
+<author>L Menn</author>
+<author>S Gahl</author>
+<author>E Elder</author>
+<author>C Riddoch</author>
+</authors>
+<title>Verb subcatecorization frequency differences between business-news and balanced corpora.</title>
+<date>2000</date>
+<booktitle>In ACL Workshop on Comparing Corpora,</booktitle>
+<pages>28--34</pages>
+<contexts>
+<context citStr="Roland et al., 2000" endWordPosition="547" position="3697" startWordPosition="544"> a clustering mechanism to this information. We use clustering methods that process raw distributional data directly, avoiding complex preprocessing steps required by many advanced methods (e.g. Brew and Schulte im Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single gold standard class for each verb (whether polysemic or not). The relatively good clustering results obtained suggest that many polysemic verbs do have some predominating sense in corpus data. However, this sense can vary across corpora (Roland et al., 2000), and assuming a single sense is inadequate for an important group of medium and high frequency verbs whose distribution of senses in balanced corpus data is flat rather than zipfian (Preiss and Korhonen, 2002). To allow for sense variation, we introduce a new evaluation scheme against a polysemic gold standard. This helps to explain the results and offers a better insight into the potential and limitations of clustering undisambiguated SCF data semantically. We discuss our gold standards and the choice of test verbs in section 2. Section 3 describes the method for subcategorization acquisitio</context>
+</contexts>
+<marker>Roland, Jurafsky, Menn, Gahl, Elder, Riddoch, 2000</marker>
+<rawString>D. Roland, D. Jurafsky, L. Menn, S. Gahl, E. Elder, and C. Riddoch. 2000. Verb subcatecorization frequency differences between business-news and balanced corpora. In ACL Workshop on Comparing Corpora, pages 28–34.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Schulte im Walde</author>
+<author>C Brew</author>
+</authors>
+<title>Inducing german semantic verb classes from purely syntactic subcategorisation information.</title>
+<date>2002</date>
+<booktitle>In Proc. of the 40th ACL,</booktitle>
+<location>Philadephia, USA.</location>
+<contexts>
+<context citStr="Walde and Brew, 2002" endWordPosition="354" position="2454" startWordPosition="351">cessing (NLP) tasks, such as language generation, machine translation (Dorr, 1997), document classification (Klavans and Kan, 1998), word sense disambiguation (Dorr and Jones, 1996) and subcategorization acquisition (Korhonen, 2002). One attractive property of these classifications is that they make it possible, to a certain extent, to infer the semantics of a verb on the basis of its syntactic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensive system of Briscoe and Carroll (</context>
+<context citStr="Walde and Brew, 2002" endWordPosition="2775" position="16766" startWordPosition="2772">oisy” SCFs contain information which is valuable for the task. 5.2 Method A number of different strategies have been proposed for evaluation of clustering. We concentrate here on those which deliver a numerical value which is easy to interpret, and do not introduce biases towards specific numbers of classes or class sizes. As we currently assign a single sense to each polysemic verb (sec. 5.4) the measures we use are also applicable for evaluation against a polysemous gold standard. Our first measure, the adjusted pairwise precision (APP), evaluates clusters in terms of verb pairs (Schulte im Walde and Brew, 2002) 9: num. of correct pairs in ki |ki|−1 · num. of pairs in ki |ki|+1 . APP is the average proportion of all within-cluster pairs that are correctly co-assigned. It is multiplied by a factor that increases with cluster size. This factor compensates for a bias towards small clusters. Our second measure is derived from purity, a global measure which evaluates the mean precision of the clusters, weighted according to the cluster size (Stevenson and Joanis, 2003). We associate with each cluster its most prevalent semantic class, and denote the number of verbs in a cluster K that take its prevalent c</context>
+<context citStr="Walde and Brew (2002)" endWordPosition="2999" position="18136" startWordPosition="2996">o or more verbs. We therefore disregard those clusters where nprevalent(K) = 1. This leads us to define modified purity: nprevalent(ki) nprevalent(ki)≥2 number of verbs . The modification we introduce to purity removes the bias towards the trivial configuration comprised of only singletons. 5.3 Evaluation Against the Predominant Sense We first evaluated the clusters against the predominant sense, i.e. using the monosemous gold standard. The results, shown in Table 2, demonstrate that both clustering methods perform significantly 9Our definition differs by a factor of 2 from that of Schulte im Walde and Brew (2002). Alg. K +PP –PP +PP –PP APP: mPUR: NN (24) 21% 19% 48% 45% 25 12% 9% 39% 32% IB 35 14% 9% 48% 38% 42 15% 9% 50% 39% RAND 25 3% 15% Table 2: Clustering performance on the predominant senses, with and without prepositions. The last entry presents the performance of random clustering with K = 25, which yielded the best results among the three values K=25, 35 and 42. better on the task than our random clustering baseline. Both methods show clearly better performance with fine-grained SCFs (with prepositions, +PP) than with coarse-grained ones (-PP). Surprisingly, the simple NN method performs ver</context>
+</contexts>
+<marker>Walde, Brew, 2002</marker>
+<rawString>S. Schulte im Walde and C. Brew. 2002. Inducing german semantic verb classes from purely syntactic subcategorisation information. In Proc. of the 40th ACL, Philadephia, USA.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Schulte im Walde</author>
+</authors>
+<title>Clustering verbs semantically according to their alternation behaviour.</title>
+<date>2000</date>
+<booktitle>In Proc. of COLING-2000,</booktitle>
+<pages>747--753</pages>
+<location>Saarbr¨ucken, Germany.</location>
+<contexts>
+<context citStr="Walde, 2000" endWordPosition="411" position="2839" startWordPosition="410">ic behaviour. In recent years several attempts have been made to automatically induce semantic verb classes from (mainly) syntactic information in corpus data (Joanis, 2002; Merlo et al., 2002; Schulte im Walde and Brew, 2002). In this paper, we focus on the particular task of classifying subcategorization frame (SCF) distributions in a semantically motivated manner. Previous research has demonstrated that clustering can be useful in inferring Levin-style semantic classes (Levin, 1993) from both English and German verb subcategorization information (Brew and Schulte im Walde, 2002; Schulte im Walde, 2000; Schulte im Walde and Brew, 2002). We propose a novel approach, which involves: (i) obtaining SCF frequency information from a lexicon extracted automatically using the comprehensive system of Briscoe and Carroll (1997) and (ii) applying a clustering mechanism to this information. We use clustering methods that process raw distributional data directly, avoiding complex preprocessing steps required by many advanced methods (e.g. Brew and Schulte im Walde (2002)). In contrast to earlier work, we give special emphasis to polysemy. Earlier work has largely ignored this issue by assuming a single </context>
+</contexts>
+<marker>Walde, 2000</marker>
+<rawString>S. Schulte im Walde. 2000. Clustering verbs semantically according to their alternation behaviour. In Proc. of COLING-2000, pages 747–753, Saarbr¨ucken, Germany.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>S Stevenson</author>
+<author>E Joanis</author>
+</authors>
+<title>Semi-supervised verb-class discovery using noisy features.</title>
+<date>2003</date>
+<booktitle>In Proc. of CoNLL-2003,</booktitle>
+<location>Edmonton, Canada.</location>
+<contexts>
+<context citStr="Stevenson and Joanis, 2003" endWordPosition="2853" position="17227" startWordPosition="2850">inst a polysemous gold standard. Our first measure, the adjusted pairwise precision (APP), evaluates clusters in terms of verb pairs (Schulte im Walde and Brew, 2002) 9: num. of correct pairs in ki |ki|−1 · num. of pairs in ki |ki|+1 . APP is the average proportion of all within-cluster pairs that are correctly co-assigned. It is multiplied by a factor that increases with cluster size. This factor compensates for a bias towards small clusters. Our second measure is derived from purity, a global measure which evaluates the mean precision of the clusters, weighted according to the cluster size (Stevenson and Joanis, 2003). We associate with each cluster its most prevalent semantic class, and denote the number of verbs in a cluster K that take its prevalent class by nprevalent(K). Verbs that do not take this class are considered as errors. Given our task, we are only interested in classes which contain two or more verbs. We therefore disregard those clusters where nprevalent(K) = 1. This leads us to define modified purity: nprevalent(ki) nprevalent(ki)≥2 number of verbs . The modification we introduce to purity removes the bias towards the trivial configuration comprised of only singletons. 5.3 Evaluation Again</context>
+<context citStr="Stevenson and Joanis (2003)" endWordPosition="3333" position="20057" startWordPosition="3330">ses were represented by two verbs only (section 2). Nevertheless, the IB method has the clear advantage that it allows for more clusters to be produced. At best it classified half of the verbs correctly according to their predominant sense (mPUR = 50%). Although this leaves room for improvement, the result compares favourably to previously published results10. We argue, however, that evaluation against a monosemous gold standard reveals only part of the picture. 10Due to differences in task definition and experimental setup, a direct comparison with earlier results is impossible. For example, Stevenson and Joanis (2003) report an accuracy of 29% (which implies mPUR ≤ 29%), but their task involves classifying 841 verbs to 14 classes based on differences in the predicate-argument structure. K i=1 APP = 1 K mPUR = K Pred. Multiple Pred. Multiple sense senses sense senses APP: MPUR: NN: (24) 21% 29%(23%+5v) 48% 60%(46%+ 2v) IB: 25 12% 18%(14%+5v) 39% 48%(43%+ 3v) 35 14% 20%(16%+6v) 47% 59%(50%+ 4v) 42 15% 19%(16%+3v) 50% 59%(54%+ 2v) Table 3: Evaluation against the monosemous (Pred.) and polysemous (Multiple) gold standards. The figures in parentheses are results of evaluation on randomly polysemous data + signi</context>
+</contexts>
+<marker>Stevenson, Joanis, 2003</marker>
+<rawString>S. Stevenson and E. Joanis. 2003. Semi-supervised verb-class discovery using noisy features. In Proc. of CoNLL-2003, Edmonton, Canada.</rawString>
+</citation>
+<citation valid="true">
+<authors>
+<author>N Tishby</author>
+<author>F C Pereira</author>
+<author>W Bialek</author>
+</authors>
+<title>The information bottleneck method.</title>
+<date>1999</date>
+<booktitle>In Proc. of the 37th Annual Allerton Conference on Communication, Control and Computing,</booktitle>
+<pages>368--377</pages>
+<contexts>
+<context citStr="Tishby et al., 1999" endWordPosition="1887" position="11551" startWordPosition="1884">relevance of the features to the task is evident when comparing the probability of a randomly chosen pair of verbs verbi and verbj to share the same predominant sense (4.5%) with the probability obtained when verbj is the JS-divergence We chose two clustering methods which do not involve task-oriented tuning (such as pre-fixed thresholds or restricted cluster sizes) and which approach data straightforwardly, in its distributional form: (i) a simple hard method that collects the nearest neighbours (NN) of each verb (figure 1), and (ii) the Information Bottleneck (IB), an iterative soft method (Tishby et al., 1999) based on information-theoretic grounds. The NN method is very simple, but it has some disadvantages. It outputs only one clustering configuration, and therefore does not allow examination of different cluster granularities. It is also highly sensitive to noise. Few exceptional neighbourhood relations contradicting the typical trends in the data are enough to cause the formation of a single cluster which encompasses all elements. Therefore we employed the more sophisticated IB method as well. The IB quantifies the relevance information of a SCF distribution with respect to output clusters, thr</context>
+</contexts>
+<marker>Tishby, Pereira, Bialek, 1999</marker>
+<rawString>N. Tishby, F. C. Pereira, and W. Bialek. 1999. The information bottleneck method. In Proc. of the 37th Annual Allerton Conference on Communication, Control and Computing, pages 368–377.</rawString>
+</citation>
+</citationList>
+</algorithm>
+</algorithms>
