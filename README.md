@@ -114,14 +114,14 @@ data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title | model.pkl | �
 data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | model.pkl | 基于章节标题+内容信息，融合不同窗口大小的上下文信息，并以cnn模型作为上下文信息的融合模型
 
 ## 运行环境
-python==3.8.10
-pytorch==1.9.0
-cuda==10.0.130
-cudatoolkit==10.2.89
-libsvm==3.25
-scikit-learn==0.24.2
-nltk==3.6.2
-prefetch-generator==1.0.1
+* python==3.8.10
+* pytorch==1.9.0
+* cuda==10.0.130
+* cudatoolkit==10.2.89
+* libsvm==3.25
+* scikit-learn==0.24.2
+* nltk==3.6.2
+* prefetch-generator==1.0.1
 
 ## 运行说明
 * glove 100d 文件链接 https://pan.baidu.com/s/1zcgfnqTl5uElMvUh6tYg_A (ybse)，下载后放在data\output\dl_file目录下即可。
@@ -129,3 +129,7 @@ prefetch-generator==1.0.1
 * 神经网络的所有代码文件夹中，train_me.py为模型训练脚本，apply_model.py为模型测试脚本，分别运行，生成模型保存在data\output\dl_model_save
 * 所有代码均需进入其所在的文件夹目录下 运行
 * 运行ML\create_text_feature\tf_idf_calculate.py脚本时需注意，需参考 https://blog.csdn.net/weixin_30711917/article/details/95900602 对sklearn包中feature_exceration文件夹中的text.py脚本进行简单修改，以保证使用TfidfVectorizer函数时对字符串切分的正确。
+
+## 应用文章
+* 本项目代码整理自研究论文"Enhancing identification of structure function of academic articles using contextual information"
+* 如您参考到本项目代码，请引用本文：Ma, B., Zhang, C., Wang, Y. et al. Enhancing identification of structure function of academic articles using contextual information. Scientometrics (2022). https://doi.org/10.1007/s11192-021-04225-1
