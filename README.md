@@ -133,4 +133,4 @@ data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | m
 ## Citation
 Please cite the following paper if you use this codes and dataset in your work.
 
->Bowen Ma, Chengzhi Zhang, Yuzhuo Wang, Sanhong Deng. Enhancing Identification of Structure Function of Academic Articles Using Contextual Information. Scientometrics, 2022, 127(2): 885–925. [[doi]](https://doi.org/10.1007/s11192-021-04225-1)
+>Bowen Ma, Chengzhi Zhang, Yuzhuo Wang, Sanhong Deng. Enhancing Identification of Structure Function of Academic Articles Using Contextual Information. Scientometrics, 2022, 127(2): 885–925. [[doi]](https://doi.org/10.1007/s11192-021-04225-1)  [[arXiv]] (http://arxiv.org/abs/2111.14110)
