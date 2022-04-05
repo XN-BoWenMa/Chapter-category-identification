@@ -42,14 +42,14 @@
   * input: content + title + around3
 
 ## Project structure
-    ├─data  *data folder*
-    │  ├─output *output files folder*
-    │  │  ├─content_chi_dict  *the chi-square value dictionary of Chapter content*
-    │  │  ├─dl_file  *data files based on neural network methods*
-    │  │  ├─dl_model_save  *neural network model save folder*
-    │  │  └─nonsemantic_feature  *non-semantic feature files*
-    │  └─sample_articles  *sample articles folder*
-    ├─DL  *the codes of deep learning training*
+    ├─data  (data folder)
+    │  ├─output (output files folder)
+    │  │  ├─content_chi_dict  (the chi-square value dictionary of Chapter content)
+    │  │  ├─dl_file  (data files based on neural network methods)
+    │  │  ├─dl_model_save  (neural network model save folder)
+    │  │  └─nonsemantic_feature  (non-semantic feature files)
+    │  └─sample_articles  (sample articles folder)
+    ├─DL  (the codes of deep learning training)
     │  ├─around_1_content_with_title
     │  ├─around_1_content_with_title_based_on_cnn
     │  ├─around_2_content_with_title
@@ -70,17 +70,23 @@
     │  ├─around_title_3_based_on_cnn
     │  ├─around_title_3_half
     │  ├─basic_model
-    │  └─data_preporcess *data preprocessing*
-    ├─ML  *the codes of traditional machine learning training*
-    │  ├─create_nonsemantic_feature  *build non-semantic features*
-    │  ├─create_text_feature  *build textual features*
-    │  ├─data_file_parsing  *literature data analysis*
-    │  ├─data_preporcess  *literature data preprocessing*
-    │  └─model_train  *training models*
-    └─utils  *other tools*
+    │  └─data_preporcess (data preprocessing)
+    ├─ML  (the codes of traditional machine learning training)
+    │  ├─create_nonsemantic_feature  (build non-semantic features)
+    │  ├─create_text_feature  (build textual features)
+    │  ├─data_file_parsing  (literature data analysis)
+    │  ├─data_preporcess  (literature data preprocessing)
+    │  └─model_train  (training models)
+    └─utils  (other tools)
 
 ## Codes description
 * ML_model
+
+<style>
+table th:first-of-type {
+	width: 100px;
+}
+</style>
 
 data input  | code files | data output | description
  ----- | ----- | ----- | -----
@@ -123,7 +129,7 @@ data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | m
 * nltk==3.6.2
 * prefetch-generator==1.0.1
 
-## 运行说明
+## Operating instructions
 * glove 100d Link https://pan.baidu.com/s/1zcgfnqTl5uElMvUh6tYg_A (ybse) After downloading, put the file in the fold (data\output\dl_file).
 * Run train_classifier.py, the default is the LR model, you can change the model by setting the classifier parameter in line 116, and the training result defaults to five-fold cross-validation.
 * In all the code folders of the neural network, train_me.py is the model training script, apply_model.py is the model testing script, please run separately, and the generated model is saved in data\output\dl_model_save.
