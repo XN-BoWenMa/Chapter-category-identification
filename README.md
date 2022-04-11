@@ -1,4 +1,4 @@
-# The Identification of Structure Function of Academic Articles
+# Identification of Structure Function of Academic Articles
 
 ## Introduction
 * With the increasing enrichment of full-text academic literature, a large number of research focus on the extraction and organization of knowledge elements in the literature. In order to better achieve the extraction and mining of knowledge elements, it is important to understand the structure function of academic articles.
