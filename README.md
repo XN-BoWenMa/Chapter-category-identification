@@ -1,8 +1,8 @@
 # Identification of Structure Function of Academic Articles
 
 ## Background
-* With the increasing enrichment of full-text academic literature, a large number of research focus on the extraction and organization of knowledge elements in the literature. In order to better achieve the extraction and mining of knowledge elements, it is important to understand the structure function of academic articles.
-* This project focuses on the Identification of structure function of academic articles in chapter granularity, and uses traditional machine learning and deep learning methods to train classifier respectively. We explore the optimization approach for feature inputs, and adjust the model structure of neural networks based on different feature inputs adaptively.
+With the increasing enrichment of full-text academic literature, a large number of research focus on the extraction and organization of knowledge elements in the literature. In order to better achieve the extraction and mining of knowledge elements, it is important to understand the structure function of academic articles.
+  This project focuses on the Identification of structure function of academic articles in chapter granularity, and uses traditional machine learning and deep learning methods to train classifier respectively. We explore the optimization approach for feature inputs, and adjust the model structure of neural networks based on different feature inputs adaptively.
 
 ## Traditional Machine Learning Methods
 * Feature selection: 
