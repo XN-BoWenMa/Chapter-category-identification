@@ -42,7 +42,7 @@ With the increasing enrichment of full-text academic literature, a large number 
   * input: content + title + around2
   * input: content + title + around3
 
-## Project structure
+## Project Structure
     ├─data  (data folder)
     │  ├─output (output files folder)
     │  │  ├─content_chi_dict  (the chi-square value dictionary of Chapter content)
@@ -80,7 +80,7 @@ With the increasing enrichment of full-text academic literature, a large number 
     │  └─model_train  (training models)
     └─utils  (other tools)
 
-## Codes description
+## Codes Description
 * ML_model
 
 <style>
@@ -120,7 +120,7 @@ data\output\dl_file\\ .csv  | around_title_3_based_on_cnn | model.pkl | based on
 data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title | model.pkl | based on chapter title and content，fusing contextual information with different window sizes
 data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | model.pkl | based on chapter title and content，fusing contextual information with different window sizes, and the cnn model is adopted as the fusion model
 
-## Operating environment
+## Operating Environment
 * python==3.8.10
 * pytorch==1.9.0
 * cuda==10.0.130
@@ -130,7 +130,7 @@ data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | m
 * nltk==3.6.2
 * prefetch-generator==1.0.1
 
-## Operating instructions
+## Operating Instructions
 * glove 100d Link https://pan.baidu.com/s/1zcgfnqTl5uElMvUh6tYg_A (ybse) After downloading, put the file in the fold (data\output\dl_file).
 * Run train_classifier.py, the default is the LR model, you can change the model by setting the classifier parameter in line 116, and the training result defaults to five-fold cross-validation.
 * In all the code folders of the neural network, train_me.py is the model training script, apply_model.py is the model testing script, please run separately, and the generated model is saved in data\output\dl_model_save.
