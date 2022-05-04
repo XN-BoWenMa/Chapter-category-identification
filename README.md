@@ -138,6 +138,6 @@ data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | m
 * Note when running the ML\create_text_feature\tf_idf_calculate.py script, you need to refer to https://blog.csdn.net/weixin_30711917/article/details/95900602 to make a simple modification to the text.py script in site-packages\sklearn\feature_extraction to ensure correct string slicing when using the TfidfVectorizer function.
 
 ## Citation
-Please cite the following paper if you use this codes and dataset in your work.
+Please cite the following paper if you use this code and dataset in your work.
 
 >Bowen Ma, Chengzhi Zhang, Yuzhuo Wang, Sanhong Deng. Enhancing Identification of Structure Function of Academic Articles Using Contextual Information. Scientometrics, 2022, 127(2): 885–925. [[doi]](https://doi.org/10.1007/s11192-021-04225-1)  [[arXiv]](http://arxiv.org/abs/2111.14110)
