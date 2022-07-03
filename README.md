@@ -45,6 +45,7 @@ With the increasing enrichment of full-text academic literature, a large number 
 ## Project Structure
 
     Chapter-category-identification
+    │
     ├─data  (data folder)
     │  ├─output (output files folder)
     │  │  ├─content_chi_dict  (the chi-square value dictionary of Chapter content)
@@ -52,6 +53,7 @@ With the increasing enrichment of full-text academic literature, a large number 
     │  │  ├─dl_model_save  (neural network model save folder)
     │  │  └─nonsemantic_feature  (non-semantic feature files)
     │  └─sample_articles  (sample articles folder)
+    │
     ├─DL  (the codes of deep learning training)
     │  ├─around_1_content_with_title
     │  ├─around_1_content_with_title_based_on_cnn
@@ -74,12 +76,14 @@ With the increasing enrichment of full-text academic literature, a large number 
     │  ├─around_title_3_half
     │  ├─basic_model
     │  └─data_preporcess (data preprocessing)
+    │
     ├─ML  (the codes of traditional machine learning training)
     │  ├─create_nonsemantic_feature  (build non-semantic features)
     │  ├─create_text_feature  (build textual features)
     │  ├─data_file_parsing  (literature data analysis)
     │  ├─data_preporcess  (literature data preprocessing)
     │  └─model_train  (training models)
+    │
     └─utils  (other tools)
 
 ## Codes Description
