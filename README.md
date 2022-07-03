@@ -43,6 +43,8 @@ With the increasing enrichment of full-text academic literature, a large number 
   * input: content + title + around3
 
 ## Project Structure
+
+    Chapter-category-identification
     ├─data  (data folder)
     │  ├─output (output files folder)
     │  │  ├─content_chi_dict  (the chi-square value dictionary of Chapter content)
