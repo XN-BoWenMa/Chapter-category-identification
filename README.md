@@ -95,36 +95,36 @@ table th:first-of-type {
 }
 </style>
 
-data input  | code files | data output | description
- ----- | ----- | ----- | -----
-data\sample_articles  | data_file_parsing\extract_section_info.py | data\output\ACL_articles_data.csv | extracting the information of articles
-data\output\ACL_articles_data.csv  | data_preporcess\pre_process.py | data\output\ACL_articles_preprocess.csv | preprocessing text information
-data\output\ACL_articles_preprocess.csv | create_text_feature\CHI_calculate.py | data\output\CHI-40%-new.txt | acquiring chi-square value dictionary
-data\output\ACL_articles_preprocess.csv  | create_text_feature\tf_idf_calculate.py | data\output\tfidf-vector-content.csv | acquiring text vectors of chapter content
-data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\citation_feature.py | data\output\citation_feature.csv | acquiring the feature of citation
-data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\ft_feature.py | data\output\ft_feature.csv | acquiring the feature of ft
-data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\relative_position_feature.py | data\output\relative_position_feature.csv | acquiring the feature of loc
-data\output\citation_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\citation-100.csv | generating feature vectors of citation
-data\output\ft_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\ft-100.csv | generating feature vectors of ft
-data\output\relative_position_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\loc-100.csv | generating feature vectors of loc
-contextual feature+non-semantic feature | model_train\train_classifier.py | \ | training model(LR、NB、KNN)
-contextual feature+non-semantic feature  | model_train\train_svm_classifier.py | \ | training model(SVM)
+|  data input  | code files | data output | description |
+| ----- | ----- | ----- | ----- |
+| data\sample_articles | data_file_parsing\extract_section_info.py | data\output\ACL_articles_data.csv | extracting the information of articles |
+| data\output\ACL_articles_data.csv  | data_preporcess\pre_process.py | data\output\ACL_articles_preprocess.csv | preprocessing text information |
+| data\output\ACL_articles_preprocess.csv | create_text_feature\CHI_calculate.py | data\output\CHI-40%-new.txt | acquiring chi-square value dictionary |
+| data\output\ACL_articles_preprocess.csv  | create_text_feature\tf_idf_calculate.py | data\output\tfidf-vector-content.csv | acquiring text vectors of chapter content |
+| data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\citation_feature.py | data\output\citation_feature.csv | acquiring the feature of citation |
+| data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\ft_feature.py | data\output\ft_feature.csv | acquiring the feature of ft |
+| data\output\ACL_articles_preprocess.csv  | create_nonsemantic_feature\relative_position_feature.py | data\output\relative_position_feature.csv | acquiring the feature of loc |
+| data\output\citation_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\citation-100.csv | generating feature vectors of citation |
+| data\output\ft_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\ft-100.csv | generating feature vectors of ft |
+| data\output\relative_position_feature.csv  | create_nonsemantic_feature\create_random.py | data\output\nonsemantic_feature\loc-100.csv | generating feature vectors of loc |
+| contextual feature+non-semantic feature | model_train\train_classifier.py | \ | training model(LR、NB、KNN) |
+| contextual feature+non-semantic feature  | model_train\train_svm_classifier.py | \ | training model(SVM) |
 
 * DL_model
 
-data input  | code files | data output | description
- ----- | ----- | ----- | -----
-data\output\ACL_articles_data.csv  | data_preporcess\pre_process_network.py | data\output\ACL_articles_preprocess_network.csv | preprocessing text information
-data\output\ACL_articles_preprocess_network.csv  | data_preporcess\create_around_data.py | data\output\dl_file (Input data of deep learning models) | generating total input file(.csv)
-data\output\dl_file (total input file for each model) | DL\data_preporcess\split_data.py | data\output\dl_file (training validing and testing files) | generating data files after data division(.csv)
-data\output\dl_file\\ .csv  | basic_model | model.pkl | base neural network model training (Bi-LSTM, HAN, HAN+Attention, CNN)
-data\output\dl_file\\ .csv  | around_content_(1/2/3) | model.pkl | based on chapter content, fusing contextual information with different window sizes
-data\output\dl_file\\ .csv  | around_content_(1/2/3)_half | model.pkl | based on chapter content, fusing contextual information with different window sizes (forward chapters or backward chapters)
-data\output\dl_file\\ .csv  | around_title_(1/2/3) | model.pkl | based on chapter title, fusing contextual information with different window sizes
-data\output\dl_file\\ .csv  | around_title_(1/2/3)_half | model.pkl | based on chapter title, fusing contextual information with different window sizes (forward chapters or backward chapters)
-data\output\dl_file\\ .csv  | around_title_3_based_on_cnn | model.pkl | based on the chapter title, the fusion window size of contextual information is set to 3, and the cnn model is adopted as the fusion model
-data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title | model.pkl | based on chapter title and content，fusing contextual information with different window sizes
-data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | model.pkl | based on chapter title and content，fusing contextual information with different window sizes, and the cnn model is adopted as the fusion model
+| data input  | code files | data output | description |
+| ----- | ----- | ----- | ----- |
+| data\output\ACL_articles_data.csv  | data_preporcess\pre_process_network.py | data\output\ACL_articles_preprocess_network.csv | preprocessing text information |
+| data\output\ACL_articles_preprocess_network.csv  | data_preporcess\create_around_data.py | data\output\dl_file (Input data of deep learning models) | generating total input file(.csv) |
+| data\output\dl_file (total input file for each model) | DL\data_preporcess\split_data.py | data\output\dl_file (training validing and testing files) | generating data files after data division(.csv) |
+| data\output\dl_file\\ .csv  | basic_model | model.pkl | base neural network model training (Bi-LSTM, HAN, HAN+Attention, CNN)
+data\output\dl_file\\ .csv  | around_content_(1/2/3) | model.pkl | based on chapter content, fusing contextual information with different window sizes |
+| data\output\dl_file\\ .csv  | around_content_(1/2/3)_half | model.pkl | based on chapter content, fusing contextual information with different window sizes (forward chapters or backward chapters) |
+| data\output\dl_file\\ .csv  | around_title_(1/2/3) | model.pkl | based on chapter title, fusing contextual information with different window sizes |
+| data\output\dl_file\\ .csv  | around_title_(1/2/3)_half | model.pkl | based on chapter title, fusing contextual information with different window sizes (forward chapters or backward chapters) |
+| data\output\dl_file\\ .csv  | around_title_3_based_on_cnn | model.pkl | based on the chapter title, the fusion window size of contextual information is set to 3, and the cnn model is adopted as the fusion model |
+| data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title | model.pkl | based on chapter title and content，fusing contextual information with different window sizes |
+| data\output\dl_file\\ .csv  | around_(1/2/3)_content_with_title_based_on_cnn | model.pkl | based on chapter title and content，fusing contextual information with different window sizes, and the cnn model is adopted as the fusion model |
 
 ## Operating Environment
 * python==3.8.10
